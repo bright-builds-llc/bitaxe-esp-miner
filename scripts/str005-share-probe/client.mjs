@@ -1,19 +1,20 @@
+import { recoveryFailure } from './recovery-collection.mjs';
 /** One Start; independent timers request normal Stop even while an observation is blocked. */
-export function createShareCoordinator({ gate, prepare, post, record, recover, release,
+export function createShareCoordinator({ gate, prepare, post, record, recover, release, recordFailure = async () => {},
   now = () => performance.now(), limits = {} }) {
   const bounds = { replyMs: 30000, observeMs: 45000, readMs: 30000, cleanupMs: 150000, pollMs: 200, ...limits };
   let consumed = false;
   const bounded = async (operation, ms) => {
     let timer;
     try { return await Promise.race([Promise.resolve().then(operation), new Promise((_, reject) => {
-      timer = setTimeout(() => reject(Error('share_timeout')), Math.max(0, ms));
+      timer = setTimeout(() => reject(Object.assign(Error('share_timeout'), { category: 'timeout' })), Math.max(0, ms));
     })]); } finally { clearTimeout(timer); }
   };
   return async () => {
     if (consumed) throw Error('share_consumed'); consumed = true;
     let firstFailure = null, phase = 'prepare', startInvokedAt = null, startRepliedAt = null, stopRequestedAt = null;
     let observedStart = false, proof = null, timedOut = false, settled = false, deadlineTimer, stopPromise;
-    const failures = [];
+    const failures = []; let clientFailure;
     const collect = async (stage, operation, ms = bounds.cleanupMs) => {
       try { await bounded(operation, ms); } catch { failures.push(stage); }
     };
@@ -52,9 +53,11 @@ export function createShareCoordinator({ gate, prepare, post, record, recover, r
         await new Promise(resolve => setTimeout(resolve, Math.min(bounds.pollMs, Math.max(0, deadline - now()))));
       }
       if (!proof) throw Error('share_not_observed');
-    } catch { firstFailure = phase; timedOut = startInvokedAt !== null && !settled; }
+    } catch (error) { clientFailure = { schema: 'str005-client-failure-v1', ...recoveryFailure(phase, error), observedAtMs: now() }; firstFailure = phase; timedOut = startInvokedAt !== null && !settled; }
     finally {
-      clearTimeout(deadlineTimer); await stop();
+      clearTimeout(deadlineTimer); const stopping = stop();
+      if (clientFailure) await collect('client-failure', () => recordFailure(clientFailure), bounds.readMs);
+      await stopping;
       await collect('result', () => record({ firstFailure, observedStart, startInvokedAt, startRepliedAt, stopRequestedAt, proof }), bounds.readMs);
       await collect('recovery', recover); await collect('close', () => gate.close());
       await collect('closed-state', () => record({ closed: gate.state() }), bounds.readMs);

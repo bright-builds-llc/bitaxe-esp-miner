@@ -1,3 +1,4 @@
+import { fixtureReleaseComplete } from '../str005-startup-probe/server-release.mjs';
 import { readFile, stat, readdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +24,7 @@ export async function main(argv) {
   requireLsofAbsent(['-nP', `-iTCP:${owner.port}`, '-sTCP:LISTEN', '-t']);
   await signerExitProofs(root, context);
   for (const file of ['fixture-exit.json', 'fixture-reap.json']) await proof(root, file);
-  check((await proof(root, 'fixture-release.json')).value.complete === true, 'heartbeat_fixture_release');
+  check(fixtureReleaseComplete((await proof(root, 'fixture-release.json')).value), 'heartbeat_fixture_release');
   const detectorPath = resolve(dirname(root), 'final-detector.stdout.log');
   const detected = parseDetector(await readFile(detectorPath, 'utf8'), context.physical, Date.now() - (await stat(detectorPath)).mtimeMs);
   for (const port of new Set([context.detector.port, detected.port])) requireNoHolders(port);

@@ -46,7 +46,7 @@ test('failed recovery ledger read cannot suppress later independent status and d
     async stratumV2Possession() { return 'binding'; }, async stratumV2Status() { calls.push('status'); return {}; },
     async exportDiagnostics() { calls.push('diagnostics'); } };
   await assert.rejects(collectRecovery({ gate, campaignId: 'test', attemptId: 'test', statusMode: 'not_invoked', save: async () => {} }), /recovery_incomplete/u);
-  assert.deepEqual(calls, ['state', 'ledger', 'budget', 'status', 'diagnostics']);
+  assert.deepEqual(calls, ['ledger', 'budget', 'diagnostics', 'state', 'status']);
 });
 
 test('timed-out read cannot submit late evidence after its collection phase closed', async () => {
@@ -56,4 +56,20 @@ test('timed-out read cannot submit late evidence after its collection phase clos
   await assert.rejects(collectRecovery({ gate, campaignId: 'test', attemptId: 'test', statusMode: 'not_invoked', limitMs: 5, save: async stage => { saved.push(stage); } }));
   resolveLedger({}); await new Promise(resolve => setTimeout(resolve, 10));
   assert.equal(saved.includes('ledger'), false); assert.ok(saved.includes('status'));
+});
+
+test('startup preserves typed initial failure separately from cleanup outcomes', async () => {
+  const f = fixture(); let saved;
+  f.gate.startWindow = async () => { throw Object.assign(Error('private'), { category: 'timeout' }); };
+  await createCoordinator({ ...f.options, recordFailure: async value => { saved = value; } })();
+  assert.equal(saved.phase, 'start'); assert.equal(saved.category, 'timeout'); assert.ok(f.calls.includes('close'));
+});
+
+test('same-session recovery retains accounting and diagnostics before a failing known status query', async () => {
+  const calls = [], saved = [];
+  const gate = { reviewQualificationAttempts: async () => { calls.push('ledger'); return {}; }, reviewBudget: async () => { calls.push('budget'); return {}; },
+    exportDiagnostics: async () => { calls.push('diagnostics'); }, refresh: async () => { calls.push('state'); }, state: () => ({}),
+    stratumV2Possession: async () => 'binding', stratumV2Status: async (_scope, id) => { assert.equal(id, 'known'); calls.push('status'); throw Error('lost'); } };
+  await assert.rejects(collectRecovery({ gate, campaignId: 'test', attemptId: 'known', statusMode: 'confirmed', save: async stage => { saved.push(stage); } }));
+  assert.deepEqual(calls, ['ledger', 'budget', 'diagnostics', 'state', 'status']); assert.deepEqual(saved, ['ledger', 'original_budget', 'state']);
 });

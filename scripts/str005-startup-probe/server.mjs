@@ -1,3 +1,4 @@
+import { createReleaseOwner } from './server-release.mjs';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { readFile, stat } from 'node:fs/promises';
@@ -17,23 +18,12 @@ import { createRoutes } from './routes.mjs';
 export async function createServerOwner({ root, context, assets, authorityDirectory, verify }, operations = {}) {
   await verify(); let fixture, maybeSigner, maybeDetectorSha, released = false, queue = Promise.resolve();
   const persist = (name, value) => writeNew(resolve(root, name), value);
-  async function release() {
-    if (released) return; released = true;
-    let maybeFailure;
-    if (fixture) {
-      try { if (operations.finishFixture) await operations.finishFixture(fixture); }
-      catch (error) { maybeFailure = error; }
-      try {
-        await fixture.close();
-        const owner = (await proof(root, 'fixture-owner.json')).value.owner;
-        await requireGone([owner]); requirePoolListenerAbsent(fixture.ready.listenPort);
-      } catch (error) { maybeFailure ??= error; }
-    }
-    try { if (operations.release) await operations.release(); }
-    catch (error) { maybeFailure ??= error; }
-    await persist('fixture-release.json', { schema: 'str005-startup-fixture-release-v1', complete: !maybeFailure });
-    if (maybeFailure) throw maybeFailure;
-  }
+  const releaseOwned = createReleaseOwner({ getFixture: () => fixture, finishFixture: operations.finishFixture,
+    assertFixtureReleased: async current => {
+      const owner = (await proof(root, 'fixture-owner.json')).value.owner;
+      await requireGone([owner]); requirePoolListenerAbsent(current.ready.listenPort);
+    }, releaseAuxiliary: operations.release, persist });
+  const release = () => { released = true; return releaseOwned(); };
   const verifyEffect = async () => {
     await verify();
     if (operations.admitContext) operations.admitContext(context);
@@ -74,6 +64,7 @@ export async function createServerOwner({ root, context, assets, authorityDirect
         if (path === `/${BUNDLE}`) return send(response, 200, assets.bundle, 'text/javascript');
         if (path === '/startup-page.mjs') return send(response, 200, assets.pageClient, 'text/javascript');
         if (path === '/client.mjs') return send(response, 200, assets.coordinator, 'text/javascript');
+        if (path === '/recovery-collection.mjs') return send(response, 200, await readFile(resolve(context.firmware_root, 'scripts/str005-startup-probe/recovery-collection.mjs')), 'text/javascript');
         if (path === '/retained-status.mjs') return send(response, 200, await readFile(resolve(context.firmware_root, 'scripts/str005-startup-probe/retained-status.mjs')), 'text/javascript');
         if (path === '/window-artifacts') return send(response, 200, await routes.handle(path, undefined, 'GET'));
         return send(response, 404, { error: 'startup_route_unavailable' });

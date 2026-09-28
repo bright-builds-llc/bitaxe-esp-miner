@@ -15,6 +15,12 @@ detect-ultra205 *args:
 str005-failure-recovery action *args:
     bazel run //scripts:str005_failure_recovery -- {{ action }} {{ args }}
 
+str005-share-recovery action *args:
+    bazel run //scripts:str005_share_recovery -- {{ action }} {{ args }}
+
+str005-share-crash action *args:
+    bazel run //scripts:str005_share_crash -- {{ action }} {{ args }}
+
 core-dump action *args:
     bazel run //scripts:core_dump -- {{ action }} {{ args }}
 

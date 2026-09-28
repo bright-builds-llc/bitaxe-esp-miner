@@ -44,3 +44,23 @@ test('third renewal fails closed before requesting share evidence', async () => 
   const f = fixture(3); const result = await createShareCoordinator(f.options)();
   assert.equal(result.complete, false); assert.equal(f.calls.includes('status'), false); assert.ok(f.calls.includes('stop'));
 });
+
+test('first typed share timeout is persisted after Stop request separately from cleanup failures', async () => {
+  // Arrange
+  const f = fixture(); let saved;
+  f.gate.stratumV2Status = async () => { throw Object.assign(Error('sensitive detail'), { category: 'timeout' }); };
+  f.gate.stop = async () => { f.calls.push('stop'); throw Error('cleanup failed'); };
+  // Act
+  const result = await createShareCoordinator({ ...f.options, recordFailure: async value => { f.calls.push('failure'); saved = value; } })();
+  // Assert
+  assert.equal(saved.phase, 'share'); assert.equal(saved.category, 'timeout'); assert.ok(Number.isFinite(saved.observedAtMs));
+  assert.ok(f.calls.indexOf('stop') < f.calls.indexOf('failure')); assert.equal(result.firstFailure, 'share');
+  assert.equal(JSON.stringify(saved).includes('sensitive'), false); assert.ok(f.calls.includes('close'));
+});
+
+test('internal Start deadline records timeout category without an underlying Gate exception', async () => {
+  const f = fixture(); let saved;
+  f.gate.startWindow = () => new Promise(() => {});
+  await createShareCoordinator({ ...f.options, limits: { replyMs: 5 }, recordFailure: async value => { saved = value; } })();
+  assert.equal(saved.phase, 'start'); assert.equal(saved.category, 'timeout');
+});

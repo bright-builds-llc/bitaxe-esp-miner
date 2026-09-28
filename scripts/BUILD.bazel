@@ -1322,3 +1322,43 @@ js_test(
     data = [":str005_panic_probe_sources"],
     entry_point = "str005-panic-probe/readiness.test.mjs",
 )
+
+js_library(
+    name = "str005_share_recovery_sources",
+    srcs = glob(["str005-share-recovery/*.mjs"]),
+    deps = [":str005_share_probe_sources"],
+)
+
+js_binary(
+    name = "str005_share_recovery",
+    chdir = "..",
+    data = [":str005_share_recovery_sources"],
+    entry_point = "str005-share-recovery/main.mjs",
+)
+
+js_test(
+    name = "str005_share_recovery_test",
+    env_inherit = ["PATH"],
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
+    data = [":str005_share_recovery_sources", "@bwg_gate_contract//:package_json_js", "@bwg_gate_contract//:share_authority_sources_js", "@bwg_gate_contract//:worker_deployment_trust_js"],
+    entry_point = "str005-share-recovery/probe.test.mjs",
+)
+
+js_library(
+    name = "str005_share_crash_sources",
+    srcs = glob(["str005-share-crash/*.mjs"]),
+    deps = [":str005_v2_serial_sources"],
+)
+
+js_binary(
+    name = "str005_share_crash",
+    chdir = "..",
+    data = [":str005_share_crash_sources"],
+    entry_point = "str005-share-crash/main.mjs",
+)
+
+js_test(
+    name = "str005_share_crash_test",
+    data = [":str005_share_crash_sources"],
+    entry_point = "str005-share-crash/probe.test.mjs",
+)

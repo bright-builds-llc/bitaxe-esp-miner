@@ -5680,6 +5680,86 @@ Start. No speculative idle substitution or historical restoration claim. The
 accepted-share task stays active and unarchived; heartbeat-loss execution is
 blocked by this failed prerequisite. All earlier seals and parity90/95 remain.
 
+Implementation continuation | 2026-09-28 | Failure-independent recovery and Share001 crash diagnosis
+
+- [x] Repair fresh recovery admission and independent read/Stop/Close boundaries;
+  preserve earliest failure and distinguish fixture completion from release.
+- [x] Add production-page/HTTP regressions for reboot/lost record, timeouts,
+  late writes, persistence/cleanup failures and current-versus-historical proof.
+- [ ] Publish a Share001-bound recovery-only command and verified contract before
+  hardware; collect measured accounting/current status/restoration and seal.
+- [ ] Publish fresh-proof-gated core acquisition, preserve exact raw bytes and ELF,
+  decode privately and record direct findings separately from hypotheses.
+- [ ] Repair only a demonstrated panic boundary, then verify and publish the
+  corrected image contract before state-preserving installation.
+- [ ] Requalify image/capture/cutoff, archive-bound clear, startup/normal Stop,
+  accepted share and finally heartbeat loss in separately admitted stages.
+- [ ] Commit/push truthful outcomes, archive only passed criteria, preserve all
+  predecessor seals and parity90/95. A precise unresolved blocker stops effects.
+
+Current stage: recovery-only publication. All other live gates remain disabled.
+No Start, grant, renewal, reset, flash or core clear/read is admitted by this stage.
+
+Share001 failure-only recovery001 contract | 2026-09-28:
+
+Share failure recovery hardware: enabled.
+Share failure recovery seal: 1125f5d0dea1fa310ad3001cfa3c2aaa775924aacd1240a68555021ce559261e.
+
+Objective: collect fresh authenticated current accounting, status, restoration and
+release after Share001's panic, preserving unavailable historical resources as a
+separate blocker. Follow [the recovery command contract](scripts/str005-share-recovery/CONTRACT.md)
+and [staged crash contract](docs/hardware/str005-share-crash-diagnosis.md).
+The exact installed f000872f/full-a3e25741 identity and Gate9643 remain pinned;
+host-only changes require no firmware write. Independently verify Share001's full
+inventory before collection. No expected post-crash ordinal/total/boot is assumed.
+
+Commands: `just str005-share-recovery preflight --private-root <repo>/scratch/str005-share-recovery/recovery001/attempt --share-root <repo>/scratch/str005-share/share001/attempt --gate-root <clean-pinned-Gate>`;
+fresh `just detect-ultra205`; `just str005-share-recovery serve --private-root <same-root>`;
+then final detector and `just str005-share-recovery finish --private-root <same-root>`
+after browser and exact supervisor owner exit. Create one ignored0700 parent with
+absent child and distinct0600 stdout/stderr siblings. Capture fresh detector logs
+as `detector.stdout.log` and `final-detector.stdout.log` with separate stderr files.
+
+Before device access, publish and verify source/task gates, canonical command and
+all affected regression tests. Detector freshness\<=60s and exact physical identity,
+clean pushed host/Gate, fresh native permission/Hello/possession and same-page
+before/candidate preservation are mandatory. A one-use challenge binds collection
+to the fresh logical session. Read ledger/original budget/diagnostics before the
+fallible status query; preserve every stage result separately. Read bounds\<=30s,
+Stop and Close\<=150s each; finite stage deadlines reject late writes. Current
+proof freshness is\<=120s from actual collection begin, never from finalization.
+
+Allowed effects: two fresh native logical sessions, authenticated reads, ordinary
+Stop/restoration/cooling, Close and exact host cleanup. No authority directory,
+signer, fixture, pool connection, Start/mining/renewal, reset/ROM, flash, self-test,
+core read/clear, NVS mutation, refund or parity change. Failure cannot skip Stop,
+Close or cleanup. Current idle is current evidence only; a missing old retained
+record never becomes historical release or a qualified share. Seal partial results
+with earliest typed failure. Stop on unknown identity/owner, stale proofs, pending
+accounting, incomplete current restoration or resource release; no unchanged retry.
+
+Only successful current safety/accounting/release may enable a separately published
+core-acquisition stage. Historical Share001/Share002 resource and checkpoint gaps
+remain unresolved and their seals immutable. No task archival from this collection.
+
+Recovery software review | 2026-09-28:
+
+Independent recovery now begins from a fresh possession challenge without a
+retained-status prerequisite. New per-stage tickets reject expired/late writes;
+accounting/diagnostics precede fallible status; Stop/Close remain independent,
+including preparation failure and observed Close after rejection. Preserve the
+known-attempt normal-stop path; only the separate current collector uses typed
+idle discovery. Earliest client failure has its own allowlisted receipt, separate
+from fixture completion and actual cleanup. Historical formats remain readable
+without changing old verdicts.
+
+Actual Gate/page/controller and HTTP regressions, plus real process/listener
+cleanup tests, pass. Review corrected missing preparation cleanup, boot-correlation
+proof failure handling and live-writer sealing; each has regression coverage.
+Simplification: reuse the pinned Gate, shared collector, proof schemas, official
+core reader and offline decoder; no new firmware protocol, signer or campaign.
+The small offline full-region verifier keeps the generic legacy reader unchanged.
+
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
 Status: Startup prerequisite passed; focused heartbeat-loss implementation and published live contract remain required.

@@ -1,3 +1,4 @@
+import { validateRecoveryErrors, validateClientFailure } from './recovery-errors.mjs';
 import { failureRecord } from './failure.mjs';
 import { nonce } from '../fixed-usb-qualification/contract.mjs';
 import { validateLedger, requireExhaustedOriginal, validateCooling } from '../fixed-usb-qualification/iterative-contract.mjs';
@@ -16,6 +17,7 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
   check([0, 1, 2].includes(issuanceCounts.renewalCount) && issuanceCounts.authorizationCount === issuanceCounts.renewalCount + 1, 'startup_issuance_policy');
   let scope, before, review, cooling, budgetChallenge, coolingChallenge, fixture, network, artifacts, beforeDiagnostics, baselineChallenge;
   let failed = false, issued = false, delivered = false, candidate = false, recoveryRound = 0, activeRecovery = 0, startState = 'not_invoked', startAdmitted = false;
+  let recoveryChallenge; const recoveryBindings = new Set();
   const stored = new Set(), sessions = new Set(); let firstFailureRecorded = false;
   const save = async (name, value) => { check(!stored.has(name), 'startup_record_consumed'); await persist(name, value); stored.add(name); };
   const fresh = value => check(value && scope && value.scope === scope.challengeId && now() >= value.at && now() - value.at <= 45000, 'startup_review_stale');
@@ -34,7 +36,64 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
     }
     if (path === '/startup/context') { object(input, []); return { originalCampaignId: context.original_campaign_id, attemptId: before?.attempt.id ?? null, startState }; }
     if (path === '/startup/release') { object(input, []); await release(); return { released: true }; }
+    if (path === '/startup/client-failure') { await save('client-failure.json', validateClientFailure(input)); return { recorded: true }; }
     if (path === '/startup/result') { const value = validateResult(input, context); if (value.firstFailure) failed = true; await save('run.json', value); startState = value.observedStart ? 'confirmed' : value.startInvokedAt === null ? 'not_invoked' : 'unknown'; return { recorded: true }; }
+    if (path === '/startup/recovery-challenge') {
+      object(input, []); check(before && recoveryRound < 4 && (!recoveryChallenge || recoveryChallenge.finished), 'startup_recovery_bound');
+      await verify(); activeRecovery = ++recoveryRound;
+      recoveryChallenge = { sequence: activeRecovery, nonce: nonce(), at: now(), admitted: false, finished: false, stages: new Map() };
+      await save(`recovery-${activeRecovery}-challenge.json`, { schema: 'str005-recovery-challenge-v1', sequence: activeRecovery,
+        nonce: recoveryChallenge.nonce, startedAtUnixMs: recoveryChallenge.at });
+      return { sequence: activeRecovery, nonce: recoveryChallenge.nonce, attemptId: before.attempt.id,
+        campaignId: context.original_campaign_id, startState };
+    }
+    if (path === '/startup/recovery-open') {
+      object(input, ['sequence', 'nonce', 'binding', 'state']);
+      check(recoveryChallenge && !recoveryChallenge.admitted && !recoveryChallenge.finished && input.sequence === activeRecovery &&
+        input.nonce === recoveryChallenge.nonce && now() >= recoveryChallenge.at && now() - recoveryChallenge.at <= 120000, 'startup_recovery_challenge');
+      bytes(input.binding, 32); check(input.binding !== review?.binding && !recoveryBindings.has(input.binding), 'startup_recovery_fresh_session');
+      const { validateState } = await import('../fixed-usb-qualification/judge.mjs'); validateState(input.state, context);
+      check(input.state.connected && !input.state.running && input.state.preservation?.baseline_id === before.state.preservation.baseline_id, 'startup_recovery_preservation');
+      recoveryBindings.add(input.binding); recoveryChallenge.binding = input.binding; recoveryChallenge.admitted = true;
+      await save(`recovery-${activeRecovery}-session.json`, { schema: 'str005-recovery-session-v2', sequence: activeRecovery,
+        binding: input.binding, startedAtUnixMs: recoveryChallenge.at, preservationBaselineId: input.state.preservation.baseline_id });
+      return { sequence: activeRecovery };
+    }
+    if (path === '/startup/recovery-stage-open' || path === '/startup/recovery-stage-close') {
+      const closing = path.endsWith('-close');
+      object(input, closing ? ['sequence', 'nonce', 'binding', 'stage', 'ticket'] : ['sequence', 'nonce', 'binding', 'stage', 'limitMs']);
+      check(recoveryChallenge?.admitted && !recoveryChallenge.finished && input.sequence === activeRecovery && input.nonce === recoveryChallenge.nonce &&
+        input.binding === recoveryChallenge.binding && ['state', 'ledger', 'original_budget', 'diagnostics', 'status'].includes(input.stage), 'startup_recovery_stage');
+      if (closing) {
+        const stage = recoveryChallenge.stages.get(input.stage);
+        check(stage && !stage.closed && stage.ticket === input.ticket, 'startup_recovery_stage'); stage.closed = true;
+        await save(`recovery-${activeRecovery}-stage-${input.stage}-closed.json`, { closedAtUnixMs: now(), ticket: input.ticket }); return { recorded: true };
+      }
+      check(!recoveryChallenge.stages.has(input.stage) && Number.isInteger(input.limitMs) && input.limitMs > 0 && input.limitMs <= 30000, 'startup_recovery_stage');
+      const stage = { ticket: nonce(), openedAtUnixMs: now(), deadlineUnixMs: now() + input.limitMs, closed: false };
+      recoveryChallenge.stages.set(input.stage, stage);
+      await save(`recovery-${activeRecovery}-stage-${input.stage}.json`, stage); return stage.ticket;
+    }
+    if (path === '/startup/recovery-part-v2') {
+      object(input, Object.hasOwn(input, 'ticket') ? ['sequence', 'nonce', 'binding', 'stage', 'value', 'ticket'] : ['sequence', 'nonce', 'binding', 'stage', 'value']);
+      check(recoveryChallenge && !recoveryChallenge.finished && input.sequence === activeRecovery && input.nonce === recoveryChallenge.nonce,
+        'startup_recovery_challenge');
+      const cleanup = ['closed', 'errors', 'finished'].includes(input.stage);
+      const stage = recoveryChallenge.stages.get(input.stage);
+      check(cleanup || recoveryChallenge.admitted && input.binding === recoveryChallenge.binding && stage && !stage.closed &&
+        input.ticket === stage.ticket && now() >= stage.openedAtUnixMs && now() <= stage.deadlineUnixMs, 'startup_recovery_stale');
+      if (input.stage === 'errors') {
+        await save(`recovery-${activeRecovery}-errors.json`, validateRecoveryErrors(input.value)); return { recorded: true };
+      }
+      if (input.stage === 'finished') {
+        object(input.value, ['failures']); check(Array.isArray(input.value.failures) && input.value.failures.every(stage =>
+          ['state', 'ledger', 'original_budget', 'status', 'diagnostics', 'closed'].includes(stage)), 'startup_recovery_finished');
+        recoveryChallenge.finished = true;
+        await save(`recovery-${activeRecovery}-finished.json`, input.value); return { recorded: true };
+      }
+      const value = projectRecoveryPart(input.stage, input.value, { ...context, attemptId: before.attempt.id });
+      await save(`recovery-${activeRecovery}-${input.stage}.json`, value); return { recorded: true };
+    }
     if (path === '/startup/recovery-begin') {
       object(input, ['state', 'status']); check(before && recoveryRound < 4, 'startup_recovery_bound');
       const status = parseStatus(input.status), key = `${status.observation.bootOrdinal}:${status.observation.serialTransportEpoch}`;
@@ -132,7 +191,7 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
       check(delivered && input.controlSessionBindingSha256 === review.binding, 'startup_start_binding'); baseline(input.state, context);
       const status = parseStatus(input.status), o = status.observation;
       check(status.state === 'idle' && o.bootOrdinal === network.boot && o.workerGeneration === network.generation && o.serialTransportEpoch === network.transport, 'startup_start_session');
-      fixture.validateStation(o.stationIpv4); sessions.add(`${o.bootOrdinal}:${o.serialTransportEpoch}`);
+      fixture.validateStation(o.stationIpv4); sessions.add(`${o.bootOrdinal}:${o.serialTransportEpoch}`); recoveryBindings.add(review.binding);
       await save('start-admitted.json', { state: input.state, status: projectRecoveryPart('status', status, context) });
       startAdmitted = true; return { generation: o.workerGeneration, attemptId: before.attempt.id };
     }
@@ -143,6 +202,8 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
     catch (error) { await recordFailure(path, error); if (!path.startsWith('/startup/recovery') && path !== '/startup/release') failed = true; throw error; }
   }, recordFailure, async diagnostics(value) {
     if (!candidate) { beforeDiagnostics = value; await save('before-diagnostics.json', value); return; }
+    if (recoveryChallenge) { const stage = recoveryChallenge.stages.get('diagnostics');
+      check(recoveryChallenge.admitted && !recoveryChallenge.finished && stage && !stage.closed && now() <= stage.deadlineUnixMs, 'startup_recovery_stale'); }
     await save(`recovery-${activeRecovery}-diagnostics.json`, projectRecoveryPart('diagnostics', value, context));
   }, fail() { failed = true; }, failed: () => failed, get attemptId() { return before?.attempt.id; }, get recoverySequence() { return activeRecovery; } };
 }

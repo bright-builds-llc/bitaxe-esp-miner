@@ -85,3 +85,43 @@ test('the first physical-admission failure remains precise through recovery and 
   assert.deepEqual(f.saved.get('first-failure.json'), { schema: 'str005-startup-failure-v1', phase: 'cooling', category: 'panic_detector_stale', detector_age_ms: 64000 });
   assert.ok(f.saved.has('recovery-0-ledger.json')); assert.ok(f.calls.includes('release'));
 });
+
+test('fresh recovery HTTP challenge admits accounting without retained status and closes against late writes', async () => {
+  // Arrange: real HTTP boundary over production routes; synthetic already authenticated page state.
+  const { createServer } = await import('node:http'), { once } = await import('node:events');
+  const f = fixture(); await f.candidate();
+  const server = createServer(async (request, response) => {
+    const chunks = []; for await (const chunk of request) chunks.push(chunk);
+    try { const result = await f.call(request.url, JSON.parse(Buffer.concat(chunks))); response.writeHead(200); response.end(JSON.stringify(result)); }
+    catch { response.writeHead(400); response.end('{}'); }
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  const post = async (path, value = {}) => { const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(value) }); return { status: response.status, value: await response.json() }; };
+  try {
+    // Act: no status query or status proof precedes collection admission.
+    const { value: challenge } = await post('/startup/recovery-challenge');
+    const bound = { sequence: challenge.sequence, nonce: challenge.nonce, binding: Buffer.alloc(32, 9).toString('base64url') };
+    assert.equal((await post('/startup/recovery-open', { ...bound, state: f.state })).status, 200);
+    const ticket = (await post('/startup/recovery-stage-open', { ...bound, stage: 'ledger', limitMs: 30000 })).value;
+    assert.equal((await post('/startup/recovery-part-v2', { ...bound, ticket, stage: 'ledger', value: ledger })).status, 200);
+    assert.equal((await post('/startup/recovery-stage-close', { ...bound, stage: 'ledger', ticket })).status, 200);
+    assert.equal((await post('/startup/recovery-part-v2', { ...bound, stage: 'finished', value: { failures: ['status'] } })).status, 200);
+    // Assert: finished admission cannot be replayed or receive late data.
+    assert.ok(f.saved.has('recovery-1-session.json')); assert.ok(f.saved.has('recovery-1-ledger.json'));
+    assert.equal((await post('/startup/recovery-part-v2', { ...bound, stage: 'original_budget', value: original })).status, 400);
+    assert.equal((await post('/startup/recovery-open', { ...bound, state: f.state })).status, 400);
+  } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+});
+
+test('expired recovery collection rejects late observations but permits failure cleanup evidence', async () => {
+  const f = fixture(); await f.candidate();
+  const challenge = await f.call('/startup/recovery-challenge');
+  const bound = { sequence: challenge.sequence, nonce: challenge.nonce, binding: Buffer.alloc(32, 8).toString('base64url') };
+  await f.call('/startup/recovery-open', { ...bound, state: f.state });
+  const ticket = await f.call('/startup/recovery-stage-open', { ...bound, stage: 'ledger', limitMs: 30000 }); f.advance(30001);
+  await assert.rejects(f.call('/startup/recovery-part-v2', { ...bound, ticket, stage: 'ledger', value: ledger }), { code: 'startup_recovery_stale' });
+  await f.call('/startup/recovery-part-v2', { ...bound, stage: 'closed', value: f.closed });
+  await f.call('/startup/recovery-part-v2', { ...bound, stage: 'finished', value: { failures: ['ledger'] } });
+  assert.equal(f.saved.has('recovery-1-ledger.json'), false); assert.ok(f.saved.has('recovery-1-closed.json'));
+});

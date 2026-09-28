@@ -1,3 +1,4 @@
+import { fixtureReleaseComplete, fixtureCompletionComplete } from '../str005-startup-probe/server-release.mjs';
 import { validateFailure } from '../str005-startup-probe/failure.mjs';
 import { inspectShare } from './inspect.mjs';
 import { readFile, readdir, stat } from 'node:fs/promises';
@@ -15,7 +16,7 @@ export async function finalize(root, context, operations = {}) {
   parts.before = await optionalProof(root, 'before.json'); parts.run = await optionalProof(root, 'run.json');
   const server = await optionalProof(root, 'server-owner.json'), claim = await optionalProof(root, 'serve-claim.json');
   const fixtureClaim = await optionalProof(root, 'fixture-start.claim.json'), fixtureOwner = await optionalProof(root, 'fixture-owner.json');
-  const released = await optionalProof(root, 'fixture-release.json'), clear = await optionalProof(root, 'clear-launch.json');
+  const releaseReceipt = await optionalProof(root, 'fixture-release.json'), released = fixtureReleaseComplete(releaseReceipt), clear = await optionalProof(root, 'clear-launch.json');
   let ownersGone = true, serialReleased = true;
   try {
     const owners = [];
@@ -35,13 +36,17 @@ export async function finalize(root, context, operations = {}) {
   } catch { serialReleased = false; blockers.push('startup_serial_release_unproven'); }
   if (fixtureClaim) {
     const exit = await optionalProof(root, 'fixture-exit.json'), reap = await optionalProof(root, 'fixture-reap.json');
-    if (!fixtureOwner || !exit || !reap || released?.complete !== true) blockers.push('startup_fixture_release_unproven');
+    if (!fixtureOwner || !exit || !reap || released !== true) blockers.push('startup_fixture_release_unproven');
   }
-  parts.hostReleased = ownersGone && serialReleased && (!fixtureClaim || (released?.complete === true && blockers.length === 0));
+  parts.hostReleased = ownersGone && serialReleased && (!fixtureClaim || (released === true && blockers.length === 0));
   const rounds = (await readdir(root)).filter(name => /^recovery-[1-4]-session\.json$/u.test(name)).sort();
   const round = rounds.at(-1)?.split('-')[1];
   if (round) for (const stage of ['state', 'ledger', 'original_budget', 'status', 'diagnostics', 'closed', 'finished']) {
     const value = await optionalProof(root, `recovery-${round}-${stage}.json`); if (value !== undefined) parts.recovery[stage] = value;
+  }
+  if (fixtureClaim && releaseReceipt?.schema === 'str005-startup-fixture-release-v2') {
+    const completion = await optionalProof(root, 'fixture-completion.json');
+    if (!completion || !fixtureCompletionComplete(completion)) blockers.push('share_fixture_completion_unproven');
   }
   try { parts.shareVerified = (await inspectShare(root, context, parts)).verified; }
   catch { parts.shareVerified = false; }

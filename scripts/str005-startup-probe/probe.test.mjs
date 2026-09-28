@@ -8,3 +8,6 @@ import './tools.test.mjs';
 import './evidence.test.mjs';
 import './recovery.test.mjs';
 import './compatibility.test.mjs';
+
+import './server-release.test.mjs';
+import './recovery-collection.test.mjs';

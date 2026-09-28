@@ -1,6 +1,7 @@
-import { createCoordinator, collectRecovery, readRecoveryStatus } from './client.mjs';
+import { createRecoveryCollection } from './recovery-collection.mjs';
+import { createCoordinator, collectRecovery } from './client.mjs';
 export function createPage(gate, post, notice, options = {}) {
-  let candidate = false, attemptId, binding, recoverySequence = 0, startState = 'not_invoked';
+  let candidate = false, attemptId, binding, startState = 'not_invoked';
   const state = () => gate.state();
   const recovery = async sequence => {
     const context = await post('/startup/context', {});
@@ -17,7 +18,7 @@ export function createPage(gate, post, notice, options = {}) {
     await gate.loadSignedWindow();
     const admitted = await post('/startup/start-admit', { state: state(), status: await gate.stratumV2Status('share', null, binding), controlSessionBindingSha256: binding });
     attemptId = admitted.attemptId; return options.prepare ? options.prepare({ ...admitted, binding }) : { ...admitted, binding };
-  }, record: async value => {
+  }, recordFailure: value => post('/startup/client-failure', value), record: async value => {
     if (Object.hasOwn(value, 'closed')) return post('/startup/recovery', { sequence: 0, stage: 'closed', value: value.closed });
     startState = value.observedStart ? 'confirmed' : value.startInvokedAt === null ? 'not_invoked' : 'unknown';
     return post('/startup/result', value);
@@ -40,22 +41,25 @@ export function createPage(gate, post, notice, options = {}) {
     },
     async run() { const result = await run(); notice(JSON.stringify(result)); return result; },
     async recoverFresh() {
-      const failures = [];
-      try {
-        const context = await post('/startup/context', {});
-        attemptId ??= context.attemptId;
-        if (context.startState === 'confirmed') startState = 'confirmed';
-        const status = await readRecoveryStatus(gate, attemptId, startState);
-        const round = await post('/startup/recovery-begin', { state: state(), status }); recoverySequence = round.sequence;
-        await recovery(recoverySequence);
-      } catch (error) { failures.push(...(error.failures ?? ['status'])); }
-      finally {
-        try { await gate.stop(); } catch { failures.push('state'); }
-        try { await gate.close(); await post('/startup/recovery', { sequence: recoverySequence, stage: 'closed', value: state() }); }
-        catch { failures.push('closed'); }
-      }
-      await post('/startup/recovery-finished', { sequence: recoverySequence, failures });
-      notice(failures.length ? 'Recovery incomplete; preserve evidence.' : 'Fresh recovery recorded. Host finalization remains required.');
+      let challenge, recoveryBinding;
+      const collect = createRecoveryCollection({ gate,
+        begin: async () => {
+          challenge = await post('/startup/recovery-challenge', {});
+          attemptId ??= challenge.attemptId;
+          recoveryBinding = await gate.stratumV2Possession();
+          await post('/startup/recovery-open', { sequence: challenge.sequence, nonce: challenge.nonce, binding: recoveryBinding, state: state() });
+          return { binding: recoveryBinding, attemptId, campaignId: challenge.campaignId, statusMode: challenge.startState };
+        },
+        beforeStage: (stage, limitMs) => post('/startup/recovery-stage-open', { sequence: challenge.sequence, nonce: challenge.nonce, binding: recoveryBinding, stage, limitMs }),
+        afterStage: (stage, ticket) => post('/startup/recovery-stage-close', { sequence: challenge.sequence, nonce: challenge.nonce, binding: recoveryBinding, stage, ticket }),
+        save: (stage, value, ticket) => {
+          if (!challenge) throw Error('startup_recovery_challenge_missing');
+          return post('/startup/recovery-part-v2', { sequence: challenge.sequence, nonce: challenge.nonce, binding: recoveryBinding ?? null, stage, value, ...(ticket === undefined ? {} : { ticket }) });
+        },
+      });
+      const result = await collect();
+      notice(result.complete ? 'Fresh recovery recorded. Host finalization remains required.' : 'Recovery incomplete; preserve evidence.');
+      return result;
     },
   };
 }

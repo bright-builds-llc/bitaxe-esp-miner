@@ -1,7 +1,8 @@
+import { recoveryFailure } from './recovery-collection.mjs';
 import { readRecoveryStatus } from './retained-status.mjs';
 export { readRecoveryStatus } from './retained-status.mjs';
 /** Browser-only one-shot coordinator. Timers bound requests, never claim physical shutdown. */
-export function createCoordinator({ gate, prepare, record, recover, release, now = () => performance.now(),
+export function createCoordinator({ gate, prepare, record, recover, release, recordFailure = async () => {}, now = () => performance.now(),
   sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), limits = {} }) {
   const bounds = { replyMs: 30000, observeMs: 5000, stopRequestMs: 35000, readMs: 30000, stopMs: 150000, closeMs: 150000, ...limits };
   let consumed = false;
@@ -9,14 +10,14 @@ export function createCoordinator({ gate, prepare, record, recover, release, now
     if (!(ms > 0)) throw Error('startup_deadline');
     let timer;
     try { return await Promise.race([Promise.resolve().then(operation), new Promise((_, reject) => {
-      timer = setTimeout(() => reject(Error('startup_timeout')), ms);
+      timer = setTimeout(() => reject(Object.assign(Error('startup_timeout'), { category: 'timeout' })), ms);
     })]); } finally { clearTimeout(timer); }
   }
   return async () => {
     if (consumed) throw Error('startup_consumed'); consumed = true;
     let firstFailure = null, phase = 'prepare', startInvokedAt = null, startRepliedAt = null, stopRequestedAt = null, timedOut = false;
     let maybeProof = null, observedStart = false, requestSettled = false;
-    const failures = [];
+    const failures = []; let clientFailure;
     const collect = async (stage, operation, limit = bounds.readMs) => {
       try { await bounded(operation, limit); } catch { failures.push(stage); }
     };
@@ -53,11 +54,14 @@ export function createCoordinator({ gate, prepare, record, recover, release, now
         await sleep(Math.min(100, Math.max(0, observeDeadline - now())));
       }
       if (!maybeProof) throw Error('startup_no_dispatch_increase');
-    } catch {
+    } catch (error) {
+      clientFailure = { schema: 'str005-client-failure-v1', ...recoveryFailure(phase, error), observedAtMs: now() };
       firstFailure = phase; timedOut = !requestSettled && startInvokedAt !== null;
     } finally {
       // Stop is requested before disk/network persistence and before recovery reads.
-      await stop();
+      const stopping = stop();
+      if (clientFailure) await collect('client-failure', () => recordFailure(clientFailure));
+      await stopping;
       await collect('result', () => record({ firstFailure, observedStart, startInvokedAt, startRepliedAt, stopRequestedAt, proof: maybeProof }));
       await collect('recovery', recover, bounds.stopMs);
       await collect('close', () => gate.close(), bounds.closeMs);
@@ -73,10 +77,10 @@ export function createCoordinator({ gate, prepare, record, recover, release, now
 export async function collectRecovery({ gate, campaignId, attemptId, save, statusMode = 'unknown', limitMs = 30000 }) {
   const failures = [];
   for (const [stage, operation] of [
-    ['state', async () => { await gate.refresh(); return gate.state(); }],
     ['ledger', () => gate.reviewQualificationAttempts()], ['original_budget', () => gate.reviewBudget(campaignId)],
-    ['status', () => readRecoveryStatus(gate, attemptId, statusMode)],
     ['diagnostics', () => gate.exportDiagnostics()],
+    ['state', async () => { await gate.refresh(); return gate.state(); }],
+    ['status', () => readRecoveryStatus(gate, attemptId, statusMode)],
   ]) {
     let timer; let active = true;
     try { await Promise.race([Promise.resolve().then(operation).then(value => { if (!active) return; return stage === 'diagnostics' ? value : save(stage, value); }),
