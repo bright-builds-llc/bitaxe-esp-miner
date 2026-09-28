@@ -1,7 +1,7 @@
 # Focused accepted-share execution contract
 
-Hardware is disabled. Publication of a complete task-owned admission manifest and
-explicit activation is required before any device access. This command cannot
+Hardware requires the exact published task-owned admission manifest and explicit
+source/task activation before any device access. This command cannot
 install, restart, clear core storage, replay prior grants, or suppress heartbeats.
 
 The command surface is `just str005-share-probe preflight --private-root ROOT --admission MANIFEST --gate-root GATE --fixture-binary FIXTURE`, followed by

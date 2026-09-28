@@ -6,7 +6,7 @@ import { privateRoot, proof, verifyInventory, canonical } from '../str005-noise-
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { validateRecoveryParts, recoveryConclusion, projectRecoveryPart } from '../str005-v2-serial/recovery-evidence.mjs';
 import { validateLedger, requireExhaustedOriginal } from '../fixed-usb-qualification/iterative-contract.mjs';
-export const RENEW_ENABLED = true;
+export const RENEW_ENABLED = false;
 export const RENEW_TASK = 'task-str005-v2-accepted-share-probe';
 export const RENEW_CONTRACT = 'docs/hardware/str005-renew-installation.md';
 export const STARTUP_SEAL = 'cc5bab7bd34da6f3b50388c31f5e1fc4aefb6a7faf12bd14678a6dc08593e7a1';

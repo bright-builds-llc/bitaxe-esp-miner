@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Status: Installation002 and exact-image capture/cutoff qualified; archive-bound clear and fresh share admission remain required.
+Status: Image, capture/cutoff, archive-bound clear and post-clear recovery qualified; one bounded accepted-share probe is admitted.
 Objective: prove a correlated real ASIC result, encrypted submission, independent
 fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
 Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
@@ -5200,7 +5200,7 @@ within its separately audited 13,264-byte selected path.
 
 - [x] Isolate signed Renew from the large general dispatch frame; add a native
   regression/audit equivalent to the signed-Start guard and verify both paths.
-- [ ] Build/publish the necessary new firmware, preserve current accounting and
+- [x] Build/publish the necessary new firmware, preserve current accounting and
   evidence, and qualify its applicable identity/capture/cutoff/preservation checks
   through a complete state-preserving installation contract before renewing work.
 - [ ] Then publish the bounded share probe: normal 180,000-ms reservation,
@@ -5236,12 +5236,12 @@ New-image prerequisite plan:
 
 Renew-image installation001 execution contract | 2026-09-28:
 
-Renew image qualification: baseline enabled.
+Renew image qualification: baseline disabled.
 Renew image qualification: installation disabled.
 Renew image qualification: self-test disabled.
-Renew image qualification: core clear enabled.
+Renew image qualification: core clear disabled.
 Renew-image core-dump acquisition: disabled (captured dump retained).
-Renew-image core-dump clearing: enabled (private archive verified).
+Renew-image core-dump clearing: disabled (clear001 completed).
 
 Objective: install the isolated Renew correction once without mining, preserving
 startup003's retained record before reset and proving the exact candidate identity,
@@ -5575,6 +5575,69 @@ No NVS/factory reset, refund, other partition write, external pool, replay, mini
 authorization issuance or parity promotion. Preserve earliest failures and seal
 partial clear results. A repeated boundary after its correction is a stop; no
 blind retry. The accepted-share task remains active until its own criteria pass.
+
+Clear/post-clear completion and share001 execution contract | 2026-09-28:
+
+Share probe hardware: enabled.
+Share admission sha256: a56bb4b89f3d002a115562daa516f51c262dae5a603d066c187afc4e568b9cd6.
+
+Clear001 matched the actual archived dump, erased only its admitted974848-byte
+region, verified full all-FF readback, returned to exact f000872f/a3e25741 and
+released. Clear seal `ee021f8eb30c124e332ef18aad71025645c7bea9ed369dcf4503acf24495fb51`.
+Fresh post-clear recovery004 passed boot15, idle status, unchanged next20/last19/
+1920000 pending=false, original budget unchanged, current preservation/restoration
+and full release; seal `db2117d05e64e76045701d1009b2f5ac4f55612f682d6e4e09264539b46b43ee`.
+The independent share admission reader rejudged the complete installation/capture/
+clear/post-clear chain successfully. All Renew-image acquisition/installation/
+self-test/clear source and task gates are consumed and disabled.
+
+Objective: one real ASIC-to-V2 accepted share against the controlled local fixture,
+then normal Stop and complete recovery/accounting/release. The private manifest
+`<repo>/scratch/str005-share/admission001/admission.json` is pinned by the exact hash
+above; it binds startup003, installation002, capture003, clear001 and recovery004
+without changing their identities or non-claims. Installed source is exact
+f000872f2e436aa7cdaa8cbfa41eee965a27731e/full ELF
+a3e257418d625aef5e9423fe28f598377f92b092b634264d3cc1e86b4e83e3c2;
+Gate9643e87664397a321c715a3a1b1bb6c1183b83ea. The existing protected authority's
+public trust was verified without issuing a grant; its path and key contents stay
+out of committed evidence. No external pool or local pool credential file is used.
+
+Commands: build the canonical `//tools/stratum-v2-fixture:v2_serial_build_identity`
+Bazel target from the exact clean published host HEAD, then
+`just str005-share-probe preflight --private-root <repo>/scratch/str005-share/share001/attempt --admission <repo>/scratch/str005-share/admission001/admission.json --gate-root <clean-pinned-Gate> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture`;
+`just str005-share-probe serve --private-root <same-root> --authority-directory <existing-protected-authority>`;
+and `just str005-share-probe finish --private-root <same-root>` after release.
+Follow [the narrow contract](scripts/str005-share-probe/CONTRACT.md). No image
+installation, core read/clear, restart or self-test capability is acquired.
+
+Create one ignored0700 parent and absent child; separate0600 stdout/stderr.
+Detector\<=60s before preflight and fresh `startup-detector.stdout.log` immediately
+before the one Run action. Establish exact source/ELF, physical ownership, fresh
+possession, same-page baseline and both ledgers; confirm boot15 and compare actual
+accounting with the qualified producer, then derive the ordinal from that fresh
+measurement. Never assume ordinal20 or replay an old grant. Initial60000-ms grant,
+renewal cadence20000ms, exactly two signed renewal authorizations maximum, and one
+180000-ms reservation; record actual0–2 renewals. Fixture start window\<=10s;
+prewarm signing before it. Direct browser Web Serial is the sole controller.
+
+Start reply\<=30s; request normal Stop immediately after independently verified
+header/target/nonce/submission/native-ACK proof or failure, and no later than45s
+after reply (75s after invocation). Independent timer bounds Stop even if a poll
+stalls. No heartbeat or foreground fault. Preserve any accepted-share proof
+separately from cleanup failure; no-share at the deadline is unverified and never
+an automatic retry. Continue independent state/ledger/budget/retained-status/
+diagnostic reads\<=30s each; Stop/Close/recovery\<=150s each; fixture finish/reap\<=5s.
+After normal Stop, retain the actual authorization checkpoint on the same page,
+reconnect with fresh possession, collect mandatory fresh recovery and close.
+Verify charged completion, native normal-stop ordering/cooling/resources, original
+preservation, both ledgers and exact host/serial/listener release. Seal the result;
+archive this task only if every share criterion passes. Parity remains90/95.
+
+No extra Start, third renewal, extra reservation, external pool, voltage/frequency
+override, firmware write, NVS/factory reset, budget reset/refund, Share002 replay,
+implicit retry or parity promotion. A failure selects the exact blocker; any
+continuation requires verified progress and a new published contract. A recurrence
+after a targeted correction is a repeated-boundary stop, not another attempt.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

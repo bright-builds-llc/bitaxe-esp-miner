@@ -71,7 +71,7 @@ export function installPage(options = {}) {
   const post = async (path, value) => { const result = await fetch(path, { method: 'POST', cache: 'no-store', redirect: 'error',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) }); if (!result.ok) throw Error('startup_request_rejected'); return result.json(); };
   const page = createPage(gate, post, value => { output.textContent = value; }, { ...options, coordinatorOptions: { ...options.coordinatorOptions, post } });
-  for (const [label, name] of [['Record baseline and configure candidate', 'baseline'], ['Run one startup probe', 'run'], ['Collect fresh recovery and close', 'recoverFresh']]) {
+  for (const [label, name] of [['Record baseline and configure candidate', 'baseline'], [options.runLabel ?? 'Run one startup probe', 'run'], ['Collect fresh recovery and close', 'recoverFresh']]) {
     const button = document.createElement('button'); button.textContent = label;
     button.addEventListener('click', async () => { button.disabled = true; try { await page[name](); }
       catch { output.textContent = 'Operation incomplete; retain evidence. Stop and Close remain available.'; } }); document.body.append(button);
