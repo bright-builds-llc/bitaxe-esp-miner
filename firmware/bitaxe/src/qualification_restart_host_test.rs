@@ -115,7 +115,12 @@ mod production_mining_session {
 }
 mod panic_cutoff {
     pub fn mark_self_test() {}
-    pub fn asic_outputs_disabled() -> bool { super::read(|s| s.asic_off) }
+    pub fn asic_outputs_disabled() -> bool {
+        super::read(|s| s.asic_off)
+    }
+}
+mod core_dump_evidence {
+    pub fn mark_self_test() {}
 }
 pub mod sys {
     /// # Safety
@@ -246,15 +251,22 @@ fn core_dump_self_test_requires_disabled_asic_outputs() {
     // Arrange
     change(|s| s.asic_off = false);
     // Act / Assert
-    assert_eq!(qualification_restart::core_dump_context(WorkerGeneration(7)).expect("context"), None);
-    assert!(qualification_restart::core_dump_self_test(WorkerGeneration(7), context(), 2000).is_err());
+    assert_eq!(
+        qualification_restart::core_dump_context(WorkerGeneration(7)).expect("context"),
+        None
+    );
+    assert!(
+        qualification_restart::core_dump_self_test(WorkerGeneration(7), context(), 2000).is_err()
+    );
     assert_eq!(read(|s| s.panics), 0);
 }
 
 #[test]
 fn core_dump_self_test_claims_idle_epoch_before_native_abort() {
     // Arrange / Act
-    let result = std::panic::catch_unwind(|| qualification_restart::core_dump_self_test(WorkerGeneration(7), context(), 2000));
+    let result = std::panic::catch_unwind(|| {
+        qualification_restart::core_dump_self_test(WorkerGeneration(7), context(), 2000)
+    });
     // Assert
     assert!(result.is_err());
     assert_eq!(read(|s| s.panics), 1);

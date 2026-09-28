@@ -94,9 +94,9 @@ export function applyInstallationOutcome(result, { claim, runner, review }) {
 }
 
 /** Current-state recovery completion never changes the failed installation outcome. */
-export function applyRecoveryOnlyOutcome(result) {
+export function applyRecoveryOnlyOutcome(result, predecessorFailed = true) {
   return Object.assign(result, { continuity_basis: 'current-session-only', installation_complete: false,
-    predecessor_installation_failed: true, self_test_permitted: false, core_capture_verified: false,
+    predecessor_installation_failed: predecessorFailed, self_test_permitted: false, core_capture_verified: false,
     historical_resource_proof: false, parity_promotion: false });
 }
 

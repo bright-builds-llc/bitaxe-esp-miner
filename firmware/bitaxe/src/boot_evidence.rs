@@ -141,6 +141,7 @@ pub fn initialize_observer() {
     let transition = rtc_boot_ordinal::initialize(reset_reason);
     let ordinal = *BOOT_ORDINAL.get_or_init(|| transition.record.ordinal);
     crate::preparation_evidence::initialize(ordinal);
+    crate::core_dump_evidence::initialize(ordinal);
     HEARTBEAT_MODEL.get_or_init(|| Mutex::new(RuntimeHeartbeatModel::new(nonce.0)));
     CONNECTED_ORIGIN.get_or_init(|| Mutex::new(None));
     RUNTIME_ATTESTATION.get_or_init(|| Mutex::new(None));

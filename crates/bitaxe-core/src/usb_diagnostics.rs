@@ -35,6 +35,7 @@ pub fn is_worker_diagnostic_retained_line(line: &str) -> bool {
         }
         Some("storage_http_failure") => StorageHttpFailure::parse(line).is_some(),
         Some("storage_http_status") => StorageHttpOutcome::parse(line).is_some(),
+        Some("core_dump_store_receipt") => valid_core_dump_store(fields),
         Some("wifi_startup_failure") => valid_network_startup_failure(fields),
         Some("bwg_worker_start_failure") => {
             fields.next() == Some("category=startup_failed")
@@ -46,6 +47,140 @@ pub fn is_worker_diagnostic_retained_line(line: &str) -> bool {
                 && fields.next().is_none()
         }
         _ => false,
+    }
+}
+
+fn valid_core_dump_store(mut fields: std::str::Split<'_, char>) -> bool {
+    if fields.next() != Some("schema=v1")
+        || !matches!(
+            fields.next(),
+            Some("origin=current_boot" | "origin=previous_boot")
+        )
+    {
+        return false;
+    }
+    match fields.next() {
+        Some(
+            "status=unavailable" | "status=corrupt" | "status=wrong_firmware" | "status=wrong_boot",
+        ) => return fields.next() == Some("redacted=true") && fields.next().is_none(),
+        Some("status=valid") => {}
+        _ => return false,
+    }
+    let Some(source) = fields
+        .next()
+        .and_then(|value| value.strip_prefix("source_hash="))
+    else {
+        return false;
+    };
+    if source.len() != 16
+        || !source
+            .bytes()
+            .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
+    {
+        return false;
+    }
+    let Some(boot) = fields
+        .next()
+        .and_then(|value| value.strip_prefix("boot_ordinal="))
+    else {
+        return false;
+    };
+    if !canonical_unsigned(boot, u64::MAX) || boot == "0" {
+        return false;
+    }
+    if !matches!(
+        fields.next(),
+        Some(
+            "stage=ready"
+                | "stage=store_entered"
+                | "stage=init_entered"
+                | "stage=init_returned"
+                | "stage=prepare_entered"
+                | "stage=prepare_returned"
+                | "stage=start_entered"
+                | "stage=start_returned"
+                | "stage=end_entered"
+                | "stage=end_returned"
+                | "stage=store_returned"
+        )
+    ) {
+        return false;
+    }
+    for key in ["capacity_bytes=", "requested_bytes=", "prepared_bytes="] {
+        let Some(value) = fields.next().and_then(|value| value.strip_prefix(key)) else {
+            return false;
+        };
+        if !(canonical_unsigned(value, u64::from(u32::MAX))
+            || key != "capacity_bytes=" && value == "unavailable")
+        {
+            return false;
+        }
+    }
+    for key in [
+        "init_result=",
+        "prepare_result=",
+        "start_result=",
+        "end_result=",
+        "store_result=",
+    ] {
+        let Some(value) = fields.next().and_then(|value| value.strip_prefix(key)) else {
+            return false;
+        };
+        if value != "unavailable"
+            && !value
+                .parse::<i32>()
+                .is_ok_and(|parsed| parsed.to_string() == value)
+        {
+            return false;
+        }
+    }
+    matches!(
+        fields.next(),
+        Some("self_test_marked=true" | "self_test_marked=false")
+    ) && fields.next() == Some("redacted=true")
+        && fields.next().is_none()
+}
+
+fn canonical_unsigned(value: &str, maximum: u64) -> bool {
+    !value.is_empty()
+        && (value == "0" || !value.starts_with('0'))
+        && value.bytes().all(|c| c.is_ascii_digit())
+        && value.parse::<u64>().is_ok_and(|v| v <= maximum)
+}
+
+#[cfg(test)]
+mod core_dump_store_tests {
+    use super::is_worker_diagnostic_retained_line;
+    const VALID: &str = "core_dump_store_receipt schema=v1 origin=previous_boot status=valid source_hash=0123456789abcdef boot_ordinal=18446744073709551615 stage=store_returned capacity_bytes=974848 requested_bytes=100 prepared_bytes=160 init_result=0 prepare_result=-1 start_result=unavailable end_result=unavailable store_result=-2 self_test_marked=true redacted=true";
+    #[test]
+    fn accepts_only_bounded_closed_core_store_fields() {
+        // Arrange / Act / Assert
+        assert!(is_worker_diagnostic_retained_line(VALID));
+        for (from, to) in [
+            ("prepare_result=-1", "prepare_result=-2147483649"),
+            ("requested_bytes=100", "requested_bytes=4294967296"),
+            ("capacity_bytes=974848", "capacity_bytes=unavailable"),
+            ("store_result=-2", "store_result=-0"),
+            ("stage=store_returned", "stage=secret"),
+        ] {
+            assert!(!is_worker_diagnostic_retained_line(
+                &VALID.replace(from, to)
+            ));
+        }
+        assert!(!is_worker_diagnostic_retained_line(&format!(
+            "{VALID} secret=value"
+        )));
+    }
+    #[test]
+    fn invalid_receipts_cannot_expose_payload_fields() {
+        // Arrange
+        let invalid =
+            "core_dump_store_receipt schema=v1 origin=current_boot status=corrupt redacted=true";
+        // Act / Assert
+        assert!(is_worker_diagnostic_retained_line(invalid));
+        assert!(!is_worker_diagnostic_retained_line(&format!(
+            "{invalid} requested_bytes=100"
+        )));
     }
 }
 

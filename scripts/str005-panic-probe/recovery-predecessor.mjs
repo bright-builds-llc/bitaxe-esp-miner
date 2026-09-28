@@ -1,4 +1,5 @@
 /** Failed installation admits observation only; it never becomes a successful install. */
+import { installedPredecessor } from './installed-predecessor.mjs';
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileDigest, protectedPath, ignored, inspectPackage, missing } from '../fixed-usb-qualification/contract.mjs';
@@ -132,9 +133,12 @@ export async function beforeRecovery(root, firmwareRoot) {
     current.app_elf_sha256 === context.before_source.app_elf_sha256 && current.physical_identity_sha256 === context.detector.physical,
   'panic_before_recovery_proof');
   admitRecovery(current, context, current.observed_at_unix_ms);
-  const predecessor = await recoveryPredecessor(context.failedInstall.root, firmwareRoot);
+  const anchor = context.installedAnchor ?? context.failedInstall;
+  check(anchor && !(context.installedAnchor && context.failedInstall), 'panic_before_recovery_anchor');
+  const predecessor = context.installedAnchor ? await installedPredecessor(anchor.root, firmwareRoot) : await recoveryPredecessor(anchor.root, firmwareRoot);
   check(current.firmware_commit === predecessor.context.firmware_commit && current.app_elf_sha256 === predecessor.context.app_elf_sha256, 'panic_before_recovery_installed_identity');
-  check(predecessor.seal_sha256 === context.failedInstall.seal_sha256 && predecessor.context_sha256 === context.failedInstall.context_sha256,
+  check(predecessor.seal_sha256 === anchor.seal_sha256 && predecessor.context_sha256 === anchor.context_sha256,
     'panic_before_recovery_predecessor');
-  return { context, predecessor, root, seal_sha256: seal.sha256, context_sha256: saved.sha256 };
+  if (context.installedAnchor) check(predecessor.candidate_proof_sha256 === anchor.candidate_proof_sha256, 'panic_installed_anchor_proof_changed');
+  return { kind: predecessor.kind, context, predecessor, root, seal_sha256: seal.sha256, context_sha256: saved.sha256 };
 }

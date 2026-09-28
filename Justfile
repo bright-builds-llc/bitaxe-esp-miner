@@ -39,6 +39,9 @@ test-panic-probe-command:
 audit-signed-start-stack *args:
     bazel run //scripts:audit_signed_start_stack -- {{ args }}
 
+native-core-store-audit *args:
+    bazel run //scripts:native_core_store_audit -- {{ args }}
+
 native-panic-audit *args:
     bazel run //scripts:native_panic_audit -- {{ args }}
 

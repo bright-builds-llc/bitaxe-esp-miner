@@ -436,3 +436,93 @@ No Start, grant, mining, self-test, clearing, factory reset, NVS erase, external
 pool or direct pins are authorized. Completion of this update proves only its
 preservation/current-health boundary, not Share002's cause or panic capture.
 Disable effectful sentinels again after the terminal outcome; parity stays 90/95.
+
+## Numeric store-diagnostic self-test continuation
+
+Owner-approved 2026-09-27. This prospective continuation admits one newly
+instrumented ASIC-off self-test after native/software verification, using
+current-recovery-006 and installation006 as fresh protected parents. It does
+not replay the erased capture001 or any prior fault. Every prior seal and
+non-claim remains unchanged. A later targeted correction requires its own
+verified progress and fresh root; no unchanged second fault is admitted.
+
+The pinned SDK's cross-object store, write-init, prepare, start and end calls
+are linker-wrapped without editing generated SDK files. Numeric RTC records
+bind source fingerprint and boot ordinal, commit integrity last, and expose
+requested/prepared lengths, measured partition capacity and separate SDK return
+codes. `init_result` is `esp_core_dump_write_init` validation, not a claimed
+success result from the void boot initializer. Capacity is queried during normal
+boot. Invalid/torn/wrong-source/wrong-boot records remain explicitly invalid.
+
+The native store audit must prove SDK-to-wrapper-to-real routes, IRAM code and
+literal closure, bounded writes confined to the receipt, RTC NOLOAD and internal
+metadata placement, and at most 256 bytes added stack. The compiled initial
+DROM jump table failed this audit; table-free arithmetic must pass it. Existing
+panic-cutoff and signed-Start stack audits remain mandatory. Native checks are
+software evidence, not proof of a captured dump or electrical behavior.
+
+Publish clean firmware/host and Gate sources, update the archive pin, build the
+canonical package/flash tool, and pass the real CLI dry-run before device access.
+New candidate preflight runs both native audits and binds their digests. Read-only
+recovery of older installed images does not require nonexistent new wrappers and
+cannot self-test or install. An explicit successful-installation lineage selector
+keeps it distinct from failed-installation recovery:
+
+```sh
+just str005-panic-probe preflight --private-root <current-recovery-006/attempt> --gate-root <clean-pinned-Gate> --recover-installed-root <installation005/attempt> --retained-manifest <build-02197010/bitaxe-ultra205-package.json>
+```
+
+The successful lineage checks the immutable inventory, actual install receipt,
+complete candidate recovery, before/after preservation and unchanged ledgers.
+It binds the post-install candidate proof, never the root pre-update proof. Its
+historical proof supplies identity only; every effect still requires a new live
+120-second current-state proof. Use fresh detector/serve/native Connect/baseline/
+Close, preserve the entire current core region into `attempt/installed-core`,
+verify exact application return and release, then finish/seal recovery006.
+
+Preflight installation006 against the new canonical package and
+`--before-recovery-root <current-recovery-006/attempt>`. Obtain its own fresh
+same-page baseline and detector, flash exactly once, validate the complete
+360-second capture/1,200-second supervisor receipt, configure candidate and
+connect freshly to the exact source/full ELF. Keep the page's private before-state
+for the preservation comparison. Do not start a work grant or fixture.
+
+Before pressing the one-use self-test control, require a current-boot valid
+`core_dump_store_receipt` at `ready`, correct source fingerprint, measured
+974,848-byte capacity, unmarked self-test and all store results/lengths unavailable.
+The claim requires a newly exported, source/boot-matched diagnostic snapshot at
+most 30 seconds old, alongside the existing fresh state/status/ledger checks.
+Wait for the normal bounded replay to supply the marker before claiming the
+fault; an absent marker is a blocker, not permission to guess readiness.
+
+Run **one** authenticated ASIC-off self-test. Require matching acknowledgement,
+explicit panic observation, changed boot and exact healthy candidate identity.
+The native cutoff must remain ahead of IDF fatal processing. Independently
+reconnect and collect candidate recovery/Close BEFORE a ROM core read. This saves
+the previous-boot store receipt while its boot binding still matches the admitted
+fault. Store classification is retained separately from current recovery success;
+SDK success alone does not verify a dump. Later recovery after a managed reset is
+labeled outside the panic boot and cannot replace that earlier receipt.
+
+With fresh candidate recovery proof and released serial ownership, read the full
+core region into `attempt/self-test-core` using the existing managed physical
+lease/ROM/read/application-return command. Retain all bytes privately. Inspect
+with the exact retained ELF, require checksum/full image identity, and verify the
+actual captured cutoff receipt. Keep vendor output and raw memory protected.
+Collect another fresh candidate recovery if needed after the ROM round trip,
+then close page/server, obtain cleanup detection and finish/seal all evidence.
+
+Classify measured boundaries without converting SDK status into capture success:
+initialization rejection; capacity rejection when the pinned 32-byte alignment
+plus 32-byte checksum exceeds measured capacity and prepare returns NO_MEM without
+changing its input length; later store failure; incomplete progress; or store
+reported success pending actual dump inspection. Missing/corrupt evidence, stale
+identity, pending ledger, unsafe state, failed return or incomplete cleanup blocks
+further effects. A size result must precede any capture-profile/partition change.
+
+No clearing, Start, grant, mining, renewal, external pool, factory reset, NVS erase,
+direct pins or Share002 replay is admitted by this stage. If valid dump and cutoff
+proof pass, publish/test the separate archival/clear/Start contract before its
+first effect, select a new allowance from fresh accounting, and retain the full
+180,000-ms reservation rule. If they fail, record the precise measured blocker
+and verify a targeted correction before any fresh attempt. Parity stays 90/95.

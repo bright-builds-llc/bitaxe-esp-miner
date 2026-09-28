@@ -4650,9 +4650,10 @@ Prospective execution contract: [staged panic probe](docs/hardware/str005-panic-
 The following gates authorize only its verified staged effects after publication:
 
 Development panic probe: stage A enabled.
-Development panic probe: installation disabled (receipt-corrected preservation trial complete).
-Development panic probe: self-test disabled (single admitted self-test exhausted; numeric store diagnostics required before another attempt).
-Development core-dump acquisition: disabled (pre-update preservation complete; no further acquisition admitted).
+Development panic probe: store diagnostics required.
+Development panic probe: installation enabled.
+Development panic probe: self-test enabled.
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 Development core-dump clearing: disabled (region erased; capture unverified).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5026,6 +5027,53 @@ on the unchanged 16 KiB stack. No Start, mining, self-test or dump clearing
 occurred. Effectful gates are disabled again. Original panic cause, core capture/
 cutoff qualification and live Start remain unverified, so the overarching task
 is not archived and parity remains 90/95. All owned resources are released.
+
+Owner-approved capture diagnostics and conditional Start (2026-09-27):
+
+- [x] Add bounded source/boot-bound reset-retained capture stage, initialization
+  status, required size/capacity and write result at verified pinned SDK seams.
+- [x] Test retained-record integrity/decoding and real native wrapper routing,
+  stack/IRAM behavior and image/resource limits; retain an actionable red/green
+  discriminator for the empty-core outcome before any new controlled fault.
+- [x] Extend typed diagnostic export and the staged probe for the installed
+  successful-update lineage; publish verified command/cleanup/privacy bounds.
+- [ ] Preserve existing core and fresh accounting, install diagnostic candidate,
+  run one new ASIC-off capture self-test after verified progress, recover and
+  inspect exact-ELF dump and actual captured cutoff state.
+- [ ] If capture/cutoff passes, publish and test one fresh bounded V2 Start probe,
+  select allowance from live accounting, stop promptly and independently
+  prove restoration/charged accounting/resource release. No replay or renewals.
+- [ ] Commit/push measured outcomes; archive only independently satisfied task
+  criteria and retain every precise blocker/non-claim with parity at 90/95.
+
+All current effectful gates remain disabled during software preparation.
+Standing development dump authorization and ADR-0031 govern private capture and
+conditional hardware admission. Historical erased capture001 is the red
+hardware signal; newly instrumented boundary evidence must select any correction.
+Do not resize stacks/partitions or suppress heap capture based on conjecture.
+
+Prospective effect contract: [numeric store-diagnostic continuation](docs/hardware/str005-panic-probe.md#numeric-store-diagnostic-self-test-continuation).
+The enabled sentinels apply only after clean publication and passing native/host
+checks to current-recovery-006 preservation and installation006's one ASIC-off
+self-test plus independent recovery/acquisition. New Gate d3ac3743 parses and
+retains the bounded typed receipt. Candidate preflight requires the native store
+audit; old installed-image recovery remains read-only. Fresh readiness receipt
+is mandatory before fault. Clearing and all mining/Start effects remain disabled.
+Historical disabled statements describe prior terminal outcomes, not this new
+progress-backed contract. The initial native audit rejected a DROM lookup table;
+its table-free correction now passes with 240 added bytes under the 256-byte gate.
+
+Pre-effect verification: ordered Cargo format/clippy/build/tests passed (2,412
+passed, three existing ignores). Affected native-store/receipt/USB/host-probe
+Bazel tests pass. Gate d3ac3743 passed full Rust, 824 web tests, browser/package
+and standards checks. The actual corrected native store audit passed all five
+routes, pointer/result forwarding, bounded RTC/DRAM access and 240-byte added
+stack. Source-linked boot initialization is static evidence only. The probe
+requires a fresh source/boot-bound ready receipt before fault and retains the
+immediate post-panic store observation before any managed ROM reset. Later
+recovery is explicitly outside the panic boot. Missing diagnostics never count
+as capture success. Simplification retained five SDK seams and the existing
+collector; no SDK edits, partition resize, heap suppression or stack increase.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 

@@ -306,7 +306,7 @@ pub(super) fn run(
                         return None;
                     }
                     last_replay = now;
-                    if replay_slot == 21 {
+                    if replay_slot == 23 {
                         replay_slot = 0;
                         return retained
                             .marker()
@@ -321,7 +321,7 @@ pub(super) fn run(
                     } else {
                         crate::boot_evidence::maybe_worker_diagnostic_line(replay_slot)
                     };
-                    replay_slot = (replay_slot + 1) % 22;
+                    replay_slot = (replay_slot + 1) % 24;
                     line.map(|line| (line, RecordKind::RetainedDiagnostic, true))
                 });
                 let Some((line, kind, replay)) = maybe_line else {

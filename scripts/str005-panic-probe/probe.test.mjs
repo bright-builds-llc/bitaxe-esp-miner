@@ -413,3 +413,37 @@ test('normal installation admits candidate recovery while self-test stays disabl
   // Assert
   assert.equal(proofs.length, 1); assert.equal(proofs[0].firmware_commit, c.firmware_commit);
 });
+
+import "./installed-predecessor.test.mjs";
+
+import "./store-diagnostics.test.mjs";
+
+test('fault claim requires a fresh source and boot bound store-ready export', async t => {
+  // Arrange
+  const { sourceFingerprint } = await import('./store-diagnostics.mjs');
+  let now = 1000, claims = 0;
+  const c = { ...context, installEnabled: true, selfTestEnabled: true, storeAuditRequired: true };
+  const server = createProbeServer({ root: '/unused', context: c, page: '', bundle: Buffer.from(''), client: Buffer.from(''), trust: {} }, {
+    now: () => now, persist: async () => {}, persistProof: async () => {}, validateDiagnostics: async value => value,
+    inspectInstall: async () => ({ installation_verified: true }), persistCandidate: async () => {},
+    persistCandidateDiagnostics: async () => {}, verifyNativeAudit: async () => {}, persistClaim: async () => { claims += 1; },
+  });
+  server.listen(0,'127.0.0.1'); await once(server,'listening'); t.after(() => server.release());
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const post = (path,value) => fetch(`${origin}${path}`,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(value)});
+  await post('/diagnostic-export',diagnostics);
+  for (const [stage,value] of Object.entries({state:state(c,'before'),ledger,original_budget:original,status:idle(),closed:state(c,'before',true),finished:{failures:[]}}))
+    assert.equal((await post('/part',{stage,value})).status,200);
+  assert.equal((await post('/candidate',{})).status,200);
+  const request = {state:state(c),ledger,status:idle()};
+  const ready = { ...diagnostics, observations: [...diagnostics.observations, {category:'runtime_identity',firmware_commit:c.firmware_commit,app_elf_sha256:c.app_elf_sha256},
+    {category:'core_dump_store_receipt',origin:'current_boot',status:'valid',source_hash:sourceFingerprint(c.firmware_commit),boot_ordinal:'3',stage:'ready',capacity_bytes:974848,
+      requested_bytes:'unavailable',prepared_bytes:'unavailable',init_result:'unavailable',prepare_result:'unavailable',start_result:'unavailable',end_result:'unavailable',store_result:'unavailable',self_test_marked:false}] };
+  // Act / Assert: missing or stale diagnostics never consume the one-use fault claim.
+  assert.equal((await post('/self-test-claim',request)).status,400);
+  await post('/diagnostic-export',ready); now=31001;
+  assert.equal((await post('/self-test-claim',request)).status,400); assert.equal(claims,0);
+  await post('/diagnostic-export',ready);
+  assert.equal((await post('/self-test-claim',request)).status,200); assert.equal(claims,1);
+  assert.equal((await post('/self-test-claim',request)).status,400); assert.equal(claims,1);
+});

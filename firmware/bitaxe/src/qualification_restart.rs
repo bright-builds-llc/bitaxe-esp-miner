@@ -40,6 +40,7 @@ pub(crate) fn core_dump_self_test(
     }
     claim(generation, expected, expires_at_ms, true)?;
     crate::panic_cutoff::mark_self_test();
+    crate::core_dump_evidence::mark_self_test();
     unsafe { esp_idf_svc::sys::abort() }
 }
 

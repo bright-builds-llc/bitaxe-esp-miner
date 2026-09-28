@@ -1444,6 +1444,15 @@ rust_test(
 )
 
 rust_test(
+    name = "core_dump_evidence_tests",
+    srcs = ["src/core_dump_evidence_host_test.rs", "src/core_dump_evidence.rs"],
+    crate_root = "src/core_dump_evidence_host_test.rs",
+    edition = "2021",
+    rustc_env = {"BITAXE_FIRMWARE_COMMIT": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+    deps = ["//crates/bitaxe-api:bitaxe_api"],
+)
+
+rust_test(
     name = "production_owner_resources_tests",
     srcs = ["src/production_owner_resources_host_test.rs", "src/production_mining_session/owner_resources.rs", "src/production_mining_session/owner_resources/cache.rs", "src/production_mining_session/owner_resources/tests.rs"],
     crate_root = "src/production_owner_resources_host_test.rs",

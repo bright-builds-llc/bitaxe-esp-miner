@@ -15,4 +15,19 @@ export async function verifyNativeAudit(root, context) {
   const saved = await proof(root, 'native-audit.json');
   check(saved.sha256 === context.nativeAuditSha256 && await fileDigest(context.candidateElf) === context.app_elf_sha256, 'panic_native_audit_changed');
   validateNativeAudit(saved.value, context.app_elf_sha256);
+  if (context.storeAuditRequired) {
+    const store = await proof(root, 'store-audit.json');
+    check(store.sha256 === context.storeAuditSha256, 'panic_store_audit_changed');
+    validateStoreAudit(store.value, context.app_elf_sha256);
+  }
+}
+
+const storeFlags = ['wrappers_iram','receipt_rtc_noinit','current_metadata_internal','sdk_routes_wrapped',
+  'real_calls_preserved','diagnostic_call_closure','bounded_diagnostic_writes','normal_boot_initializer_linked'];
+export function validateStoreAudit(report, elfSha256) {
+  check(report.schema === 'str005-native-core-store-audit-v1' && report.elf_sha256 === elfSha256 &&
+    storeFlags.every(key => report[key] === true) && report.hardware_verified === false && report.normal_boot_init_runtime_verified === false &&
+    report.added_stack_budget_bytes === 256 && Number.isSafeInteger(report.max_added_stack_bytes) &&
+    report.max_added_stack_bytes > 0 && report.max_added_stack_bytes <= report.added_stack_budget_bytes,
+  'panic_store_native_audit');
 }

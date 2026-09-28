@@ -115,6 +115,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     selfTestUsed = true; selfTest.disabled = true;
     let maybeFailure;
     try {
+      await allowed.exportDiagnostics();
       const request = await post('/self-test-claim', { state: gate.state(), ledger: await allowed.reviewQualificationAttempts(),
         status: await allowed.stratumV2Status('share', null, await allowed.stratumV2Possession()) });
       await coreDumpSelfTest(request);

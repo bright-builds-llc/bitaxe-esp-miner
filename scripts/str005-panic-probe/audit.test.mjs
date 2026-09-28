@@ -12,3 +12,14 @@ test('native audit binds the exact ELF and every prerequisite without promoting 
   assert.throws(() => validateNativeAudit(valid, 'b'.repeat(64)));
   assert.throws(() => validateNativeAudit({ ...valid, hardware_verified: true }, hash));
 });
+
+test('store audit requires every native prerequisite and a bounded added stack', async () => {
+  const { validateStoreAudit } = await import('./audit.mjs');
+  const report = { schema:'str005-native-core-store-audit-v1',elf_sha256:hash,wrappers_iram:true,receipt_rtc_noinit:true,current_metadata_internal:true,
+    sdk_routes_wrapped:true,real_calls_preserved:true,diagnostic_call_closure:true,bounded_diagnostic_writes:true,normal_boot_initializer_linked:true,
+    normal_boot_init_runtime_verified:false,hardware_verified:false,max_added_stack_bytes:240,added_stack_budget_bytes:256 };
+  assert.doesNotThrow(()=>validateStoreAudit(report,hash));
+  for(const key of Object.keys(report).filter(key=>report[key]===true)) assert.throws(()=>validateStoreAudit({...report,[key]:false},hash));
+  assert.throws(()=>validateStoreAudit({...report,max_added_stack_bytes:272},hash));
+  assert.throws(()=>validateStoreAudit(report,'b'.repeat(64)));
+});

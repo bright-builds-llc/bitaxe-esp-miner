@@ -461,6 +461,19 @@ js_test(
 )
 
 js_binary(
+    name = "native_core_store_audit",
+    chdir = "..",
+    data = [":core_dump_sources"],
+    entry_point = "core-dump/store-audit.mjs",
+)
+
+js_test(
+    name = "native_core_store_audit_test",
+    data = [":core_dump_sources"],
+    entry_point = "core-dump/store-audit.test.mjs",
+)
+
+js_binary(
     name = "native_panic_audit",
     chdir = "..",
     data = [":core_dump_sources"],
@@ -496,7 +509,7 @@ js_binary(
 
 js_library(
     name = "core_dump_sources",
-    srcs = glob(["core-dump/*.mjs", "core-dump/*.py", "core-dump/*.c"]),
+    srcs = glob(["core-dump/*.mjs", "core-dump/*.py", "core-dump/*.c"]) + ["noise-native-calls.mjs"],
 )
 
 js_binary(

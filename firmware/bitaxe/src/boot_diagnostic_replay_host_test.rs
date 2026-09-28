@@ -42,6 +42,23 @@ mod preparation_evidence {
         "fixture preparation".to_owned()
     }
 }
+mod core_dump_evidence {
+    pub fn marker(previous: bool) -> String {
+        format!("fixture core store previous={previous}")
+    }
+}
+
+#[test]
+fn core_store_replay_keeps_both_boot_origins() {
+    assert_eq!(
+        worker_diagnostics::maybe_worker_diagnostic_line(21).as_deref(),
+        Some("fixture core store previous=true")
+    );
+    assert_eq!(
+        worker_diagnostics::maybe_worker_diagnostic_line(22).as_deref(),
+        Some("fixture core store previous=false")
+    );
+}
 
 #[test]
 fn actual_replay_returns_cached_or_unavailable_values_before_log_lock_release() {

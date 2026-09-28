@@ -1,3 +1,4 @@
+import { requireStoreReady, recoveryStoreObservation } from './store-diagnostics.mjs';
 import { verifyNativeAudit } from './audit.mjs';
 import { validateSelfTest } from './self-test-evidence.mjs';
 import { createServer } from 'node:http';
@@ -23,7 +24,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
   const now = operations.now ?? Date.now;
   let queue = Promise.resolve(), finished = false, maybeFirstAt, candidateConfigured = false, selfTestClaimed = false, maybeSelfTestRequest, maybeCaptureReview;
   const saved = new Set(), parts = {}, candidateSessions = new Set();
-  let candidateRound = 0, maybeCandidateRound;
+  let candidateRound = 0, maybeCandidateRound, maybeCandidateDiagnostics;
   const scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
   const persist = operations.persist ?? ((stage, value) => writeNew(resolve(root, `baseline-${stage}.json`), value));
   const server = createServer((request, response) => {
@@ -80,6 +81,10 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
         input.state.preservation.settings_match && input.state.preservation.device_identity_match && input.state.preservation.authorization_high_water_match &&
         input.state.preservation.mine_on_boot === false && status.state === 'idle' && !input.ledger.pending &&
         canonical(input.ledger) === canonical(parts.ledger), 'panic_candidate_preservation');
+      if (context.storeAuditRequired) {
+        check(maybeCandidateDiagnostics && now() >= maybeCandidateDiagnostics.at && now() - maybeCandidateDiagnostics.at <= 30000, 'panic_store_diagnostics_stale');
+        requireStoreReady(maybeCandidateDiagnostics.value, context, status.observation.bootOrdinal);
+      }
       const request = { requestNonce: nonce(), expectedBootOrdinal: status.observation.bootOrdinal };
       await (operations.persistClaim ?? (value => writeNew(resolve(root, 'self-test-claim.json'), value)))({ request,
         state: input.state, status: validatePart('status', input.status, context), ledger: input.ledger, claimedAtUnixMs: now() });
@@ -114,6 +119,8 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
             `${round.parts.status.observation.bootOrdinal}:${round.parts.status.observation.serialTransportEpoch}` === round.session &&
             round.parts.state.preservation.baseline_id === parts.closed.preservation.baseline_id, 'panic_candidate_recovery_bound');
           await (operations.persistCandidateProof ?? ((path, value) => writeNew(resolve(root, path), value)))(`${round.relative}/current-recovery.json`, currentProof(candidateContext, round.parts, now()));
+          const maybeStore = context.storeAuditRequired ? recoveryStoreObservation(round.parts.diagnostics, round.parts.status, context, maybeSelfTestRequest) : undefined;
+          if (maybeStore) await (operations.persistStoreObservation ?? ((path, value) => writeNew(resolve(root, path), value)))(`${round.relative}/store-observation.json`, maybeStore);
         }
       }
       return send(response, 200, { recorded: true, proofRelativePath: `${round.relative}/current-recovery.json`, complete: round.finished && baselineConclusion(round.parts).complete });
@@ -129,6 +136,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
     if (path === '/diagnostic-export') {
       const value = await (operations.validateDiagnostics ?? validateDiagnosticExport)(input, context.gate_root);
       if (candidateConfigured) {
+        maybeCandidateDiagnostics = { value, at: now() };
         if (maybeCandidateRound && !maybeCandidateRound.finished) {
           check(!maybeCandidateRound.saved.has('diagnostics'), 'panic_part_consumed');
           await (operations.persistCandidatePart ?? ((path, value) => writeNew(resolve(root, path), value)))(`${maybeCandidateRound.relative}/diagnostics.json`, value);

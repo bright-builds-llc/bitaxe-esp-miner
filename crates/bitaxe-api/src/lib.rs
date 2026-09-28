@@ -10,6 +10,7 @@ pub mod boot_identity;
 pub mod build_identity;
 pub mod command_status;
 pub mod commands;
+pub mod core_dump_receipt;
 pub mod deferred_effect;
 mod legacy_units;
 pub mod logs;
