@@ -5240,7 +5240,7 @@ Renew image qualification: baseline disabled.
 Renew image qualification: installation disabled.
 Renew image qualification: self-test disabled.
 Renew image qualification: core clear disabled.
-Renew-image core-dump acquisition: disabled (captured dump retained).
+Renew-image core-dump acquisition: enabled (fresh recovery required).
 Renew-image core-dump clearing: disabled (clear001 completed).
 
 Objective: install the isolated Renew correction once without mining, preserving
@@ -5686,7 +5686,7 @@ Implementation continuation | 2026-09-28 | Failure-independent recovery and Shar
   preserve earliest failure and distinguish fixture completion from release.
 - [x] Add production-page/HTTP regressions for reboot/lost record, timeouts,
   late writes, persistence/cleanup failures and current-versus-historical proof.
-- [ ] Publish a Share001-bound recovery-only command and verified contract before
+- [x] Publish a Share001-bound recovery-only command and verified contract before
   hardware; collect measured accounting/current status/restoration and seal.
 - [ ] Publish fresh-proof-gated core acquisition, preserve exact raw bytes and ELF,
   decode privately and record direct findings separately from hypotheses.
@@ -5697,8 +5697,9 @@ Implementation continuation | 2026-09-28 | Failure-independent recovery and Shar
 - [ ] Commit/push truthful outcomes, archive only passed criteria, preserve all
   predecessor seals and parity90/95. A precise unresolved blocker stops effects.
 
-Current stage: recovery-only publication. All other live gates remain disabled.
-No Start, grant, renewal, reset, flash or core clear/read is admitted by this stage.
+Current stage: acquisition publication after verified current recovery. Start,
+grant, renewal, flash, self-test and core clearing remain disabled; only the
+explicit Stage2 reset-capable read below may follow a new fresh recovery proof.
 
 Share001 failure-only recovery001 contract | 2026-09-28:
 
@@ -5821,6 +5822,54 @@ unsafe flags still reject. Fresh-finalizer regression passes with real writer/li
 exit checks; production CLI retains real serial-holder checks. Independent review
 passed, and recovery002's seal/failed result remain unchanged. Ordered Cargo checks
 passed2427 tests with3 existing ignores before this publication.
+
+Recovery003 verified; acquisition001 stage | 2026-09-28:
+
+Recovery003 passed on c5513603: actual boot16/idle, next21/last20/2100000 pendingfalse,
+original240000 unchanged, current restoration/preservation/inactiveauthority and
+actual hostrelease. Every collectionstage passed; current_safe_recovery=true and
+fresh_effect_proof=true. Seal
+`9f8b0f41b9976c386674ad38cf22243d0243e69b02960764b591058ff08e7c5d`.
+[Verified current recovery](docs/parity/evidence/20260928-str005-share-current-recovery-verified.md).
+Historical resources remain unavailable; no old failure is repaired or archived.
+
+Stage2 objective: preserve the untouched Share001 crash partition once through
+`just core-dump-read`, then offline checksum/full-ELF diagnosis. Follow
+[the staged crash contract](docs/hardware/str005-share-crash-diagnosis.md).
+Only the accepted-share-owned acquisition marker above is enabled; the Renew
+installation/self-test/source gates, core clear, Start/share/heartbeat and renewal
+gates remain disabled. Core capture/inspection is private under ADR-0030.
+
+Publish this stage with software gates passing before hardware. Build
+`//tools/flash:flash` from that exact clean pushed revision before fresh recovery.
+Collect new `<repo>/scratch/str005-share-recovery/recovery004/attempt` with the same
+recovery-only command and sealed Share001 predecessor/Gate. Measure current
+accounting/boot/idle/restoration; do not copy recovery003. After actual Close and
+hostrelease, finish/seal and use its generated current-recovery.json while\<=120s
+old. Keep original collection time unchanged. Record a fresh detector\<=60s old.
+
+Invoke once `just core-dump-read --board 205 --port <fresh-port> --expected-physical-sha256 <verified-private-physical> --expected-installed-source f000872f2e436aa7cdaa8cbfa41eee965a27731e --expected-installed-elf a3e257418d625aef5e9423fe28f598377f92b092b634264d3cc1e86b4e83e3c2 --private-root <repo>/scratch/str005-share-crash/acquisition001/attempt --recovery-proof <recovery004/attempt/current-recovery.json>`.
+Create new ignored0700 parent/absentchild and separate0600 stdout/stderr. Supervise
+with existing privateProcess owner\<=1200s; retain same physical USB lease and
+board-info/ROM admission before read. Read validated partitiontable and complete
+core region only; no erase/write/NVS change. The semantic proof claim is durable
+and one-use even after failure. Return to exact installed application and release.
+
+Then run offline `just str005-share-crash verify-acquisition --private-root <same-acquisition-root>`;
+require valid table checksum/current0xee000 region and actual974848-byte raw capture,
+producer source/image/return/cleanup before successful archive. Keep false flags
+false. Failed partial acquisition may seal only after writer release; never retry
+an unchanged boundary. Independently collect post-return
+`<repo>/scratch/str005-share-recovery/recovery005/attempt` with fresh measured state.
+
+Run offline `just core-dump inspect` and `analyze` with the acquired raw bin,
+retained exact `<repo>/scratch/development-core-dumps/build-f000872f/bitaxe-ultra205.elf`,
+full SHA above and new private decoder roots below scratch/str005-share-crash.
+Require checksum/full ELF match. Private dumps/debuggeroutput remain unshared;
+commit only reviewed redacted evidence and explicit limits. An offline
+`verify-cutoff` may inspect captured native safety atoms without any device effect.
+No clearing/self-test/flash/Start is admitted. Stop on incomplete safety/release,
+wrong image, missing/corrupt capture or undemonstrated cause; preserve exactblocker.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
