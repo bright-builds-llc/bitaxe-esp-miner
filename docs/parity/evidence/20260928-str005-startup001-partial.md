@@ -65,3 +65,8 @@ because the rejected query has already revoked authority. Any new recovery must
 use its own published failure-only contract. Original Share002 cause remains
 unproved, and startup001 cannot be archived as qualified success. Parity stays
 90/95; accepted-share and heartbeat-loss claims remain separate.
+
+Subsequent [recovery001](20260928-str005-startup-current-recovery.md) verified
+current restoration, unchanged accounting and retained resource release after
+the collector fix. It supplements this immutable partial result and leaves the
+missing historical authorization checkpoint unresolved.

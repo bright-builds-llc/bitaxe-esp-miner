@@ -5262,13 +5262,13 @@ archive this task or promote parity 90/95. Original Share002 cause remains unpro
 
 Current-only recovery continuation (2026-09-28):
 
-Startup recovery hardware: enabled.
+Startup recovery hardware: disabled (recovery001 completed).
 
 - [x] Reproduce the idle-versus-known attempt rejection through actual Gate
   decoding/controller/page operations and correct confirmed-Start reads.
 - [x] Implement a recovery-only preflight/serve/finish continuation pinned to
   startup001 seal 950a8e55b5efb468905a4edd2e739cfd02e47013797e026bf0218af955234cb7.
-- [ ] Publish the narrow recovery contract, collect fresh current observations
+- [x] Publish the narrow recovery contract, collect fresh current observations
   and release resources; preserve historical authorization/preservation gaps.
 
 Contract: `docs/hardware/str005-startup-current-recovery.md`. No Start, signer,
@@ -5293,6 +5293,35 @@ red-to-green retained-query regression and rejection of every effect route.
 Ordered Cargo format/Clippy/build/tests passed (2,412 passed, three existing
 ignores). Independent review confirmed the exact seal/attempt binding and
 current-only claims. Publication and the single current recovery remain pending.
+
+Current recovery result | 2026-09-28:
+
+- [x] Published recovery-only host `6bcc5c3d`; one fresh authenticated connection
+  queried startup001's confirmed attempt directly. No Start/grant/clear/flash.
+- [x] Independently collected both ledgers, diagnostics, retained status, current
+  restoration and Stop/Close; no collection failure. Fresh host/listener/serial
+  cleanup checks passed and the separate recovery evidence was sealed.
+- [x] Boot 8/current generation 3 observed original generation 1's terminal record:
+  socket closed, worker quiescent, fence not retained; `asic_dispatch` retained.
+  Terminal outcome is `rejected`, with `worker_quiescent/authority` at the normal
+  Stop revocation boundary; no accepted-share or panic-cause claim is inferred.
+- [x] Accounting unchanged: next19/last18/1,740,000 ms/pending=false; original
+  campaign remains exhausted at 240,000 ms. No ordinal consumption or refund.
+
+Inventory SHA-256:
+`cee3e1fa3d570774dc4f68c2cf576f7be5bee2bed31aafb3a277f3196366b07a`.
+Evidence: [current recovery](docs/parity/evidence/20260928-str005-startup-current-recovery.md).
+The current recovery quorum passes. Its result explicitly keeps historical
+checkpoint and preservation verification false: this new page cannot reconstruct
+the old private baseline/checkpoint. Original same-session restoration evidence
+and every earlier seal remain unchanged. Startup001's aggregate remains partial.
+
+Completion review: do not archive. Normal Start/Stop lacks the required Gate
+authorization checkpoint capture; that historical omission cannot be repaired
+retroactively. A prospective normal-stop checkpoint path and its verification
+must precede any future qualification trial. The consumed recovery, Start, clear,
+installation and self-test gates are disabled. Current device/host resources are
+released, original Share002 cause remains unproved, and parity remains 90/95.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 

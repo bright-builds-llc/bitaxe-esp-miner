@@ -1,5 +1,8 @@
 # Current recovery after startup001
 
+Current status: recovery001 completed and its execution gate is disabled.
+See [the sealed current-recovery result](../parity/evidence/20260928-str005-startup-current-recovery.md).
+
 Owner: `task-str005-mining-startup-probe`. This is a failure-only continuation,
 not another startup attempt. Code and task admit one continuation only after
 this reviewed source is committed and pushed. The exact immutable predecessor seal is

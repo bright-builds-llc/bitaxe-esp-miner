@@ -11,7 +11,7 @@ import { validateAttempt, validateLedger } from '../fixed-usb-qualification/iter
 import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { createCurrentRecoveryServer, RECOVERY_STAGES, validateFinished } from './recovery-server.mjs';
-export const RECOVERY_ENABLED = true;
+export const RECOVERY_ENABLED = false;
 export const STARTUP_SEAL = '950a8e55b5efb468905a4edd2e739cfd02e47013797e026bf0218af955234cb7';
 const TASK = 'task-str005-mining-startup-probe', CONTRACT = 'docs/hardware/str005-startup-current-recovery.md';
 export function recoveryArguments(argv, enabled = RECOVERY_ENABLED) {
