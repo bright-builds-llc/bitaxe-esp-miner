@@ -71,6 +71,8 @@ impl LeaseAuthorizationVerifier for FixtureVerifier {
 
 #[derive(Default)]
 struct FakeSession {
+    diagnostic_phases: std::cell::RefCell<Vec<bitaxe_worker_control::ControlDiagnosticPhase>>,
+    fail_v2_snapshot: bool,
     maybe_status_evidence: Option<serde_json::Value>,
     maybe_noise: Option<bitaxe_worker_control::noise::NoiseRecord>,
     maybe_v2: Option<bitaxe_worker_control::v2::V2Record>,

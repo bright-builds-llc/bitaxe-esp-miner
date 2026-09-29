@@ -509,7 +509,7 @@ js_binary(
 
 js_library(
     name = "core_dump_sources",
-    srcs = glob(["core-dump/*.mjs", "core-dump/*.py", "core-dump/*.c"]) + ["noise-native-calls.mjs"],
+    srcs = glob(["core-dump/*.mjs", "core-dump/*.py", "core-dump/*.c"]) + ["noise-native-calls.mjs", "audit-fault-provenance.mjs", "fault-provenance-audit.mjs", "fault-provenance-rom.mjs", "fault-provenance-rom.test.mjs", "telemetry-stack-audit.mjs"],
 )
 
 js_binary(
@@ -1361,4 +1361,44 @@ js_test(
     name = "str005_share_crash_test",
     data = [":str005_share_crash_sources"],
     entry_point = "str005-share-crash/probe.test.mjs",
+)
+
+js_test(
+    name = "fault_provenance_host_test",
+    env_inherit = ["PATH"],
+    entry_point = "fault-provenance-host.test.mjs",
+    data = ["//firmware/bitaxe:fault_provenance_model_sources"],
+)
+
+js_binary(
+    name = "audit_fault_provenance",
+    entry_point = "audit-fault-provenance.mjs",
+    data = [":core_dump_sources"],
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "fault_provenance_audit_test",
+    entry_point = "fault-provenance-audit.test.mjs",
+    data = [":core_dump_sources"],
+)
+
+js_library(
+    name = "str005_share_diagnostic_sources",
+    srcs = glob(["str005-share-diagnostic/*.mjs"]),
+    deps = [":str005_panic_probe_sources", ":str005_share_recovery_sources", ":str005_share_crash_sources", ":core_dump_sources"],
+)
+
+js_binary(
+    name = "str005_share_diagnostic",
+    chdir = "..",
+    data = [":str005_share_diagnostic_sources", "//tools/flash:flash"],
+    entry_point = "str005-share-diagnostic/main.mjs",
+)
+
+js_test(
+    name = "str005_share_diagnostic_test",
+    env_inherit = ["PATH"],
+    data = [":str005_share_diagnostic_sources"],
+    entry_point = "str005-share-diagnostic/probe.test.mjs",
 )

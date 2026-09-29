@@ -21,6 +21,10 @@ impl ProductionWorkerSession {
 }
 
 impl WorkerSession for ProductionWorkerSession {
+    fn diagnostic_phase(&self, phase: bitaxe_worker_control::ControlDiagnosticPhase) {
+        crate::panic_evidence::enter_control_phase(phase as u32);
+    }
+
     fn v2_status(
         &self,
         scope: bitaxe_worker_control::v2::Scope,

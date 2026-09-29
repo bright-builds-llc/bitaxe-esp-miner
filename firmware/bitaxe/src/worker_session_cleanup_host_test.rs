@@ -13,6 +13,10 @@ mod worker_acceptance_budget;
 #[path = "worker_qualification_budget.rs"]
 mod worker_qualification_budget;
 
+mod panic_evidence {
+    pub fn enter_control_phase(_phase: u32) {}
+}
+
 use bitaxe_api::acceptance_budget::AcceptanceBudget;
 use bitaxe_worker_control::{
     RestorationReason, WorkerLeaseGrant, WorkerSession, WorkerSessionError,

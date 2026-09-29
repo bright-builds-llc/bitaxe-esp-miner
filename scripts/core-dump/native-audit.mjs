@@ -33,7 +33,7 @@ function wordAt(elf, address) {
 }
 
 /** Fail closed on the exact native cutoff instruction and placement contract. */
-export function audit(elf, symbolText, wrapperText, portText) {
+export function audit(elf, symbolText, wrapperText, portText, provenance = undefined) {
   const entries = symbols(symbolText);
   const one = predicate => { const found = entries.filter(predicate); check(found.length === 1, 'native_symbol'); return found[0]; };
   const wrapper = one(row => row.name === '__wrap_esp_panic_handler');
@@ -69,7 +69,10 @@ export function audit(elf, symbolText, wrapperText, portText) {
       regs.set(args[0], wordAt(elf, address));
     } else if (row.op.startsWith('movi')) regs.set(args[0], Number(args[1]) >>> 0);
     else if (row.op === 'mov.n') regs.set(args[0], regs.get(args[1]));
-    else if (row.op.startsWith('l32i')) regs.set(args[0], { load: (regs.get(args[1]) + Number(args[2])) >>> 0 });
+    else if (row.op.startsWith('l32i')) {
+      check(typeof regs.get(args[1]) === 'number' || (args[1] === 'a1' && stores.length >= 2), 'native_panic_pointer_load');
+      regs.set(args[0], { load: (regs.get(args[1]) + Number(args[2])) >>> 0 });
+    }
     else if (row.op === 'and' || row.op === 'or') {
       const left = regs.get(args[1]), right = regs.get(args[2]);
       if (typeof left === 'number' && typeof right === 'number') regs.set(args[0], (row.op === 'and' ? left & right : left | right) >>> 0);
@@ -80,7 +83,10 @@ export function audit(elf, symbolText, wrapperText, portText) {
   }
   check(stores[0]?.address === 0x60004008 && stores[0].value === 0x400 &&
     stores[1]?.address === 0x6000400c && stores[1].value === 2, 'native_safe_latch_order');
-  check(calls.length === 1 && calls[0].address === real.address && calls[0].at > stores[1].at, 'native_delegate');
+  const capture = entries.find(row => row.name === 'bitaxe_capture_original_panic');
+  if (capture) check(provenance?.hot_call_closure_cache_safe === true && provenance.elf_sha256 === sha256(elf) && calls.length === 2 &&
+    calls[0].address === capture.address && calls[1].address === real.address && calls[0].at > stores[1].at, 'native_delegate');
+  else check(calls.length === 1 && calls[0].address === real.address && calls[0].at > stores[1].at, 'native_delegate');
   const revocation = stores.find(row => row.address === gate.address);
   check(revocation?.value?.op === 'or' && revocation.value.right === 4 && revocation.value.left?.op === 'and' &&
     revocation.value.left.right === 0xfffffff8 && revocation.value.left.left?.load === gate.address && revocation.at < calls[0].at,
@@ -111,8 +117,10 @@ export async function main(argv) {
   const bin = join(repo, '.embuild/espressif/tools/xtensa-esp-elf', version, 'xtensa-esp-elf/bin');
   const elfPath = resolve(argv[1]), output = resolve(argv[3]);
   const run = (name, args) => execFileSync(join(bin, `xtensa-esp32s3-elf-${name}`), args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 30000 });
-  const result = audit(await readFile(elfPath), run('nm', ['-S', elfPath]),
-    run('objdump', ['-d', '--disassemble=__wrap_esp_panic_handler', elfPath]), run('objdump', ['-d', '--disassemble=panic_handler', elfPath]));
+  const symbolText = run('nm', ['-S', elfPath]);
+  const provenance = symbolText.includes('bitaxe_capture_original_panic') ? await (await import('../audit-fault-provenance.mjs')).inspectFaultProvenance(elfPath, repo) : undefined;
+  const result = audit(await readFile(elfPath), symbolText,
+    run('objdump', ['-d', '--disassemble=__wrap_esp_panic_handler', elfPath]), run('objdump', ['-d', '--disassemble=panic_handler', elfPath]), provenance);
   await privateDirectory(resolve(output, '..'));
   await writeFile(output, JSON.stringify(result, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
   return result;

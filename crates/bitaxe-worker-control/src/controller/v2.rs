@@ -33,6 +33,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         {
             return Err(WorkerControlError::InvalidRequest);
         }
+        self.session
+            .diagnostic_phase(crate::ControlDiagnosticPhase::V2Snapshot);
         let status = self
             .session
             .v2_status(scope)
@@ -46,11 +48,13 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                     scope,
                     observation: status.observation.clone(),
                 };
-                response(
-                    &request.request_id,
-                    serde_json::to_value(status).map_err(|_| WorkerControlError::Encoding)?,
-                    Some(effect),
-                )
+                self.session
+                    .diagnostic_phase(crate::ControlDiagnosticPhase::V2Value);
+                let result =
+                    serde_json::to_value(status).map_err(|_| WorkerControlError::Encoding)?;
+                self.session
+                    .diagnostic_phase(crate::ControlDiagnosticPhase::ReplySerialize);
+                response(&request.request_id, result, Some(effect))
             }
             (Some(id), Some(record)) if id == record.attempt_id => {
                 self.maybe_v2_generation = Some(self.generation);
@@ -59,16 +63,20 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                         .v2_cancel()
                         .map_err(|_| WorkerControlError::SessionFailed)?;
                 }
+                self.session
+                    .diagnostic_phase(crate::ControlDiagnosticPhase::V2Snapshot);
                 let status = self
                     .session
                     .v2_status(scope)
                     .map_err(|_| WorkerControlError::SessionFailed)?
                     .ok_or(WorkerControlError::SessionFailed)?;
-                response(
-                    &request.request_id,
-                    serde_json::to_value(status).map_err(|_| WorkerControlError::Encoding)?,
-                    None,
-                )
+                self.session
+                    .diagnostic_phase(crate::ControlDiagnosticPhase::V2Value);
+                let result =
+                    serde_json::to_value(status).map_err(|_| WorkerControlError::Encoding)?;
+                self.session
+                    .diagnostic_phase(crate::ControlDiagnosticPhase::ReplySerialize);
+                response(&request.request_id, result, None)
             }
             _ => Err(WorkerControlError::InvalidTransition),
         }

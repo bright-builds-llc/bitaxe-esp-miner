@@ -422,3 +422,9 @@ str005-heartbeat-probe action *args:
 
 str005-heartbeat-preparation action *args:
     bazel run //scripts:str005_heartbeat_preparation -- {{ action }} {{ args }}
+
+audit-fault-provenance *args:
+    bazel run //scripts:audit_fault_provenance -- {{ args }}
+
+str005-share-diagnostic action *args:
+    bazel run //scripts:str005_share_diagnostic -- {{ action }} {{ args }}

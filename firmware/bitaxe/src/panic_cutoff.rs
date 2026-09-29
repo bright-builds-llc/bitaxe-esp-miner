@@ -44,6 +44,7 @@ pub(crate) fn asic_outputs_disabled() -> bool {
 }
 
 unsafe extern "C" {
+    fn bitaxe_capture_original_panic(info: *const core::ffi::c_void);
     fn __real_esp_panic_handler(info: *mut core::ffi::c_void);
 }
 
@@ -81,5 +82,7 @@ pub unsafe extern "C" fn __wrap_esp_panic_handler(info: *mut core::ffi::c_void) 
     core::ptr::write_volatile(receipt.add(5), revoked_state);
     core::ptr::write_volatile(receipt.add(6), SELF_TEST_MARKER.load(Ordering::Relaxed));
     core::ptr::write_volatile(receipt, 0x50434f32);
+    // Only after the physical cutoff and generation receipt are complete may diagnostics read panic pointers.
+    bitaxe_capture_original_panic(info.cast_const());
     __real_esp_panic_handler(info);
 }

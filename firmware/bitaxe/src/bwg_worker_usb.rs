@@ -163,16 +163,40 @@ fn install_writer() -> anyhow::Result<()> {
     Ok(())
 }
 
+struct FaultOwnerScope;
+impl Drop for FaultOwnerScope {
+    fn drop(&mut self) {
+        crate::panic_evidence::owner_end();
+    }
+}
+
+struct FaultCommandScope;
+impl Drop for FaultCommandScope {
+    fn drop(&mut self) {
+        crate::panic_evidence::enter_control_phase(
+            bitaxe_worker_control::ControlDiagnosticPhase::Idle as u32,
+        );
+    }
+}
+
 fn run_owner<V>(
     receiver: Receiver<ControlEvent>,
     worker: &mut WorkerControl<V, ProductionWorkerSession>,
 ) where
     V: bitaxe_worker_control::LeaseAuthorizationVerifier,
 {
+    crate::panic_evidence::owner_begin();
+    let _fault_owner = FaultOwnerScope;
     let mut owner_epoch = 0;
     loop {
+        crate::panic_evidence::enter_control_phase(
+            bitaxe_worker_control::ControlDiagnosticPhase::Idle as u32,
+        );
         let now = crate::runtime_uptime::millis();
         if owner_epoch != 0 && CURRENT_SESSION.load(Ordering::Acquire) != owner_epoch {
+            crate::panic_evidence::enter_control_phase(
+                bitaxe_worker_control::ControlDiagnosticPhase::Cleanup as u32,
+            );
             let _ = AUTHENTICATED_SESSION.compare_exchange(
                 owner_epoch,
                 0,
@@ -187,6 +211,9 @@ fn run_owner<V>(
         let event = match receiver.recv_timeout(Duration::from_millis(20)) {
             Ok(event) => event,
             Err(mpsc::RecvTimeoutError::Timeout) => {
+                crate::panic_evidence::enter_control_phase(
+                    bitaxe_worker_control::ControlDiagnosticPhase::Cleanup as u32,
+                );
                 if worker.tick(now).is_err() {
                     diagnostic("bwg_worker event=restoration_pending");
                 }
@@ -228,6 +255,9 @@ fn run_owner<V>(
             }
         }
     }
+    crate::panic_evidence::enter_control_phase(
+        bitaxe_worker_control::ControlDiagnosticPhase::Cleanup as u32,
+    );
     if worker.disconnect(crate::runtime_uptime::millis()).is_err() {
         diagnostic("bwg_worker event=restoration_pending");
     }
@@ -241,6 +271,8 @@ fn process_frame<V>(
 ) where
     V: bitaxe_worker_control::LeaseAuthorizationVerifier,
 {
+    crate::panic_evidence::command_begin();
+    let _fault_command = FaultCommandScope;
     let epoch = correlation.epoch;
     let response = match worker.prepare_frame(bytes, now) {
         Ok(response) => response,
@@ -265,6 +297,9 @@ fn process_frame<V>(
             return;
         }
     };
+    crate::panic_evidence::enter_control_phase(
+        bitaxe_worker_control::ControlDiagnosticPhase::ReplyQueued as u32,
+    );
     trace::event(correlation, SerialTraceStage::ReplyCreated, 0);
     if CURRENT_SESSION.load(Ordering::Acquire) != epoch {
         trace::event(correlation, SerialTraceStage::WriterRejected, 0);

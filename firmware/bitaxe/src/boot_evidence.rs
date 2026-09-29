@@ -140,6 +140,7 @@ pub fn initialize_observer() {
     RESET_RECEIPTS.get_or_init(|| crate::panic_evidence::initialize(reset_reason));
     let transition = rtc_boot_ordinal::initialize(reset_reason);
     let ordinal = *BOOT_ORDINAL.get_or_init(|| transition.record.ordinal);
+    crate::panic_evidence::initialize_identity(ordinal);
     crate::preparation_evidence::initialize(ordinal);
     crate::core_dump_evidence::initialize(ordinal);
     HEARTBEAT_MODEL.get_or_init(|| Mutex::new(RuntimeHeartbeatModel::new(nonce.0)));

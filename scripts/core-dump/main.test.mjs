@@ -146,9 +146,11 @@ test('analyze invokes real managed GDB with explicit private core and retains sy
   assert.equal(result.status, 1); assert.equal(JSON.parse(result.stderr).category, 'decoder_failed');
   const receipt = JSON.parse(await readFile(join(root, 'result/analysis-inputs.json'), 'utf8'));
   assert.equal(receipt.gdb_version, '16.3_20250913'); assert.match(receipt.gdb_sha256, /^[0-9a-f]{64}$/);
-  assert.equal(receipt.explicit_core, true); assert.equal(receipt.core_format, 'raw');
-  assert.match(await readFile(join(root, 'result/analysis.stdout'), 'utf8'), /CURRENT THREAD REGISTERS/);
-  assert.match(await readFile(join(root, 'result/analysis.stderr'), 'utf8'), /gdb2freertos_thread_id/);
+  assert.equal(receipt.explicit_core, true); assert.equal(receipt.core_format, 'verified-elf');
+  assert.equal(receipt.frame_arguments, 'none'); assert.equal(receipt.bounded_ms, 60000);
+  assert.match(receipt.core_elf_sha256, /^[0-9a-f]{64}$/);
+  assert.ok((await readFile(join(root, 'result/analysis.stdout'))).length + (await readFile(join(root, 'result/analysis.stderr'))).length > 0);
+  assert.equal((await stat(join(root, 'result/core.elf'))).mode & 0o777, 0o600);
   assert.equal((await stat(join(root, 'result/analysis.stderr'))).mode & 0o777, 0o600);
   assert.equal(result.stdout, '');
 });
@@ -178,4 +180,12 @@ test('native descriptor spare and alignment padding are not treated as identity'
   // Assert
   assert.equal(result.status, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).full_elf_identity_verified, true);
+});
+
+test('analysis uses bounded offline batch frames over the deterministic verified core ELF', async () => {
+  const { analysisArguments } = await import('./analysis.mjs');
+  const args = analysisArguments('/private/program.elf', '/private/core.elf');
+  assert.ok(args.includes('--nx')); assert.ok(args.includes('--batch')); assert.ok(args.includes('--core=/private/core.elf'));
+  assert.ok(args.includes('set print frame-arguments none')); assert.ok(args.includes('thread apply all bt 40'));
+  assert.equal(args.some(arg => /remote|info_corefile|bt full|print .*memory/u.test(arg)), false);
 });

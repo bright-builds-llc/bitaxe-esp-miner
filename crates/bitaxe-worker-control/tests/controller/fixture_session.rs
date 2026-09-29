@@ -1,6 +1,9 @@
 use super::*;
 
 impl WorkerSession for FakeSession {
+    fn diagnostic_phase(&self, phase: bitaxe_worker_control::ControlDiagnosticPhase) {
+        self.diagnostic_phases.borrow_mut().push(phase);
+    }
     fn status_evidence(&self) -> Option<serde_json::Value> {
         self.maybe_status_evidence.clone()
     }
@@ -9,6 +12,9 @@ impl WorkerSession for FakeSession {
         &self,
         scope: bitaxe_worker_control::v2::Scope,
     ) -> Result<Option<bitaxe_worker_control::v2::V2Status>, WorkerSessionError> {
+        if self.fail_v2_snapshot {
+            return Err(WorkerSessionError::Rejected);
+        }
         let record = self.maybe_v2.as_ref().map(|r| r.snapshot());
         Ok(Some(bitaxe_worker_control::v2::V2Status {
             schema: "worker-stratum-v2-status-v1",

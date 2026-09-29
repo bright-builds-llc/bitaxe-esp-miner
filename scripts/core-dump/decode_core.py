@@ -11,7 +11,7 @@ import re
 import sys
 
 
-def inspect(dump, elf, expected, verify_cutoff=False):
+def inspect(dump, elf, expected, verify_cutoff=False, core_output=None, verify_provenance=False):
     from esp_coredump.corefile.loader import ESPCoreDumpFileLoader
     from esp_coredump.corefile.elf import ESPCoreDumpElfFile
 
@@ -39,6 +39,17 @@ def inspect(dump, elf, expected, verify_cutoff=False):
             'elf_sha256': expected, 'dump_sha256': hashlib.sha256(Path(dump).read_bytes()).hexdigest(),
             'decoder_version': '1.17.2', 'checksum_verified': True, 'full_elf_identity_verified': True,
             'tasks_declared': int(loader.header.task_num) if 'task_num' in loader.header else None, 'cause_proven': False}
+    if core_output is not None:
+        with open(core_output, 'xb') as output:
+            output.write(Path(loader.core_elf_file).read_bytes())
+    registers = [note for segment in core.note_segments for note in segment.note_secs
+                 if note.name.rstrip(b'\0') == b'CORE' and note.type == 1]
+    import struct
+    result['sdk_fake_task_frames'] = sum(len(note.desc) == 588 and struct.unpack_from('<I', note.desc, 72)[0] == 0x20000000 for note in registers)
+    result['sdk_task_register_notes'] = len(registers)
+    if verify_provenance:
+        from provenance import verify
+        result.update(verify(elf, loader.core_elf_file, Path(core_output).parent, expected))
     if verify_cutoff:
         from cutoff import verify
         result.update(verify(elf, loader.core_elf_file))
@@ -47,6 +58,8 @@ def inspect(dump, elf, expected, verify_cutoff=False):
 
 if __name__ == '__main__':
     os.umask(0o077)
-    result = inspect(*sys.argv[1:4], verify_cutoff=len(sys.argv) == 6 and sys.argv[5] == "verify-cutoff")
+    action = sys.argv[5] if len(sys.argv) == 6 else 'inspect'
+    result = inspect(*sys.argv[1:4], verify_cutoff=action in ('verify-cutoff', 'verify-provenance'),
+                     core_output=Path(sys.argv[4]).parent / 'core.elf', verify_provenance=action == 'verify-provenance')
     with open(sys.argv[4], 'x', encoding='utf-8') as output:
         json.dump(result, output, sort_keys=True)

@@ -31,6 +31,8 @@ pub use lease::{AcceptanceCampaign, LeaseDeadlines, WorkerLeaseGrant, WorkerLeas
 pub use possession::{
     FirmwareIdentity, FirmwareSourceCommit, PossessionRequest, PossessionResponse,
 };
+mod diagnostic_phase;
+pub use diagnostic_phase::ControlDiagnosticPhase;
 pub use session::{
     LeaseAuthorizationVerifier, RestorationReason, WorkerSession, WorkerSessionError,
 };

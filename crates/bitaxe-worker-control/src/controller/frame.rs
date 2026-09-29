@@ -6,6 +6,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         frame: &[u8],
         now: u64,
     ) -> Result<PreparedResponse, WorkerControlError> {
+        self.session
+            .diagnostic_phase(crate::ControlDiagnosticPhase::FrameParse);
         self.session.noise_poll();
         let parsed = parse(frame);
         // Retained diagnostics have no effect authority. They remain readable
@@ -27,11 +29,17 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         };
         self.acknowledge_boot_restoration()?;
         if request.command == "start_lease" {
+            self.session
+                .diagnostic_phase(crate::ControlDiagnosticPhase::StartPrepare);
             return self.prepare_start_controller(&request, now);
         }
         if request.command == "renew_lease" {
+            self.session
+                .diagnostic_phase(crate::ControlDiagnosticPhase::RenewPrepare);
             return self.prepare_renew_controller(&request, now);
         }
+        self.session
+            .diagnostic_phase(crate::ControlDiagnosticPhase::ControlDispatch);
         let is_probe = request.command == "transport_probe";
         let prepared = self.prepare_controller(request, now)?;
         if is_probe {

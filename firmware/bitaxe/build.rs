@@ -6,7 +6,11 @@ fn main() {
     embuild::espidf::sysenv::output();
     assert_sdkconfig_contract();
     println!("cargo:rustc-link-arg=-Wl,--wrap=esp_panic_handler");
+    println!("cargo:rustc-link-arg=-Wl,-u,BITAXE_FAULT_PROVENANCE_ABI");
+    println!("cargo:rustc-link-arg=-Wl,-u,BITAXE_FAULT_COMPILED_SOURCE");
     for symbol in [
+        "esp_core_dump_check_task",
+        "esp_core_dump_port_set_crashed_tcb",
         "esp_core_dump_store",
         "esp_core_dump_write_init",
         "esp_core_dump_write_prepare",
@@ -15,6 +19,7 @@ fn main() {
     ] {
         println!("cargo:rustc-link-arg=-Wl,--wrap={symbol}");
     }
+    println!("cargo:rerun-if-changed=components/bitaxe_fault_provenance");
     println!("cargo:rerun-if-env-changed=BITAXE_LINKER_MAP");
     let map = std::path::PathBuf::from(
         env::var_os("BITAXE_LINKER_MAP")

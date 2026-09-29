@@ -35,6 +35,51 @@ fn observed() -> WorkerControl<FixtureVerifier, FakeSession> {
     w.confirm_sent_at(response, 1002).expect("delivered");
     w
 }
+
+#[test]
+fn failed_snapshot_retains_its_boundary_without_reporting_serialization() {
+    // Arrange
+    use bitaxe_worker_control::ControlDiagnosticPhase as Phase;
+    let mut worker = admitted_worker();
+    worker.session_mut().fail_v2_snapshot = true;
+    worker.session().diagnostic_phases.borrow_mut().clear();
+    // Act
+    let result = worker.prepare_frame(&query(), 1001);
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(
+        *worker.session().diagnostic_phases.borrow(),
+        [Phase::FrameParse, Phase::V2Snapshot]
+    );
+    assert!(!worker.has_active_lease());
+}
+
+#[test]
+fn successful_status_breadcrumbs_preserve_the_actual_response_and_no_effects() {
+    // Arrange
+    use bitaxe_worker_control::ControlDiagnosticPhase as Phase;
+    let mut worker = admitted_worker();
+    worker.session().diagnostic_phases.borrow_mut().clear();
+    // Act
+    let reply = worker
+        .prepare_frame(&query(), 1001)
+        .expect("admitted idle status");
+    let value: serde_json::Value = serde_json::from_slice(reply.frame()).expect("valid reply");
+    // Assert
+    assert_eq!(
+        *worker.session().diagnostic_phases.borrow(),
+        [
+            Phase::FrameParse,
+            Phase::V2Snapshot,
+            Phase::V2Value,
+            Phase::ReplySerialize
+        ]
+    );
+    assert_eq!(value["requestId"], "serial_v2");
+    assert_eq!(value["result"]["state"], "idle");
+    assert!(worker.session().events.is_empty());
+    assert!(!worker.has_active_lease());
+}
 #[test]
 fn delivered_observation_and_delivered_ack_are_distinct_admission_boundaries() {
     // Arrange

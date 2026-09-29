@@ -32,6 +32,10 @@ pub trait LeaseAuthorizationVerifier {
 
 /// Sole mining-owner adapter; implementations must keep supplied credentials volatile.
 pub trait WorkerSession {
+    /// Records a private numeric boundary without retaining request values.
+    /// Implementations must not allocate, block, or alter control decisions.
+    fn diagnostic_phase(&self, _phase: crate::ControlDiagnosticPhase) {}
+
     fn v2_status(
         &self,
         _scope: crate::v2::Scope,

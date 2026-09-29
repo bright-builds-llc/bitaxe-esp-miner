@@ -1051,7 +1051,7 @@ js_run_binary(
         "src/http_api/theme.rs",
         "src/http_api/updates.rs",
         "src/http_api/websocket.rs",
-    ] + glob(["static/**"]),
+    ] + glob(["static/**", "components/**"]),
     outs = [
         "bitaxe-firmware-bootloader.bin",
         "bitaxe-firmware-otadata-initial.bin",
@@ -1115,7 +1115,7 @@ js_run_binary(
         "src/http_api/theme.rs",
         "src/http_api/updates.rs",
         "src/http_api/websocket.rs",
-    ] + glob(["static/**"]),
+    ] + glob(["static/**", "components/**"]),
     outs = [
         "bitaxe-firmware-rollback-probe-bootloader.bin",
         "bitaxe-firmware-rollback-probe-otadata-initial.bin",
@@ -1575,4 +1575,10 @@ rust_test(
     srcs = ["src/panic_cutoff_model.rs"],
     crate_root = "src/panic_cutoff_model.rs",
     edition = "2021",
+)
+
+js_library(
+    name = "fault_provenance_model_sources",
+    srcs = glob(["components/bitaxe_fault_provenance/**"]),
+    visibility = ["//scripts:__pkg__"],
 )

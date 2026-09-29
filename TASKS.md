@@ -5241,7 +5241,7 @@ Renew image qualification: installation disabled.
 Renew image qualification: self-test disabled.
 Renew image qualification: core clear disabled.
 Renew-image core-dump acquisition: disabled (Share001 crash archived).
-Renew-image core-dump clearing: disabled (clear001 completed).
+Renew-image core-dump clearing: enabled (private archive verified).
 
 Objective: install the isolated Renew correction once without mining, preserving
 startup003's retained record before reset and proving the exact candidate identity,
@@ -5697,8 +5697,9 @@ Implementation continuation | 2026-09-28 | Failure-independent recovery and Shar
 - [ ] Commit/push truthful outcomes, archive only passed criteria, preserve all
   predecessor seals and parity90/95. A precise unresolved blocker stops effects.
 
-Current stage: recovery/acquisition completed; the missing fault provenance
-selected the diagnostic stop below. Every diagnostic and live gate is disabled.
+Current stage: approved fault-provenance diagnostic publication below. Only fresh
+recovery, old-archive clear and audited installation are enabled; capture and Start
+remain disabled until their separately verified stages.
 
 Share001 failure-only recovery001 contract | 2026-09-28:
 
@@ -5907,6 +5908,143 @@ Completion review: failure-only collection, measured accounting, restoration,
 resource release, private full-region acquisition and checksum/identity/cutoff
 analysis are verified. The planned firmware-cause repair and resumed qualification
 are blocked by missing fault provenance. No full dumps/debugger output were shared.
+
+Fault-provenance implementation continuation | 2026-09-28:
+
+Owner approved the focused diagnostic update and one bounded reproduction after
+ASIC-off capture validation. Existing failed seals and parity90/95 stay unchanged.
+
+- [x] Design and test fixed-size allocation provenance and pre-SDK panic-frame,
+  task/stack-bound and rejection-reason capture, with no allocation or locks on
+  fatal paths and no unchecked pointer dereference.
+- [x] Implement private offline decoding and exact native placement/call/stack
+  audits; retain first failure and bounded chronology without claiming causation.
+- [ ] Publish exact state-preserving installation/capture contracts and candidate
+  package identity before hardware; preserve the already archived original dump.
+- [ ] Verify ASIC-off self-test supplies useful real fault-frame diagnostics,
+  native cutoff, recovery/accounting and full archive before any reproduction.
+- [ ] Publish and run one bounded Start/status reproduction with fresh accounting;
+  stop and collect failure evidence independently, decode and classify the result.
+- [ ] Repair only an established boundary, or record the precise next blocker;
+  commit/push truthful outcomes and archive only fully passing task criteria.
+
+Current step is software and native-build verification only. No diagnostic/live
+hardware gate is enabled by this continuation. Required reading remains AGENTS,
+Bright Builds sidecar/overrides/architecture/testing/verification, active lessons,
+ADR0021/0023/0029/0030/0031, fixed USB ownership and the sealed crash report.
+
+Fault-provenance software verification | 2026-09-28:
+
+Typed SDK-header C capture records original frame metadata after unchanged native
+cutoff, and actual check_task/set_crashed_tcb decisions before synthetic replacement.
+Per-core first+eight recent allocation records retain source/boot/task/capability/
+cycle and closed control-phase breadcrumbs. They never assert allocation causation
+or label the phase-site as an allocating instruction. No raw new fields are public.
+See [fixed-size provenance design](docs/hardware/str005-fault-provenance.md).
+
+Canonical development firmware builds. Exact development ELF3096e68c passed cutoff,
+core-store, Start, Renew and fault-provenance audits: added panic96/128 stackbytes,
+allocation192/256, including a separately instruction/hash-verified SDK ROM IRQ
+leaf16bytes. The first audit caught GCC lowering a generic CAS to a critical-section
+lock; correction uses pinnedSDK inlineS32C1I with ISA guard, not a whitelist or a
+budget increase. No new image has been installed. Clean published-package audits
+are still required before effects.
+
+Decoder preserves raw captured provenance independently on later validation failure,
+rejects program-BSS substitution, and distinguishes useful original frame from SDK
+fake-frame status. Bounded official-loader/GDB analysis succeeds on the old b665
+core in a separate private root; its original failed analysis remains unchanged.
+Native C/model, actual controller, parser and call-graph tests pass; scoped canonical
+host-runner tests and final source checks remain in progress before publication.
+
+Fault-provenance recovery001/clear001/installation001 contract | 2026-09-28:
+
+Share diagnostic recovery hardware: enabled.
+Share diagnostic clear hardware: enabled.
+Share diagnostic installation hardware: enabled.
+Share diagnostic capture hardware: disabled.
+
+Objective: preserve the archived original crash, obtain fresh current safety,
+clear only its byte-matched on-device copy, then install the audited diagnostic
+candidate while retaining NVS/settings/Device Identity/replay state. Capture and
+any new Start/status reproduction are separate later stages and remain disabled.
+Follow [the complete owner contract](scripts/str005-share-diagnostic/CONTRACT.md)
+and [native record design](docs/hardware/str005-fault-provenance.md).
+
+Prerequisites: publish this implementation/contract with all applicable tests and
+checks passing. The candidate is the canonical `just package` output from the exact
+clean pushed HEAD containing this contract, copied byte-for-byte with its ELF/map/
+manifest/config into an ignored0700 candidate directory. No development ELF is
+admitted. Build canonical `//tools/flash:flash` before fresh recovery. Preflight
+binds actual package hashes/source and cutoff/store/Start/Renew/provenance audits;
+all must pass on that exact ELF, including128-byte panic and256-byte allocation
+addition limits and the specifically verified SDK ROM IRQ leaf. No budget changes.
+
+Before-image f000872f2e436aa7cdaa8cbfa41eee965a27731e/full ELF
+a3e257418d625aef5e9423fe28f598377f92b092b634264d3cc1e86b4e83e3c2;
+Gate9643e87664397a321c715a3a1b1bb6c1183b83ea remains pinned. Independent anchors
+are Share001 seal1125f5d0dea1fa310ad3001cfa3c2aaa775924aacd1240a68555021ce559261e,
+Recovery005 seal49abc244d0efe12af30a7265cd5661dea0e735fa78baa1a7ff30b279cf3f39a6,
+and acquired-core seal3ec746b255da28290d8f1944e1cc375f7deea559f8d936bd49dea8e5ed6ad39b
+with raw SHA b665c154d35f43bf7a0ab9acfe0aab207ac9e36c6a1a10ce649f3863f880f29c.
+Rejudge actual producer files and inventories. Old ledgers/ordinals/timestamps are
+historical references only; every effect requires fresh measured current proof.
+
+Commands use new private roots under
+`<repo>/scratch/str005-share-diagnostic/{recovery001,clear001,installation001}/attempt`.
+Each parent is0700 and child initially absent; stdout/stderr are separate0600 files.
+Run `just str005-share-diagnostic preflight --stage recovery --private-root <recovery-root> --gate-root <pinned-Gate>`;
+fresh `just detect-ultra205` to parent detector.stdout.log/stderr; `serve --private-root <recovery-root>`;
+collect authenticated state, both ledgers, idle/retained status, diagnostics and
+current preservation; Stop/Close and terminate the exact browser/server owner;
+fresh cleanup-detector.stdout.log/stderr, then `finish --private-root <recovery-root>`.
+No signer, fixture, grant or mining capability is present. Pending accounting,
+missing current restoration or release blocks all later stages.
+
+While that proof is\<=120s old, run `preflight --stage clear --private-root <clear-root> --gate-root <pinned-Gate> --recovery-root <sealed-fresh-recovery>`;
+fresh detector as clear-detector.stdout.log/stderr; `clear --private-root <clear-root>`;
+fresh cleanup detector and `finish --private-root <clear-root>`. The wrapper uses
+only official core-dump-clear with immutable b665 archive equality, same physical
+lease and board-info admission. Erase only0xf12000/0xee000, verify full all-FF
+readback, return to the exact before image, then prove actual child/group/serial
+release. Failed runner evidence cannot be promoted by a successful native receipt;
+later absence can seal only a truthful failed partial. Original raw archive stays.
+
+Then `preflight --stage installation --private-root <installation-root> --gate-root <pinned-Gate> --manifest <canonical-private-manifest> --clear-root <verified-clear-root>`;
+fresh detector; `serve --private-root <installation-root>`. Establish a NEW same-page
+before baseline after the clear/reset, measure both ledgers and preservation, then
+close serial. Retain that page across the install. Fresh install-detector.stdout.log/stderr
+immediately precedes `install --private-root <installation-root>`. Use the existing
+state-preserving disjoint-segment installer, same physical lease/board-info and
+360-second observation with1200-second outer bound. Reconnect the same page to the
+exact candidate and collect authenticated preservation/accounting/restoration,
+Close, release and finalize with fresh cleanup detection. No implicit factory mode.
+
+Reads\<=30s; Stop/Close\<=150s; proof\<=120s from actual collection begin; detector\<=60s;
+clear/install supervisors\<=1200s. No wall-clock limit on a safe human readiness wait.
+All cleanup remains available after failure. Exact source/package/Gate bytes remain
+frozen while owners run. Stop on changed identity, unexpected owner, pending
+accounting, mismatched archive, failed audit/write/return/cleanup or repeated corrected
+boundary. No blind retry; any continuation needs verified boundary progress and a
+new root. No core acquisition beyond the clear tool's own read/compare/readback,
+self-test, second clear, Start, mining, grant/renewal, external pool, NVS/factory
+reset, replay, refund or parity promotion is admitted by this initial stage.
+
+A successful installation does not prove core emptiness or useful panic capture.
+Those require new published capture-stage controls, actual empty-core verification,
+ASIC-off self-test, archive/checksum/full-ELF/cutoff/provenance proof and separate
+post-self-test clearing before any bounded reproduction. Parity90/95; no premature
+archival or historical cause/resource claim.
+
+Initial diagnostic publication review: productionC model tests and controller
+boundary tests pass. Native all-five audits passed on the development image;
+128/256-byte limits were not raised. Independent host review fixed writer/group/
+serial release proof and conflicting-runner success, and separated historical
+capture lineage from fresh effect proof. Canonical supervisor tests then caught a
+Bazel Node-launcher environment dependency; the existing five-key runtime allowlist
+fixed it without adding credential environment or weakening ownership handshake.
+All changed software is rechecked before commit/push; fresh clean package and audits
+remain mandatory before the first device stage.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

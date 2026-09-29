@@ -200,7 +200,7 @@ export async function main(argv) {
   } finally { stop(); await maybeRelease; for (const signal of ['SIGINT', 'SIGTERM']) process.removeListener(signal, stop); }
   return { server_released: true };
 }
-async function finish(root, context) {
+export async function finish(root, context) {
   const server = (await proof(root, 'server-owner.json')).value, current = await processSnapshot();
   check(!current.some(row => sameProcess(row, server.owner) || row.ppid === server.owner.pid), 'panic_server_live');
   requireLsofAbsent(['-nP', `-iTCP:${server.port}`, '-sTCP:LISTEN', '-t']);
@@ -242,7 +242,7 @@ async function finish(root, context) {
   await applyReadinessFailure(root, result);
   result.core_capture_verified = false;
   if (context.recoveryOnly) {
-    applyRecoveryOnlyOutcome(result, context.installedAnchor === undefined);
+    applyRecoveryOnlyOutcome(result, context.predecessorInstallationFailed ?? (context.installedAnchor === undefined));
     if (result.complete) {
       const current = (await proof(root, 'current-recovery.json')).value;
       check(JSON.stringify(current) === JSON.stringify(currentProof(context, parts, current.observed_at_unix_ms)), 'panic_recovery_proof_changed');

@@ -93,7 +93,7 @@ export function validateFlashReceipt(f, context, runner, logDigest) {
     a.startup_complete === true && a.startup_failed === false && a.stable_boot === true && Array.isArray(a.issues) && a.issues.length === 0,
   'panic_install_receipt');
 }
-export async function inspectInstall(root, context) {
+export async function inspectInstallArtifacts(root, context) {
   const claim = (await proof(root, 'install-claim.json')).value, runner = (await proof(root, 'install-runner.json')).value;
   await verifyRetainedInputs(root, context, (await proof(root, 'current-recovery.json')).value);
   const owner = await proof(root, 'server-owner.json');
@@ -111,6 +111,12 @@ export async function inspectInstall(root, context) {
   const receipt = await proof(root, 'install/flash-command-evidence.private.json');
   const logPath = resolve(root, 'install/flash-monitor.classifier-input.log'); await protectedPath(logPath);
   const logDigest = await fileDigest(logPath); validateFlashReceipt(receipt.value, context, runner, logDigest);
-  requireNoHolders(claim.port);
   return { installation_verified: true, flash_receipt_sha256: receipt.sha256, log_sha256: logDigest, exact_runtime_elf_verified: false };
+}
+
+/** Live install admission adds current holder checks; historical readers use artifacts only. */
+export async function inspectInstall(root, context) {
+  const result = await inspectInstallArtifacts(root, context);
+  requireNoHolders((await proof(root, 'install-claim.json')).value.port);
+  return result;
 }
