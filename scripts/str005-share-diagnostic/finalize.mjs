@@ -4,6 +4,23 @@ import { writeNew } from '../str005-noise-serial/files.mjs';
 import { proof } from '../str005-noise-serial/files.mjs';
 import { inspectInstallArtifacts } from '../str005-panic-probe/install.mjs';
 import { sealProbeResult } from '../str005-panic-probe/candidate-failure.mjs';
+export function assessStatusRecovery(parts, attemptId) {
+  const { state, ledger, original_budget: original, diagnostics, status, closed, finished } = parts;
+  const retained = Boolean(status?.record && status.record.attemptId === attemptId && status.record.state === 'terminal' &&
+    status.record.resources?.socketClosed === true && status.record.resources?.workerQuiescent === true &&
+    status.record.resources?.fenceRetained === false);
+  const currentSafe = Boolean(state?.connected === true && state.running === false && state.deviceLeaseInactive === true &&
+    state.deviceBaselineConfirmed === true && state.preservation?.settings_match === true &&
+    state.preservation?.device_identity_match === true && state.preservation?.authorization_high_water_match === true &&
+    closed?.status === 'closed' && closed.connected === false && closed.deviceRestorationConfirmed === true &&
+    closed.serialOwnershipReleased === true && closed.preservation?.baseline_id === state.preservation.baseline_id &&
+    ledger?.pending === false && original?.pending === false &&
+    (status?.state === 'idle' && status.record === null || retained) &&
+    diagnostics?.observations?.some(row => row.category === 'boot' && row.boot_ordinal === status.observation?.bootOrdinal) &&
+    finished?.failures?.length === 0);
+  return { current_safe_recovery: currentSafe, latest_attempt_retained_resources: retained,
+    historical_share001_resource_proof: false };
+}
 /** A successful before baseline is not a completed installation stage. */
 export async function finalizeDiagnostic(root, context, derived, operations = {}) {
   const result = { ...derived, blockers: [...derived.blockers] };
@@ -36,6 +53,14 @@ export async function finalizeDiagnostic(root, context, derived, operations = {}
       await writeNew(resolve(root, 'capture-unsealed-result.json'), result);
       throw Object.assign(Error('diagnostic_decoder_release_unproven'), { code: 'diagnostic_decoder_release_unproven' });
     }
+  }
+  if (context.recoveryOnly && context.diagnosticStatusRoot) {
+    const parts = {};
+    for (const stage of ['state', 'ledger', 'original_budget', 'diagnostics', 'status', 'closed', 'finished']) {
+      try { parts[stage] = (await proof(root, `baseline-${stage}.json`)).value; }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+    Object.assign(result, assessStatusRecovery(parts, context.diagnosticAttemptId));
   }
   return sealProbeResult(root, result);
 }

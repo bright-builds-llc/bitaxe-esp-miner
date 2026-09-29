@@ -1,5 +1,6 @@
 import { retainedPackage } from '../str005-panic-probe/recovery-predecessor.mjs';
 import { captureArchive } from './archive-clear.mjs';
+import { statusAttempt } from './status-attempt.mjs';
 import { BEFORE_READ_BASELINE_POLICY } from './baseline-policy.mjs';
 import { mkdir, readFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -49,6 +50,16 @@ export async function preflight(repo, root, options, published) {
     archivePath: resolve(old.archiveRoot, 'core-dump.private.bin'), archiveSha: old.archiveSha,
     ...(maybeInstalled ? { diagnosticInstallation: { root: maybeInstalled.root, seal: maybeInstalled.seal } } : {}),
     gatePageSha256: sha256(assets.page), gateBundleSha256: sha256(assets.bundle), trustSha256: sha256(JSON.stringify(JSON.parse(assets.trust))) };
+  if (stage === 'recovery' && options['--status-root']) {
+    check(maybeInstalled, 'diagnostic_status_installation_required');
+    const status = await statusAttempt(options['--status-root'], repo);
+    check(status.context.firmware_commit === before.firmware_commit && status.context.app_elf_sha256 === before.app_elf_sha256 &&
+      status.context.physical === old.context.physical && status.context.gate_commit === gateCommit,
+    'diagnostic_status_image');
+    context.attemptId = status.attempt.id;
+    context.diagnosticAttemptId = status.attempt.id;
+    context.diagnosticStatusRoot = { root: status.root, seal: status.seal };
+  }
   if (stage === 'installation') {
     check(options['--manifest'] && options['--clear-root'] && !maybeInstalled, 'diagnostic_install_inputs');
     const cleared = await clearAnchor(options['--clear-root'], repo);

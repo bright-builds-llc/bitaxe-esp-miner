@@ -62,6 +62,10 @@ export function judge(parts, context) {
     host_resources_released: parts.hostReleased, core_capture_verified: false, cause_proven: false, parity_promotion: false };
 }
 
+export function lateCompletionUnknown(run, receipt) {
+  return run?.lateReplyPending === true && (!receipt || receipt.stopComplete !== true || receipt.closeComplete !== true);
+}
+
 /** Actual owner absence permits sealing an incomplete result; a live writer does not. */
 export async function finalize(root, context, operations = {}) {
   const parts = { recovery: {}, hostReleased: false };
@@ -100,8 +104,7 @@ export async function finalize(root, context, operations = {}) {
   }
   const result = judge(parts, context);
   result.late_completion = parts.lateCompletion ?? null;
-  if (parts.run?.startInvokedAt !== null && parts.run?.startInvokedAt !== undefined && parts.run?.startRepliedAt === null &&
-      (!parts.lateCompletion || !parts.lateCompletion.stopComplete || !parts.lateCompletion.closeComplete)) {
+  if (lateCompletionUnknown(parts.run, parts.lateCompletion)) {
     result.blockers.push('status_repro_late_completion_unknown'); result.complete = false;
   }
   result.blockers.push(...cleanupBlockers); result.complete &&= cleanupBlockers.length === 0;

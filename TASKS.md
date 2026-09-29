@@ -6274,7 +6274,7 @@ published owner; the retired startup/share commands stay disabled.
 
 Bounded diagnostic Start/status reproduction preparation | 2026-09-29:
 
-Status reproduction hardware: enabled.
+Status reproduction hardware: disabled.
 
 - [x] Implement a new task-gated owner under `scripts/str005-status-repro/`; retired
   startup/share owners and their effect flags remain disabled.
@@ -6294,10 +6294,9 @@ Status reproduction hardware: enabled.
   completion remains separate from termination/reaping/listener release.
 - [x] Regress blocked status, late reply, ambiguous Start, reboot recovery,
   persistence failures and source/owner gates through actual Gate/page/HTTP seams.
-- [ ] Run required tests, audits, standards and redaction checks; commit and push
-  the complete narrow command/evidence contract before device access. Execute
-  one bounded attempt only if every gate passes; archive raw crash privately and
-  diagnose from exact source. No full accepted-share or heartbeat run is enabled.
+- [x] Run required tests, audits, standards and redaction checks; commit and push
+  the narrow contract before access, then execute one bounded attempt. The
+  truthful status001 partial and its new diagnostic gap are recorded below.
 
 This stage has no device authority while disabled. Recovery004 seal
 `ab3dc48ef94d0fc9c8c0137728950d21880131ac769afffe867e36a6d0ec2d0c`,
@@ -6308,6 +6307,57 @@ are historical lineage, never a fresh signer or USB session. Source remains
 ce8f015811b93385c5aab0bac7bcdf6307452b31; full ELF
 453d2fa3bbe2b58bcffcbf2019ab69c7968d1ae90620685c8139a061a3325c31.
 Private dump and debugger text stay ignored/owner-only. Parity90/95.
+
+Status001 partial and bounded current-only successor | 2026-09-29:
+
+[Redacted status001 findings](docs/parity/evidence/20260929-str005-status001-partial.md).
+
+Status001 is sealed partial as
+`dbda3bed4c468674c2005921e9a3ec1c0e7e9f0587dbc654909a8a92d38a04fc`.
+Its own fresh baseline measured boot23, next21/last20/charged2100000, no
+pending allowance. One fresh normal180000 Start grant was issued with zero
+renewals. Start was admitted once but no reply was confirmed; the first typed
+client failure is `{phase:start, category:operation_failed}`. Stop was requested
+14.6s after invocation, before the45s cap. Immediate Stop/recovery/fixture
+natural completion failed independently; fixture termination/reaping/listener
+and final host/serial release passed. The local recovery saved current ledger
+next22/last21/charged2280000/pending=false, original charged240000/pending=false,
+a restored idle state and boot23 diagnostics, but its status read failed. No
+panic reset, accepted share or qualified normal Stop is claimed. The on-device
+core was not overwritten by another deliberate fault.
+
+The sealed finalizer also contains `status_repro_late_completion_unknown` because
+its original heuristic treated every missing Start reply as a pending promise.
+The browser result explicitly said `lateReplyPending=false`; the original
+promise rejected. Preserve the old false blocker and its seal. The successor
+code now records and judges pending replies explicitly; it does not repair
+status001's immutable result. This is a local accounting correction only.
+
+Status reproduction hardware is consumed and disabled. The next published
+owner action is a fresh, read-only recovery using the existing diagnostic
+recovery stage, now bound to status001's sealed exact attempt ID. Its new root
+is `scratch/str005-share-diagnostic/recovery005/attempt` and its command is:
+
+```text
+just str005-share-diagnostic preflight --stage recovery --private-root R --gate-root G --installation-root I --status-root S
+just str005-share-diagnostic serve --private-root R
+just str005-share-diagnostic finish --private-root R
+```
+
+Reread status001's actual producer artifacts and seal, installed image ce8f/453d,
+Gate9643 and physical identity. Before hardware, publish and push tested code
+with this narrow contract. Use fresh detector, native browser possession,
+authenticated state/ledger/original budget/diagnostics and one-use status
+lookup: try idle first, then permit one exact status001 attempt lookup only
+following the typed `v2_idle_correlation` response. Other errors cannot justify
+fallback. Stop and Close are independently bounded and unconditional. Save
+current safety, latest-attempt retained resources and Share001 historical proof
+as separate conclusions. A missing retained record cannot erase current
+accounting or become a false historical success. Preserve first failure and
+cleanup failures separately. No fixture, signer, grant, Start, mining, renewal,
+flash, reboot or core clear is admitted. If status still cannot be read, seal
+all independently gathered facts and stop for a targeted diagnostic contract.
+Parity90/95; the accepted-share task remains active.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

@@ -19,6 +19,7 @@ import { oldAnchors, sealed } from './anchors.mjs';
 import { installationAnchor } from './installation.mjs';
 import { retainedPackage } from '../str005-panic-probe/recovery-predecessor.mjs';
 import { captureArchive } from './archive-clear.mjs';
+import { statusAttempt } from './status-attempt.mjs';
 import { preflight } from './prepare.mjs';
 import { clearAnchor, runClear, finishClear } from './clear.mjs';
 export async function verifyCandidate(root, context) {
@@ -49,6 +50,11 @@ export async function main(argv) {
       const captured = await captureArchive(context.diagnosticCapture.root, repo);
       check(captured.seal === context.diagnosticCapture.seal && captured.dumpSha === context.archiveSha &&
         captured.dumpSha === context.diagnosticCapture.archiveSha, 'diagnostic_capture_changed');
+    }
+    if (context.diagnosticStatusRoot) {
+      const attempt = await statusAttempt(context.diagnosticStatusRoot.root, repo);
+      check(attempt.seal === context.diagnosticStatusRoot.seal && attempt.attempt.id === context.diagnosticAttemptId,
+        'diagnostic_status_attempt_changed');
     }
     if (context.retainedManifest) {
       const installed = await installationAnchor(context.diagnosticInstallation.root, repo);

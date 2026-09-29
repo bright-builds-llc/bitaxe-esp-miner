@@ -24,7 +24,7 @@ export function argumentsFor(argv) {
   check(['preflight', 'serve', 'install', 'clear', 'finish'].includes(action) && rest.length % 2 === 0, 'diagnostic_arguments');
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i], value = rest[i + 1];
-    check(['--private-root', '--stage', '--gate-root', '--manifest', '--clear-root', '--recovery-root', '--installation-root', '--retained-manifest', '--capture-root'].includes(key) && !options[key] &&
+    check(['--private-root', '--stage', '--gate-root', '--manifest', '--clear-root', '--recovery-root', '--installation-root', '--retained-manifest', '--capture-root', '--status-root'].includes(key) && !options[key] &&
       typeof value === 'string' && (key === '--stage' ? Object.hasOwn(FLAGS, value) : resolve(value) === value), 'diagnostic_arguments');
     options[key] = value;
   }
@@ -32,7 +32,7 @@ export function argumentsFor(argv) {
   if (action === 'preflight') {
     const stage = options['--stage'];
     const required = ['--private-root', '--stage', '--gate-root', ...(stage === 'clear' ? ['--recovery-root'] : stage === 'archive-clear' ? ['--recovery-root', '--capture-root'] : stage === 'installation' ? ['--manifest', '--clear-root'] : stage === 'capture' ? ['--installation-root', '--recovery-root', '--retained-manifest'] : [])];
-    const allowed = [...required, ...(stage === 'recovery' ? ['--installation-root'] : [])];
+    const allowed = [...required, ...(stage === 'recovery' ? ['--installation-root', '--status-root'] : [])];
     check(required.every(key => options[key]) && Object.keys(options).every(key => allowed.includes(key)), 'diagnostic_stage_arguments');
   }
   return { action, options };

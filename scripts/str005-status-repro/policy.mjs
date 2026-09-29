@@ -5,10 +5,13 @@ import { check, object } from '../str005-v2-serial/values.mjs';
 
 export const LIMITS = Object.freeze({ replyMs: 30000, statusMs: 10000, stopFromReplyMs: 15000, stopFromInvocationMs: 45000 });
 export function validateRun(value, context) {
-  object(value, ['firstFailure', 'observedStart', 'startInvokedAt', 'startRepliedAt', 'stopRequestedAt', 'proof']);
+  object(value, ['firstFailure', 'observedStart', 'startInvokedAt', 'startRepliedAt', 'stopRequestedAt', 'proof',
+    ...(Object.hasOwn(value, 'lateReplyPending') ? ['lateReplyPending'] : [])]);
   check([null, 'prepare', 'start', 'status'].includes(value.firstFailure) && typeof value.observedStart === 'boolean', 'status_repro_run_shape');
   for (const key of ['startInvokedAt', 'startRepliedAt', 'stopRequestedAt'])
     check(value[key] === null || Number.isFinite(value[key]) && value[key] >= 0, 'status_repro_run_clock');
+  if (Object.hasOwn(value, 'lateReplyPending')) check(typeof value.lateReplyPending === 'boolean' &&
+    (!value.lateReplyPending || value.startInvokedAt !== null && value.startRepliedAt === null), 'status_repro_late_shape');
   if (value.proof !== null) {
     object(value.proof, ['generation', 'observedAtMs']);
     check(Number.isSafeInteger(value.proof.generation) && value.proof.generation >= 0 &&

@@ -24,6 +24,10 @@ test('each stage has a closed argument set and cannot accept authority or write 
   assert.throws(() => argumentsFor(['preflight', '--stage', 'archive-clear', '--private-root', '/p', '--gate-root', '/g', '--recovery-root', '/r']));
   assert.throws(() => argumentsFor(['preflight', '--stage', 'clear', '--private-root', '/p', '--gate-root', '/g',
     '--recovery-root', '/r', '--capture-root', '/c']));
+  assert.equal(argumentsFor(['preflight', '--stage', 'recovery', '--private-root', '/p', '--gate-root', '/g',
+    '--installation-root', '/i', '--status-root', '/s']).options['--status-root'], '/s');
+  assert.throws(() => argumentsFor(['preflight', '--stage', 'capture', '--private-root', '/p', '--gate-root', '/g',
+    '--installation-root', '/i', '--recovery-root', '/r', '--retained-manifest', '/m', '--status-root', '/s']));
   assert.throws(() => argumentsFor(['serve', '--private-root', '/p', '--authority-directory', '/a']));
   assert.throws(() => argumentsFor(['start', '--private-root', '/p']));
 });
@@ -116,3 +120,62 @@ import './finalizer.test.mjs';
 import './capture-proof.test.mjs';
 
 import './retained-package.test.mjs';
+
+test('typed non-idle response permits exactly one known-attempt recovery lookup', async () => {
+  // Arrange
+  const { createRenewBaselineCollector } = await import('../str005-panic-probe/client.mjs');
+  const calls = [], saved = [];
+  const gate = { refresh: async () => {}, reviewQualificationAttempts: async () => ({}), reviewBudget: async () => ({}),
+    stratumV2Possession: async () => 'fresh-binding', exportDiagnostics: async () => ({}),
+    stratumV2Status: async (_scope, attempt) => {
+      calls.push(attempt);
+      if (attempt === null) throw Object.assign(Error('typed'), { category: 'v2_idle_correlation' });
+      return { state: 'terminal' };
+    }, stop: async () => calls.push('stop'), close: async () => calls.push('close') };
+  const collect = createRenewBaselineCollector({ gate, published: () => ({}), begin: async () => {},
+    save: async (stage, value) => saved.push([stage, value]), campaignId: 'c', attemptId: 'known-attempt', statusDiscovery: true,
+    timeoutMs: 100, cleanupMs: 100 });
+  // Act
+  const result = await collect();
+  // Assert
+  assert.equal(result.complete, true); assert.deepEqual(calls, [null, 'known-attempt', 'stop', 'close']);
+  assert.equal(saved.find(([stage]) => stage === 'status')[1].state, 'terminal');
+});
+
+test('arbitrary status failure cannot authorize a known-attempt substitution or skip cleanup', async () => {
+  // Arrange
+  const { createRenewBaselineCollector } = await import('../str005-panic-probe/client.mjs');
+  const calls = [], saved = [];
+  const gate = { refresh: async () => {}, reviewQualificationAttempts: async () => ({}), reviewBudget: async () => ({}),
+    stratumV2Possession: async () => 'fresh-binding', exportDiagnostics: async () => ({}),
+    stratumV2Status: async (_scope, attempt) => { calls.push(attempt); throw Object.assign(Error('bad'), { category: 'other' }); },
+    stop: async () => calls.push('stop'), close: async () => calls.push('close') };
+  const collect = createRenewBaselineCollector({ gate, published: () => ({}), begin: async () => {},
+    save: async (stage, value) => saved.push([stage, value]), campaignId: 'c', attemptId: 'known-attempt', statusDiscovery: true,
+    timeoutMs: 100, cleanupMs: 100 });
+  // Act
+  const result = await collect();
+  // Assert
+  assert.equal(result.complete, false); assert.deepEqual(calls, [null, 'stop', 'close']);
+  for (const stage of ['ledger','original_budget','diagnostics','closed','finished']) assert.ok(saved.some(([savedStage]) => savedStage === stage));
+  assert.deepEqual(result.first_failure, { phase: 'status', category: 'operation_failed' });
+});
+
+test('current safety and retained resources are separate from Share001 historical proof', async () => {
+  // Arrange
+  const { assessStatusRecovery } = await import('./finalize.mjs');
+  const { state, ledger, original } = await import('../str005-noise-serial/test-fixture.mjs');
+  const context = { gate_commit: 'c'.repeat(40), firmware_commit: 'a'.repeat(40), app_elf_sha256: 'b'.repeat(64),
+    before_source: { firmware_commit: 'a'.repeat(40), app_elf_sha256: 'b'.repeat(64) } };
+  const parts = { state: state(context), closed: state(context, 'candidate', true), ledger, original_budget: original,
+    diagnostics: { observations: [{ category: 'boot', boot_ordinal: 3 }] }, finished: { failures: [] },
+    status: { state: 'terminal', observation: { bootOrdinal: 3 }, record: { attemptId: 'latest', state: 'terminal',
+      resources: { socketClosed: true, workerQuiescent: true, fenceRetained: false } } } };
+  // Act / Assert
+  assert.deepEqual(assessStatusRecovery(parts, 'latest'), { current_safe_recovery: true,
+    latest_attempt_retained_resources: true, historical_share001_resource_proof: false });
+  assert.equal(assessStatusRecovery({ ...parts, status: { state: 'idle', record: null, observation: { bootOrdinal: 3 } } },
+    'latest').current_safe_recovery, true);
+  assert.equal(assessStatusRecovery({ ...parts, ledger: { ...ledger, pending: true } }, 'latest').current_safe_recovery, false);
+  assert.equal(assessStatusRecovery({ ...parts, status: undefined }, 'latest').current_safe_recovery, false);
+});

@@ -60,7 +60,8 @@ export function createCoordinator({ gate, prepare, record, recover, release, pos
       clearTimeout(hardStop); clearTimeout(replyStop);
       await collect('stop', stop);
       if (clientFailure) await collect('client-failure', () => recordFailure(clientFailure));
-      await collect('result', () => record({ firstFailure, observedStart, startInvokedAt, startRepliedAt, stopRequestedAt, proof }));
+      await collect('result', () => record({ firstFailure, observedStart, startInvokedAt, startRepliedAt, stopRequestedAt,
+        proof, lateReplyPending: !requestSettled && startInvokedAt !== null }));
       await collect('recovery', recover);
       await collect('close', () => gate.close());
       await collect('closed-state', () => record({ closed: gate.state() }));

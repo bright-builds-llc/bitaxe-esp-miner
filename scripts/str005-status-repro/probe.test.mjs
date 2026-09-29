@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCoordinator } from './client-core.mjs';
 import { argumentsFor, taskEnabled } from './contract.mjs';
-import { judge } from './finish.mjs';
+import { judge, lateCompletionUnknown } from './finish.mjs';
 import { dirname, resolve } from 'node:path';
 import { verifyGateCompatibility } from '../str005-startup-probe/gate-compatibility.mjs';
 
 const tasks = text => `## Active\n### task-str005-v2-accepted-share-probe | fixture\n${text}\n`;
 test('effect admission requires the compiled flag and one active task marker', () => {
   // Arrange / Act / Assert
-  assert.doesNotThrow(() => taskEnabled(tasks('Status reproduction hardware: enabled.')));
-  assert.throws(() => taskEnabled(tasks('Status reproduction hardware: enabled.'), false));
+  assert.throws(() => taskEnabled(tasks('Status reproduction hardware: enabled.')));
+  assert.doesNotThrow(() => taskEnabled(tasks('Status reproduction hardware: enabled.'), true));
   assert.throws(() => taskEnabled(tasks('Status reproduction hardware: disabled.'), true));
   assert.throws(() => taskEnabled(tasks('Status reproduction hardware: enabled.') + tasks('Status reproduction hardware: enabled.'), true));
 });
@@ -119,4 +119,14 @@ test('rebooted idle recovery saves current safety without inventing retained res
   // Assert
   assert.equal(result.current_safe_recovery, true); assert.equal(result.historical_retained_proof, false);
   assert.equal(result.qualification_success, false); assert.ok(result.blockers.includes('status_repro_retained_attempt_unavailable'));
+});
+test('an explicit Start rejection does not invent an unknown late reply', () => {
+  // Arrange
+  const rejected = { startInvokedAt: 1, startRepliedAt: null, firstFailure: 'start' };
+  // Act / Assert
+  assert.equal(lateCompletionUnknown(rejected, null), false);
+  assert.equal(lateCompletionUnknown({ ...rejected, lateReplyPending: false }, null), false);
+  assert.equal(lateCompletionUnknown({ ...rejected, lateReplyPending: true }, null), true);
+  assert.equal(lateCompletionUnknown({ ...rejected, lateReplyPending: true },
+    { stopComplete: true, closeComplete: true }), false);
 });

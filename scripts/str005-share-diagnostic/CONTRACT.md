@@ -196,6 +196,21 @@ exact-image return, full erased readback, child/group release and fresh detector
 and holder absence before sealing. A separate fresh post-clear recovery is
 required before any Start attempt. Capture, mining and grants remain disabled.
 
+## Stage 5: status001 current-only recovery
+
+The optional recovery-only `--status-root` identifies sealed status001 and its
+one consumed attempt. It cannot admit another Start or change older seals. The
+collector reads accounting and diagnostics before status. It queries idle with
+a fresh possession binding; only the typed `v2_idle_correlation` result permits
+one lookup of the exact bound attempt. Arbitrary errors cannot trigger a
+substitution. Stop and Close remain independent and unconditional. Finalization
+reports current safety, latest-attempt retained resources and Share001's
+historical proof separately, including explicit unavailable values. The old
+status001 result, including its inaccurate late-reply blocker, remains sealed.
+If the retained record is absent, save all current facts and stop dependent
+effects. The active task publishes an exact fresh root, source and cleanup
+contract before this stage touches the device.
+
 ## Stop conditions, retries and verification
 
 One command root and immutable claim per admitted attempt. Any changed source,

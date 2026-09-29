@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 export const TASK = 'task-str005-v2-accepted-share-probe';
-export const ENABLED = true;
+export const ENABLED = false;
 export const CONTRACT = 'scripts/str005-status-repro/CONTRACT.md';
 export const PINS = Object.freeze({
   installation: '81a48efde23fa55b52cfabfb5f0a521fbb54ee00a7c4fd967b03087b0856f3d7',
