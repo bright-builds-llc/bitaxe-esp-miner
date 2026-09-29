@@ -151,10 +151,18 @@ an empty region before sealing it. A nonempty region requires diagnosis and a
 separate archive-bound disposition; never overwrite it with a self-test.
 
 ```text
-just str005-share-diagnostic preflight --stage capture --private-root <new-capture> --gate-root <Gate> --installation-root <sealed-installation> --recovery-root <sealed-empty-core-recovery>
+just str005-share-diagnostic preflight --stage capture --private-root <new-capture> --gate-root <Gate> --installation-root <sealed-installation> --recovery-root <sealed-empty-core-recovery> --retained-manifest <private-retained-manifest>
 just str005-share-diagnostic serve --private-root <new-capture>
 just str005-share-diagnostic finish --private-root <new-capture>
 ```
+
+Capture requires `--retained-manifest`, pointing to the private archive of the
+exact installed package. Its manifest digest, installed source/reference identity,
+all artifact digests and full ELF digest must match the sealed installation.
+The ELF path is derived from that validated archive and all five audits run on
+those bytes. A later host commit does not require rebuilding or reinstalling the
+firmware; mutable `bazel-bin` outputs are not capture inputs. This option is
+rejected for installation, which still requires the canonical manifest path.
 
 The shared capture owner revalidates actual empty-core lineage, fresh paired
 baseline diagnostics, all exact-ELF audits, bounded current store readiness and
@@ -163,6 +171,14 @@ independent. Preserve immediate panic/store observations before any later ROM
 entry. Core acquisition, offline checksum/full-ELF/cutoff/provenance inspection
 and subsequent clearing remain separate explicitly published operations. This
 initial owner does not enable a later bounded mining reproduction.
+
+The capture finalizer rechecks the official read claim, full partition geometry,
+store receipt, panic source and boot, and the exact archived ELF. It reruns the
+bounded provenance decoder and batch debugger in new private child roots before
+sealing. Both must succeed, including a meaningful original panic frame. A
+decoder whose process group cannot be proved released leaves an unsealed result;
+other missing evidence seals an explicitly incomplete capture. Raw dumps,
+registers, stack and debugger text remain private.
 
 ## Stop conditions, retries and verification
 

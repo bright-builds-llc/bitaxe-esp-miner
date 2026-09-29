@@ -189,3 +189,10 @@ test('analysis uses bounded offline batch frames over the deterministic verified
   assert.ok(args.includes('set print frame-arguments none')); assert.ok(args.includes('thread apply all bt 40'));
   assert.equal(args.some(arg => /remote|info_corefile|bt full|print .*memory/u.test(arg)), false);
 });
+
+test('unproven decoder group release remains a distinct blocker after child exit', async () => {
+  const { requireDecoderGroupGone } = await import('./process.mjs');
+  await assert.rejects(requireDecoderGroupGone(123, { exists: () => true, limitMs: 5 }), /decoder_release_unproven/u);
+  await assert.rejects(requireDecoderGroupGone(123, { exists: () => { throw Error('permission'); } }), /decoder_release_unproven/u);
+  await requireDecoderGroupGone(123, { exists: () => false });
+});

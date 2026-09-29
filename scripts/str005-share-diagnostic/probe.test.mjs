@@ -108,3 +108,6 @@ test('production diagnostic finalizer seals a successful baseline with no instal
 });
 
 import './finalizer.test.mjs';
+import './capture-proof.test.mjs';
+
+import './retained-package.test.mjs';

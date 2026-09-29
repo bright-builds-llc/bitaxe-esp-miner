@@ -5240,7 +5240,7 @@ Renew image qualification: baseline disabled.
 Renew image qualification: installation disabled.
 Renew image qualification: self-test disabled.
 Renew image qualification: core clear disabled.
-Renew-image core-dump acquisition: disabled (Share001 crash archived).
+Renew-image core-dump acquisition: enabled (fresh recovery required).
 Renew-image core-dump clearing: disabled (archived original core cleared and verified).
 
 Objective: install the isolated Renew correction once without mining, preserving
@@ -5961,8 +5961,8 @@ Fault-provenance recovery001/clear001/installation001 contract | 2026-09-28:
 
 Share diagnostic recovery hardware: enabled.
 Share diagnostic clear hardware: disabled.
-Share diagnostic installation hardware: enabled.
-Share diagnostic capture hardware: disabled.
+Share diagnostic installation hardware: disabled.
+Share diagnostic capture hardware: enabled.
 
 Objective: preserve the archived original crash, obtain fresh current safety,
 clear only its byte-matched on-device copy, then install the audited diagnostic
@@ -6067,7 +6067,7 @@ Fault-provenance recovery/clear and installation adapter outcome | 2026-09-29:
   the strict Stop-first recovery policy remains unchanged.
 - [x] Verify the correction, including incomplete installation finalization;
   installation002 requires this successor contract committed and pushed before access.
-- [ ] Build and audit the clean published candidate, install it with a new
+- [x] Build and audit the clean published candidate, install it with a new
   same-page baseline, then independently verify preservation and recovery.
 
 Current measured facts: installed source f000872f2e436aa7cdaa8cbfa41eee965a27731e,
@@ -6100,6 +6100,92 @@ and sealed finalization. Missing installation artifacts must remain incomplete
 regardless of baseline success. Do not repeat the consumed clear or enable
 capture/Start/grant/mining/renewal/restart. Any repeated corrected-boundary failure
 stops dependent effects and preserves a new truthful partial root.
+
+Diagnostic installation002 outcome and capture001 contract | 2026-09-29:
+
+[Redacted installation findings](docs/parity/evidence/20260929-str005-diagnostic-installation.md).
+
+- [x] Installation002 passed and is sealed as
+  `81a48efde23fa55b52cfabfb5f0a521fbb54ee00a7c4fd967b03087b0856f3d7`.
+  Exact installed source `ce8f015811b93385c5aab0bac7bcdf6307452b31`, full ELF
+  `453d2fa3bbe2b58bcffcbf2019ab69c7968d1ae90620685c8139a061a3325c31`.
+  All five exact native audits passed. Installer code0, no timeout/interruption,
+  trusted fixed-serial return and independent USB release. Same-page candidate
+  recovery confirmed settings, Device Identity, authorization high water,
+  restoration and inactive authority. Measured boot19; ledger21/20/2100000 and
+  original charged240000 unchanged, pending=false. No Start or self-test occurred.
+- [x] Require actual core acquisition and meaningful original-frame provenance in
+  the diagnostic capture finalizer; verify failure and success boundaries before
+  publication. Keep raw dump and debugger output private.
+- [ ] After publication, acquire an empty-core baseline, perform one ASIC-off
+  self-test, independently recover, acquire/decode, recover again and seal facts.
+- [ ] Publish a separate archive-bound new-image clear and bounded reproduction
+  only after useful capture is qualified. Both remain disabled in this stage.
+
+The installation gate is consumed and disabled. The following command sequence
+is the only new effect scope. Original Share001/Recovery005/core and clear001
+anchors remain immutable. No signer, fixture, grant, Start, mining, renewal,
+software restart, reflash, rollback, factory reset or core clear is admitted.
+All applicable owner bounds, privacy, exact physical lease, native possession,
+board-info, one-use proof and cleanup requirements above remain unchanged.
+
+Use fresh protected parents under `scratch/str005-share-diagnostic/` for
+`recovery002/attempt` and `capture001/attempt`. The installed-image anchor is
+`installation002/attempt` with the exact seal/source/ELF above. The Gate stays
+9643e87664397a321c715a3a1b1bb6c1183b83ea. Retain and decode against the full ELF
+in `scratch/str005-fault-provenance/build-ce8f0158/bitaxe-ultra205.elf`; verify its
+full hash. Host source is this new clean pushed contract; installed source remains
+ce8f0158. Build the canonical host flash target before fresh recovery so build
+latency cannot consume its proof lifetime. No new firmware build or guessed
+boot/attempt ordinal is permitted.
+
+Run `just str005-share-diagnostic preflight --stage recovery --private-root R --gate-root G --installation-root I`,
+fresh detector and `serve --private-root R`; native Connect and baseline collection
+measure accounting/status, ordinary Stop/restoration and Close. With actual proof
+age\<=120s, fresh same-physical detection and no USB holder, run exactly:
+
+```text
+just core-dump-read --board 205 --port <fresh-port> --expected-physical-sha256 <admitted-physical-hash> --expected-installed-source ce8f015811b93385c5aab0bac7bcdf6307452b31 --expected-installed-elf 453d2fa3bbe2b58bcffcbf2019ab69c7968d1ae90620685c8139a061a3325c31 --recovery-proof R/current-recovery.json --private-root R/installed-core
+```
+
+The official reader must retain board-info before ROM operations, all974848 core
+bytes and the partition table, return to the exact image and release its owner.
+Require all-FF bytes; any nonempty core stops self-test and remains archived for
+diagnosis. Release browser/server and finish R using fresh cleanup detection.
+This records the pre-read recovery and empty acquisition separately; it does not
+claim fresh post-ROM application proof.
+
+Run `preflight --stage capture --private-root C --gate-root G --installation-root I --recovery-root R --retained-manifest <repo>/scratch/str005-fault-provenance/build-ce8f0158/bitaxe-ultra205-package.json`,
+fresh detector and `serve --private-root C`. Its initial same-page authenticated
+baseline is the independent post-read recovery, requiring the actual pre-read
+boot plus one, measured unchanged accounting, exact identity/preservation and
+confirmed Stop/Close. Configure the existing installed candidate, reconnect using
+native possession, pass paired fresh diagnostics and bounded core-store readiness,
+then invoke the single ASIC-off self-test. Do not retry a consumed claim.
+
+Capture the immediate panic/reset/store observations and perform candidate
+recovery001 before ROM access. Using its fresh proof, repeat the official reader
+argument shape with `--recovery-proof C/candidate-recovery-001/current-recovery.json`
+and `--private-root C/self-test-core`. Preserve the full raw partition. Offline
+run `just core-dump inspect`, `verify-provenance` and `analyze` with that raw dump,
+exact retained ELF and hash, into separate C/inspection, C/cutoff-review and
+C/analysis private children. Check checksum/full identity, native cutoff, original
+frame validity, exact source/boot correlation and bounded allocation history.
+Analysis must distinguish direct evidence, hypotheses and absent facts.
+
+After the read returns, reconnect the same page and perform candidate recovery002
+as independent current recovery, then Close and release browser/server/serial
+owners, fresh cleanup detection and `finish --private-root C`. Keep decoded
+artifacts inside C before sealing. A receipt alone is insufficient: the finalizer
+must verify acquisition and independently rerun bounded offline provenance and
+batch analysis into new private C/capture-validation and
+C/capture-analysis-validation children before sealing. It preserves
+all original decoder outputs and records decode failures explicitly. Failure records an incomplete
+capture with independent cleanup/current facts; no old seal is rewritten and no
+further fault or clearing overwrites the preserved core. Stop on panic outside
+this one admitted self-test, failed identity/accounting/restoration, missing
+required provenance, failed cleanup or recurrence after a targeted correction.
+Parity stays90/95; accepted-share task remains active.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

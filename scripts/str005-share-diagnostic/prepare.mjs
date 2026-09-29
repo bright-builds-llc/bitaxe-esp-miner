@@ -1,3 +1,4 @@
+import { retainedPackage } from '../str005-panic-probe/recovery-predecessor.mjs';
 import { BEFORE_READ_BASELINE_POLICY } from './baseline-policy.mjs';
 import { mkdir, readFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -20,6 +21,12 @@ export async function capturePrerequisite(root, repo, identity, physical, operat
   const recovered = await operations.recoveryAnchor(root, repo, identity, physical);
   const corePreservation = await operations.verifyCorePreservation(root, recovered.context);
   return { recovered, corePreservation };
+}
+/** Capture audits use the sealed installation's retained package, never mutable build outputs. */
+export async function capturePackage(manifest, installed, repo) {
+  const retained = await retainedPackage(manifest, installed, repo);
+  return { candidateElf: retained.candidateElf, retainedManifest: retained.retainedManifest,
+    retainedManifestSha256: retained.packaged.manifest_sha256 };
 }
 export async function preflight(repo, root, options, published) {
   ignored(repo, root); await missing(root); await privateRoot(dirname(root));
@@ -54,7 +61,8 @@ export async function preflight(repo, root, options, published) {
     check(maybeInstalled && options['--recovery-root'], 'diagnostic_capture_inputs');
     const { recovered, corePreservation } = await capturePrerequisite(options['--recovery-root'], repo, before, old.context.physical);
     context.corePreservation = corePreservation;
-    context.candidateElf = before.candidateElf; context.reference_commit = before.reference_commit;
+    Object.assign(context, await capturePackage(options['--retained-manifest'], maybeInstalled, repo));
+    context.reference_commit = before.reference_commit;
     context.diagnosticRecovery = { root: options['--recovery-root'], seal: recovered.seal };
   }
   if (stage === 'clear') {

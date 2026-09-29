@@ -16,6 +16,8 @@ import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { processSnapshot, requireNoHolders } from '../str005-v2-serial/host-resources.mjs';
 import { argumentsFor, currentSource } from './contract.mjs';
 import { oldAnchors, sealed } from './anchors.mjs';
+import { installationAnchor } from './installation.mjs';
+import { retainedPackage } from '../str005-panic-probe/recovery-predecessor.mjs';
 import { preflight } from './prepare.mjs';
 import { clearAnchor, runClear, finishClear } from './clear.mjs';
 export async function verifyCandidate(root, context) {
@@ -42,6 +44,12 @@ export async function main(argv) {
     if (context.diagnosticClear) check(await sealed(context.diagnosticClear.root, repo) === context.diagnosticClear.seal, 'diagnostic_clear_changed');
     if (context.diagnosticInstallation) check(await sealed(context.diagnosticInstallation.root, repo) === context.diagnosticInstallation.seal, 'diagnostic_installation_changed');
     if (context.diagnosticRecovery) check(await sealed(context.diagnosticRecovery.root, repo) === context.diagnosticRecovery.seal, 'diagnostic_recovery_changed');
+    if (context.retainedManifest) {
+      const installed = await installationAnchor(context.diagnosticInstallation.root, repo);
+      const retained = await retainedPackage(context.retainedManifest, installed, repo);
+      check(retained.candidateElf === context.candidateElf && retained.packaged.manifest_sha256 === context.retainedManifestSha256,
+        'diagnostic_retained_package_changed');
+    }
   };
   await verify();
   if (action === 'finish') return context.stage === 'clear' ? finishClear(root, context) : finishProbe(root, context, (target, result) => finalizeDiagnostic(target, context, result));

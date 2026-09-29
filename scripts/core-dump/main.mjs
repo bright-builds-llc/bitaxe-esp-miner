@@ -109,7 +109,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   main(process.argv.slice(2)).then(result => console.log(JSON.stringify(result))).catch(error => {
     const allowed = new Set(['action_required', 'arguments_invalid', 'private_root_invalid', 'private_root_not_ignored', 'absolute_path_required',
       'symlink_rejected', 'input_file', 'input_not_private', 'input_changed', 'elf_identity', 'managed_decoder_missing', 'managed_gdb_missing',
-      'managed_gdb_version', 'private_parent_required', 'input_not_ignored', 'decoder_version', 'decoder_spawn', 'decoder_timeout', 'decoder_interrupted', 'decoder_failed', 'inspection_invalid']);
+      'managed_gdb_version', 'private_parent_required', 'input_not_ignored', 'decoder_version', 'decoder_spawn', 'decoder_release_unproven', 'decoder_timeout', 'decoder_interrupted', 'decoder_failed', 'inspection_invalid']);
     console.error(JSON.stringify({ status: 'blocked', category: allowed.has(error.message) ? error.message : 'private_operation_failed' }));
     process.exitCode = 1;
   });
