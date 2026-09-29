@@ -6272,6 +6272,43 @@ zero-renewal bounded Start/status reproduction on the installed ce8f image,
 using the qualified captured-core chain, measured accounting and a separate
 published owner; the retired startup/share commands stay disabled.
 
+Bounded diagnostic Start/status reproduction preparation | 2026-09-29:
+
+Status reproduction hardware: enabled.
+
+- [x] Implement a new task-gated owner under `scripts/str005-status-repro/`; retired
+  startup/share owners and their effect flags remain disabled.
+- [x] Rejudge installed ce8f/453d package, Capture001 useful original-frame
+  proof, archive-clear001 erased readback, and fresh recovery004 boot23 before
+  preparing a new attempt. Measure accounting again at admission; do not assume
+  ordinal21 survives. Reject any pending charge or changed identity.
+- [x] Implement issuance for one fresh locally signed normal180000 attempt with
+  initial60000 window, renewAfter20000 and zero renewal artifacts. Runtime
+  fixture, challenge, session binding, grant and Start evidence remain pending.
+- [x] Bound Start reply\<=30s, one known-attempt V2 status\<=10s, and normal Stop
+  requested\<=15s after reply and\<=45s from Start invocation. Stop/Close remain
+  independently bounded and unconditional; late reply triggers another
+  Stop/Close, never a second Start. Record first failure separately from cleanup.
+- [x] Collect immediate current facts even when status/Start fails; if reset
+  occurs preserve the new core before any clear or retry. Fixture natural
+  completion remains separate from termination/reaping/listener release.
+- [x] Regress blocked status, late reply, ambiguous Start, reboot recovery,
+  persistence failures and source/owner gates through actual Gate/page/HTTP seams.
+- [ ] Run required tests, audits, standards and redaction checks; commit and push
+  the complete narrow command/evidence contract before device access. Execute
+  one bounded attempt only if every gate passes; archive raw crash privately and
+  diagnose from exact source. No full accepted-share or heartbeat run is enabled.
+
+This stage has no device authority while disabled. Recovery004 seal
+`ab3dc48ef94d0fc9c8c0137728950d21880131ac769afffe867e36a6d0ec2d0c`,
+Capture001 seal `8806886244f104ad611f0717932b1f4cbf6dfc56840cb0edd464924fca804a16`,
+and archive-clear001 seal
+`30ed731be9a6e698ae8d56d13aaf5e0c47354d60e3f766261d22467ef9948d82`
+are historical lineage, never a fresh signer or USB session. Source remains
+ce8f015811b93385c5aab0bac7bcdf6307452b31; full ELF
+453d2fa3bbe2b58bcffcbf2019ab69c7968d1ae90620685c8139a061a3325c31.
+Private dump and debugger text stay ignored/owner-only. Parity90/95.
+
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
 Status: Startup prerequisite passed; focused heartbeat-loss implementation and published live contract remain required.

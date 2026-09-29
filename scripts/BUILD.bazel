@@ -1408,3 +1408,28 @@ js_test(
     ],
     entry_point = "str005-share-diagnostic/probe.test.mjs",
 )
+
+js_library(
+    name = "str005_status_repro_sources",
+    srcs = glob(["str005-status-repro/*.mjs"]),
+    deps = [":str005_share_diagnostic_sources", ":str005_startup_probe_sources"],
+)
+
+js_binary(
+    name = "str005_status_repro",
+    chdir = "..",
+    data = [":str005_status_repro_sources", "//tools/stratum-v2-fixture:stratum_v2_fixture", "//tools/stratum-v2-fixture:v2_serial_build_identity"],
+    entry_point = "str005-status-repro/main.mjs",
+)
+
+js_test(
+    name = "str005_status_repro_test",
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
+    env_inherit = ["PATH"],
+    data = [
+        ":str005_status_repro_sources",
+        "@bwg_gate_contract//:package_json_js",
+        "@bwg_gate_contract//:share_authority_sources_js",
+    ],
+    entry_point = "str005-status-repro/probe.test.mjs",
+)

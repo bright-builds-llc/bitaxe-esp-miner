@@ -13,7 +13,7 @@ export function validateRecoveryErrors(value) {
 
 export function validateClientFailure(value) {
   object(value, ['schema', 'phase', 'category', 'observedAtMs']);
-  check(value.schema === 'str005-client-failure-v1' && ['prepare', 'start', 'dispatch', 'share'].includes(value.phase) &&
+  check(value.schema === 'str005-client-failure-v1' && ['prepare', 'start', 'dispatch', 'share', 'status'].includes(value.phase) &&
     categories.includes(value.category) && Number.isFinite(value.observedAtMs) && value.observedAtMs >= 0, 'startup_client_failure');
   return structuredClone(value);
 }

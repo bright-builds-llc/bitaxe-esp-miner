@@ -417,6 +417,9 @@ str005-startup-preparation action *args:
 str005-share-probe action *args:
     bazel run //scripts:str005_share_probe -- {{ action }} {{ args }}
 
+str005-status-repro action *args:
+    bazel run //scripts:str005_status_repro -- {{ action }} {{ args }}
+
 str005-heartbeat-probe action *args:
     bazel run //scripts:str005_heartbeat_probe -- {{ action }} {{ args }}
 

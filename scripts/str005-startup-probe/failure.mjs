@@ -3,12 +3,15 @@ const categories = new Set(['panic_detector_stale', 'panic_detector_physical', '
   'startup_source_changed', 'startup_tool_changed', 'startup_preparation_changed', 'startup_capture_changed', 'startup_prepared_admission',
   'startup_physical_changed', 'startup_review_stale', 'startup_accounting_changed', 'startup_fixture_stale', 'startup_signature_shape',
   'startup_delivery_consumed', 'startup_start_binding', 'startup_start_session', 'startup_effect_admission', 'startup_baseline_stale',
-  'startup_prepared_baseline', 'v2_authority_failed', 'v2_authority_unavailable', 'v2_signer_failed', 'startup_operation_rejected']);
+  'startup_prepared_baseline', 'v2_authority_failed', 'v2_authority_unavailable', 'v2_signer_failed',
+  'status_repro_record_unverified', 'status_repro_observation_consumed', 'status_repro_source_changed',
+  'status_repro_late_completion', 'startup_operation_rejected']);
 const phases = new Map([
   ['/cooling-review-context', 'cooling'], ['/cooling-review', 'cooling'], ['/budget-review-context', 'budget'], ['/budget-review', 'budget'],
   ['/startup/fixture', 'fixture'], ['/authorization-context', 'signing'], ['/window-artifacts', 'delivery'], ['/startup/start-admit', 'start_admission'],
   ['/startup/baseline-begin', 'baseline'], ['/startup/baseline', 'baseline'], ['/startup/candidate', 'baseline'],
-  ['/startup/release', 'cleanup'], ['/diagnostic-export', 'diagnostics'],
+  ['/startup/release', 'cleanup'], ['/diagnostic-export', 'diagnostics'], ['/status-repro/observe', 'status'],
+  ['/status-repro/late-completion', 'cleanup'],
 ]);
 export function failureRecord(path, error) {
   const category = categories.has(error?.code) ? error.code : 'startup_operation_rejected';
