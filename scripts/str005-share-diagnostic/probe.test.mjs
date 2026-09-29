@@ -19,6 +19,11 @@ test('each stage has a closed argument set and cannot accept authority or write 
   assert.equal(argumentsFor(['preflight', '--stage', 'recovery', '--private-root', '/p', '--gate-root', '/g']).options['--stage'], 'recovery');
   assert.throws(() => argumentsFor(['preflight', '--stage', 'installation', '--private-root', '/p', '--gate-root', '/g']));
   assert.throws(() => argumentsFor(['preflight', '--stage', 'clear', '--private-root', '/p', '--gate-root', '/g', '--recovery-root', '/r', '--manifest', '/m']));
+  assert.equal(argumentsFor(['preflight', '--stage', 'archive-clear', '--private-root', '/p', '--gate-root', '/g',
+    '--recovery-root', '/r', '--capture-root', '/c']).options['--stage'], 'archive-clear');
+  assert.throws(() => argumentsFor(['preflight', '--stage', 'archive-clear', '--private-root', '/p', '--gate-root', '/g', '--recovery-root', '/r']));
+  assert.throws(() => argumentsFor(['preflight', '--stage', 'clear', '--private-root', '/p', '--gate-root', '/g',
+    '--recovery-root', '/r', '--capture-root', '/c']));
   assert.throws(() => argumentsFor(['serve', '--private-root', '/p', '--authority-directory', '/a']));
   assert.throws(() => argumentsFor(['start', '--private-root', '/p']));
 });

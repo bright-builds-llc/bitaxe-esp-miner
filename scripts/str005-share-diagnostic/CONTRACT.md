@@ -39,6 +39,7 @@ Share diagnostic recovery hardware: enabled.
 Share diagnostic clear hardware: enabled.
 Share diagnostic installation hardware: enabled.
 Share diagnostic capture hardware: enabled.
+Share diagnostic archive-clear hardware: enabled.
 ```
 
 Only enable stages covered by the current published attempt. Recovery and clear
@@ -179,6 +180,21 @@ sealing. Both must succeed, including a meaningful original panic frame. A
 decoder whose process group cannot be proved released leaves an unsealed result;
 other missing evidence seals an explicitly incomplete capture. Raw dumps,
 registers, stack and debugger text remain private.
+
+## Stage 4: archive-bound captured-core clear
+
+The independently published `archive-clear` stage consumes a successful sealed
+capture and a new current installed-image recovery. Its arguments are exactly
+`--private-root`, `--stage archive-clear`, `--gate-root`, `--capture-root` and
+`--recovery-root`. The adapter rejudges the captured raw partition, decoded
+original frame, official read, full ELF, current identity and preserved digest.
+It uses the existing bounded clear supervisor and official `core-dump-clear`
+command. The old `clear` stage remains disabled and continues to require the
+original dump hash. Before the effect, both the stage flag and the generic
+archive-bound core-clear marker must be enabled in the active task. Verify the
+exact-image return, full erased readback, child/group release and fresh detector
+and holder absence before sealing. A separate fresh post-clear recovery is
+required before any Start attempt. Capture, mining and grants remain disabled.
 
 ## Stop conditions, retries and verification
 

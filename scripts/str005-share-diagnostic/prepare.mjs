@@ -1,4 +1,5 @@
 import { retainedPackage } from '../str005-panic-probe/recovery-predecessor.mjs';
+import { captureArchive } from './archive-clear.mjs';
 import { BEFORE_READ_BASELINE_POLICY } from './baseline-policy.mjs';
 import { mkdir, readFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -70,7 +71,19 @@ export async function preflight(repo, root, options, published) {
     const recovered = await freshRecovery(options['--recovery-root'], repo, context, old.context.physical, published.commit);
     context.recoveryRoot = options['--recovery-root']; context.recoverySeal = recovered.seal;
   }
-  if (['installation', 'clear'].includes(stage)) {
+  if (stage === 'archive-clear') {
+    check(options['--capture-root'] && options['--recovery-root'] && !maybeInstalled, 'diagnostic_archive_clear_inputs');
+    const captured = await captureArchive(options['--capture-root'], repo);
+    check(captured.context.detector.physical === old.context.physical && captured.context.gate_commit === gateCommit,
+      'diagnostic_archive_clear_identity');
+    Object.assign(context, { firmware_commit: captured.context.firmware_commit, app_elf_sha256: captured.context.app_elf_sha256,
+      before_source: { firmware_commit: captured.context.firmware_commit, app_elf_sha256: captured.context.app_elf_sha256 },
+      archivePath: captured.dumpPath, archiveSha: captured.dumpSha,
+      diagnosticCapture: { root: captured.root, seal: captured.seal, archiveSha: captured.dumpSha } });
+    const recovered = await freshRecovery(options['--recovery-root'], repo, context, old.context.physical, published.commit);
+    context.recoveryRoot = options['--recovery-root']; context.recoverySeal = recovered.seal;
+  }
+  if (['installation', 'clear', 'archive-clear'].includes(stage)) {
     context.flashBinary = await realpath(resolve(repo, 'bazel-bin/tools/flash/flash'));
     context.flashBinarySha256 = await fileDigest(context.flashBinary);
   }

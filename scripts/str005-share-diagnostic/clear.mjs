@@ -11,6 +11,7 @@ import { validateRecoveryParts } from '../str005-v2-serial/recovery-evidence.mjs
 import { validateDiagnosticExport } from '../fixed-usb-qualification/diagnostic-export.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { sealed, OLD_DUMP_SHA256 } from './anchors.mjs';
+import { captureArchive } from './archive-clear.mjs';
 export async function recoveryAnchor(root, repo, identity, physical) {
   const seal = await sealed(root, repo), context = (await proof(root, 'context.json')).value, result = (await proof(root, 'result.json')).value;
   check(context.diagnosticSuccessor && context.recoveryOnly && /^[a-f0-9]{40}$/u.test(context.commit) && context.firmware_commit === identity.firmware_commit &&
@@ -42,8 +43,9 @@ export function clearArguments(root, context, port) {
 export async function runClear(root, context) {
   await missing(resolve(root, 'clear-claim.json')); await missing(resolve(root, 'clear'));
   const recovered = await freshRecovery(context.recoveryRoot, context.firmware_root, context, context.detector.physical, context.commit);
+  const expectedArchive = context.stage === 'archive-clear' ? context.diagnosticCapture?.archiveSha : OLD_DUMP_SHA256;
   check(recovered.seal === context.recoverySeal && await fileDigest(context.flashBinary) === context.flashBinarySha256 &&
-    await fileDigest(context.archivePath) === context.archiveSha && context.archiveSha === OLD_DUMP_SHA256, 'diagnostic_clear_binding');
+    await fileDigest(context.archivePath) === context.archiveSha && context.archiveSha === expectedArchive, 'diagnostic_clear_binding');
   const path = resolve(dirname(root), 'clear-detector.stdout.log'); await protectedPath(path);
   const detected = parseDetector(await readFile(path, 'utf8'), context.detector.physical, Date.now() - (await stat(path)).mtimeMs); requireNoHolders(detected.port);
   await retain(resolve(root, 'current-recovery.json'), recovered.current.bytes);
@@ -61,6 +63,22 @@ export async function clearAnchor(root, repo) {
   const result = (await proof(root, 'result.json')).value;
   check(result.schema === 'str005-diagnostic-clear-result-v1' && result.complete === true && result.host_resources_released === true && result.current_group_absence_verified === true && result.cleanup_failure === null, 'diagnostic_clear_failed');
   await verifyClear(root, context); return { root, seal, context };
+}
+/** The new-image core clear has its own archived capture lineage and never reopens the old clear gate. */
+export async function archiveClearAnchor(root, repo) {
+  const seal = await sealed(root, repo), context = (await proof(root, 'context.json')).value;
+  check(context.diagnosticSuccessor && context.stage === 'archive-clear' && context.diagnosticCapture,
+    'diagnostic_archive_clear_anchor');
+  const captured = await captureArchive(context.diagnosticCapture.root, repo);
+  check(captured.seal === context.diagnosticCapture.seal && captured.dumpSha === context.archiveSha &&
+    captured.dumpPath === context.archivePath && captured.context.firmware_commit === context.firmware_commit &&
+    captured.context.app_elf_sha256 === context.app_elf_sha256, 'diagnostic_archive_clear_capture');
+  const result = (await proof(root, 'result.json')).value;
+  check(result.schema === 'str005-diagnostic-clear-result-v1' && result.complete === true &&
+    result.host_resources_released === true && result.current_group_absence_verified === true &&
+    result.cleanup_failure === null && result.blockers.length === 0, 'diagnostic_archive_clear_failed');
+  await verifyClear(root, context);
+  return { root, seal, context };
 }
 export async function verifyClear(root, context) {
   const claim = (await proof(root, 'clear-claim.json')).value, exit = (await proof(root, 'clear-exit.json')).value;

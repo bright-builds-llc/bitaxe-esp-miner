@@ -5240,8 +5240,8 @@ Renew image qualification: baseline disabled.
 Renew image qualification: installation disabled.
 Renew image qualification: self-test disabled.
 Renew image qualification: core clear disabled.
-Renew-image core-dump acquisition: enabled (fresh recovery required).
-Renew-image core-dump clearing: disabled (archived original core cleared and verified).
+Renew-image core-dump acquisition: disabled (diagnostic self-test dump archived).
+Renew-image core-dump clearing: enabled (private archive verified).
 
 Objective: install the isolated Renew correction once without mining, preserving
 startup003's retained record before reset and proving the exact candidate identity,
@@ -5962,7 +5962,8 @@ Fault-provenance recovery001/clear001/installation001 contract | 2026-09-28:
 Share diagnostic recovery hardware: enabled.
 Share diagnostic clear hardware: disabled.
 Share diagnostic installation hardware: disabled.
-Share diagnostic capture hardware: enabled.
+Share diagnostic capture hardware: disabled.
+Share diagnostic archive-clear hardware: enabled.
 
 Objective: preserve the archived original crash, obtain fresh current safety,
 clear only its byte-matched on-device copy, then install the audited diagnostic
@@ -6117,10 +6118,11 @@ Diagnostic installation002 outcome and capture001 contract | 2026-09-29:
 - [x] Require actual core acquisition and meaningful original-frame provenance in
   the diagnostic capture finalizer; verify failure and success boundaries before
   publication. Keep raw dump and debugger output private.
-- [ ] After publication, acquire an empty-core baseline, perform one ASIC-off
+- [x] After publication, acquire an empty-core baseline, perform one ASIC-off
   self-test, independently recover, acquire/decode, recover again and seal facts.
 - [ ] Publish a separate archive-bound new-image clear and bounded reproduction
-  only after useful capture is qualified. Both remain disabled in this stage.
+  only after useful capture is qualified. The clear is this successor stage;
+  reproduction remains disabled.
 
 The installation gate is consumed and disabled. The following command sequence
 is the only new effect scope. Original Share001/Recovery005/core and clear001
@@ -6186,6 +6188,58 @@ further fault or clearing overwrites the preserved core. Stop on panic outside
 this one admitted self-test, failed identity/accounting/restoration, missing
 required provenance, failed cleanup or recurrence after a targeted correction.
 Parity stays90/95; accepted-share task remains active.
+
+Diagnostic capture001 outcome and archive-clear successor | 2026-09-29:
+
+[Redacted capture findings](docs/parity/evidence/20260929-str005-diagnostic-capture.md).
+
+- [x] Recovery002 sealed `e39d2978de5060f5b41227b12bc02ae7b405d2e1358a77c422ee4412dc0b2e99`,
+  measured boot19 before ROM read, and verified the full974848-byte core region
+  was erased. Official read/return/cleanup passed on exact installed ce8f/453d.
+- [x] Capture001 sealed `8806886244f104ad611f0717932b1f4cbf6dfc56840cb0edd464924fca804a16`.
+  Fresh post-read baseline boot20, one ASIC-off self-test, panic reset boot21,
+  immediate store receipt (79424 prepared bytes, result0), full archived raw
+  SHA-256 `9db6ac9b2cbb52be6493a6e8f397388bac1a69a36ad17e5acf71369fd4de1644`,
+  checksum/full ELF identity, cutoff, meaningful original panic frame, bounded
+  debugger and post-ROM boot22 recovery all passed. Both ledgers remained
+  next21/last20/charged2100000/pending=false and original charged240000,
+  masks7/7/pending=false. No Start, grant, mining or renewal occurred.
+- [x] Implement and verify an archive-bound clear for this exact captured dump,
+  preserving old clear001's consumed flag and immutable lineage.
+- [ ] With a fresh authenticated recovery, clear only the core partition,
+  verify exact-image return/all-FF readback, release all owners and seal outcome.
+- [ ] Collect independent fresh post-clear recovery before any new Start contract.
+
+The `capture` and generic acquisition gates are consumed and disabled. The new
+`archive-clear` stage alone may call the official `core-dump-clear` command. Its
+preflight rejudges Capture001's sealed producer, actual raw bytes and digest,
+installed source/ELF, original anchors and a new current recovery. Publish and
+push tested host source before fresh device access. Use new protected roots
+`scratch/str005-share-diagnostic/recovery003/attempt` and
+`scratch/str005-share-diagnostic/archive-clear001/attempt`. Recovery003 uses
+`preflight --stage recovery --private-root R --gate-root G --installation-root I`,
+fresh detection and native browser possession, authenticated accounting/status,
+ordinary Stop/Close and sealed cleanup. With its one-use proof age\<=120s and
+fresh same-physical detector, use:
+
+```text
+just str005-share-diagnostic preflight --stage archive-clear --private-root A --gate-root G --capture-root C --recovery-root R
+just str005-share-diagnostic clear --private-root A
+just str005-share-diagnostic finish --private-root A
+```
+
+The adapter binds preserved dump C/self-test-core/core-dump.private.bin and SHA
+9db6ac9b2cbb52be6493a6e8f397388bac1a69a36ad17e5acf71369fd4de1644, official board-info before ROM effect, only0xf12000/0xee000 erase,
+full readback, state-preserving exact-image return, independently bounded child/
+group/reaping and fresh detector/serial-holder cleanup. Failed runner evidence
+cannot become success from a native receipt; later release permits a failed
+partial only. No signer, fixture, Start, grant, mining, renewal, reflash,
+factory reset or prior-dump replay. Old clear001 remains immutable and its flag
+stays disabled. The new clear only removes the on-device copy; private raw,
+decoder output and sealed Capture001 remain. After success, perform separate
+fresh recovery004 with same installed image, full ledgers/restoration and core
+state checked before any reproduction publication. Stop on any mismatch or
+failed cleanup. Parity remains90/95; no cause claim or task archive.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

@@ -18,6 +18,7 @@ import { argumentsFor, currentSource } from './contract.mjs';
 import { oldAnchors, sealed } from './anchors.mjs';
 import { installationAnchor } from './installation.mjs';
 import { retainedPackage } from '../str005-panic-probe/recovery-predecessor.mjs';
+import { captureArchive } from './archive-clear.mjs';
 import { preflight } from './prepare.mjs';
 import { clearAnchor, runClear, finishClear } from './clear.mjs';
 export async function verifyCandidate(root, context) {
@@ -44,6 +45,11 @@ export async function main(argv) {
     if (context.diagnosticClear) check(await sealed(context.diagnosticClear.root, repo) === context.diagnosticClear.seal, 'diagnostic_clear_changed');
     if (context.diagnosticInstallation) check(await sealed(context.diagnosticInstallation.root, repo) === context.diagnosticInstallation.seal, 'diagnostic_installation_changed');
     if (context.diagnosticRecovery) check(await sealed(context.diagnosticRecovery.root, repo) === context.diagnosticRecovery.seal, 'diagnostic_recovery_changed');
+    if (context.diagnosticCapture) {
+      const captured = await captureArchive(context.diagnosticCapture.root, repo);
+      check(captured.seal === context.diagnosticCapture.seal && captured.dumpSha === context.archiveSha &&
+        captured.dumpSha === context.diagnosticCapture.archiveSha, 'diagnostic_capture_changed');
+    }
     if (context.retainedManifest) {
       const installed = await installationAnchor(context.diagnosticInstallation.root, repo);
       const retained = await retainedPackage(context.retainedManifest, installed, repo);
@@ -52,8 +58,8 @@ export async function main(argv) {
     }
   };
   await verify();
-  if (action === 'finish') return context.stage === 'clear' ? finishClear(root, context) : finishProbe(root, context, (target, result) => finalizeDiagnostic(target, context, result));
-  if (action === 'clear') { check(context.stage === 'clear', 'diagnostic_clear_disabled'); return runClear(root, context); }
+  if (action === 'finish') return ['clear', 'archive-clear'].includes(context.stage) ? finishClear(root, context) : finishProbe(root, context, (target, result) => finalizeDiagnostic(target, context, result));
+  if (action === 'clear') { check(['clear', 'archive-clear'].includes(context.stage), 'diagnostic_clear_disabled'); return runClear(root, context); }
   if (action === 'install') {
     check(context.stage === 'installation' && context.installEnabled, 'diagnostic_install_disabled');
     await clearAnchor(context.diagnosticClear.root, repo);
