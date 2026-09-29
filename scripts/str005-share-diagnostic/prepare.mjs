@@ -1,6 +1,7 @@
 import { retainedPackage } from '../str005-panic-probe/recovery-predecessor.mjs';
 import { captureArchive } from './archive-clear.mjs';
 import { statusAttempt } from './status-attempt.mjs';
+import { failedStatusRecovery } from './failed-recovery.mjs';
 import { BEFORE_READ_BASELINE_POLICY } from './baseline-policy.mjs';
 import { mkdir, readFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -59,6 +60,15 @@ export async function preflight(repo, root, options, published) {
     context.attemptId = status.attempt.id;
     context.diagnosticAttemptId = status.attempt.id;
     context.diagnosticStatusRoot = { root: status.root, seal: status.seal };
+  }
+  if (stage === 'safety-recovery') {
+    check(maybeInstalled && options['--failed-recovery-root'], 'diagnostic_safety_inputs');
+    const failed = await failedStatusRecovery(options['--failed-recovery-root'], repo);
+    check(failed.context.firmware_commit === before.firmware_commit && failed.context.app_elf_sha256 === before.app_elf_sha256 &&
+      failed.context.detector.physical === old.context.physical && failed.context.gate_commit === gateCommit,
+    'diagnostic_safety_image');
+    context.safetyOnly = true;
+    context.diagnosticFailedRecovery = { root: failed.root, seal: failed.seal };
   }
   if (stage === 'installation') {
     check(options['--manifest'] && options['--clear-root'] && !maybeInstalled, 'diagnostic_install_inputs');

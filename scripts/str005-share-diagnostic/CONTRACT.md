@@ -211,6 +211,22 @@ If the retained record is absent, save all current facts and stop dependent
 effects. The active task publishes an exact fresh root, source and cleanup
 contract before this stage touches the device.
 
+## Stage 6: safety recovery without a status query
+
+A separate `safety-recovery` stage is published only after sealed recovery005
+saved current accounting but failed both status and Stop. Its sole predecessor is
+that exact failed root, not a safety authority. The new page authenticates fresh
+identity and possession, reads state, both ledgers and diagnostics, and makes no
+retained-status request. It then attempts ordinary Stop and Close within their
+independent bounds. The result may report current safety only if confirmed
+restoration, inactive lease, matching preservation, unchanged no-pending
+accounting, a current boot observation and full host release are all present.
+Retained status is explicitly `not_requested_safety_stage`; Share001 historical
+resource proof stays false. A failed Stop or missing cleanup proof preserves a
+partial result and stops dependent effects. The active task publishes one exact
+new root and the source contract before device access. No signer, fixture,
+mining, Start, ROM operation or core clearing is available in this stage.
+
 ## Stop conditions, retries and verification
 
 One command root and immutable claim per admitted attempt. Any changed source,

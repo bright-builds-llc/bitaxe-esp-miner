@@ -21,6 +21,24 @@ export function assessStatusRecovery(parts, attemptId) {
   return { current_safe_recovery: currentSafe, latest_attempt_retained_resources: retained,
     historical_share001_resource_proof: false };
 }
+
+export function assessSafetyWithoutStatus(parts) {
+  const { state, ledger, original_budget: original, diagnostics, closed, finished } = parts;
+  const boots = diagnostics?.observations?.filter(row => row.category === 'boot') ?? [];
+  const currentSafe = Boolean(state?.status === 'ready' && state.connected === true && state.running === false &&
+    state.deviceBaselineConfirmed === true && state.deviceLeaseInactive === true &&
+    state.preservation?.settings_match === true && state.preservation?.device_identity_match === true &&
+    state.preservation?.authorization_high_water_match === true && state.preservation?.mine_on_boot === false &&
+    closed?.status === 'closed' && closed.connected === false && closed.running === false &&
+    closed.deviceRestorationConfirmed === true && closed.deviceLeaseInactive === true &&
+    closed.serialOwnershipReleased === true && closed.preservation?.baseline_id === state.preservation.baseline_id &&
+    closed.preservation?.settings_match === true && closed.preservation?.device_identity_match === true &&
+    closed.preservation?.authorization_high_water_match === true &&
+    ledger?.pending === false && original?.pending === false && boots.length === 1 &&
+    Number.isSafeInteger(boots[0].boot_ordinal) && boots[0].boot_ordinal > 0 && finished?.failures?.length === 0);
+  return { current_safe_recovery: currentSafe, latest_attempt_retained_resources: false,
+    historical_share001_resource_proof: false, retained_status: 'not_requested_safety_stage' };
+}
 /** A successful before baseline is not a completed installation stage. */
 export async function finalizeDiagnostic(root, context, derived, operations = {}) {
   const result = { ...derived, blockers: [...derived.blockers] };
@@ -54,13 +72,13 @@ export async function finalizeDiagnostic(root, context, derived, operations = {}
       throw Object.assign(Error('diagnostic_decoder_release_unproven'), { code: 'diagnostic_decoder_release_unproven' });
     }
   }
-  if (context.recoveryOnly && context.diagnosticStatusRoot) {
+  if (context.recoveryOnly && (context.diagnosticStatusRoot || context.safetyOnly)) {
     const parts = {};
     for (const stage of ['state', 'ledger', 'original_budget', 'diagnostics', 'status', 'closed', 'finished']) {
       try { parts[stage] = (await proof(root, `baseline-${stage}.json`)).value; }
       catch (error) { if (error.code !== 'ENOENT') throw error; }
     }
-    Object.assign(result, assessStatusRecovery(parts, context.diagnosticAttemptId));
+    Object.assign(result, context.safetyOnly ? assessSafetyWithoutStatus(parts) : assessStatusRecovery(parts, context.diagnosticAttemptId));
   }
   return sealProbeResult(root, result);
 }

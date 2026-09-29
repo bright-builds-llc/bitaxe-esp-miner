@@ -179,3 +179,37 @@ test('current safety and retained resources are separate from Share001 historica
   assert.equal(assessStatusRecovery({ ...parts, ledger: { ...ledger, pending: true } }, 'latest').current_safe_recovery, false);
   assert.equal(assessStatusRecovery({ ...parts, status: undefined }, 'latest').current_safe_recovery, false);
 });
+
+test('safety-only collection never issues status before Stop and Close', async () => {
+  // Arrange
+  const { createRenewBaselineCollector } = await import('../str005-panic-probe/client.mjs');
+  const calls = [], saved = [];
+  const gate = { refresh: async () => {}, reviewQualificationAttempts: async () => ({}), reviewBudget: async () => ({}),
+    exportDiagnostics: async () => ({}), stratumV2Possession: async () => { throw Error('status forbidden'); },
+    stratumV2Status: async () => { throw Error('status forbidden'); },
+    stop: async () => calls.push('stop'), close: async () => calls.push('close') };
+  const collect = createRenewBaselineCollector({ gate, published: () => ({}), begin: async () => {},
+    save: async (stage, value) => saved.push([stage, value]), campaignId: 'c', skipStatus: true,
+    timeoutMs: 100, cleanupMs: 100 });
+  // Act
+  const result = await collect();
+  // Assert
+  assert.equal(result.complete, true); assert.deepEqual(calls, ['stop', 'close']);
+  assert.equal(saved.some(([stage]) => stage === 'status'), false);
+  for (const stage of ['ledger','original_budget','diagnostics','closed','finished']) assert.ok(saved.some(([name]) => name === stage));
+});
+
+test('safety-only result requires actual confirmed Stop and Close, not a status substitution', async () => {
+  // Arrange
+  const { assessSafetyWithoutStatus } = await import('./finalize.mjs');
+  const { state, ledger, original } = await import('../str005-noise-serial/test-fixture.mjs');
+  const context = { gate_commit: 'c'.repeat(40), firmware_commit: 'a'.repeat(40), app_elf_sha256: 'b'.repeat(64),
+    before_source: { firmware_commit: 'a'.repeat(40), app_elf_sha256: 'b'.repeat(64) } };
+  const parts = { state: state(context), closed: state(context, 'candidate', true), ledger, original_budget: original,
+    diagnostics: { observations: [{ category: 'boot', boot_ordinal: 23 }] }, finished: { failures: [] } };
+  // Act / Assert
+  assert.equal(assessSafetyWithoutStatus(parts).current_safe_recovery, true);
+  assert.equal(assessSafetyWithoutStatus(parts).retained_status, 'not_requested_safety_stage');
+  assert.equal(assessSafetyWithoutStatus({ ...parts, closed: { ...parts.closed, deviceRestorationConfirmed: false } }).current_safe_recovery, false);
+  assert.equal(assessSafetyWithoutStatus({ ...parts, ledger: { ...ledger, pending: true } }).current_safe_recovery, false);
+});

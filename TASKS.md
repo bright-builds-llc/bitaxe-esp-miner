@@ -5959,7 +5959,8 @@ host-runner tests and final source checks remain in progress before publication.
 
 Fault-provenance recovery001/clear001/installation001 contract | 2026-09-28:
 
-Share diagnostic recovery hardware: enabled.
+Share diagnostic recovery hardware: disabled.
+Share diagnostic safety-recovery hardware: enabled.
 Share diagnostic clear hardware: disabled.
 Share diagnostic installation hardware: disabled.
 Share diagnostic capture hardware: disabled.
@@ -6358,6 +6359,42 @@ cleanup failures separately. No fixture, signer, grant, Start, mining, renewal,
 flash, reboot or core clear is admitted. If status still cannot be read, seal
 all independently gathered facts and stop for a targeted diagnostic contract.
 Parity90/95; the accepted-share task remains active.
+
+Recovery005 partial and safety-recovery006 contract | 2026-09-29:
+
+[Redacted recovery005 findings](docs/parity/evidence/20260929-str005-recovery005-partial.md).
+
+Recovery005 is sealed partial as
+`b5c2ebf1c0805f90498759f9fe798255f4a5f33892d33943b658e407663b1741`.
+Authenticated current ledger next22/last21/charged2280000/pending=false and
+original charged240000/pending=false were saved before its status read failed.
+The attempted Stop then failed; Close released the serial owner but did not
+confirm restoration or lease inactivity. Its `current_safe_recovery=false` is
+an evidence limit, not proof of active mining. Host resources released. Do not
+interpret this as a successful retained-status or safety result.
+
+- [x] Preserve R005's first status failure, independent Stop/Close outcome and
+  immutable seal. Retired status001 remains partial with no new Start.
+- [x] Implement a recovery-only stage that gathers authenticated state,
+  accounting and diagnostics, skips the risky retained-status query, then
+  attempts ordinary Stop and Close independently within existing bounds.
+- [ ] Publish and push its tested source before hardware; run exactly one fresh
+  `safety-recovery` root `scratch/str005-share-diagnostic/recovery006/attempt`.
+- [ ] Require actual confirmed restoration, inactive lease, matching
+  preservation, unchanged no-pending accounting, boot diagnostics and complete
+  host release before concluding current safety. Retained status is explicitly
+  not requested; no historical resource success can be inferred.
+
+Command: `just str005-share-diagnostic preflight --stage safety-recovery --private-root R --gate-root G --installation-root I --failed-recovery-root F`,
+then fresh detector and `serve --private-root R`, native browser possession,
+one safety-only collection and ordinary Stop/Close; release the exact browser/
+server owner, fresh cleanup detector, `finish --private-root R`. F is the sealed
+R005 root above; I is sealed Installation002 on exact ce8f/453d. No status
+request, signer, fixture, grant, Start, mining, renewal, ROM entry, flash or
+core clear is admitted. Separate current safety, latest retained resources,
+Share001 historical proof and qualification conclusions remain honest. A failed
+Stop or missing resource proof stops this sequence with all partial facts saved.
+Parity90/95; accepted-share task remains active and no retry is implied.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

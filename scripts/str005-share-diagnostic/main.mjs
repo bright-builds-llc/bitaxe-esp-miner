@@ -20,6 +20,7 @@ import { installationAnchor } from './installation.mjs';
 import { retainedPackage } from '../str005-panic-probe/recovery-predecessor.mjs';
 import { captureArchive } from './archive-clear.mjs';
 import { statusAttempt } from './status-attempt.mjs';
+import { failedStatusRecovery } from './failed-recovery.mjs';
 import { preflight } from './prepare.mjs';
 import { clearAnchor, runClear, finishClear } from './clear.mjs';
 export async function verifyCandidate(root, context) {
@@ -55,6 +56,10 @@ export async function main(argv) {
       const attempt = await statusAttempt(context.diagnosticStatusRoot.root, repo);
       check(attempt.seal === context.diagnosticStatusRoot.seal && attempt.attempt.id === context.diagnosticAttemptId,
         'diagnostic_status_attempt_changed');
+    }
+    if (context.diagnosticFailedRecovery) {
+      const failed = await failedStatusRecovery(context.diagnosticFailedRecovery.root, repo);
+      check(failed.seal === context.diagnosticFailedRecovery.seal, 'diagnostic_failed_recovery_changed');
     }
     if (context.retainedManifest) {
       const installed = await installationAnchor(context.diagnosticInstallation.root, repo);

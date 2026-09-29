@@ -68,7 +68,8 @@ export function createProbeServer({ root, context, page, bundle, client, readine
     if (path === '/probe-context') { object(input, []); return send(response, 200, { originalCampaignId: context.original_campaign_id,
       renewSuccessor: context.renewSuccessor === true, retainedAttemptId: context.diagnosticAttemptId ?? context.retainedBaseline?.attemptId ?? null,
       recoveryDiscovery: Boolean(context.diagnosticStatusRoot && context.recoveryOnly), recoveryOnly: context.recoveryOnly === true,
-      captureExisting: context.captureExisting === true, selfTestEnabled: context.selfTestEnabled === true }); }
+      skipStatus: context.safetyOnly === true, captureExisting: context.captureExisting === true,
+      selfTestEnabled: context.selfTestEnabled === true }); }
     if (context.recoveryOnly) check(!['/candidate', '/self-test-claim', '/self-test-result', '/candidate-recovery-begin', '/candidate-part', '/install'].includes(path), 'panic_recovery_only');
     if (['/candidate', '/self-test-readiness', '/self-test-claim'].includes(path)) {
       if (context.renewSuccessor) check(typeof operations.verifyEffect === 'function', 'renew_effect_verifier_missing');
