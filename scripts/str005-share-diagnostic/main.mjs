@@ -1,3 +1,4 @@
+import { finalizeDiagnostic } from './finalize.mjs';
 import { fstatSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -43,7 +44,7 @@ export async function main(argv) {
     if (context.diagnosticRecovery) check(await sealed(context.diagnosticRecovery.root, repo) === context.diagnosticRecovery.seal, 'diagnostic_recovery_changed');
   };
   await verify();
-  if (action === 'finish') return context.stage === 'clear' ? finishClear(root, context) : finishProbe(root, context);
+  if (action === 'finish') return context.stage === 'clear' ? finishClear(root, context) : finishProbe(root, context, (target, result) => finalizeDiagnostic(target, context, result));
   if (action === 'clear') { check(context.stage === 'clear', 'diagnostic_clear_disabled'); return runClear(root, context); }
   if (action === 'install') {
     check(context.stage === 'installation' && context.installEnabled, 'diagnostic_install_disabled');

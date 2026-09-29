@@ -5241,7 +5241,7 @@ Renew image qualification: installation disabled.
 Renew image qualification: self-test disabled.
 Renew image qualification: core clear disabled.
 Renew-image core-dump acquisition: disabled (Share001 crash archived).
-Renew-image core-dump clearing: enabled (private archive verified).
+Renew-image core-dump clearing: disabled (archived original core cleared and verified).
 
 Objective: install the isolated Renew correction once without mining, preserving
 startup003's retained record before reset and proving the exact candidate identity,
@@ -5960,7 +5960,7 @@ host-runner tests and final source checks remain in progress before publication.
 Fault-provenance recovery001/clear001/installation001 contract | 2026-09-28:
 
 Share diagnostic recovery hardware: enabled.
-Share diagnostic clear hardware: enabled.
+Share diagnostic clear hardware: disabled.
 Share diagnostic installation hardware: enabled.
 Share diagnostic capture hardware: disabled.
 
@@ -6010,7 +6010,7 @@ readback, return to the exact before image, then prove actual child/group/serial
 release. Failed runner evidence cannot be promoted by a successful native receipt;
 later absence can seal only a truthful failed partial. Original raw archive stays.
 
-Then `preflight --stage installation --private-root <installation-root> --gate-root <pinned-Gate> --manifest <canonical-private-manifest> --clear-root <verified-clear-root>`;
+Then `preflight --stage installation --private-root <installation-root> --gate-root <pinned-Gate> --manifest <repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --clear-root <verified-clear-root>`;
 fresh detector; `serve --private-root <installation-root>`. Establish a NEW same-page
 before baseline after the clear/reset, measure both ledgers and preservation, then
 close serial. Retain that page across the install. Fresh install-detector.stdout.log/stderr
@@ -6045,6 +6045,61 @@ Bazel Node-launcher environment dependency; the existing five-key runtime allowl
 fixed it without adding credential environment or weakening ownership handshake.
 All changed software is rechecked before commit/push; fresh clean package and audits
 remain mandatory before the first device stage.
+
+Fault-provenance recovery/clear and installation adapter outcome | 2026-09-29:
+
+- [x] Fresh recovery001 passed current safety/accounting and host release, seal
+  `eb4757cf61621a88081604af34f13a5488019ba008b110a2cb684ebfa100c839`.
+- [x] Archive-bound clear001 matched the retained original b665 dump, cleared
+  only the admitted core region, verified all 974,848 bytes erased, returned to
+  f000/a3 and proved process/group/serial release. Seal
+  `41e38251dd6fca13ffbdce783eba188d3be5010935a1fd143d86e88ef896d10a`.
+  The original private dump and earlier seals remain unchanged. Clear gates are
+  consumed and disabled; installation reuses this verified clear lineage.
+- [x] Installation001 stopped before any flash claim or write. Its pre-Stop state
+  was ready/not_required with restoration=false; actual Stop/Close subsequently
+  confirmed restoration. The adapter incorrectly applied the separate Stop-first
+  policy to that earlier state, so current proof was absent. Sealed partial
+  `656d190324d0cc0cb26f862708d2e152d3d8185beeb0c2b09e8e721a8d10ad67`
+  remains incomplete with baseline_unconfirmed and released host resources.
+- [x] Correct the before-read adapter and exercise actual Gate status/Stop/Close,
+  the production HTTP collector and final proof. Final restoration stays required;
+  the strict Stop-first recovery policy remains unchanged.
+- [x] Verify the correction, including incomplete installation finalization;
+  installation002 requires this successor contract committed and pushed before access.
+- [ ] Build and audit the clean published candidate, install it with a new
+  same-page baseline, then independently verify preservation and recovery.
+
+Current measured facts: installed source f000872f2e436aa7cdaa8cbfa41eee965a27731e,
+full ELF a3e257418d625aef5e9423fe28f598377f92b092b634264d3cc1e86b4e83e3c2,
+boot18, next ordinal21/last20/total2100000, original campaign charged240000,
+both pending=false. These are historical observations, never fresh authority.
+No candidate has been installed, no self-test or Start occurred, and no cause or
+historical resource proof is established. Parity remains90/95.
+
+Verification: ordered Cargo format/Clippy/build/tests passed (2429 tests, three
+existing ignored); affected canonical Bazel suites passed. Production Gate/HTTP
+regression and independent review passed. Standards, redaction, reference, parity,
+selected Markdown and diff checks passed. No broader baseline/restoration rule or
+firmware wire format changed.
+
+Fault-provenance installation002 successor contract | 2026-09-29:
+
+Use fresh root `<repo>/scratch/str005-share-diagnostic/installation002/attempt`
+with the existing installation stage command and all bounds/stop conditions above.
+Use `--clear-root <repo>/scratch/str005-share-diagnostic/clear001/attempt` and
+`--manifest <repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`.
+A byte-identical private manifest is retained for decoding but cannot be passed
+as the canonical installation manifest. Before image, Gate, physical identity and
+all original anchors remain bound as above. Build from the exact clean pushed
+successor commit, retain the full package privately and pass all five audits on
+its actual ELF before fresh detection or browser access. Establish a fresh
+same-page baseline, ordinary Stop/Close, fresh effect detector, admitted
+state-preserving installation and candidate recovery, then independent release
+and sealed finalization. Missing installation artifacts must remain incomplete
+regardless of baseline success. Do not repeat the consumed clear or enable
+capture/Start/grant/mining/renewal/restart. Any repeated corrected-boundary failure
+stops dependent effects and preserves a new truthful partial root.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

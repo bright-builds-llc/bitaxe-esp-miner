@@ -1,3 +1,4 @@
+import { BEFORE_READ_BASELINE_POLICY } from './baseline-policy.mjs';
 import { mkdir, readFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { PAGE, BUNDLE, cleanPushed, ignored, missing, packageSnapshot, fileDigest } from '../fixed-usb-qualification/contract.mjs';
@@ -32,7 +33,7 @@ export async function preflight(repo, root, options, published) {
   const maybeInstalled = options['--installation-root'] ? await installationAnchor(options['--installation-root'], repo) : undefined;
   const before = maybeInstalled?.context ?? old.context;
   const context = { schema: 'str005-panic-probe-v1', ...published, ownerTask: 'task-str005-v2-accepted-share-probe',
-    diagnosticSuccessor: true, renewSuccessor: true, allowConfirmedBaseline: true, predecessorInstallationFailed: false,
+    diagnosticSuccessor: true, renewSuccessor: true, ...BEFORE_READ_BASELINE_POLICY, predecessorInstallationFailed: false,
     firmware_root: repo, firmware_commit: before.firmware_commit, app_elf_sha256: before.app_elf_sha256,
     before_source: { firmware_commit: before.firmware_commit, app_elf_sha256: before.app_elf_sha256 },
     gate_root: gateRoot, gate_commit: gateCommit, scope: 'share', attemptId: old.share.before.attempt.id,

@@ -118,6 +118,20 @@ separate earlier page. Installation requires a fresh proof observed strictly
 after the verified clear exit. Save another \<=60-second detector as
 `install-detector.stdout.log` immediately before effect admission.
 
+For installation, `--manifest` must use the canonical repository output path
+`<repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`. A private copied
+manifest is rejected even when byte-identical. Private package copies are retained
+archives for historical identity, decoder inputs and later read-only evidence;
+they do not replace the canonical installation manifest path.
+
+This collector records `ready` **before** Stop. A fresh boot may truthfully report
+`deviceRestorationConfirmed=false` because restoration is `not_required` while
+its safe baseline, inactive lease and preservation are confirmed. That pre-Stop
+receipt never claims a completed restoration. Actual Stop and Close must produce
+the later confirmed-restoration/closed receipt before any current proof or
+installation admission. The separate Stop-first recovery collector keeps its
+stricter `baseline_confirmed` policy unchanged.
+
 The shared installer uses the canonical manifest, exact physical lease, guarded
 ROM admission, disjoint state-preserving segments, 360-second capture and the
 existing 1,200-second outer bound. No factory reset, credentials provisioning,

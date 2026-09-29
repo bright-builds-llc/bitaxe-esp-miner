@@ -1398,7 +1398,13 @@ js_binary(
 
 js_test(
     name = "str005_share_diagnostic_test",
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
     env_inherit = ["PATH"],
-    data = [":str005_share_diagnostic_sources"],
+    data = [
+        ":str005_share_diagnostic_sources",
+        "@bwg_gate_contract//:package_json_js",
+        "@bwg_gate_contract//:share_authority_sources_js",
+        "@bwg_gate_contract//:worker_deployment_trust_js",
+    ],
     entry_point = "str005-share-diagnostic/probe.test.mjs",
 )

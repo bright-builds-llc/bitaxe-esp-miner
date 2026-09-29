@@ -200,7 +200,7 @@ export async function main(argv) {
   } finally { stop(); await maybeRelease; for (const signal of ['SIGINT', 'SIGTERM']) process.removeListener(signal, stop); }
   return { server_released: true };
 }
-export async function finish(root, context) {
+export async function finish(root, context, finalize = sealProbeResult) {
   const server = (await proof(root, 'server-owner.json')).value, current = await processSnapshot();
   check(!current.some(row => sameProcess(row, server.owner) || row.ppid === server.owner.pid), 'panic_server_live');
   requireLsofAbsent(['-nP', `-iTCP:${server.port}`, '-sTCP:LISTEN', '-t']);
@@ -248,7 +248,7 @@ export async function finish(root, context) {
       check(JSON.stringify(current) === JSON.stringify(currentProof(context, parts, current.observed_at_unix_ms)), 'panic_recovery_proof_changed');
       admitRecovery(current, context, current.observed_at_unix_ms);
     }
-    return sealProbeResult(root, result);
+    return finalize(root, result);
   }
   if (context.captureExisting) {
     result.continuity_basis = 'current-session-only'; result.installation_complete = false;
@@ -311,7 +311,7 @@ export async function finish(root, context) {
     await finalizeSelfTestEvidence(root, context, result);
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
   if (context.captureExisting && !result.capture_admission_reviewed) { result.complete = false; result.blockers.push('capture_review_missing'); }
-  return sealProbeResult(root, result);
+  return finalize(root, result);
 }
 /** Re-read immutable artifacts at finalization; disabled fault scope is not failed capture. */
 export async function finalizeSelfTestEvidence(root, context, result) {
