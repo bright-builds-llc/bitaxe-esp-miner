@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Status: Failure-only recovery repaired and current safety verified; crash acquired/decoded, but faulting stack and cause unavailable. Qualification blocked; diagnostic/live gates disabled.
+Status: Current safety verified after status001; diagnostic self-test captured a useful original frame. Share001's cause remains unavailable, and status001 ended at unsafe revocation during preparation step5. Qualification blocked; all effect gates disabled.
 Objective: prove a correlated real ASIC result, encrypted submission, independent
 fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
 Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
@@ -5694,12 +5694,13 @@ Implementation continuation | 2026-09-28 | Failure-independent recovery and Shar
   corrected image contract before state-preserving installation.
 - [ ] Requalify image/capture/cutoff, archive-bound clear, startup/normal Stop,
   accepted share and finally heartbeat loss in separately admitted stages.
-- [ ] Commit/push truthful outcomes, archive only passed criteria, preserve all
+- [x] Commit/push truthful outcomes, archive only passed criteria, preserve all
   predecessor seals and parity90/95. A precise unresolved blocker stops effects.
 
-Current stage: approved fault-provenance diagnostic publication below. Only fresh
-recovery, old-archive clear and audited installation are enabled; capture and Start
-remain disabled until their separately verified stages.
+Current stage: the precise Start failure trigger and Share001 panic cause remain
+unproved. Safety recovery006 passed; its own retained-status omission is explicit.
+All recovery, capture, clear, installation and live Start gates are disabled.
+Further instrumentation needs its own published bounded contract.
 
 Share001 failure-only recovery001 contract | 2026-09-28:
 
@@ -5960,7 +5961,7 @@ host-runner tests and final source checks remain in progress before publication.
 Fault-provenance recovery001/clear001/installation001 contract | 2026-09-28:
 
 Share diagnostic recovery hardware: disabled.
-Share diagnostic safety-recovery hardware: enabled.
+Share diagnostic safety-recovery hardware: disabled.
 Share diagnostic clear hardware: disabled.
 Share diagnostic installation hardware: disabled.
 Share diagnostic capture hardware: disabled.
@@ -6378,12 +6379,12 @@ interpret this as a successful retained-status or safety result.
 - [x] Implement a recovery-only stage that gathers authenticated state,
   accounting and diagnostics, skips the risky retained-status query, then
   attempts ordinary Stop and Close independently within existing bounds.
-- [ ] Publish and push its tested source before hardware; run exactly one fresh
+- [x] Publish and push its tested source before hardware; run exactly one fresh
   `safety-recovery` root `scratch/str005-share-diagnostic/recovery006/attempt`.
-- [ ] Require actual confirmed restoration, inactive lease, matching
+- [x] Require actual confirmed restoration, inactive lease, matching
   preservation, unchanged no-pending accounting, boot diagnostics and complete
-  host release before concluding current safety. Retained status is explicitly
-  not requested; no historical resource success can be inferred.
+  host release before concluding current safety. Retained status was explicitly
+  not requested; no historical resource success is inferred.
 
 Command: `just str005-share-diagnostic preflight --stage safety-recovery --private-root R --gate-root G --installation-root I --failed-recovery-root F`,
 then fresh detector and `serve --private-root R`, native browser possession,
@@ -6395,6 +6396,31 @@ core clear is admitted. Separate current safety, latest retained resources,
 Share001 historical proof and qualification conclusions remain honest. A failed
 Stop or missing resource proof stops this sequence with all partial facts saved.
 Parity90/95; accepted-share task remains active and no retry is implied.
+
+Safety recovery006 outcome and diagnostic gap | 2026-09-29:
+
+[Redacted safety findings](docs/parity/evidence/20260929-str005-safety-recovery.md).
+Safety-only recovery006 sealed
+`08b70903f7129ab435945871746d853dd4a297a2205e8c0660b2eb373a158d56`.
+Fresh authenticated boot23, exact ce8f/453d identity, ledger next22/last21/
+charged2280000/pending=false and original charged240000/pending=false were
+collected. Ordinary Stop and Close confirmed restoration, inactive lease,
+matching preservation and complete host release; first_failure=null.
+`current_safe_recovery=true`, while overall complete=false solely because
+retained status was intentionally not requested. The prior R005 unsafe
+restoration result remains immutable. Both recovery effect gates are consumed
+and disabled.
+
+The retained preparation receipt identifies generation3 cancellation at step5
+(core-voltage stabilization), after steps1–4 completed. Device-local revocation
+was `unsafe_observation`, safe stop and budget completion passed, and zero work
+was dispatched or submitted. Internal heap free3451/largest2176 at that
+boundary is a pressure signal. The exact unsafe-observation trigger and the
+client Start rejection category were not preserved. No panic reset occurred,
+so there is no new crash dump to decode. This is a precise diagnostic gap, not
+a demonstrated repairable root cause. Any further instrumentation or Start
+requires a new separately published bounded contract; no blind mining retry.
+Parity90/95; original Share001 seal, private cores and accepted-share task remain.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
