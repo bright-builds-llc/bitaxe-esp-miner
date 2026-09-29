@@ -5241,7 +5241,7 @@ Renew image qualification: installation disabled.
 Renew image qualification: self-test disabled.
 Renew image qualification: core clear disabled.
 Renew-image core-dump acquisition: disabled (diagnostic self-test dump archived).
-Renew-image core-dump clearing: enabled (private archive verified).
+Renew-image core-dump clearing: disabled (diagnostic self-test core cleared and verified).
 
 Objective: install the isolated Renew correction once without mining, preserving
 startup003's retained record before reset and proving the exact candidate identity,
@@ -5963,7 +5963,7 @@ Share diagnostic recovery hardware: enabled.
 Share diagnostic clear hardware: disabled.
 Share diagnostic installation hardware: disabled.
 Share diagnostic capture hardware: disabled.
-Share diagnostic archive-clear hardware: enabled.
+Share diagnostic archive-clear hardware: disabled.
 
 Objective: preserve the archived original crash, obtain fresh current safety,
 clear only its byte-matched on-device copy, then install the audited diagnostic
@@ -6206,9 +6206,9 @@ Diagnostic capture001 outcome and archive-clear successor | 2026-09-29:
   masks7/7/pending=false. No Start, grant, mining or renewal occurred.
 - [x] Implement and verify an archive-bound clear for this exact captured dump,
   preserving old clear001's consumed flag and immutable lineage.
-- [ ] With a fresh authenticated recovery, clear only the core partition,
+- [x] With a fresh authenticated recovery, clear only the core partition,
   verify exact-image return/all-FF readback, release all owners and seal outcome.
-- [ ] Collect independent fresh post-clear recovery before any new Start contract.
+- [x] Collect independent fresh post-clear recovery before any new Start contract.
 
 The `capture` and generic acquisition gates are consumed and disabled. The new
 `archive-clear` stage alone may call the official `core-dump-clear` command. Its
@@ -6240,6 +6240,37 @@ decoder output and sealed Capture001 remain. After success, perform separate
 fresh recovery004 with same installed image, full ledgers/restoration and core
 state checked before any reproduction publication. Stop on any mismatch or
 failed cleanup. Parity remains90/95; no cause claim or task archive.
+
+Diagnostic archive-clear001 and recovery004 outcome | 2026-09-29:
+
+[Redacted clear findings](docs/parity/evidence/20260929-str005-diagnostic-clear.md).
+
+Recovery003 sealed `a836759ee555a11c3d394b3055ee8f955934ca1f1b6bcca735fb47d1d4720e4d`
+at measured boot22. The official archive-bound clear reread the full core and
+matched sealed Capture001 raw SHA
+`9db6ac9b2cbb52be6493a6e8f397388bac1a69a36ad17e5acf71369fd4de1644`.
+It erased only the admitted core partition, verified all974848 bytes `FF`,
+returned to exact ce8f/453d image and proved runner code0, worker/group
+release, fresh physical detection and serial absence. Result complete=true,
+blockers=[], cleanup_failure=null; sealed archive-clear001 inventory
+`30ed731be9a6e698ae8d56d13aaf5e0c47354d60e3f766261d22467ef9948d82`.
+The on-device copy alone was removed; Capture001 raw, decoder products and all
+older seals remain immutable.
+
+Independent recovery004 sealed
+`ab3dc48ef94d0fc9c8c0137728950d21880131ac769afffe867e36a6d0ec2d0c`.
+Authenticated boot23 was idle/restored with exact ce8f/453d identity, matching
+settings/Device Identity/authorization high water and full host release.
+Ledger next21/last20/charged2100000/pending=false and original
+charged240000/masks7/7/pending=false were unchanged. The full erased readback
+and this healthy post-return recovery provide current safe status; no new core
+read is inferred. No Start, grant, mining or renewal occurred. Historical
+Share001 resource proof and panic cause remain unresolved; parity90/95.
+Both the diagnostic archive-clear and generic clearing gates are consumed and
+disabled. The accepted-share task remains active. Its next work is a new
+zero-renewal bounded Start/status reproduction on the installed ce8f image,
+using the qualified captured-core chain, measured accounting and a separate
+published owner; the retired startup/share commands stay disabled.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

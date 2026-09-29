@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
-export const FLAGS = Object.freeze({ recovery: true, clear: false, installation: false, capture: false, 'archive-clear': true });
+export const FLAGS = Object.freeze({ recovery: true, clear: false, installation: false, capture: false, 'archive-clear': false });
 export const TASK = 'task-str005-v2-accepted-share-probe';
 export const CONTRACT = 'scripts/str005-share-diagnostic/CONTRACT.md';
 export function sourceScope(tasks, stage, flags = FLAGS) {
