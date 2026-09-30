@@ -1,0 +1,38 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "bitaxe_simulation",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "bitaxe_simulation",
+    edition = "2021",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//tools/stratum-v2-fixture:fixture_oracle",
+        "@crates//:noise_sv2",
+        "@crates//:rand",
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-asic:bitaxe_asic",
+        "//crates/bitaxe-runtime:bitaxe_runtime",
+        "//crates/bitaxe-safety:bitaxe_safety",
+        "//crates/bitaxe-stratum:bitaxe_stratum",
+        "//crates/bitaxe-virtual-board:bitaxe_virtual_board",
+        "//crates/bitaxe-worker-control:bitaxe_worker_control",
+        "@crates//:base64",
+        "@crates//:ed25519-dalek",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:sha2",
+        "@crates//:thiserror",
+    ],
+)
+
+rust_test(name = "tests", crate = ":bitaxe_simulation")
+
+rust_test(
+    name = "scenario_tests",
+    srcs = ["tests/scenarios.rs"],
+    edition = "2021",
+    deps = [":bitaxe_simulation", "@crates//:serde_json"],
+)
+
+filegroup(name = "compiler_inputs", srcs = glob(["**/*.rs", "**/*.toml", "**/*.bzl", "**/*.mjs", "**/BUILD.bazel"], allow_empty = True), visibility = ["//visibility:public"])

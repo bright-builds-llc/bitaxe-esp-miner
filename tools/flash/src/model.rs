@@ -314,6 +314,8 @@ pub(crate) struct MonitorEvidenceArtifacts<'a> {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct PackageManifest {
+    #[serde(default, rename = "execution_profile")]
+    pub(crate) maybe_execution_profile: Option<String>,
     pub(crate) schema_version: u32,
     pub(crate) semantic_version: String,
     pub(crate) source_commit: String,

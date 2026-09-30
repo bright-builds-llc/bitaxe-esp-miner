@@ -27,6 +27,7 @@ mod cli_usb_stability;
 mod display_recovery;
 #[path = "tests/evidence.rs"]
 mod evidence_cases;
+mod execution_profile;
 mod input_uat;
 mod installed_application;
 mod monitor;

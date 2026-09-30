@@ -1,19 +1,19 @@
 use sha2::{Digest, Sha256};
 
-pub(super) const VERSION: u32 = 0x2000_0000;
-pub(super) const MASK: u32 = 0x1fff_e000;
-pub(super) const NBITS: u32 = 0x207f_ffff;
-pub(super) const TARGET: [u8; 32] = [
+pub const VERSION: u32 = 0x2000_0000;
+pub const MASK: u32 = 0x1fff_e000;
+pub const NBITS: u32 = 0x207f_ffff;
+pub const TARGET: [u8; 32] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x3f, 0, 0,
     0, 0, 0,
 ];
-pub(super) fn sha256(bytes: &[u8]) -> String {
+pub fn sha256(bytes: &[u8]) -> String {
     hex(&Sha256::digest(bytes))
 }
-pub(super) fn hex(bytes: &[u8]) -> String {
+pub fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
-pub(super) fn header(
+pub fn header(
     version: u32,
     previous: [u8; 32],
     merkle: [u8; 32],
@@ -30,12 +30,12 @@ pub(super) fn header(
     value[76..].copy_from_slice(&nonce.to_le_bytes());
     value
 }
-pub(super) fn hash(header: &[u8; 80]) -> [u8; 32] {
+pub fn hash(header: &[u8; 80]) -> [u8; 32] {
     Sha256::digest(Sha256::digest(header)).into()
 }
-pub(super) fn meets_target(hash: &[u8; 32], target: &[u8; 32]) -> bool {
+pub fn meets_target(hash: &[u8; 32], target: &[u8; 32]) -> bool {
     hash.iter().rev().cmp(target.iter().rev()) != std::cmp::Ordering::Greater
 }
-pub(super) fn valid_version(version: u32) -> bool {
+pub fn valid_version(version: u32) -> bool {
     version & !MASK == VERSION
 }

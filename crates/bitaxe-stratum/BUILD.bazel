@@ -147,3 +147,5 @@ js_library(
     srcs = ["fixtures/nonzero-version-known-answer/fixture.json"],
     visibility = ["//scripts:__pkg__"],
 )
+
+filegroup(name = "compiler_inputs", srcs = glob(["**/*.rs", "**/*.toml", "**/*.bzl", "**/*.mjs", "**/BUILD.bazel"], allow_empty = True), visibility = ["//visibility:public"])

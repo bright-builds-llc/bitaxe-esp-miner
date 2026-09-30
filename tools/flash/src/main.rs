@@ -52,6 +52,7 @@ mod esp32s3_image;
 mod evidence;
 mod evidence_output;
 mod evidence_record;
+mod execution_profile;
 mod execution_snapshot;
 mod flash_transfer;
 mod input_uat;

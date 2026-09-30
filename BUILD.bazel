@@ -6,6 +6,12 @@ package(default_visibility = ["//visibility:public"])
 # and firmware-producing actions need git state as explicit inputs instead of
 # only reading it from git at execution time.
 exports_files([
+    ".cargo/config.toml",
+    "MODULE.bazel",
+    "MODULE.bazel.lock",
+    ".bazelrc",
+    ".bazelversion",
+    "rust-toolchain.toml",
     ".git/HEAD",
     ".git/logs/HEAD",
     ".github/workflows/evidence-redaction.yml",

@@ -8,10 +8,15 @@ members = [
     "crates/bitaxe-core",
     "crates/bitaxe-safety",
     "crates/bitaxe-stratum",
+    "crates/bitaxe-runtime",
+    "crates/bitaxe-virtual-board",
+    "crates/bitaxe-simulation",
     "crates/bitaxe-test-support",
     "crates/bitaxe-worker-control",
     "firmware/bitaxe",
+    "firmware/virtual-ultra205",
     "tools/flash",
+    "tools/virtual-board",
     "tools/device-session",
     "tools/http-transport",
     "tools/parity",
@@ -26,9 +31,13 @@ default-members = [
     "crates/bitaxe-core",
     "crates/bitaxe-safety",
     "crates/bitaxe-stratum",
+    "crates/bitaxe-runtime",
+    "crates/bitaxe-virtual-board",
+    "crates/bitaxe-simulation",
     "crates/bitaxe-test-support",
     "crates/bitaxe-worker-control",
     "tools/flash",
+    "tools/virtual-board",
     "tools/device-session",
     "tools/http-transport",
     "tools/parity",
@@ -87,4 +96,7 @@ opt-level = "z"
 
 # Keep full development crash capture within the unchanged firmware partitions.
 [profile.release.package.bitaxe-api]
+opt-level = "z"
+
+[profile.release.package.bitaxe-runtime]
 opt-level = "z"

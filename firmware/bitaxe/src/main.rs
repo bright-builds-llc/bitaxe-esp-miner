@@ -37,6 +37,7 @@ mod prepared_thread;
 mod production_mining_session;
 mod qualification_restart;
 mod rtc_boot_ordinal;
+mod runtime_allocation_adapter;
 mod runtime_health_adapter;
 mod runtime_snapshot;
 mod runtime_uptime;

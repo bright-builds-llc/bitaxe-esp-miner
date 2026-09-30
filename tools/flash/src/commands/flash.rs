@@ -12,6 +12,7 @@ pub(crate) fn run_flash_with_wifi_mode(
     wifi_mode: WifiNvsSeedMode,
     environment: &impl FlashEnvironment,
 ) -> Result<FlashOutcome> {
+    execution_profile::reject_virtual_manifest(command.manifest.as_deref(), environment)?;
     validate_expected_physical(&command.common)?;
     let maybe_esptool = if command.common.dry_run {
         None
@@ -79,6 +80,7 @@ pub(crate) fn run_flash_monitor(
     command: &FlashMonitorCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
+    execution_profile::reject_virtual_manifest(command.manifest.as_deref(), environment)?;
     if !command.common.dry_run
         && !command.factory_reset
         && command.wifi_credentials.is_none()

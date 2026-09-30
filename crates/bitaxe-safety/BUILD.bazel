@@ -73,3 +73,5 @@ rust_test(
         "@crates//:serde_json",
     ],
 )
+
+filegroup(name = "compiler_inputs", srcs = glob(["**/*.rs", "**/*.toml", "**/*.bzl", "**/*.mjs", "**/BUILD.bazel"], allow_empty = True), visibility = ["//visibility:public"])

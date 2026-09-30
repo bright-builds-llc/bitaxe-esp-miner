@@ -198,6 +198,14 @@ pub(crate) fn validate_identity_admission(
     current_provenance: &BuildProvenance,
     environment: &impl FlashEnvironment,
 ) -> Result<AdmittedFactoryImage> {
+    if manifest
+        .maybe_execution_profile
+        .as_deref()
+        .is_some_and(|profile| profile != "physical-ultra205")
+        || manifest.build_identity.channel == "virtual-ultra205"
+    {
+        bail!("identity_admission=blocked reason=virtual_image_not_physical");
+    }
     if !matches!(manifest.schema_version, 3 | 4) {
         bail!("identity_admission=blocked reason=manifest_schema_unsupported");
     }
@@ -231,6 +239,7 @@ pub(crate) fn validate_identity_admission(
     let elf_artifact = require_artifact(manifest, "firmware_elf")?;
     let elf_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&elf_artifact.path))?;
     let elf_bytes = read_validated_artifact(elf_artifact, &elf_path, environment)?;
+    execution_profile::reject_virtual_bytes(&elf_bytes)?;
     if sha256_bytes(&elf_bytes) != manifest.app_elf_sha256 {
         bail!("identity_admission=blocked reason=firmware_elf_app_sha_mismatch");
     }

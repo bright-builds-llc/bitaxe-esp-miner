@@ -205,3 +205,5 @@ rust_test(
     data = glob(["fixtures/**"], allow_empty = True),
     visibility = ["//firmware/bitaxe:__pkg__"],
 )
+
+filegroup(name = "compiler_inputs", srcs = glob(["**/*.rs", "**/*.toml", "**/*.bzl", "**/*.mjs", "**/BUILD.bazel"], allow_empty = True), visibility = ["//visibility:public"])

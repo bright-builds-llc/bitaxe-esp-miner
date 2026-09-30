@@ -6511,6 +6511,166 @@ Authorization: evidence/software review now; no hardware merely from dependency
 edits. Any missing smoke requires its own published bounds. No parity transition.
 Verification: Pending. Completion review: Pending.
 
+### task-ultra205-virtual-board-validation | 2026-09-30 | Full functional virtual Ultra 205 and pre-flash validation
+
+Status: Verified software milestone; full qualification blocked by corrected-target
+panic recurrence and unsupported mandatory integration coverage.
+Objective: reuse production control logic in deterministic host and Xtensa/QEMU
+scenarios, model every Ultra 205 functional peripheral, then qualify one canonical
+pre-flash gate. References: `task-str005-v2-accepted-share-probe`, its immutable
+status001/recovery006 results, and the retained installed ce8f/453d package.
+
+- [ ] Extract shared host-buildable runtime interfaces and production logic;
+  preserve physical policies, existing host regressions and historical readers.
+- [ ] Implement seeded virtual BM1366, sensor/fan/voltage/ADC/display/input,
+  persistence/reset/core, networking and control-transport models with explicit
+  unsupported outcomes and independent model-conformance evidence.
+- [ ] Add capability-aware memory/fragmentation and named-phase allocation faults,
+  including observed3451-free/2176-largest and8192-internal allocation profiles.
+- [ ] Exercise composed startup/Start/status/Stop/recovery with real protocol,
+  admission/accounting and local fixture; preserve earliest typed failure and
+  separate qualification, historical resources and current safety.
+- [ ] Integrate pinned SDK5.5.4 QEMU esp_develop_9.2.2_20250817, managed checksum
+  bootstrap/doctor and an unmistakable virtual dual-core S3/16MB/8MB-OPI target.
+  Physical flash must reject virtual artifacts; report paired configuration diffs.
+- [ ] Provide Bazel-backed virtual-board, qualify-virtual-board and preflash-validate
+  commands, versioned source/package/config/model/emulator/validator-bound results.
+- [ ] Qualify complete healthy lifecycle, all mandatory faults, target panic/core
+  decoding, resource/ownership tests, independent goldens/mutations, repeatability
+  and host/QEMU semantic agreement. Unsupported required coverage blocks qualification.
+- [ ] After baseline qualification only, enforce centrally selected local profiles
+  for affected flash/update/live commands before discovery or sensitive inputs.
+  Emergency Stop/Close/failure-only recovery remain independently available.
+- [ ] Run affected Bazel suites, ordered Cargo fmt/Clippy/build/tests, production-ELF
+  audits, standards/reference/redaction/Markdown/diff checks. Commit and push verified
+  milestones with truthful remaining gaps; archive this task only when all pass.
+
+Execution contract: local software/test artifacts and synthetic virtual effects only.
+No physical device detection, USB access, real signer/pool credentials, hardware
+flashing, physical mining/grants, ROM operations or physical faults. Synthetic
+signed frames are permitted only inside isolated virtual scenarios. All existing device-effect
+flags remain disabled. Virtual builds are separately identified and cannot become
+flashable physical candidates. Synthetic NVS/identities/trust and bounded private
+local evidence only; no modification of sealed predecessor inventories or raw dumps.
+Pinned upstream reference remains read-only. Functional models are not electrical,
+RF, cycle-accurate or physical USB timing proof. Keep calibration gaps and modeled
+memory distinct from actual SDK observations; no hardware parity promotion.
+Parity remains90/95; accepted-share stays active/unresolved. Changed SDK/model/source/
+package/validator identities invalidate affected results. Unknown changes select the
+full validation suite. Missing required profile, calibration or process-release proof
+is a concrete blocker, never success or permission for another hardware attempt.
+
+Local milestone review | 2026-09-30: runtime/model/command foundations implemented.
+Initial ordered Cargo checks and 17 affected Bazel targets pass; the production
+package builds. Host step-5 command passes; healthy host deliberately returns
+unsupported for missing encrypted share integration. No device access occurred.
+Full qualification and mandatory rollout remain unresolved; do not archive.
+
+QEMU diagnostic continuation | 2026-09-30: pinned virtual guest component probes
+prove boot, 8192-byte internal allocation/release, task join, NVS reset increment
+and deliberate panic/core decoding. Healthy composed execution instead faults in
+SDK TLSF during possession canonical serialization. Splitting the guest UART
+reader reduces the dispatch frame from4800 to832 bytes with the same16384-byte
+main stack, but the healthy failure recurs. This is virtual-target evidence;
+physical status001's cause remains unproved. Preserve every prior private run.
+
+Bounded next diagnostic contract: one instrumented synthetic healthy QEMU run
+only, paired exact virtual ELF/source/config and pinned emulator; allocation-free
+heap-integrity and task-stack observations before controller/possession boundaries,
+plus an offline native call-frame audit. Allowed: local compilation, virtual flash
+copies, GDB on the owned emulator and private logs/core inspection. Prohibited:
+physical detection/USB/network access, signer credentials, flashing, mining,
+grants, partition clearing, changed stack/safety limits and blind retries. Bound
+emulator runtime to30 seconds and debugger output/time; always release/reap the
+owned process group and retain partial evidence if core capture is unavailable.
+Stop this diagnostic on recurrence after a targeted correction, unproved process
+release, source/digest drift or missing meaningful crash state. Broader independent
+host/model integration may continue without another target retry.
+
+QEMU diagnostic015 successor | 2026-09-30: diagnostic014 was consumed without
+resuming the paused guest because the pinned debugger rejected a command. Its
+partial result and released process groups remain retained. Offline preflight now
+passes against exact virtual ELF
+b76fdd3dd942dbebc3b47143530ae772c54b83fd35f15a7cfbf1aa6a36a7ce36,
+including supported debugger syntax, exported checkpoint symbols, 384-byte record
+layout and verified Xtensa argument register. Permit exactly one successor
+`just virtual-emulator diagnose-heap --manifest <retained-build014>/virtual-package.json --evidence-dir <repo>/scratch/virtual-emulator/diagnose015-health`.
+The prior local-only effects, 30-second emulator/25-second debugger bounds,
+privacy, no limit increases, cleanup and stop conditions apply unchanged. This
+examines the frozen pre-extension guest; it cannot qualify the current broader
+source or establish the physical failure cause. No further checkpointed target
+retry is authorized by this continuation.
+
+Corrective local qualification continuation | 2026-09-30: diagnostic015 measured
+9280 stack bytes available at the pre-controller checkpoint. Its own144-byte
+frame and the32-byte observer frame end before construction, giving9456 bytes
+available at the constructor callsite. The exact frozen guest's resolved required
+trust-key validation path alone needs10752 bytes (before additional curve leaves):
+a1296-byte deficit. This is a demonstrated virtual caller-frame insufficiency,
+not proof of the physical status001 cause or a complete callgraph upper bound.
+
+Split the shared scenario initializer from the larger Start/status execution frame
+and return an owned boxed controller; preserve the16KiB configured stack, SDK
+extra512 bytes, all safety/authority/accounting limits and observer order. Verify
+host corpus equality and build a separately marked corrected virtual package with
+fresh source/ELF/config bindings. Offline audit must show the initialization frame
+and constructor path fit with the existing margin before target execution. Then
+permit one fresh synthetic `healthy-lifecycle` seed1 QEMU run only, with status and
+allocation probes, bounded to30 seconds, in a new private evidence root. No
+checkpoint diagnostic, new limit, physical discovery/effect or old grant replay.
+Stop on recurrence or missing release/proof; save a precise blocker and continue
+only independent host checks. Ordinary full qualification is still not authorized
+by a passing component probe; all mandatory profiles and rollout criteria remain.
+
+Evidence review correction | 2026-09-30: require natural host completion separately
+from resource release; verify scenario/seed/source/package/executable bindings,
+embed compiler inputs rather than attest to a later checkout, and verify copied
+frozen manifest/config digests. New host run-v3 records preserve earlier v1/v2
+results. Resolve compiler-stamp build setup/API errors with focused offline checks
+before broad qualification. No previous result or seal may be rewritten.
+
+Corrected target outcome | 2026-09-30: fresh guest build017 pairs the production
+ELF27594c9f92e84e907d1f08acd87ea6a1c0644168a45a83c8dcfbbeeacf282b22;
+virtual ELF579fdd34473fe17245f36d7e026fbd68e1041b0a7408a1cb3f958d4b030eb98e.
+Further separation retires board construction and trust-validation temporaries
+before controller assembly. The ordinary wrapper-inclusive selected native path
+needs10752 bytes plus992 of observed leaf/iteration allowance:11744 total, leaving
+4640 against the unchanged16384-byte configuration. This is a selected lower-bound
+check; the complete call closure remains unproved.
+
+The one authorized `run017-health` target attempt then failed: boot, task join,
+internal allocation/release and allocator observations passed, but an unexpected
+panic/reset prevented the scenario and actual stack-margin results. Host process
+group release passed. The retained core's checksum and full ELF identity verify;
+SDK fake frames are absent. The meaningful fault is LoadStorePIFAddrError in SDK
+find_containing_heap, reached through heap_caps_free and a Rust Vec drop during
+Noise mix_hash/Initiator completion inside the authenticated Start path. The
+constructor progressed; the new failure's cause and actual margin remain unproved.
+Raw core/debugger/registers remain private under run017-health/decoded-core. Stop further target execution under the recurrence rule;
+retain exact ELF/logs/flash and any partial core. Constructor margin alone cannot
+qualify target execution or establish the remaining cause. No device access occurred.
+
+Preflash observation outcome | 2026-09-30: `just preflash-validate` saved a sealed
+working-tree observation with42 passed/21 unsupported host cases across63 rows;
+all63 target corpus cases were withheld because required host integration is
+unsupported. Five exact production native audits passed. The development source
+was dirty, full qualification was false, no package was frozen and no flash occurred.
+The original report remains immutable; unavailable comparison coverage is typed
+unsupported by the successor validator, not a demonstrated semantic mismatch.
+
+Verification: ordered Cargo format/Clippy/build/tests,21 affected Bazel targets,
+55 model tests,19 encrypted-profile tests,9 scenario tests, compiler-closure
+stale-source/build regressions, process/listener and evidence regressions, five
+production native audits, reference/redaction/standards/Markdown/diff checks.
+Final verification receipts and public summary accompany the committed milestone.
+Completion review: not complete; do not archive. Explicit remaining blockers are
+corrected-target panic and missing actual margin/call-closure proof, strict live
+fixture/header/nonce vector, real allocation interception, production Gate/page/
+HTTP/framed-I/O integration, consolidated production lifecycle/ownership profiles,
+full qualified host/target corpus and mandatory matching-report rollout. Missing
+calibration remains an explicit fidelity non-claim. Accepted-share stays active,
+all physical-effect gates stay disabled and parity remains90/95.
+
 ## Future
 
 ### task-str005-evidence-promotion | 2026-08-28 | Compose evidence and promote STR-005

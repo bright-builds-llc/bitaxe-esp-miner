@@ -47,7 +47,7 @@ use request_queue::{enqueue, ActuationEnvelope, EnqueueOutcome};
 pub(crate) use adc::Ultra205CoreVoltageAdc;
 pub(crate) use i2c_retry::{RuntimeI2cBudget, RuntimeI2cBudgetOutcome};
 
-const ACTUATION_REQUEST_CAPACITY: usize = 4;
+use request_queue::ACTUATION_REQUEST_CAPACITY;
 const ACTUATION_REPLY_CAPACITY: usize = 1;
 const ACTUATION_REPLY_TIMEOUT: Duration = Duration::from_millis(1_500);
 

@@ -431,3 +431,16 @@ audit-fault-provenance *args:
 
 str005-share-diagnostic action *args:
     bazel run //scripts:str005_share_diagnostic -- {{ action }} {{ args }}
+
+# Local functional simulation; these commands never discover or flash hardware.
+virtual-emulator *args:
+    bazel run //scripts:virtual_emulator -- {{ args }}
+
+virtual-board *args:
+    bazel run //scripts:virtual_board -- {{ args }}
+
+qualify-virtual-board *args:
+    bazel run //scripts:virtual_board -- qualify {{ args }}
+
+preflash-validate *args:
+    bazel run //scripts:virtual_board -- preflash {{ args }}

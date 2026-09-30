@@ -1433,3 +1433,39 @@ js_test(
     ],
     entry_point = "str005-status-repro/probe.test.mjs",
 )
+
+js_library(
+    name = "virtual_emulator_sources",
+    srcs = glob(["virtual-emulator/**/*.mjs", "virtual-emulator/**/*.py"]),
+    visibility = ["//visibility:public"],
+)
+
+js_binary(
+    name = "virtual_emulator",
+    entry_point = "virtual-emulator/main.mjs",
+    data = [":virtual_emulator_sources", ":core_dump_sources"],
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "virtual_emulator_test",
+    entry_point = "virtual-emulator/main.test.mjs",
+    data = [":virtual_emulator_sources", ":core_dump_sources"],
+)
+
+js_library(
+    name = "virtual_board_sources",
+    srcs = glob(["virtual-board/**/*.mjs"]),
+)
+js_binary(
+    name = "virtual_board",
+    entry_point = "virtual-board/main.mjs",
+    args = ["$(rootpath //tools/virtual-board:virtual_board)"],
+    data = [":virtual_board_sources", ":virtual_emulator_sources", ":core_dump_sources", "//tools/virtual-board:virtual_board"],
+    visibility = ["//visibility:public"],
+)
+js_test(
+    name = "virtual_board_test",
+    entry_point = "virtual-board/main.test.mjs",
+    data = [":virtual_board_sources", ":virtual_emulator_sources", ":core_dump_sources"],
+)

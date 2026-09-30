@@ -5,7 +5,7 @@ impl GenerationGate {
     /// Native panic only: the other CPU is stalled and no task can resume.
     /// One load/store revokes every permit without a lock or retry loop.
     #[inline(always)]
-    pub(crate) fn panic_revoke_all(&self) -> u32 {
+    pub fn panic_revoke_all(&self) -> u32 {
         let prior = self.state.load(Ordering::Relaxed);
         self.state
             .store((prior & !FLAGS) | REVOKED, Ordering::Relaxed);

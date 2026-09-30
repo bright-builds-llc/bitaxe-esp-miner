@@ -1,0 +1,41 @@
+load(":provenance.bzl", "compiler_inputs")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
+
+rust_binary(
+    name = "virtual_board",
+    crate_name = "bitaxe_virtual_board_tool",
+    srcs = glob(["src/**/*.rs"]) + ["snapshot.rs"],
+    rustc_env_files = [":compiled_source"],
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-simulation:bitaxe_simulation",
+        "//crates/bitaxe-virtual-board:bitaxe_virtual_board",
+        "@crates//:anyhow", "@crates//:clap", "@crates//:serde",
+        "@crates//:serde_json", "@crates//:sha2", "@crates//:tracing",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(name = "tests", crate = ":virtual_board", deps = ["@crates//:tempfile"])
+
+js_binary(name = "stamp", entry_point = "stamp.mjs")
+filegroup(name = "compiler_inputs", srcs = glob(["**/*.rs", "**/*.toml", "**/*.bzl", "**/*.mjs", "**/BUILD.bazel"], allow_empty = True))
+compiler_inputs(
+    name = "compiled_source",
+    writer = ":stamp",
+    inputs = [
+        ":compiler_inputs", "//:BUILD.bazel", "//:MODULE.bazel", "//:MODULE.bazel.lock", "//:.bazelrc", "//:.bazelversion", "//:rust-toolchain.toml", "//:Cargo.toml", "//:Cargo.lock", "//:.cargo/config.toml", "//firmware/bitaxe:sdkconfig.defaults",
+        "//crates/bitaxe-api:compiler_inputs",
+        "//crates/bitaxe-asic:compiler_inputs",
+        "//crates/bitaxe-config:compiler_inputs",
+        "//crates/bitaxe-core:compiler_inputs",
+        "//crates/bitaxe-safety:compiler_inputs",
+        "//crates/bitaxe-stratum:compiler_inputs",
+        "//crates/bitaxe-runtime:compiler_inputs",
+        "//crates/bitaxe-virtual-board:compiler_inputs",
+        "//crates/bitaxe-worker-control:compiler_inputs",
+        "//crates/bitaxe-simulation:compiler_inputs",
+        "//tools/stratum-v2-fixture:compiler_inputs",
+    ],
+)

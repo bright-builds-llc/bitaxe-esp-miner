@@ -58,7 +58,11 @@ impl MiningActuationBackend for Backend {
             return Ok(());
         }
         if self.late_success {
-            self.gate.revoke(self.generation);
+            self.gate.revoke_reason_at(
+                self.generation,
+                0,
+                crate::revocation::RevocationReason::ControlFailed,
+            );
             return Ok(());
         }
         wait_with_cancellation(
@@ -142,7 +146,11 @@ fn successful_late_preparation_cannot_publish_ready_after_revocation() {
 fn rejected_outer_admission_records_closed_failure_before_any_preparation_effect() {
     // Arrange
     let mut backend = Backend::new(PreparationStep::RetainProductionUart, false);
-    backend.gate.revoke(backend.generation);
+    backend.gate.revoke_reason_at(
+        backend.generation,
+        0,
+        crate::revocation::RevocationReason::ControlFailed,
+    );
     // Act
     let result = execute_preparation(&mut backend, profile());
     // Assert

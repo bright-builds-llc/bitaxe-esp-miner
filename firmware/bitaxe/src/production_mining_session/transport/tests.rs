@@ -22,7 +22,11 @@ fn revoked_partial_pool_write_never_sends_its_remaining_payload() {
     impl Write for Writer<'_> {
         fn write(&mut self, _bytes: &[u8]) -> io::Result<usize> {
             self.writes += 1;
-            self.gate.revoke(self.generation);
+            self.gate.revoke_reason_at(
+                self.generation,
+                0,
+                revocation::RevocationReason::ControlFailed,
+            );
             Ok(1)
         }
         fn flush(&mut self) -> io::Result<()> {

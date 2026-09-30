@@ -1,0 +1,30 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "bitaxe_runtime",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "bitaxe_runtime",
+    edition = "2021",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-safety:bitaxe_safety",
+        "//crates/bitaxe-asic:bitaxe_asic",
+        "//crates/bitaxe-config:bitaxe_config",
+        "//crates/bitaxe-stratum:bitaxe_stratum",
+    ],
+)
+
+rust_test(
+    name = "tests",
+    crate = ":bitaxe_runtime",
+)
+
+rust_test(
+    name = "actuation_tests",
+    srcs = ["tests/actuation.rs"],
+    edition = "2021",
+    deps = [":bitaxe_runtime", "//crates/bitaxe-stratum:bitaxe_stratum"],
+)
+
+filegroup(name = "compiler_inputs", srcs = glob(["**/*.rs", "**/*.toml", "**/*.bzl", "**/*.mjs", "**/BUILD.bazel"], allow_empty = True), visibility = ["//visibility:public"])

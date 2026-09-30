@@ -1,5 +1,5 @@
 load(":provenance.bzl", "fixture_provenance")
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 load("@aspect_rules_js//js:defs.bzl", "js_library")
 
 js_library(
@@ -112,3 +112,15 @@ js_library(
     ] + glob(["src/v2_serial/**/*.rs"]),
     visibility = ["//scripts:__pkg__"],
 )
+
+rust_library(
+    name = "fixture_oracle",
+    srcs = ["src/lib.rs", "src/functional.rs", "src/v2_serial/oracle.rs"],
+    crate_name = "bitaxe_stratum_v2_fixture",
+    edition = "2021",
+    deps = ["@crates//:sha2", "@crates//:thiserror"],
+    visibility = ["//visibility:public"],
+)
+rust_test(name = "fixture_oracle_tests", crate = ":fixture_oracle")
+
+filegroup(name = "compiler_inputs", srcs = glob(["**/*.rs", "**/*.toml", "**/*.bzl", "**/*.mjs", "**/BUILD.bazel"], allow_empty = True), visibility = ["//visibility:public"])

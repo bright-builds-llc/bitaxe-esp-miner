@@ -1,0 +1,12 @@
+[package]
+name = "bitaxe-runtime"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bitaxe-api = { path = "../bitaxe-api" }
+bitaxe-safety = { path = "../bitaxe-safety" }
+bitaxe-asic = { path = "../bitaxe-asic" }
+bitaxe-config = { path = "../bitaxe-config" }
+bitaxe-stratum = { path = "../bitaxe-stratum" }

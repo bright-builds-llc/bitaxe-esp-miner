@@ -1,6 +1,6 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u32)]
-pub(crate) enum RevocationReason {
+pub enum RevocationReason {
     NotRevoked = 0,
     HeartbeatTimeout = 1,
     LeaseOrBudgetExpired = 2,
@@ -10,7 +10,7 @@ pub(crate) enum RevocationReason {
     ControlFailed = 6,
 }
 impl RevocationReason {
-    pub(crate) const fn label(self) -> &'static str {
+    pub const fn label(self) -> &'static str {
         match self {
             Self::NotRevoked => "none",
             Self::HeartbeatTimeout => "heartbeat_timeout",

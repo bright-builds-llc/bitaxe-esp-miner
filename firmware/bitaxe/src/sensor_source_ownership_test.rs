@@ -259,9 +259,10 @@ fn every_runtime_i2c_capability_shares_the_sensor_publication_deadline() {
     assert!(I2C_BUS_SOURCE.contains("pub(crate) fn display<'bus, 'budget>"));
     assert!(I2C_BUS_SOURCE.contains("pub(super) fn sensors<'bus, 'budget>"));
     assert!(I2C_BUS_SOURCE.contains("pub(super) fn actuators<'bus, 'budget>"));
-    assert!(I2C_RETRY_SOURCE.contains("I2C_TRANSACTION_TIMEOUT_MS: u64 = 500"));
-    assert!(I2C_RETRY_SOURCE.contains("I2C_RETRY_COUNT: usize = 3"));
-    assert!(I2C_RETRY_SOURCE.contains("I2C_RETRY_DELAY_MS: u32 = 10"));
+    assert!(I2C_RETRY_SOURCE.contains("bitaxe_runtime::i2c_retry::*"));
+    assert_eq!(bitaxe_runtime::i2c_retry::I2C_TRANSACTION_TIMEOUT_MS, 500);
+    assert_eq!(bitaxe_runtime::i2c_retry::I2C_RETRY_COUNT, 3);
+    assert_eq!(bitaxe_runtime::i2c_retry::I2C_RETRY_DELAY_MS, 10);
     assert!(!I2C_BUS_SOURCE.contains("I2C_TRANSACTION_TIMEOUT_MS: u64 = 50"));
 }
 

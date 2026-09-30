@@ -33,6 +33,9 @@ use crate::safety_adapter::{
     SafetyActuationQueueOutcome, SafetyActuationRequestOutcome, Ultra205CoreVoltage,
 };
 
+mod clock;
+use clock::ProductionClock;
+
 const FAN_PROOF_TIMEOUT_MS: u64 = 3_000;
 const FAN_PROOF_POLL_MS: u64 = 50;
 const COOLING_PROOF_TIMEOUT_MS: u64 = 120_000;
@@ -178,12 +181,9 @@ impl Ultra205MiningActuationAdapter {
     }
 
     fn cancellable_delay(&self, duration_ms: u64) -> Result<(), MiningActuationAdapterError> {
-        crate::mining_actuation::wait_with_cancellation(
-            duration_ms,
-            crate::runtime_uptime::millis,
-            |milliseconds| thread::sleep(Duration::from_millis(milliseconds)),
-            || self.check_preparation_admission(),
-        )
+        bitaxe_runtime::clock::wait_with_clock(&mut ProductionClock, duration_ms, |_| {
+            self.check_preparation_admission()
+        })
     }
 
     fn request_preparation_voltage(

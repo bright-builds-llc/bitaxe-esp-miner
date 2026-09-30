@@ -1,0 +1,39 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "bitaxe_virtual_board",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "bitaxe_virtual_board",
+    edition = "2021",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@crates//:serde",
+        "@crates//:sha2",
+        "@crates//:thiserror",
+    ],
+)
+
+rust_test(name = "tests", crate = ":bitaxe_virtual_board")
+
+rust_test(
+    name = "models_tests",
+    srcs = ["tests/models.rs"],
+    edition = "2021",
+    deps = [":bitaxe_virtual_board", "//crates/bitaxe-safety:bitaxe_safety", "//crates/bitaxe-asic:bitaxe_asic", "@crates//:serde_json"],
+)
+
+rust_test(
+    name = "memory_tests",
+    srcs = ["tests/memory.rs"],
+    edition = "2021",
+    deps = [":bitaxe_virtual_board", "//crates/bitaxe-safety:bitaxe_safety", "//crates/bitaxe-asic:bitaxe_asic", "@crates//:serde_json"],
+)
+
+filegroup(name = "compiler_inputs", srcs = glob(["**/*.rs", "**/*.toml", "**/*.bzl", "**/*.mjs", "**/BUILD.bazel"], allow_empty = True), visibility = ["//visibility:public"])
+
+rust_test(
+    name = "asic_tests",
+    srcs = ["tests/asic.rs"],
+    edition = "2021",
+    deps = [":bitaxe_virtual_board", "//crates/bitaxe-asic:bitaxe_asic", "@crates//:serde_json"],
+)
