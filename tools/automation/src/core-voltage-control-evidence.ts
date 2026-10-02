@@ -41,6 +41,24 @@ const referencePaths = [
   "main/power/DS4432U.c",
   "main/power/vcore.c",
 ] as const;
+// The shared-runtime form delegates the ordered actuation plan and bounded wait
+// to `bitaxe-runtime`. The firmware module may then contain only this re-export,
+// because any local item would shadow the glob import.
+const actuationDelegation = "pub use bitaxe_runtime::mining_actuation::*;";
+const delegatedPaths = [
+  "crates/bitaxe-runtime/src/mining_actuation.rs",
+  "crates/bitaxe-runtime/src/clock.rs",
+  "firmware/bitaxe/src/mining_actuation_adapter/clock.rs",
+] as const;
+const delegatedFragments = new Map<string, readonly string[]>([
+  [delegatedPaths[1], [
+    "pub fn wait_with_clock<C: Clock, E>(",
+    "let deadline = clock.now_ms().saturating_add(duration_ms);\n    loop {\n        let now_ms = clock.now_ms();\n        check(now_ms)?;\n        let remaining = deadline.saturating_sub(now_ms);\n        if remaining == 0 {\n            return Ok(());\n        }\n        clock.sleep_ms(remaining.min(50));\n    }",
+  ]],
+  [delegatedPaths[2], [
+    "impl bitaxe_runtime::clock::Clock for ProductionClock {\n    fn now_ms(&self) -> u64 {\n        crate::runtime_uptime::millis()\n    }\n\n    fn sleep_ms(&mut self, duration_ms: u64) {\n        thread::sleep(Duration::from_millis(duration_ms));\n    }\n}",
+  ]],
+]);
 
 const sourceFragments = new Map<string, readonly string[]>([
   [unchangedPaths[0], [
@@ -196,22 +214,41 @@ function requireUniqueFragment(document: string, fragment: string): void {
   }
 }
 
-function requireVoltagePreparation(adapter: string, actuation: string): boolean {
+function requireDelegatingModule(document: string): void {
+  const code = document.split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !line.startsWith("//"));
+  if (code.length !== 1 || code[0] !== actuationDelegation) {
+    throw failure("evidence_invalid", "core-voltage-control actuation delegation is not exact");
+  }
+}
+
+function requireVoltagePreparation(adapter: string, actuation: string, delegated: boolean): boolean {
   const voltage = actuation.indexOf("PreparationStep::SetCoreVoltage(profile.core_voltage()),");
   const stabilization = actuation.indexOf("PreparationStep::WaitForCoreVoltageStabilization500Ms,");
   const enable = actuation.indexOf("PreparationStep::EnableAsic,");
   if (voltage < 0 || stabilization <= voltage || enable <= stabilization) {
     throw failure("evidence_invalid", "voltage stabilization must precede ASIC enable");
   }
-  // Historical snapshots retain their exact blocking form. The current form
-  // additionally proves the complete cancellable wait and generation guards;
-  // neither form bypasses the unchanged-module Git comparison below.
+  // Historical snapshots retain their exact blocking form. The cancellable
+  // forms additionally prove the complete wait and generation guards; the
+  // shared-runtime form proves its wait through the delegated clock sources.
+  // No form bypasses the unchanged-module Git comparison.
   const cancellable = adapter.includes("fn cancellable_delay(");
+  if (delegated && !cancellable) {
+    throw failure("evidence_invalid", "shared-runtime stabilization must be cancellable");
+  }
+  const cancellableWait = delegated
+    ? [
+      "mod clock;\nuse clock::ProductionClock;",
+      "bitaxe_runtime::clock::wait_with_clock(&mut ProductionClock, duration_ms, |_| {\n            self.check_preparation_admission()\n        })",
+    ]
+    : ["crate::mining_actuation::wait_with_cancellation(\n            duration_ms,\n            crate::runtime_uptime::millis,\n            |milliseconds| thread::sleep(Duration::from_millis(milliseconds)),\n            || self.check_preparation_admission(),\n        )"];
   const fragments = cancellable ? [
     "self.request_preparation_voltage(Self::core_voltage(voltage)?)",
     "SafetyActuationCommand::SetCoreVoltageForGeneration {\n                voltage,\n                permit: crate::production_mining_session::revocation::stamp(\n                    self.maybe_worker_generation,\n                ),\n            }",
     "PreparationStep::WaitForCoreVoltageStabilization500Ms => {\n                self.cancellable_delay(u64::from(CORE_VOLTAGE_STABILIZATION_MS))\n            }",
-    "crate::mining_actuation::wait_with_cancellation(\n            duration_ms,\n            crate::runtime_uptime::millis,\n            |milliseconds| thread::sleep(Duration::from_millis(milliseconds)),\n            || self.check_preparation_admission(),\n        )",
+    ...cancellableWait,
     "if !crate::production_mining_session::revocation::permits(self.maybe_worker_generation) {\n            return Err(MiningActuationAdapterError::WorkerGenerationRevoked);\n        }",
     "crate::asic_adapter::production::set_asic_power_enabled_guarded(\n                    true,\n                    self.maybe_worker_generation,\n                )",
   ] : [
@@ -220,7 +257,7 @@ function requireVoltagePreparation(adapter: string, actuation: string): boolean 
     "crate::asic_adapter::production::set_asic_power_enabled(true)",
   ];
   for (const fragment of fragments) requireUniqueFragment(adapter, fragment);
-  if (cancellable) {
+  if (cancellable && !delegated) {
     requireUniqueFragment(actuation, "let deadline = now_ms().saturating_add(duration_ms);");
     requireUniqueFragment(actuation, "loop {\n        check()?;\n        let remaining = deadline.saturating_sub(now_ms());\n        if remaining == 0 {\n            return Ok(());\n        }\n        sleep_ms(remaining.min(50));\n    }");
   }
@@ -264,6 +301,14 @@ function validateTaskAndPlan(
   }
 }
 
+function unchangedFragments(sourcePath: string, delegated: boolean): readonly string[] {
+  // A delegating firmware module is admitted by its exact re-export; its
+  // actuation fragments must then hold in the shared runtime source instead.
+  if (delegated && sourcePath === unchangedPaths[1]) return [];
+  if (sourcePath === delegatedPaths[0]) return sourceFragments.get(unchangedPaths[1]) ?? [];
+  return sourceFragments.get(sourcePath) ?? delegatedFragments.get(sourcePath) ?? [];
+}
+
 async function validateSourceCompatibility(
   processPort: ProcessPort,
   gitProgram: string,
@@ -271,23 +316,36 @@ async function validateSourceCompatibility(
   attemptSourceCommit: string,
   currentSourceCommit: string,
   referenceCommit: string,
-): Promise<void> {
-  const unchangedDocuments = new Map<string, string>();
-  for (const sourcePath of unchangedPaths) {
+): Promise<readonly string[]> {
+  const unchangedSource = async (sourcePath: string): Promise<string> => {
     await childText(processPort, gitProgram,
       ["diff", "--quiet", attemptSourceCommit, currentSourceCommit, "--", sourcePath],
       "core-voltage-control module compatibility");
-    const document = await childText(processPort, gitProgram,
+    return childText(processPort, gitProgram,
       ["show", `${currentSourceCommit}:${sourcePath}`], "core-voltage-control source admission");
-    unchangedDocuments.set(sourcePath, document);
-    for (const fragment of sourceFragments.get(sourcePath) ?? []) {
+  };
+  const unchangedDocuments = new Map<string, string>();
+  for (const sourcePath of unchangedPaths) {
+    unchangedDocuments.set(sourcePath, await unchangedSource(sourcePath));
+  }
+  const adapter = unchangedDocuments.get(unchangedPaths[2]);
+  const firmwareActuation = unchangedDocuments.get(unchangedPaths[1]);
+  if (adapter === undefined || firmwareActuation === undefined) throw failure("evidence_invalid", "voltage source pair is incomplete");
+  const delegated = firmwareActuation.includes(actuationDelegation);
+  let actuation = firmwareActuation;
+  if (delegated) {
+    requireDelegatingModule(firmwareActuation);
+    for (const sourcePath of delegatedPaths) {
+      unchangedDocuments.set(sourcePath, await unchangedSource(sourcePath));
+    }
+    actuation = unchangedDocuments.get(delegatedPaths[0]) ?? "";
+  }
+  for (const [sourcePath, document] of unchangedDocuments) {
+    for (const fragment of unchangedFragments(sourcePath, delegated)) {
       requireUniqueFragment(document, fragment);
     }
   }
-  const adapter = unchangedDocuments.get(unchangedPaths[2]);
-  const actuation = unchangedDocuments.get(unchangedPaths[1]);
-  if (adapter === undefined || actuation === undefined) throw failure("evidence_invalid", "voltage source pair is incomplete");
-  const generationRequired = requireVoltagePreparation(adapter, actuation);
+  const generationRequired = requireVoltagePreparation(adapter, actuation, delegated);
   for (const sourcePath of semanticPaths) {
     for (const commit of [attemptSourceCommit, currentSourceCommit]) {
       const document = await childText(processPort, gitProgram,
@@ -306,6 +364,7 @@ async function validateSourceCompatibility(
       requireUniqueFragment(document, fragment);
     }
   }
+  return delegated ? delegatedPaths : [];
 }
 
 export async function projectCoreVoltageControlEvidence(
@@ -360,12 +419,13 @@ export async function projectCoreVoltageControlEvidence(
   await childText(processPort, gitProgram,
     ["merge-base", "--is-ancestor", options.attemptSourceCommit, currentSourceCommit],
     "attempt source ancestry");
-  await validateSourceCompatibility(
+  const admittedDelegatedPaths = await validateSourceCompatibility(
     processPort, gitProgram, workspaceRoot, options.attemptSourceCommit,
     currentSourceCommit, referenceCommit,
   );
   const relevantPaths = [
     ...unchangedPaths,
+    ...admittedDelegatedPaths,
     ...semanticPaths,
     expectedSourceProjection,
     expectedPlan,

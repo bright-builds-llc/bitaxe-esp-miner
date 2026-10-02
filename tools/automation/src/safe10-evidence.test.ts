@@ -225,8 +225,9 @@ test("complete protected attempt publishes independently validated SAFE-10 evide
 
     // Assert
     assert.equal(evidence.prerequisites.fresh_observation_count, 5);
-    assert.equal(evidence.source.source_path_count, 23);
-    assert.equal(evidence.schema_version, "bitaxe-safe10-evidence-v2");
+    assert.equal(evidence.source.source_path_count, 25);
+    assert.equal(evidence.source.production_path_count, 15);
+    assert.equal(evidence.schema_version, "bitaxe-safe10-evidence-v3");
     const projection = path.join(value.root, value.options.projection);
     assert.equal((await stat(projection)).mode & 0o777, 0o644);
     assert.doesNotMatch(
@@ -248,7 +249,7 @@ test("checked-in SAFE-10 source inventory is complete", async () => {
   const inventory = await safe10CurrentInventory(root);
 
   // Assert
-  assert.equal(inventory.pathCount, 23);
+  assert.equal(inventory.pathCount, 25);
 });
 
 for (const [name, relative, before, after] of [
@@ -256,15 +257,18 @@ for (const [name, relative, before, after] of [
   ["freshness-call", "firmware/bitaxe/src/production_mining_session/readiness.rs", "observations.is_ultra_205_mining_safe_at(now())", "true"],
   ["never-prepared-only", "firmware/bitaxe/src/production_mining_session/readiness.rs", "!session.preparation_started", "session.preparation_started"],
   ["worker-only", "firmware/bitaxe/src/production_mining_session/readiness.rs", "self.maybe_bwg_session", "Some(ordinary_session)"],
-  ["freshness-conjunction", "firmware/bitaxe/src/production_mining_session/cooling_core.rs", "base_safe && (nonzero_rpm || never_prepared_worker)", "base_safe || (nonzero_rpm || never_prepared_worker)"],
-  ["preparation-exception", "firmware/bitaxe/src/production_mining_session/cooling_core.rs", "nonzero_rpm || never_prepared_worker", "nonzero_rpm || true"],
-  ["post-ack-time", "firmware/bitaxe/src/production_mining_session/cooling_core.rs", "candidate.acquired_at_ms > started_at_ms", "candidate.acquired_at_ms >= 0"],
-  ["same-boot", "firmware/bitaxe/src/production_mining_session/cooling_core.rs", "candidate.boot_session == baseline.boot_session", "true"],
-  ["advancing-sequence", "firmware/bitaxe/src/production_mining_session/cooling_core.rs", "candidate.sequence > baseline.sequence", "candidate.sequence >= baseline.sequence"],
+  ["freshness-conjunction", "crates/bitaxe-runtime/src/cooling.rs", "base_safe && (nonzero_rpm || never_prepared_worker)", "base_safe || (nonzero_rpm || never_prepared_worker)"],
+  ["preparation-exception", "crates/bitaxe-runtime/src/cooling.rs", "nonzero_rpm || never_prepared_worker", "nonzero_rpm || true"],
+  ["post-ack-time", "crates/bitaxe-runtime/src/cooling.rs", "candidate.acquired_at_ms > started_at_ms", "candidate.acquired_at_ms >= 0"],
+  ["same-boot", "crates/bitaxe-runtime/src/cooling.rs", "candidate.boot_session == baseline.boot_session", "true"],
+  ["advancing-sequence", "crates/bitaxe-runtime/src/cooling.rs", "candidate.sequence > baseline.sequence", "candidate.sequence >= baseline.sequence"],
   ["ack-time-recorded", "firmware/bitaxe/src/mining_actuation_adapter.rs", "Some(crate::runtime_uptime::millis());\n                        actuation_applied = true;", "Some(0);\n                        actuation_applied = true;"],
   ["ack-required", "firmware/bitaxe/src/mining_actuation_adapter.rs", "if actuation_applied\n                && observations", "if true\n                && observations"],
   ["preparation-nonzero", "firmware/bitaxe/src/mining_actuation_adapter.rs", "*sample.value() > 0", "*sample.value() >= 0"],
-  ["proof-before-power", "firmware/bitaxe/src/mining_actuation.rs", "PreparationStep::RequireFreshNonzeroFanRpm,\n        PreparationStep::SetCoreVoltage(profile.core_voltage()),", "PreparationStep::SetCoreVoltage(profile.core_voltage()),\n        PreparationStep::RequireFreshNonzeroFanRpm,"],
+  ["proof-before-power", "crates/bitaxe-runtime/src/mining_actuation.rs", "PreparationStep::RequireFreshNonzeroFanRpm,\n        PreparationStep::SetCoreVoltage(profile.core_voltage()),", "PreparationStep::SetCoreVoltage(profile.core_voltage()),\n        PreparationStep::RequireFreshNonzeroFanRpm,"],
+  ["shadowed-cooling", "firmware/bitaxe/src/production_mining_session/cooling_core.rs", "pub(crate) use bitaxe_runtime::cooling::*;", "pub(crate) use bitaxe_runtime::cooling::*;\npub(crate) fn preparation_safety(_: bool, _: bool, _: bool) -> bool { true }"],
+  ["shadowed-actuation", "firmware/bitaxe/src/mining_actuation.rs", "pub use bitaxe_runtime::mining_actuation::*;", "pub use bitaxe_runtime::mining_actuation::*;\npub const CORE_VOLTAGE_STABILIZATION_MS: u16 = 0;"],
+  ["local-cooling", "firmware/bitaxe/src/production_mining_session/cooling_core.rs", "pub(crate) use bitaxe_runtime::cooling::*;", "pub(crate) use local_cooling::*;"],
 ] as const) {
   test(`SAFE-10 source admission rejects weakened ${name}`, async () => {
     // Arrange
@@ -315,8 +319,10 @@ test("SAFE-10 hashes every newly reachable fan preparation source", async () => 
   const added = [
     "firmware/bitaxe/src/production_mining_session/readiness.rs",
     "firmware/bitaxe/src/production_mining_session/cooling_core.rs",
+    "crates/bitaxe-runtime/src/cooling.rs",
     "firmware/bitaxe/src/mining_actuation_adapter.rs",
     "firmware/bitaxe/src/mining_actuation.rs",
+    "crates/bitaxe-runtime/src/mining_actuation.rs",
   ];
   try {
     const before = await safe10CurrentInventory(value.root);

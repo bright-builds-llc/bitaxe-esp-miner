@@ -235,6 +235,7 @@ js_library(
     ],
     deps = [
         "//crates/bitaxe-api:safe10_evidence_source",
+        "//crates/bitaxe-runtime:safe10_evidence_sources",
         "//crates/bitaxe-automation-contracts:safe10_validator_sources",
         "//crates/bitaxe-safety:safe10_evidence_source",
         "//crates/bitaxe-stratum:safe10_evidence_sources",

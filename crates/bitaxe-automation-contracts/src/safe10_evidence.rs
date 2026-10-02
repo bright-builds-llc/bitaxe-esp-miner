@@ -2,7 +2,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    AutomationCommand, WorkflowIdentity, LEGACY_SAFE10_EVIDENCE_SCHEMA, SAFE10_EVIDENCE_SCHEMA,
+    AutomationCommand, WorkflowIdentity, LEGACY_SAFE10_EVIDENCE_SCHEMA,
+    PRE_RUNTIME_SAFE10_EVIDENCE_SCHEMA, SAFE10_EVIDENCE_SCHEMA,
 };
 
 #[derive(Debug, Clone, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -129,7 +130,8 @@ impl Safe10Evidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         let (source_paths, production_paths) = match self.schema_version.as_str() {
             LEGACY_SAFE10_EVIDENCE_SCHEMA => (19, 9),
-            SAFE10_EVIDENCE_SCHEMA => (23, 13),
+            PRE_RUNTIME_SAFE10_EVIDENCE_SCHEMA => (23, 13),
+            SAFE10_EVIDENCE_SCHEMA => (25, 15),
             _ => return Err("SAFE-10 identity is invalid"),
         };
         if self.board != 205
@@ -230,8 +232,8 @@ mod tests {
                 source_semantics_current: true,
                 reference_semantics_current: true,
                 attempt_source_compatible: true,
-                source_path_count: 23,
-                production_path_count: 13,
+                source_path_count: 25,
+                production_path_count: 15,
                 reference_path_count: 2,
             },
             prerequisites: Safe10PrerequisiteEvidence {
@@ -336,10 +338,10 @@ mod tests {
         );
     }
     #[test]
-    fn obsolete_nineteen_path_inventory_is_rejected() {
+    fn obsolete_twenty_three_path_inventory_is_rejected() {
         // Arrange
         let mut evidence = evidence();
-        evidence.source.source_path_count = 19;
+        evidence.source.source_path_count = 23;
         // Act / Assert
         assert_eq!(
             evidence.validate(),
@@ -347,10 +349,10 @@ mod tests {
         );
     }
     #[test]
-    fn obsolete_nine_production_paths_are_rejected() {
+    fn obsolete_thirteen_production_paths_are_rejected() {
         // Arrange
         let mut evidence = evidence();
-        evidence.source.production_path_count = 9;
+        evidence.source.production_path_count = 13;
         // Act / Assert
         assert_eq!(
             evidence.validate(),
@@ -367,14 +369,29 @@ mod tests {
         // Act / Assert
         assert_eq!(evidence.validate(), Ok(()));
     }
+    #[test]
+    fn historical_pre_runtime_v2_inventory_remains_valid() {
+        // Arrange
+        let mut evidence = evidence();
+        evidence.schema_version = PRE_RUNTIME_SAFE10_EVIDENCE_SCHEMA.to_owned();
+        evidence.source.source_path_count = 23;
+        evidence.source.production_path_count = 13;
+        // Act / Assert
+        assert_eq!(evidence.validate(), Ok(()));
+    }
 
     #[test]
     fn schema_and_inventory_versions_cannot_be_mixed() {
         for (schema, total, production) in [
             (LEGACY_SAFE10_EVIDENCE_SCHEMA, 23, 13),
             (LEGACY_SAFE10_EVIDENCE_SCHEMA, 19, 13),
+            (LEGACY_SAFE10_EVIDENCE_SCHEMA, 25, 15),
+            (PRE_RUNTIME_SAFE10_EVIDENCE_SCHEMA, 25, 15),
+            (PRE_RUNTIME_SAFE10_EVIDENCE_SCHEMA, 19, 9),
+            (PRE_RUNTIME_SAFE10_EVIDENCE_SCHEMA, 23, 15),
             (SAFE10_EVIDENCE_SCHEMA, 19, 9),
-            (SAFE10_EVIDENCE_SCHEMA, 23, 9),
+            (SAFE10_EVIDENCE_SCHEMA, 23, 13),
+            (SAFE10_EVIDENCE_SCHEMA, 25, 13),
         ] {
             // Arrange
             let mut evidence = evidence();

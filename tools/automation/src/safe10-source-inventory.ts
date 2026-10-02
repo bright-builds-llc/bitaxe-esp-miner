@@ -9,9 +9,11 @@ export const safe10ProductionFragments = new Map<string, readonly string[]>([
   ["crates/bitaxe-stratum/src/v1/production_session/runtime.rs", ["pub fn snapshot(&self) -> ProductionSessionSnapshot"]],
   ["firmware/bitaxe/src/production_mining_session.rs", ["mod readiness;", "pub(crate) mod cooling_core;"]],
   ["firmware/bitaxe/src/production_mining_session/readiness.rs", ["let safety_prerequisites_fresh = cooling_core::preparation_safety(\n            observations.is_ultra_205_mining_safe_at(now()),\n            observations\n                .fan_rpm\n                .maybe_last_good()\n                .is_some_and(|sample| *sample.value() > 0),\n            self.maybe_bwg_session\n                .as_ref()\n                .is_some_and(|session| !session.preparation_started),\n        );"]],
-  ["firmware/bitaxe/src/production_mining_session/cooling_core.rs", ["base_safe && (nonzero_rpm || never_prepared_worker)", "candidate.acquired_at_ms > started_at_ms\n        && maybe_baseline.is_none_or(|baseline| {\n            candidate.boot_session == baseline.boot_session\n                && candidate.sequence > baseline.sequence\n                && candidate.acquired_at_ms > baseline.acquired_at_ms"]],
+  ["firmware/bitaxe/src/production_mining_session/cooling_core.rs", ["pub(crate) use bitaxe_runtime::cooling::*;"]],
+  ["crates/bitaxe-runtime/src/cooling.rs", ["base_safe && (nonzero_rpm || never_prepared_worker)", "candidate.acquired_at_ms > started_at_ms\n        && maybe_baseline.is_none_or(|baseline| {\n            candidate.boot_session == baseline.boot_session\n                && candidate.sequence > baseline.sequence\n                && candidate.acquired_at_ms > baseline.acquired_at_ms"]],
   ["firmware/bitaxe/src/mining_actuation_adapter.rs", ["self.maybe_fan_command_started_at_ms =\n                            Some(crate::runtime_uptime::millis());\n                        actuation_applied = true;", "if actuation_applied\n                && observations.is_ultra_205_mining_safe_at(MonotonicMillis::new(", "*sample.value() > 0\n                        && self.fan_sample_is_post_command", "post_command_fan(candidate, self.maybe_fan_command_baseline, started_at_ms)"]],
-  ["firmware/bitaxe/src/mining_actuation.rs", ["PreparationStep::RequireFreshSafetyObservations,\n        PreparationStep::SetFanDutyTo100Percent,\n        PreparationStep::RequireFreshNonzeroFanRpm,\n        PreparationStep::SetCoreVoltage(profile.core_voltage()),"]],
+  ["firmware/bitaxe/src/mining_actuation.rs", ["pub use bitaxe_runtime::mining_actuation::*;"]],
+  ["crates/bitaxe-runtime/src/mining_actuation.rs", ["PreparationStep::RequireFreshSafetyObservations,\n        PreparationStep::SetFanDutyTo100Percent,\n        PreparationStep::RequireFreshNonzeroFanRpm,\n        PreparationStep::SetCoreVoltage(profile.core_voltage()),"]],
   ["firmware/bitaxe/src/production_mining_session/readiness_trace.rs", ["safety_sample_fresh: readiness.safety_prerequisites_fresh"]],
   ["tools/flash/src/campaign/markers.rs", ["pub(super) observation_freshness: ObservationFreshnessMarker"]],
   ["tools/flash/src/campaign/evidence.rs", ["observation_freshness: maybe_terminal.map"]],
@@ -34,11 +36,28 @@ export const safe10ReferenceFragments = new Map<string, readonly string[]>([
   ["reference/esp-miner/main/tasks/power_management_task.c", ["void POWER_MANAGEMENT_task(void * pvParameters)"]],
 ]);
 
+// These firmware modules delegate to `bitaxe-runtime`. Each may contain only its
+// re-export, because any local item would shadow the glob import.
+export const safe10DelegatingModules = new Map<string, string>([
+  ["firmware/bitaxe/src/production_mining_session/cooling_core.rs", "pub(crate) use bitaxe_runtime::cooling::*;"],
+  ["firmware/bitaxe/src/mining_actuation.rs", "pub use bitaxe_runtime::mining_actuation::*;"],
+]);
+
 function verifyFragments(document: string, fragments: readonly string[]): void {
   for (const fragment of fragments) {
     if (document.split(fragment).length !== 2) {
       throw new Error("SAFE-10 source semantics are invalid");
     }
+  }
+}
+
+function verifyDelegation(document: string, maybeDelegation: string | undefined): void {
+  if (maybeDelegation === undefined) return;
+  const code = document.split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !line.startsWith("//"));
+  if (code.length !== 1 || code[0] !== maybeDelegation) {
+    throw new Error("SAFE-10 source semantics are invalid");
   }
 }
 
@@ -56,6 +75,7 @@ export async function safe10CurrentInventory(workspaceRoot: string): Promise<{
   ]) {
     const document = await readFile(path.join(workspaceRoot, relative));
     verifyFragments(document.toString("utf8"), fragments);
+    verifyDelegation(document.toString("utf8"), safe10DelegatingModules.get(relative));
     digest.update(relative).update("\0").update(document).update("\0");
     if (safe10ProductionFragments.has(relative)) {
       productionDigest.update(relative).update("\0").update(document).update("\0");

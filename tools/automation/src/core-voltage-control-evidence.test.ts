@@ -200,6 +200,7 @@ function fakePort(options: {
   readonly launchFailure?: boolean;
   readonly productionAdapterSource?: string;
   readonly productionSources?: ReadonlyMap<string, string>;
+  readonly driftPaths?: ReadonlySet<string>;
 } = {}): ProcessPort {
   return createFakeProcessPort(async (spec) => {
     if (options.launchFailure) throw new Error("launch failed");
@@ -209,7 +210,8 @@ function fakePort(options: {
     if (spec.args[0] === "rev-parse") return ok(`${currentCommit}\n`);
     if (spec.args[0] === "-C" && spec.args[2] === "rev-parse") return ok(`${referenceCommit}\n`);
     if (spec.args[0] === "status") return ok(options.dirty ? " M ds4432u.rs\n" : "");
-    if (spec.args[0] === "diff" && options.sourceDrift) {
+    if (spec.args[0] === "diff"
+      && (options.sourceDrift || options.driftPaths?.has(spec.args[5] ?? "") === true)) {
       return { exitCode: 1, stdout: "", stderr: "", timedOut: false };
     }
     const target = spec.args[0] === "-C" ? spec.args[3] ?? "" : spec.args[1] ?? "";
@@ -268,8 +270,15 @@ test("accepted voltage transaction emits only closed row evidence", async () => 
     /hostname|origin|usbmodem|ssid|password|private\/|scratch\//iu);
 });
 
+const firmwareActuation = "firmware/bitaxe/src/mining_actuation.rs";
+const firmwareAdapter = "firmware/bitaxe/src/mining_actuation_adapter.rs";
+const firmwareClock = "firmware/bitaxe/src/mining_actuation_adapter/clock.rs";
+const firmwareSafety = "firmware/bitaxe/src/safety_adapter.rs";
+const runtimeActuation = "crates/bitaxe-runtime/src/mining_actuation.rs";
+const runtimeClock = "crates/bitaxe-runtime/src/clock.rs";
+
 async function currentVoltageSources(): Promise<Map<string, string>> {
-  const paths = ["firmware/bitaxe/src/mining_actuation.rs", "firmware/bitaxe/src/mining_actuation_adapter.rs", "firmware/bitaxe/src/safety_adapter.rs"];
+  const paths = [firmwareActuation, firmwareAdapter, firmwareClock, firmwareSafety, runtimeActuation, runtimeClock];
   return new Map(await Promise.all(paths.map(async relative => [relative, await repositorySource(relative)] as const)));
 }
 
@@ -286,19 +295,38 @@ test("production adapter admits the source-shaped stabilization use", async () =
   assert.equal(evidence.voltage_control.stabilization_before_asic_enable, true);
 });
 
-for (const [name, relative, before, after] of [
-  ["shortened-stabilization", "mining_actuation_adapter.rs", "self.cancellable_delay(u64::from(CORE_VOLTAGE_STABILIZATION_MS))", "self.cancellable_delay(0)"],
-  ["bypassed-cancellation", "mining_actuation_adapter.rs", "|| self.check_preparation_admission(),", "|| Ok(()),"],
-  ["unguarded-enable", "mining_actuation_adapter.rs", "set_asic_power_enabled_guarded(", "set_asic_power_enabled("],
-  ["terminal-voltage-off", "mining_actuation.rs", "        SafeShutdownStep::DisableCoreVoltage,", "        SafeShutdownStep::StopDispatch,"],
-  ["bypassed-delay", "mining_actuation.rs", "sleep_ms(remaining.min(50));", "return Ok(());"],
-  ["unguarded-voltage", "safety_adapter.rs", "if !crate::production_mining_session::revocation::permits_work(permit)", "if false"],
+for (const relative of [runtimeActuation, runtimeClock, firmwareClock]) {
+  test(`production stabilization rejects delegated drift in ${relative}`, async () => {
+    // Arrange
+    const value = await fixture(`delegated-drift-${relative.replaceAll("/", "-")}`);
+    const productionSources = await currentVoltageSources();
+
+    // Act
+    const error = await captureError(projectFixture(value,
+      fakePort({ productionSources, driftPaths: new Set([relative]) })));
+
+    // Assert
+    assert.equal(error.category, "evidence_invalid");
+    await assert.rejects(readFile(value.projection), { code: "ENOENT" });
+  });
+}
+
+for (const [name, key, before, after] of [
+  ["shortened-stabilization", firmwareAdapter, "self.cancellable_delay(u64::from(CORE_VOLTAGE_STABILIZATION_MS))", "self.cancellable_delay(0)"],
+  ["bypassed-cancellation", firmwareAdapter, "duration_ms, |_| {\n            self.check_preparation_admission()", "duration_ms, |_| {\n            Ok(())"],
+  ["unguarded-enable", firmwareAdapter, "set_asic_power_enabled_guarded(", "set_asic_power_enabled("],
+  ["terminal-voltage-off", runtimeActuation, "        SafeShutdownStep::DisableCoreVoltage,", "        SafeShutdownStep::StopDispatch,"],
+  ["bypassed-delay", runtimeClock, "clock.sleep_ms(remaining.min(50));", "return Ok(());"],
+  ["unchecked-wait", runtimeClock, "check(now_ms)?;", "let _ = now_ms;"],
+  ["frozen-clock", firmwareClock, "crate::runtime_uptime::millis()", "u64::MAX"],
+  ["skipped-sleep", firmwareClock, "thread::sleep(Duration::from_millis(duration_ms));", "let _ = duration_ms;"],
+  ["shadowed-delegation", firmwareActuation, "pub use bitaxe_runtime::mining_actuation::*;", "pub use bitaxe_runtime::mining_actuation::*;\npub const CORE_VOLTAGE_STABILIZATION_MS: u16 = 0;"],
+  ["unguarded-voltage", firmwareSafety, "if !crate::production_mining_session::revocation::permits_work(permit)", "if false"],
 ] as const) {
   test(`production stabilization rejects ${name}`, async () => {
     // Arrange
     const value = await fixture(name);
     const productionSources = await currentVoltageSources();
-    const key = `firmware/bitaxe/src/${relative}`;
     const source = productionSources.get(key);
     assert.ok(source !== undefined);
     assert.ok(source.includes(before));

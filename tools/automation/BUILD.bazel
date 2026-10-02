@@ -505,6 +505,7 @@ js_test(
         "//crates/bitaxe-safety:emc2101_thermal_sources",
         "//scripts:repository_guard_sources",
         "//firmware/bitaxe:core_voltage_control_production_source",
+        "//crates/bitaxe-runtime:core_voltage_control_production_sources",
         "//firmware/bitaxe:display_behavior_evidence_sources",
         "//firmware/bitaxe:screen_flow_evidence_sources",
         "//firmware/bitaxe:adc_observation_sources",

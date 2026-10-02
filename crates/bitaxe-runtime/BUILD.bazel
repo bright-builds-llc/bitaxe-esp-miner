@@ -1,4 +1,5 @@
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 
 rust_library(
     name = "bitaxe_runtime",
@@ -28,3 +29,21 @@ rust_test(
 )
 
 filegroup(name = "compiler_inputs", srcs = glob(["**/*.rs", "**/*.toml", "**/*.bzl", "**/*.mjs", "**/BUILD.bazel"], allow_empty = True), visibility = ["//visibility:public"])
+
+js_library(
+    name = "core_voltage_control_production_sources",
+    srcs = [
+        "src/clock.rs",
+        "src/mining_actuation.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
+    name = "safe10_evidence_sources",
+    srcs = [
+        "src/cooling.rs",
+        "src/mining_actuation.rs",
+    ],
+    visibility = ["//:__pkg__"],
+)

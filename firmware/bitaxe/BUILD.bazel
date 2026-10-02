@@ -173,7 +173,12 @@ js_library(
 
 js_library(
     name = "core_voltage_control_production_source",
-    srcs = ["src/mining_actuation_adapter.rs", "src/mining_actuation.rs", "src/safety_adapter.rs"],
+    srcs = [
+        "src/mining_actuation_adapter.rs",
+        "src/mining_actuation_adapter/clock.rs",
+        "src/mining_actuation.rs",
+        "src/safety_adapter.rs",
+    ],
     visibility = ["//tools/automation:__pkg__"],
 )
 
