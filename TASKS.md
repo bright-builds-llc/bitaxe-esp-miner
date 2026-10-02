@@ -6922,7 +6922,7 @@ Completion lifetime correction | 2026-10-02 | Source and build artifacts only
 - [x] Use fallibly reserved owner storage and the existing production completion
   seam to reduce result-construction scratch; retain unconditional post-owner
   release observation on every error. Add a meaningful reservation failure test.
-- [ ] Verify real host handshake/frame regressions, independent trust rejection,
+- [x] Verify real host handshake/frame regressions, independent trust rejection,
   exact target native paths through construction, ECDH/signing, valid certificate
   verification and nested crypto, serialization and cleanup. Report unresolved
   paths explicitly; never increase stack, heap, authority or safety limits.
@@ -6960,13 +6960,32 @@ Responder frame correction | 2026-10-02 | Dev builds only, never executed
   descent, including a named certificate-verification path, encrypted frame and
   outcome emission. Indirect, outside-family, cycle and drop-glue edges remain
   reported, not bounded; `complete_callgraph_bound` stays false.
-- [ ] Build a clean package from the pushed source and bind a v2 receipt to it.
+- [x] Build a clean package from the pushed source and bind a v2 receipt to it.
 
 Dev measurement (`build011-step-in-place`, dirty source, not admitted): all eight
 v2 paths fit. Tightest static headroom: responder ECDH/sign 13,552 bytes (784),
 completion and certificate verification 12,288 bytes (2,048). Static descents are
 lower bounds; only a separately published checkpoint-only run can measure runtime
 margin. Gates stay disabled.
+
+Clean v2 receipt | 2026-10-02: source `7b2fe9e6` (clean), compiled source
+`88ae2a06275ec63a50663526ca1092f5423a29763a67d6c11ebebf58a2340cbf`, virtual ELF
+`73b3f2ccded8958dc47ecf7325c70389a3bce5546a13231f523b470ef49f3dec`, SDK
+configuration `10f5335da267cef5bdcd383671ca20a7d41b13072b96cca00aed04a24ded7bda`,
+auditor `ce7fd5da2b31e05cdbad163fedd617e46277bca04bb34bc14ae803a740002385`,
+receipt `b01492292e8355218a6b7236fd82a76b1d82945f11b22eeae51c04cf45515383`.
+All eight paths fit, with figures identical to the dev measurement. Read-only
+`admitNoisePackage` recomputes and accepts the native proof. This satisfies the
+static native resource admission only. Drop glue, indirect and outside-family
+edges remain unbounded, and runtime margin, heap integrity and release are
+unmeasured. No emulator, debugger or hardware effect was run. The receipt lives
+under ignored `scratch/virtual-noise-diagnostic/build012-clean-split`.
+
+Next: item 4 may now publish a separate checkpoint-only full-boundary contract
+for this exact package. It needs full-probe checkpoint telemetry, a one-use claim,
+a fresh protected root and an explicit runtime-margin and heap verdict before any
+effect gate is enabled. Until then, full qualification stays false and
+accepted-share stays unresolved. Do not archive.
 
 Verification: ordered Cargo format/Clippy/build/tests,21 affected Bazel targets,
 55 model tests,19 encrypted-profile tests,9 scenario tests, compiler-closure

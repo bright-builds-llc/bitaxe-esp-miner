@@ -114,3 +114,9 @@ certificate-verification descent. Indirect, outside-family, cyclic and drop-glue
 edges remain unbounded and are reported. A passing static receipt is necessary
 but not sufficient; runtime margin and heap integrity still need a separately
 published checkpoint-only run.
+
+A clean build of source `7b2fe9e6` produced virtual ELF
+`73b3f2ccded8958dc47ecf7325c70389a3bce5546a13231f523b470ef49f3dec`. Its bound v2
+receipt reproduces these figures exactly, and read-only package admission accepts
+it. That is static admission only: nothing was executed, and runtime margin
+remains unproven.
