@@ -73,7 +73,11 @@ test("DNS parser accepts one wildcard A answer with the pinned TTL", () => {
   });
 });
 
-test("CoreWLAN helper real child validates a protected fixture without network effects", async () => {
+// The real helper imports CoreWLAN and runs through `/usr/bin/xcrun swift`,
+// which exist only on macOS, the sole platform the production client admits.
+test("CoreWLAN helper real child validates a protected fixture without network effects", {
+  skip: process.platform === "darwin" ? false : "requires macOS xcrun and CoreWLAN",
+}, async () => {
   // Arrange
   const privateRoot = await testPrivateRoot("real-child");
   const intentPath = path.join(privateRoot, "intent.private.json");

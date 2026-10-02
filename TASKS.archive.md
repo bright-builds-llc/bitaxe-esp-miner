@@ -17995,3 +17995,35 @@ re-projection against the pre-refactor attempt commit stays fail-closed
 because the delegated sources do not exist there. That is intended: the
 refactor cannot inherit earlier hardware evidence. Checked-in evidence is
 unchanged.
+
+### task-automation-corewlan-test-platform-gate | 2026-10-02 22:40 | Skip the real CoreWLAN helper test off macOS
+
+- [x] Gate the real-child CoreWLAN helper test in
+      `tools/automation/src/provisioning-client.test.ts` to macOS, with a
+      reason naming the `xcrun` and CoreWLAN requirement. This follows the
+      existing `process.platform !== "darwin"` gates in the command-effects
+      tests.
+- [x] Run `bazel test //tools/automation:automation_test`, Bright Builds and
+      diff checks.
+
+Authorization: repository test, task-record, commit and push work only. No
+helper, production, hardware, network or evidence change.
+
+Rationale: the helper imports CoreWLAN and runs through `/usr/bin/xcrun
+swift`, and the production client admits only `darwin`. On Linux the test
+failed with `spawn /usr/bin/xcrun ENOENT`; it now reports as skipped. macOS
+keeps the real-helper coverage. Making the helper itself portable
+(`#if canImport(CoreWLAN)` plus a Linux Swift toolchain) was considered and
+deferred, because it would trade the macOS dependency for a host Swift
+installation.
+
+Verification | 2026-10-02: `bazel test //tools/automation:automation_test`
+passed on Linux, with 525 passed, 0 failed and 5 skipped. The skips are the
+four existing macOS-gated command-effects tests and this test, reported as
+"requires macOS xcrun and CoreWLAN". The pinned bats archives were supplied
+through `--distdir`, as in the previous task. Bright Builds and
+`git diff --check` passed.
+
+Completion review: Linux runs now report the macOS-only helper test as
+skipped instead of failed, and nothing else changed. Residual risk: the real
+helper is exercised only on macOS hosts.
