@@ -6511,6 +6511,34 @@ Authorization: evidence/software review now; no hardware merely from dependency
 edits. Any missing smoke requires its own published bounds. No parity transition.
 Verification: Pending. Completion review: Pending.
 
+### task-device-noise-worker-stack | 2026-10-02 | Fit device Noise completion and recheck the composed boundary
+
+Status: Active. Offline device analysis found Noise completion over the transport
+worker's stack margin; no device effect has run under this task.
+Objective: make the device's Noise handshake fit its worker stack with the
+unchanged 2,048-byte margin, correct the same lifetime defect in the composed
+virtual Start path, and verify both before any hardware run.
+Evidence: [device worker stack analysis](docs/research/20261002-device-noise-worker-stack.md).
+
+Owner authorization | 2026-10-02: the owner authorized continuing toward
+completion of the intended task, including changes that affect device firmware,
+and running those changes. Each device run still requires a complete
+task-scoped contract under the Effectful Hardware Task Gate and AGENTS.md.
+
+- [x] Build the clean device image and measure every device Noise path with the
+  auditor-v2 method. Share completion needs 11,424 bytes against a 10,240-byte
+  budget on the 12 KiB `stratum-primary`/`stratum-fallback` worker.
+- [ ] Split the composed virtual `Exchange::new`/`run_exchange` lifetimes as in
+  the probe. Measure the composed Start path, publish a one-use checkpoint-only
+  healthy-lifecycle recheck, and run it.
+- [ ] Choose the device fix from internal-heap evidence: worker stack size,
+  stack placement or completion-frame reduction. Add a compile-time stack
+  contract and a native audit regression; never weaken safety limits.
+- [ ] Validate the device change in host tests, the native audit and the virtual
+  board before proposing a hardware contract.
+- [ ] Publish a task-scoped hardware contract only when its dependencies hold,
+  then run it under the attempt policy and record the outcome.
+
 ### task-ultra205-virtual-board-validation | 2026-09-30 | Full functional virtual Ultra 205 and pre-flash validation
 
 Status: Verified software milestone; full qualification blocked by corrected-target
