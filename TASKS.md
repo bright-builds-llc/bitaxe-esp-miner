@@ -6944,6 +6944,30 @@ local Markdown formatter is installed; none was added. Host behavior only: the
 corrected target's native resource paths remain unaudited, so items 3 and 4 stay
 open and the development build under `build007-lifetime` is not admitted.
 
+Responder frame correction | 2026-10-02 | Dev builds only, never executed
+
+- [x] Measure the `85999542` correction with the longest resolved crypto-family
+  descent, calibrated against campaign002 cutoff110 (static ECDH 14,272 bytes vs
+  runtime ~14,088 used). Completion with certificate verification fell from
+  16,160 to 12,160 bytes, but responder ECDH/sign rose to 15,104 bytes, over the
+  unchanged 14,336-byte budget: the first correction moved preparation over margin.
+- [x] Split preparation into sibling non-inlined frames: `prepare_initiator`,
+  `respond`, `construct_responder` and `step_responder`, consuming the act-two
+  result in place. The responder is already boxed upstream; no new allocation.
+  Phase order, seeds, trust and fault behavior are unchanged.
+- [x] Replace the full-probe native auditor with v2: required paths follow the
+  corrected helpers and extend each crypto boundary by its longest resolved
+  descent, including a named certificate-verification path, encrypted frame and
+  outcome emission. Indirect, outside-family, cycle and drop-glue edges remain
+  reported, not bounded; `complete_callgraph_bound` stays false.
+- [ ] Build a clean package from the pushed source and bind a v2 receipt to it.
+
+Dev measurement (`build011-step-in-place`, dirty source, not admitted): all eight
+v2 paths fit. Tightest static headroom: responder ECDH/sign 13,552 bytes (784),
+completion and certificate verification 12,288 bytes (2,048). Static descents are
+lower bounds; only a separately published checkpoint-only run can measure runtime
+margin. Gates stay disabled.
+
 Verification: ordered Cargo format/Clippy/build/tests,21 affected Bazel targets,
 55 model tests,19 encrypted-profile tests,9 scenario tests, compiler-closure
 stale-source/build regressions, process/listener and evidence regressions, five

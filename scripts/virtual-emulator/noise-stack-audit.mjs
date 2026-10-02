@@ -106,14 +106,63 @@ export function measureNoisePath(frames, names) {
   return results.reduce((largest, result) => result.frame_bytes > largest.frame_bytes ? result : largest);
 }
 
+const CRYPTO_FAMILY = /^(?:noise_sv2::|bitaxe_stratum::v2::noise::|secp256k1::|rustsecp256k1_v0_9_2_|sha2::|hmac::|chacha20poly1305::|chacha20::|poly1305::)/;
+const frameSum = (frames, path) => path.reduce((sum, address) => sum + frames.byAddress.get(address).bytes, 0);
+
+/** Longest resolved crypto-family path, retaining external-edge coverage gaps. */
+export function nestedCryptoPath(frames, boundaryName) {
+  const starts = frames.byName.get(boundaryName);
+  if (!starts) throw Error('noise_crypto_boundary_missing');
+  const memo = new Map(), cycles = new Set(), gaps = new Set();
+  function walk(address, active = new Set()) {
+    if (active.has(address)) { cycles.add(address); return []; }
+    if (memo.has(address)) return memo.get(address);
+    const frame = frames.byAddress.get(address);
+    if (!frame || frame.bytes === null) throw Error('noise_crypto_entry_missing');
+    let best = [address];
+    const nextActive = new Set(active).add(address);
+    for (const target of frame.calls) {
+      const child = frames.byAddress.get(target);
+      if (!child || !CRYPTO_FAMILY.test(child.name)) { gaps.add(target); continue; }
+      const candidate = [address, ...walk(target, nextActive)];
+      if (frameSum(frames, candidate) > frameSum(frames, best)) best = candidate;
+    }
+    memo.set(address, best); return best;
+  }
+  const largest = [...starts].map(address => walk(address))
+    .reduce((best, path) => frameSum(frames, path) > frameSum(frames, best) ? path : best);
+  return { names: largest.map(address => frames.byAddress.get(address).name),
+    cycle_count: cycles.size, outside_crypto_family_edges: gaps.size, complete_callgraph_bound: false };
+}
+
 const PREFIX = ['bitaxe_virtual_firmware::main', 'bitaxe_virtual_firmware::guest::run',
   'bitaxe_virtual_firmware::noise_probe::run_and_emit', 'bitaxe_simulation::noise_probe::run',
   'bitaxe_simulation::noise_probe::handshake_and_frame'];
+const INITIATOR = [...PREFIX, 'bitaxe_simulation::noise_probe::prepare_initiator'];
+const RESPONDER = [...PREFIX, 'bitaxe_simulation::noise_probe::respond'];
+const COMPLETION = [...PREFIX, 'bitaxe_stratum::v2::noise::completion::<impl bitaxe_stratum::v2::noise::NoiseInitiator>::complete_diagnostic_into'];
+// Each crypto boundary extends its caller chain by the longest resolved crypto-family descent.
 const REQUIRED_PATHS = [
-  { id: 'completion', names: [...PREFIX, 'bitaxe_stratum::v2::noise::NoiseInitiator::complete_diagnostic',
-    'noise_sv2::initiator::Initiator::step_2_with_now', 'noise_sv2::handshake::HandshakeOp::mix_hash'] },
-  { id: 'encrypted_frame', names: [...PREFIX, 'bitaxe_simulation::noise_probe::frame_round_trip'] },
+  { id: 'initiator_constructor', names: INITIATOR, crypto: 'noise_sv2::initiator::Initiator::new_with_rng' },
+  { id: 'act_one', names: INITIATOR, crypto: 'bitaxe_stratum::v2::noise::NoiseInitiator::act_one' },
+  { id: 'responder_constructor', names: [...RESPONDER, 'bitaxe_simulation::noise_probe::construct_responder'],
+    crypto: 'noise_sv2::responder::Responder::from_authority_kp_with_rng' },
+  { id: 'responder_ecdh_and_sign', names: [...RESPONDER, 'bitaxe_simulation::noise_probe::step_responder'],
+    crypto: 'noise_sv2::responder::Responder::step_1_with_now_rng' },
+  { id: 'completion', names: COMPLETION, crypto: 'noise_sv2::initiator::Initiator::step_2_with_now' },
+  // The valid certificate branch was previously omitted; it must be bounded by name.
+  { id: 'certificate_verification', names: [...COMPLETION, 'noise_sv2::initiator::Initiator::step_2_with_now'],
+    crypto: 'rustsecp256k1_v0_9_2_schnorrsig_verify' },
+  { id: 'encrypted_frame', names: PREFIX, crypto: 'bitaxe_simulation::noise_probe::frame_round_trip' },
+  { id: 'outcome_emission', names: [...PREFIX.slice(0, 3), 'bitaxe_virtual_firmware::noise_probe::emit_outcome'], crypto: null },
 ];
+
+function measureRequiredPath(frames, { id, names, crypto }) {
+  if (crypto === null) return { id, ...measureNoisePath(frames, names), crypto_boundary: null };
+  const nested = nestedCryptoPath(frames, crypto);
+  return { id, ...measureNoisePath(frames, [...names, ...nested.names]), crypto_boundary: crypto,
+    crypto_cycle_count: nested.cycle_count, outside_crypto_family_edges: nested.outside_crypto_family_edges };
+}
 
 /** Audit only the selected synthetic valid probe; source branches are not runtime observations. */
 export function auditNoiseStack(disassembly, config) {
@@ -124,16 +173,15 @@ export function auditNoiseStack(disassembly, config) {
       !lines.includes('CONFIG_FREERTOS_TASK_FUNCTION_WRAPPER=y') ||
       !lines.includes('# CONFIG_LIBC_NEWLIB_NANO_FORMAT is not set')) throw Error('noise_stack_config');
   const frames = parseNoiseFrames(disassembly);
-  const paths = REQUIRED_PATHS.map(({ id, names }) => {
-    const path = measureNoisePath(frames, names);
-    return { id, ...path, fit: path.frame_bytes <= MAIN - MARGIN };
+  const paths = REQUIRED_PATHS.map(required => {
+    const path = measureRequiredPath(frames, required);
+    return { ...path, fit: path.frame_bytes <= MAIN - MARGIN };
   });
-  return { schema: 'bitaxe-noise-stack-audit-v1', profile: PROFILE, main_stack_bytes: MAIN,
+  return { schema: 'bitaxe-noise-stack-audit-v2', profile: PROFILE, main_stack_bytes: MAIN,
     sdk_extra_stack_bytes: 512, required_margin_bytes: MARGIN, available_selected_path_bytes: MAIN - MARGIN,
     selected_path_budget_fit: paths.every(path => path.fit), paths, complete_callgraph_bound: false,
-    scope: 'named_direct_native_paths_only', runtime_high_water_required_bytes: MARGIN,
-    initiator_responder_inlined_construction_not_separately_bounded: true,
-    crypto_branch_closure_not_bounded: true };
+    scope: 'named_native_paths_with_longest_resolved_crypto_descent', runtime_high_water_required_bytes: MARGIN,
+    unbounded_edges: ['indirect_calls', 'outside_crypto_family_calls', 'crypto_cycles', 'drop_glue'] };
 }
 
 /** Identity covers this auditor and the source binding helper it imports. */
@@ -169,11 +217,12 @@ export async function validateNativeNoiseAudit(receipt, elf, repo) {
 
 /** An artifact match admits selected paths only; runtime margin and heap proof remain required. */
 export async function validateNoiseAudit(receipt, { elfSha256, sdkconfigSha256, compiledSourceSha256 }, { disassembly, sdkconfig } = {}) {
-  if (receipt?.schema !== 'bitaxe-noise-stack-audit-v1' || receipt.profile !== PROFILE ||
+  if (receipt?.schema !== 'bitaxe-noise-stack-audit-v2' || receipt.profile !== PROFILE ||
       receipt.selected_path_budget_fit !== true || receipt.complete_callgraph_bound !== false ||
       receipt.main_stack_bytes !== MAIN || receipt.required_margin_bytes !== MARGIN ||
       receipt.available_selected_path_bytes !== MAIN - MARGIN || receipt.sdk_extra_stack_bytes !== 512 ||
-      receipt.runtime_high_water_required_bytes !== MARGIN || receipt.scope !== 'named_direct_native_paths_only' ||
+      receipt.runtime_high_water_required_bytes !== MARGIN ||
+      receipt.scope !== 'named_native_paths_with_longest_resolved_crypto_descent' ||
       receipt.bindings?.auditor_sha256 !== await noiseAuditIdentity()) throw Error('noise_audit_invalid');
   const expected = { elf_sha256: elfSha256, sdkconfig_sha256: sdkconfigSha256, compiled_source_sha256: compiledSourceSha256 };
   for (const [key, value] of Object.entries(expected)) {
@@ -185,7 +234,8 @@ export async function validateNoiseAudit(receipt, { elfSha256, sdkconfigSha256, 
     const paths = receipt.paths.filter(path => path.id === required.id);
     if (paths.length !== 1 || paths[0].fit !== true || !Number.isSafeInteger(paths[0].frame_bytes) ||
         paths[0].frame_bytes < 1 || paths[0].frame_bytes > MAIN - MARGIN ||
-        !Array.isArray(paths[0].native_symbols) || required.names.some(name => !paths[0].native_symbols.includes(name))) {
+        !Array.isArray(paths[0].native_symbols) || paths[0].crypto_boundary !== required.crypto ||
+        [...required.names, ...(required.crypto ? [required.crypto] : [])].some(name => !paths[0].native_symbols.includes(name))) {
       throw Error('noise_audit_invalid');
     }
   }
@@ -234,7 +284,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   main(process.argv.slice(2)).then(result => { console.log(JSON.stringify(result)); if (result.status !== 'passed') process.exitCode = 1; })
     .catch(error => {
       const allowed = new Set(['noise_stack_required_symbol_missing', 'noise_stack_required_call_missing',
-        'noise_stack_required_entry_missing', 'noise_stack_config', 'noise_audit_arguments',
+        'noise_stack_required_entry_missing', 'noise_crypto_boundary_missing', 'noise_crypto_entry_missing',
+        'noise_stack_config', 'noise_audit_arguments',
         'noise_audit_private_root', 'noise_audit_native_binding', 'noise_audit_objdump_pin']);
       console.error(JSON.stringify({ status: 'blocked', category: allowed.has(error.message) ? error.message : 'noise_stack_audit_failed' }));
       process.exitCode = 1;

@@ -12,16 +12,32 @@ const source = 'a'.repeat(64);
 const config = ['CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384', 'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048',
   'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304', 'CONFIG_SPIRAM_MODE_OCT=y', 'CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y',
   'CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y', 'CONFIG_FREERTOS_TASK_FUNCTION_WRAPPER=y', '# CONFIG_LIBC_NEWLIB_NANO_FORMAT is not set'].join('\n');
-const names = ['bitaxe_virtual_firmware::main', 'bitaxe_virtual_firmware::guest::run',
-  'bitaxe_virtual_firmware::noise_probe::run_and_emit', 'bitaxe_simulation::noise_probe::run',
-  'bitaxe_simulation::noise_probe::handshake_and_frame', 'bitaxe_stratum::v2::noise::NoiseInitiator::complete_diagnostic',
-  'noise_sv2::initiator::Initiator::step_2_with_now', 'noise_sv2::handshake::HandshakeOp::mix_hash',
-  'bitaxe_simulation::noise_probe::frame_round_trip'];
-const disassembly = names.map((name, i) => {
-  const address = 0x40000000 + i * 256, next = i === 4 ? [5, 8] : i < 7 ? [i + 1] : [];
-  return `${address.toString(16)} <${name}>:\n ${address.toString(16)}: 004136 entry a1, 64\n` +
-    next.map(n => ` ${(address + 3).toString(16)}: 000005 call8 ${(0x40000000 + n * 256).toString(16)} <${names[n]}>\n`).join('');
-}).join('\n');
+// Corrected helper topology; synthetic 64-byte frames test admission only.
+const COMPLETE = 'bitaxe_stratum::v2::noise::completion::<impl bitaxe_stratum::v2::noise::NoiseInitiator>::complete_diagnostic_into';
+const graph = [
+  ['bitaxe_virtual_firmware::main', ['bitaxe_virtual_firmware::guest::run']],
+  ['bitaxe_virtual_firmware::guest::run', ['bitaxe_virtual_firmware::noise_probe::run_and_emit']],
+  ['bitaxe_virtual_firmware::noise_probe::run_and_emit', ['bitaxe_simulation::noise_probe::run', 'bitaxe_virtual_firmware::noise_probe::emit_outcome']],
+  ['bitaxe_virtual_firmware::noise_probe::emit_outcome', []],
+  ['bitaxe_simulation::noise_probe::run', ['bitaxe_simulation::noise_probe::handshake_and_frame']],
+  ['bitaxe_simulation::noise_probe::handshake_and_frame', ['bitaxe_simulation::noise_probe::prepare_initiator',
+    'bitaxe_simulation::noise_probe::respond', COMPLETE, 'bitaxe_simulation::noise_probe::frame_round_trip']],
+  ['bitaxe_simulation::noise_probe::prepare_initiator', ['noise_sv2::initiator::Initiator::new_with_rng', 'bitaxe_stratum::v2::noise::NoiseInitiator::act_one']],
+  ['noise_sv2::initiator::Initiator::new_with_rng', []],
+  ['bitaxe_stratum::v2::noise::NoiseInitiator::act_one', []],
+  ['bitaxe_simulation::noise_probe::respond', ['bitaxe_simulation::noise_probe::construct_responder', 'bitaxe_simulation::noise_probe::step_responder']],
+  ['bitaxe_simulation::noise_probe::construct_responder', ['noise_sv2::responder::Responder::from_authority_kp_with_rng']],
+  ['noise_sv2::responder::Responder::from_authority_kp_with_rng', []],
+  ['bitaxe_simulation::noise_probe::step_responder', ['noise_sv2::responder::Responder::step_1_with_now_rng']],
+  ['noise_sv2::responder::Responder::step_1_with_now_rng', []],
+  [COMPLETE, ['noise_sv2::initiator::Initiator::step_2_with_now']],
+  ['noise_sv2::initiator::Initiator::step_2_with_now', ['rustsecp256k1_v0_9_2_schnorrsig_verify']],
+  ['rustsecp256k1_v0_9_2_schnorrsig_verify', []],
+  ['bitaxe_simulation::noise_probe::frame_round_trip', []],
+];
+const addressOf = new Map(graph.map(([name], i) => [name, (0x40000000 + i * 256).toString(16)]));
+const disassembly = graph.map(([name, callees]) => `${addressOf.get(name)} <${name}>:\n ${addressOf.get(name)}: 004136 entry a1, 64\n` +
+  callees.map(callee => ` ${addressOf.get(name)}: 000005 call8 ${addressOf.get(callee)} <${callee}>\n`).join('')).join('\n');
 
 async function fixture(root) {
   // Synthetic format fixtures test byte admission only; no target execution or allocator measurement is claimed.

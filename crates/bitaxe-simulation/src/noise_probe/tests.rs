@@ -141,23 +141,24 @@ fn failed_real_owner_reservation_stops_before_crypto_and_still_releases() {
 }
 
 #[test]
-fn unreserved_owner_slots_cannot_enter_preparation() {
+fn unreserved_server_slot_cannot_enter_responder_crypto() {
     // Arrange
     let mut act_two = [0_u8; ACT_TWO_LEN];
     let mut server_slot = Vec::new();
     let mut phases = Vec::new();
 
     // Act
-    let result = prepare_handshake(
+    let result = respond(
         1,
-        NoiseFault::None,
+        [0_u8; ACT_ONE_LEN],
         &mut act_two,
         &mut server_slot,
         &mut |phase| phases.push(phase),
     );
 
     // Assert
-    assert!(matches!(result, Err(NoiseProbeError::OwnerReservation)));
+    assert_eq!(result, Err(NoiseProbeError::OwnerReservation));
     assert!(phases.is_empty());
     assert!(server_slot.is_empty());
+    assert_eq!(act_two, [0_u8; ACT_TWO_LEN]);
 }

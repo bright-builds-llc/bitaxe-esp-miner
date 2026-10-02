@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, writeFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseNoiseFrames, measureNoisePath, validateNativeNoiseAudit } from './noise-stack-audit.mjs';
+import { parseNoiseFrames, measureNoisePath, nestedCryptoPath, validateNativeNoiseAudit } from './noise-stack-audit.mjs';
 import { sourceSnapshot } from './identity.mjs';
 import { nativeElfSymbols } from './elf-symbols.mjs';
 
@@ -28,35 +28,6 @@ function markerAliases(elf, frames) {
     aliases.push({ symbol: name, canonical_native_symbol: native.name, adds_native_frame: false });
   }
   return aliases;
-}
-
-/** Longest resolved crypto-family path, retaining external-edge coverage gaps. */
-export function nestedCryptoPath(frames, boundaryName) {
-  const starts = frames.byName.get(boundaryName);
-  if (!starts) throw Error('noise_prefix_audit_crypto_boundary');
-  const family = /^(?:noise_sv2::|bitaxe_stratum::v2::noise::|secp256k1::|rustsecp256k1_v0_9_2_|sha2::|hmac::|chacha20poly1305::|chacha20::|poly1305::)/;
-  const memo = new Map(), cycles = new Set(), gaps = new Set();
-  function walk(address, active = new Set()) {
-    if (active.has(address)) { cycles.add(address); return []; }
-    if (memo.has(address)) return memo.get(address);
-    const frame = frames.byAddress.get(address);
-    if (!frame || frame.bytes === null) throw Error('noise_prefix_audit_crypto_entry');
-    let best = [address];
-    const nextActive = new Set(active).add(address);
-    for (const target of frame.calls) {
-      const child = frames.byAddress.get(target);
-      if (!child || !family.test(child.name)) { gaps.add(target); continue; }
-      const candidate = [address, ...walk(target, nextActive)];
-      if (candidate.reduce((sum, item) => sum + frames.byAddress.get(item).bytes, 0) >
-          best.reduce((sum, item) => sum + frames.byAddress.get(item).bytes, 0)) best = candidate;
-    }
-    memo.set(address, best); return best;
-  }
-  const paths = [...starts].map(address => walk(address));
-  const largest = paths.reduce((best, path) => path.reduce((sum, item) => sum + frames.byAddress.get(item).bytes, 0) >
-    best.reduce((sum, item) => sum + frames.byAddress.get(item).bytes, 0) ? path : best);
-  return { names: largest.map(address => frames.byAddress.get(address).name),
-    cycle_count: cycles.size, outside_crypto_family_edges: gaps.size, complete_callgraph_bound: false };
 }
 
 export async function prefixNoiseAuditIdentity() {

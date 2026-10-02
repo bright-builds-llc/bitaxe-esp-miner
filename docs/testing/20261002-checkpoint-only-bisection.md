@@ -88,3 +88,29 @@ full probe, so this does not prove an exact faulty statement or an unchanged-ima
 bisection boundary. The next checkable plan extracts preparation's native frame
 before completion, preserves real crypto behavior and tests its exact native
 resource paths before any separate full-boundary contract is admitted.
+
+## Static resource measurement of the correction
+
+These figures come from dev builds that were never executed. They are static
+lower bounds over named native paths plus the longest resolved crypto-family
+descent. As a calibration point, campaign002's cutoff-110 ECDH descent measured
+14,272 bytes statically, while runtime used about 14,088 bytes.
+
+| Path                       | Original full probe | First correction | Responder split |
+| -------------------------- | ------------------: | ---------------: | --------------: |
+| Responder ECDH and sign    |              15,664 |           15,104 |          13,552 |
+| Completion and certificate |              16,160 |           12,160 |          12,288 |
+| Encrypted frame            |               5,664 |            1,904 |           2,032 |
+
+The unchanged budget is 14,336 bytes (16,384 main stack minus the 2,048-byte
+margin). The first correction fixed completion but pushed responder ECDH over
+budget, because its combined preparation frame was 3,184 bytes. Splitting the
+responder into construction and step frames, and consuming the act-two result
+in place, brings every required path within budget. The responder path has the
+least headroom: 784 static bytes.
+
+Auditor v2 now requires these corrected paths, including a named
+certificate-verification descent. Indirect, outside-family, cyclic and drop-glue
+edges remain unbounded and are reported. A passing static receipt is necessary
+but not sufficient; runtime margin and heap integrity still need a separately
+published checkpoint-only run.
