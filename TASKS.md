@@ -6511,6 +6511,26 @@ Authorization: evidence/software review now; no hardware merely from dependency
 edits. Any missing smoke requires its own published bounds. No parity transition.
 Verification: Pending. Completion review: Pending.
 
+### task-worker-port-reuse | 2026-10-02 | Reuse a granted Worker port so Connects need no chooser
+
+Status: Active. Software complete; the first chooser-free device run is pending.
+Objective: let qualification Connects reuse the single granted Ultra 205 port, so
+neither the owner nor the agent must operate Chrome's port chooser. Port
+selection must stay non-authoritative.
+Evidence: [Worker port reuse amendment](docs/hardware/worker-port-reuse-amendment.md).
+
+- [x] Gate `8b835c2c09148ec946396cfb4660222a92853c81` (ADR-0101): add
+  `selectWorkerPort`, which reuses exactly one granted, attached port matching
+  the Worker filter and otherwise falls back to `requestPort()`. All later
+  checks are unchanged. The Gate typecheck, 869 tests, format and standards pass.
+- [x] Read-only browser check: at origin `127.0.0.1:48765`, `getPorts()`
+  returned one connected `303a:1001` grant after attempt-003's reflashes.
+- [x] Repin `MODULE.bazel` to the new Gate archive (SHA-256
+  `5f1fa38cf60f47174c7e4ac47837d37896c0b5a12be6fefa8b212bcdace9a068`) and add
+  the successor amendment, which supersedes only the earlier getPorts ban.
+- [ ] Exercise chooser-free Connects in the next contracted device run and
+  record the result.
+
 ### task-control-stack-frame-pressure | 2026-10-02 | Shrink oversized control-thread frames
 
 Status: Active. Offline analysis only; no device effect under this task yet.
