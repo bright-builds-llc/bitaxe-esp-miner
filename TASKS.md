@@ -6658,6 +6658,83 @@ was dirty, full qualification was false, no package was frozen and no flash occu
 The original report remains immutable; unavailable comparison coverage is typed
 unsupported by the successor validator, not a demonstrated semantic mismatch.
 
+Noise diagnosis continuation | 2026-10-01 | Approved retained-core and minimal probe
+
+- [x] Independently verify retained run017 checksum/full ELF and pinned SDK task
+  ABI; inspect Vec deallocation layout, stack bounds and captured heap data in a
+  new private analysis root. Preserve raw dumps and offline001 findings unchanged.
+- [x] Implement a host/target Noise-only probe using the actual production
+  NoiseInitiator and the existing synthetic responder/transport shape; isolate
+  controller/board/work/grants. Verify authentication, frame bounds, MAC/truncation
+  rejection and phase ordering locally; retain a specific red-capable signal.
+- [ ] Add allocation-free phase callbacks for SDK heap integrity and actual stack
+  observations; keep diagnostics local to the marked virtual target. Build and
+  audit exact ELF/caller frames and the existing2KiB margin before execution.
+- [ ] Publish and push the complete repo-owned command/contract and verification
+  receipts before a fresh bounded emulator attempt. Use fresh private evidence,
+  exact package/source/config/model/emulator/validator bindings and verified release.
+- [ ] Compare the minimized target result with retained full-scenario failure;
+  state ranked falsifiable hypotheses before any additional diagnostic variant.
+  Apply only an evidence-backed lifetime/ownership correction, add a regression,
+  audit and then recheck the original composed boundary through a separate gate.
+- [ ] Run affected Bazel and ordered Cargo checks, native audits, reference,
+  redaction, standards, Markdown and diff checks. Commit/push truthful outcomes;
+  leave this parent task and accepted-share unresolved unless all criteria pass.
+
+Effect policy: offline inspection and synthetic virtual effects only, no physical
+USB/detection/network/device effects, no signer or real credentials, no grants,
+mining, work/nonce/submission or ASIC activity in the minimal probe. The synthetic
+Noise handshake is solely an in-memory byte exchange. Maintain16KiB main stack,
+SDK extra512 bytes, original internal/PSRAM routing/reserve and all authority,
+accounting/safety limits. No original seal repair or core clearing. Raw memory,
+registers/debugger output stay in ignored0700 roots/0600 files under ADR-0030;
+share only redacted findings and hashes. Parity remains90/95.
+
+noise-probe-baseline-enabled: true
+
+Baseline execution gate enabled for exactly one clean/pushed Noise-only baseline. Admission requires a fresh exact
+marked package, verified offline stack/resource bounds and a tested repo-owned
+command. Once published, permit one Noise-only valid-handshake seed1 baseline,
+QEMU at most30 seconds and any debugger at most25 seconds, single owned process
+family, no automatic unchanged retry. Always collect partial facts/core on panic
+and terminate/reap children/listeners before sealing. Missing checksum/ELF, stale
+source, unexpected effects, invalid input/phase proof or unproved release stops
+this stage. A differing or green minimal result diagnoses context dependence;
+it is not full lifecycle or hardware qualification. Subsequent variants require
+specific hypotheses and separately published scope, not another broad Start.
+
+Offline revalidation | 2026-10-01: offline001 and independent offline002 both
+verify checksum/full ELF. Main SP is10168 bytes below the SDK TCB base; observed
+deduplicated native entry frames total25824 bytes. Fixture caller8464 and
+constructor7136 overlap Noise completion6080 and outer frames. This proves a
+virtual callsite stack contract violation. The96-byte Vec pointer is aligned,
+in configured PSRAM and consistent across frames; its payload/header and heap
+registry descriptor are absent. The direct registry node is unaligned/outside
+configured memory. Earliest overwrite, double-free and physical cause are unproved.
+See `docs/testing/20261001-noise-panic-diagnosis.md`; raw findings remain private.
+
+Baseline publication | 2026-10-01: repo-owned command
+`just virtual-emulator noise --manifest <fresh-current-clean-marked-package>/virtual-package.json --audit <fresh-exact-ELF-native-audit>.json --evidence-dir <repo>/scratch/virtual-noise-diagnostic/baseline001 --seed 1 --mode valid`.
+One-use claim: ignored `scratch/virtual-noise-diagnostic/baseline001.claim.json`,
+created exclusively before effect and never reset/reused. Only this command/seed/
+mode is enabled. Require clean pushed code, package source equal to current HEAD,
+source_dirty false, full ELF/image/config hashes, current compiled-source closure,
+fixed16KiB stack/SDK routing, live current auditor+objdump replay and every required
+selected native path within14336 bytes before admission. No changing declared
+artifact identities to reuse a stale report. Retain all failed/unused prior roots.
+
+Offline build001 observed Noise-only completion path12704, frame path7696 against
+14336 available. Twelve native audit and23 runner regressions pass; seven actual
+Noise host regressions pass. Broader crypto/indirect-call closure remains unproved,
+so baseline must additionally prove all14 phase checkpoints, heap integrity,
+configured stack observations and actual SDK low-water at least2048. The dirty
+build001 is diagnostic development evidence, not the enabled execution package;
+a fresh clean marked build and exact audit are required after this publication.
+Result must bind validator/source/package/auditor/emulator and verify process/FD
+release before finalization; failures/partial core survive independently. A
+collection cutoff never becomes fixture natural completion. No full lifecycle,
+physical diagnosis or parity qualification is implied by Noise-only success.
+
 Verification: ordered Cargo format/Clippy/build/tests,21 affected Bazel targets,
 55 model tests,19 encrypted-profile tests,9 scenario tests, compiler-closure
 stale-source/build regressions, process/listener and evidence regressions, five

@@ -13,6 +13,8 @@ fn main() {}
 mod checkpoint;
 #[cfg(target_os = "espidf")]
 mod guest;
+#[cfg(target_os = "espidf")]
+mod noise_probe;
 
 #[cfg(target_os = "espidf")]
 fn main() {

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { bootstrap, doctor, newEvidenceRoot } from './setup.mjs';
 import { buildGuest } from './build.mjs';
 import { diagnoseHeap } from './diagnose.mjs';
+import { runNoiseProbe } from './noise.mjs';
 import { runGuest } from './run.mjs';
 
 export async function main(args = process.argv.slice(2)) {
@@ -12,9 +13,10 @@ export async function main(args = process.argv.slice(2)) {
   const options = {};
   while (args.length) {
     const key = args.shift(); const value = args.shift();
-    if (!['--evidence-dir', '--manifest', '--commands', '--scenario', '--seed'].includes(key) || !value || options[key]) throw Error('emulator_arguments');
+    if (!['--evidence-dir', '--manifest', '--commands', '--scenario', '--seed', '--mode', '--audit'].includes(key) || !value || options[key]) throw Error('emulator_arguments');
     options[key] = value;
   }
+  if (command === 'noise' && (options['--commands'] || options['--scenario'])) throw Error('noise_arguments');
   const repo = process.env.BUILD_WORKSPACE_DIRECTORY ?? execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
   if (!options['--evidence-dir']) throw Error('emulator_evidence_required');
   const evidence = resolve(repo, options['--evidence-dir']);
@@ -23,6 +25,12 @@ export async function main(args = process.argv.slice(2)) {
   if (command === 'doctor') return doctor(repo, evidence);
   if (command === 'build' && options['--manifest']) return buildGuest(repo, evidence, resolve(repo, options['--manifest']));
   if (command === 'diagnose-heap' && options['--manifest']) return diagnoseHeap(repo, resolve(repo, options['--manifest']), evidence);
+  if (command === 'noise' && options['--manifest'] && options['--audit']) {
+    const result = await runNoiseProbe(repo, resolve(repo, options['--manifest']), evidence,
+      { auditPath: resolve(repo, options['--audit']), seed: Number(options['--seed'] ?? 1), mode: options['--mode'] ?? 'valid' });
+    if (result.status !== 'passed') process.exitCode = 1;
+    return result;
+  }
   if (command === 'run' && options['--manifest']) return runGuest(repo, resolve(repo, options['--manifest']), evidence,
     { commands: options['--commands']?.split(',') ?? ['status', 'allocation'], scenario: options['--scenario'], seed: Number(options['--seed'] ?? 1) });
   throw Error('emulator_arguments');

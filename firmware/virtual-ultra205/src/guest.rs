@@ -73,6 +73,7 @@ pub fn run() -> anyhow::Result<()> {
                     "required_margin_bytes":2048,"configured_main_stack_bytes":16384}),
                 )?;
             }
+            Some("noise_probe") => crate::noise_probe::run_and_emit(&value)?,
             Some("status") => emit(json!({"event":"status","boot":boot,
                 "internal_free": unsafe { sys::heap_caps_get_free_size(sys::MALLOC_CAP_INTERNAL | sys::MALLOC_CAP_8BIT) },
                 "internal_largest": unsafe { sys::heap_caps_get_largest_free_block(sys::MALLOC_CAP_INTERNAL | sys::MALLOC_CAP_8BIT) },
@@ -108,7 +109,7 @@ fn allocation_probe() -> anyhow::Result<()> {
     )
 }
 
-fn emit(value: serde_json::Value) -> anyhow::Result<()> {
+pub(super) fn emit(value: serde_json::Value) -> anyhow::Result<()> {
     let mut output = std::io::stdout().lock();
     writeln!(output, "VIRTUAL_U205 {}", serde_json::to_string(&value)?)?;
     output.flush()?;

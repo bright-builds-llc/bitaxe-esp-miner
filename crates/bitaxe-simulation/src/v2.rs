@@ -1,6 +1,6 @@
 //! Real Noise and production generic SV2 session against independent fixture facts.
 //! This public genesis vector does not qualify the strict live regtest profile.
-mod exchange;
+pub(crate) mod exchange;
 mod scenario;
 #[cfg(test)]
 mod tests;

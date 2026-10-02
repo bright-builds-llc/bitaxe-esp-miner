@@ -3,6 +3,7 @@ mod actuation;
 mod authorization;
 mod boundary_scenarios;
 mod controller;
+pub mod noise_probe;
 mod resource_scenarios;
 mod scenarios;
 pub mod v2;

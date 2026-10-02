@@ -1469,3 +1469,15 @@ js_test(
     entry_point = "virtual-board/main.test.mjs",
     data = [":virtual_board_sources", ":virtual_emulator_sources", ":core_dump_sources"],
 )
+
+js_test(
+    name = "virtual_noise_probe_test",
+    entry_point = "virtual-emulator/noise.test.mjs",
+    data = [":virtual_emulator_sources", ":core_dump_sources"],
+)
+
+js_test(
+    name = "virtual_noise_stack_audit_test",
+    entry_point = "virtual-emulator/noise-stack-audit.test.mjs",
+    data = [":virtual_emulator_sources", ":core_dump_sources"],
+)
