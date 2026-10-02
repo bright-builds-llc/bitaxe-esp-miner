@@ -6994,12 +6994,12 @@ Full-boundary checkpoint contract (campaign003) | 2026-10-02 | Explicit owner ap
   core decoding or post-run partition reads. Package admission moves to
   `noise-admission.mjs`, so the runner never loads crash tooling. The validator
   identity binds every visible emulator and core-dump script.
-- [ ] Publish and push this contract with both gates enabled, then build the
+- [x] Publish and push this contract with both gates enabled, then build the
   package from that exact commit and bind a fresh v2 receipt to it.
-- [ ] Run exactly one claimed execution, record the outcome, disable both gates,
+- [x] Run exactly one claimed execution, record the outcome, disable both gates,
   then commit and push.
 
-noise-full-checkpoint-enabled: true
+noise-full-checkpoint-enabled: false
 
 Objective: one emulated valid seed-1 handshake, certificate completion and
 encrypted frame round trip on the corrected image. Judge only application
@@ -7038,6 +7038,33 @@ mode-0700 roots; commits record only digests, check outcomes and numeric
 observations. Passing would prove only this emulated diagnostic. Independent
 task bounds stay unsupported, and full-board qualification, hardware, parity
 and accepted-share remain unchanged.
+
+Campaign003 outcome | 2026-10-02: the contract was published at `a024948a`. The
+package built from that commit has compiled source
+`88ae2a06275ec63a50663526ca1092f5423a29763a67d6c11ebebf58a2340cbf`, virtual ELF
+`1bc1cfd7c3d5828a2670b271134192fef5c97d7f1f2a6b8d4b2cd8d3326886df`, v2 receipt
+`6bd3a035bc4f0335084af59f388bdb2cfe41213ad96922118f8b33bc032e8094` and
+validator `b5820382ceaa02e6a7ea37066c92f4f7f08f5eeb1aa6da06cc33783d010ec52e`.
+The single claimed execution passed all five checks: boot identity, an
+authenticated handshake with certificate completion and a 32-byte frame round
+trip, owner release, heap integrity at all 14 phases (101–114), and the
+unchanged stack margin. Minimum free main stack was 3,016 bytes, first reached
+at phase 109 (responder ECDH and sign), or 13,368 bytes used against the
+13,552-byte static path. Completion and the frame stayed shallower. Internal
+free heap ranged from 340,723 to 346,403 bytes, with a constant 188,416-byte
+largest block. The emulator was released at the collection cutoff, no writer
+leases remained, and target stderr was empty. The projected application records
+were 3,701 bytes. Result digest:
+`8447cc4e865de46429d8a0f608d887500764c2a7df1317647dda30deeaa86a61`. The claim is
+consumed, so this run cannot be replayed. Both gates are disabled again.
+
+This supports the frame-lifetime hypothesis in emulation only. The earlier
+baseline's heap-integrity fault after completion is absent from the corrected
+image. That does not show which statement was originally faulty, and it is not
+a device repair. Independent task bounds remain unsupported, and full-board
+qualification, hardware, parity (90/95) and accepted-share are unchanged.
+Remaining parent-task blockers are listed under Verification below; do not
+archive.
 
 Verification: ordered Cargo format/Clippy/build/tests,21 affected Bazel targets,
 55 model tests,19 encrypted-profile tests,9 scenario tests, compiler-closure

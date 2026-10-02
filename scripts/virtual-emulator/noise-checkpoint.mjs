@@ -12,7 +12,7 @@ import { runPrivate } from './process.mjs';
 import { admitNoisePackage } from './noise-admission.mjs';
 import { validateNativeNoiseAudit } from './noise-stack-audit.mjs';
 
-export const NOISE_CHECKPOINT_EFFECTS_ENABLED = true;
+export const NOISE_CHECKPOINT_EFFECTS_ENABLED = false;
 export const CHECKPOINT_CLAIM = 'scratch/virtual-noise-diagnostic/full-checkpoint001.claim.json';
 const TASK_GATE = 'noise-full-checkpoint-enabled: true';
 const OBJDUMP_VERSION = 'esp-14.2.0_20260121';

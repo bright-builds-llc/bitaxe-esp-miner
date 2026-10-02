@@ -120,3 +120,25 @@ A clean build of source `7b2fe9e6` produced virtual ELF
 receipt reproduces these figures exactly, and read-only package admission accepts
 it. That is static admission only: nothing was executed, and runtime margin
 remains unproven.
+
+## Campaign003: checkpoint-only full probe
+
+Contract `a024948a` permitted one claimed emulator execution of the complete
+valid probe on virtual ELF
+`1bc1cfd7c3d5828a2670b271134192fef5c97d7f1f2a6b8d4b2cd8d3326886df`. Only
+projected application records were judged. It used no debugger, panic text,
+core or partition data.
+
+| Check                                        | Result |
+| -------------------------------------------- | ------ |
+| Boot identity                                | Passed |
+| Authenticated handshake and frame round trip | Passed |
+| Owner release                                | Passed |
+| Heap integrity, phases 101–114               | Passed |
+| Stack margin (minimum free 3,016 bytes)      | Passed |
+
+The deepest stack use was at phase 109 (responder ECDH and sign): 13,368 bytes
+used against a 13,552-byte static path. Completion and the frame stayed
+shallower. The baseline's heap-integrity fault after completion does not occur
+on the corrected image. This is emulator evidence only. It does not identify the
+original faulty statement and does not qualify hardware or the full board.
