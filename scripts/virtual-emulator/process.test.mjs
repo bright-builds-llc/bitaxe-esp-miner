@@ -27,6 +27,33 @@ function runChild(mode) {
   }
   if (mode === 'failure') { process.exitCode = 7; return; }
   if (mode === 'small') { process.stdout.write('stdout'); process.stderr.write('stderr'); return; }
+  if (mode === 'projection-lines') {
+    process.stdout.write('ordinary output\nVIRTUAL_U205 first\nnoise VIRTUAL_U205 embedded\nVIRTUAL_U205 partial');
+    process.stderr.write('ordinary stderr\n');
+    return;
+  }
+  if (mode === 'projection-split') {
+    process.stdout.write('VIRT');
+    setTimeout(() => process.stdout.write('UAL_U205 split\nordinary\nVIRTUAL_U205 second\r'), 10);
+    setTimeout(() => process.stdout.write('\nVIRTUAL_U205 unfinished'), 20);
+    return;
+  }
+  if (mode === 'projection-oversized') {
+    process.stdout.write(`VIRTUAL_U205 ${'x'.repeat(65536)}\n`);
+    return;
+  }
+  if (mode === 'projection-late-parent') {
+    spawn(process.execPath, [self, '--child', 'projection-late-writer'], { stdio: ['ignore', 1, 2] }).unref();
+    process.stdout.write('VIRTUAL_U205 parent\n');
+    return;
+  }
+  if (mode === 'projection-late-writer') {
+    setInterval(() => {
+      process.stdout.write('ordinary late output\nVIRTUAL_U205 late\n');
+      process.stderr.write('ordinary late stderr\n');
+    }, 5);
+    return;
+  }
   throw Error('unknown_test_child');
 }
 
@@ -176,6 +203,109 @@ if (process.argv[2] === '--child') {
           maxOutputBytes,
         }), /emulator_output_bound_invalid/);
       }
+      // Assert
+      assert.deepEqual(await readdir(root), []);
+    } finally { await rm(root, { recursive: true }); }
+  });
+
+  test('projection persists only complete matching stdout lines and discards stderr', async () => {
+    // Arrange
+    const root = await mkdtemp(join(tmpdir(), 'projected-output-'));
+    try {
+      // Act
+      const outcome = await runPrivate(process.execPath, [self, '--child', 'projection-lines'], root, 'projected', {
+        timeoutMs: 1000, maxOutputBytes: 2097152, outputLinePrefix: 'VIRTUAL_U205 ',
+      });
+      // Assert
+      assert.equal(await readFile(join(root, 'projected.stdout.log'), 'utf8'), 'VIRTUAL_U205 first\n');
+      assert.equal((await stat(join(root, 'projected.stderr.log'))).size, 0);
+      assert.ok(outcome.outputBytes > outcome.persistedOutputBytes);
+      assert.equal(outcome.persistedOutputBytes, Buffer.byteLength('VIRTUAL_U205 first\n'));
+      await assertReleased(root, 'projected');
+    } finally { await rm(root, { recursive: true }); }
+  });
+
+  test('projection reconstructs matching lines split across chunks without retaining an unfinished line', async () => {
+    // Arrange
+    const root = await mkdtemp(join(tmpdir(), 'projected-split-'));
+    try {
+      // Act
+      await runPrivate(process.execPath, [self, '--child', 'projection-split'], root, 'split', {
+        timeoutMs: 1000, maxOutputBytes: 2097152, outputLinePrefix: 'VIRTUAL_U205 ',
+      });
+      // Assert
+      assert.equal(await readFile(join(root, 'split.stdout.log'), 'utf8'), 'VIRTUAL_U205 split\nVIRTUAL_U205 second\r\n');
+      await assertReleased(root, 'split');
+    } finally { await rm(root, { recursive: true }); }
+  });
+
+  test('projection stops visibly when a partial stdout line exceeds sixty-four kibibytes', async () => {
+    // Arrange
+    const root = await mkdtemp(join(tmpdir(), 'projected-line-bound-'));
+    try {
+      // Act
+      await assert.rejects(runPrivate(process.execPath, [self, '--child', 'projection-oversized'], root, 'large', {
+        timeoutMs: 1000, maxOutputBytes: 2097152, outputLinePrefix: 'VIRTUAL_U205 ',
+      }), /emulator_line_bound/);
+      // Assert
+      const outcome = JSON.parse(await readFile(join(root, 'large.process.json'), 'utf8'));
+      assert.equal(outcome.outputLineLimitExceeded, true);
+      assert.equal(outcome.stdoutPartialLineLimitBytes, 65536);
+      assert.equal((await stat(join(root, 'large.stdout.log'))).size, 0);
+      await assertReleased(root, 'large');
+    } finally { await rm(root, { recursive: true }); }
+  });
+
+  test('discarded output still consumes the shared raw output budget', async () => {
+    // Arrange
+    const root = await mkdtemp(join(tmpdir(), 'projected-raw-bound-'));
+    try {
+      // Act
+      await assert.rejects(runPrivate(process.execPath, [self, '--child', 'spam'], root, 'spam', {
+        timeoutMs: 1000, maxOutputBytes: 8192, outputLinePrefix: 'VIRTUAL_U205 ',
+      }), /emulator_output_bound/);
+      // Assert
+      const outcome = JSON.parse(await readFile(join(root, 'spam.process.json'), 'utf8'));
+      assert.equal(outcome.outputBytes, 8192);
+      assert.equal(outcome.persistedOutputBytes, 0);
+      assert.equal(outcome.outputLimitExceeded, true);
+      await assertReleased(root, 'spam');
+    } finally { await rm(root, { recursive: true }); }
+  });
+
+  test('projected late writers stop before descriptors and the lease release', async () => {
+    // Arrange
+    const root = await mkdtemp(join(tmpdir(), 'projected-late-writer-'));
+    try {
+      // Act
+      const outcome = await runPrivate(process.execPath, [self, '--child', 'projection-late-parent'], root, 'late', {
+        timeoutMs: 200, allowTimeout: true, maxOutputBytes: 2097152, outputLinePrefix: 'VIRTUAL_U205 ',
+      });
+      const before = await readFile(join(root, 'late.stdout.log'), 'utf8');
+      await wait(40);
+      // Assert
+      assert.equal(outcome.timedOut, true);
+      assert.ok(before.includes('VIRTUAL_U205 late\n'));
+      assert.ok(before.split('\n').filter(Boolean).every(line => line.startsWith('VIRTUAL_U205 ')));
+      assert.equal(await readFile(join(root, 'late.stdout.log'), 'utf8'), before);
+      assert.equal((await stat(join(root, 'late.stderr.log'))).size, 0);
+      await assertReleased(root, 'late');
+    } finally { await rm(root, { recursive: true }); }
+  });
+
+  test('projection requires a valid literal prefix and a raw output bound before effects', async () => {
+    // Arrange
+    const root = await mkdtemp(join(tmpdir(), 'projected-invalid-'));
+    try {
+      // Act
+      for (const outputLinePrefix of ['', null, 42, 'line\n', 'line\r', 'line\0', 'x'.repeat(65537)]) {
+        await assert.rejects(runPrivate(process.execPath, [self, '--child', 'small'], root, 'invalid', {
+          outputLinePrefix, maxOutputBytes: 2097152,
+        }), /emulator_output_projection_invalid/);
+      }
+      await assert.rejects(runPrivate(process.execPath, [self, '--child', 'small'], root, 'invalid', {
+        outputLinePrefix: 'VIRTUAL_U205 ',
+      }), /emulator_output_projection_invalid/);
       // Assert
       assert.deepEqual(await readdir(root), []);
     } finally { await rm(root, { recursive: true }); }

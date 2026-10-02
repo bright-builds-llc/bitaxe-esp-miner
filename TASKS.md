@@ -6777,7 +6777,7 @@ Staged emulator bisection | 2026-10-01 | Explicit owner strategy change
   regression, rebuild/audit, then independently admit the corrected full boundary.
   Never raise stack/heap/safety limits or treat a shortened prefix as qualification.
 
-noise-prefix-bisect-enabled: true
+noise-prefix-bisect-enabled: false
 
 Effect contract: emulator-only prefix code bisection, no physical discovery/USB,
 credentials, grants, work/mining/ASIC, original replay, erase or parity promotion.
@@ -6834,6 +6834,69 @@ with a provider cybersecurity-content flag; its completed evidence was preserved
 and local artifact validation resolved the independent preflight type failure.
 No prefix execution occurred before publication. Rebuild from this clean pushed
 source and recheck exact package/audit/debugger identities before claiming 106.
+
+Campaign001 result | 2026-10-02: published at 8817a8a3 and consumed cutoff106.
+Clean virtual ELF `0d4d9400391793fa4285cfc2db4edde3d8cf3baaed814216efb4a23a52b3c5d0`
+completed all six guest prefix checks with no observed failure, but debugger
+collection timed out and supplied no independent snapshots. Prefix and cleanup
+snapshot conclusions remain unknown. QEMU/GDB process groups, log descriptors
+and the loopback listener were released. The one-use claim and all evidence are
+immutable. Native breakpoint placement was at the hook entry before register
+window setup; this is a diagnostic collection gap, not proof of a target failure.
+Do not repeat or promote campaign001.
+
+Checkpoint-only continuation | 2026-10-02 | Explicit owner constraint
+
+- [x] Replace active prefix execution with ordinary application checkpoint
+  collection. No debugger attachment, memory capture, core acquisition,
+  extraction, inspection, decoding or examination of panic output.
+- [x] Project only complete `VIRTUAL_U205` application records into retained
+  stdout; discard other stdout and stderr without interpreting it. Bound all
+  raw process bytes and partial-line buffering; fail visibly on overflow.
+- [x] Keep source/ELF/config/native-audit bindings, existing stack/heap limits,
+  one-use cutoff claims, unconditional host cleanup and subset-only results.
+  Separate guest facts from unsupported independent task-bound observations.
+- [x] Verify real process projection and release plus affected scenario/CLI
+  suites; run ordered Cargo, standards/reference/redaction/Markdown/diff checks.
+- [ ] Publish and push this successor contract before its first trial; collect
+  106 then select the remaining half using measured application records. Missing
+  completion/checkpoint output stops diagnosis without reading crash material.
+
+noise-prefix-telemetry-enabled: true
+
+Successor effect contract: campaign002 replaces debugger-driven collection only.
+Use `just virtual-emulator noise-prefix --manifest scratch/virtual-noise-diagnostic/build006-clean-telemetry/virtual-package.json --audit AUDIT --stop CUTOFF --seed 1 --evidence-dir ROOT`.
+Build/package from the clean pushed source and generate each cutoff audit with
+`bazel run //scripts:virtual_noise_prefix_audit`; exact manifest identities and
+all selected-path limits must pass before claiming an effect. `AUDIT` and `ROOT`
+are fresh ignored private paths for each admitted cutoff. Keep SDK5.5.4, pinned
+QEMU, the same synthetic credentials/time/seed, main16KiB, margin2KiB and existing
+memory routing/reserves. Only101,102,103,105,106,107,109,110 are allowed; no full
+certificate completion, Start, grants, fixture/mining/ASIC, physical discovery,
+USB, flashing, restart, real credentials or original replay. Campaign002 permits
+one newly instrumented106 and at most eight distinct cutoffs total, each bound
+to one fixed image/source/config/validator and an exclusive durable claim.
+Campaign001 claims are never cleared or reused. QEMU35seconds, total output2MiB,
+partial line64KiB; terminate/reap every descendant and release descriptors before
+finalization. Retain only ordinary structured application facts and host release
+records. Missing, invalid or unsafe checkpoint facts stop further inference;
+unknown is never a healthy prefix. No core partition or debugger material is
+read after execution. Independent live task-bound proof remains unsupported and
+prevents full qualification; guest checks alone may support this explicitly
+partial diagnostic comparison. Seals stay immutable, accepted-share stays
+unresolved, physical-effect gates stay disabled and parity remains90/95.
+
+Pre-effect review: real synthetic process projection/release regressions pass
+35/35, ordinary telemetry runner tests pass8/8, and six affected Bazel suites
+pass. Ordered Cargo format/Clippy/build/tests pass. Standards, pinned-reference,
+redaction, scoped Markdown and diff checks pass. The new runner is smaller,
+removes the debugger dependency from active collection, and never reads a
+post-run partition. Explicit v2 result semantics preserve partial guest evidence
+without claiming independent task bounds or full qualification. New record
+parsing rejects malformed/non-object output before inference. Current commands
+and coverage limitations are in
+`docs/testing/20261002-checkpoint-only-bisection.md`. Publish this reviewed source
+before the first campaign002 effect and keep earlier outcomes immutable.
 
 Verification: ordered Cargo format/Clippy/build/tests,21 affected Bazel targets,
 55 model tests,19 encrypted-profile tests,9 scenario tests, compiler-closure

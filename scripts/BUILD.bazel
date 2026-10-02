@@ -1495,6 +1495,12 @@ js_test(
 )
 
 js_test(
+    name = "virtual_noise_prefix_telemetry_test",
+    entry_point = "virtual-emulator/noise-prefix-telemetry.test.mjs",
+    data = [":virtual_emulator_sources", ":core_dump_sources"],
+)
+
+js_test(
     name = "virtual_noise_prefix_audit_test",
     entry_point = "virtual-emulator/noise-prefix-audit.test.mjs",
     data = [":virtual_emulator_sources", ":core_dump_sources"],

@@ -4,10 +4,42 @@ import { open, writeFile, rm, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 
+const LINE_BUFFER_BYTES = 64 * 1024;
+
+// Projection compares raw bytes only; it never parses or interprets line contents.
+function stdoutProjection(prefix) {
+  const expected = Buffer.from(prefix);
+  const partial = Buffer.alloc(LINE_BUFFER_BYTES);
+  let used = 0;
+  return {
+    project(chunk) {
+      const lines = [];
+      let offset = 0;
+      while (offset < chunk.length) {
+        const newline = chunk.indexOf(10, offset);
+        const end = newline < 0 ? chunk.length : newline + 1;
+        const bytes = end - offset;
+        if (used + bytes > LINE_BUFFER_BYTES) throw Error('emulator_line_bound');
+        chunk.copy(partial, used, offset, end); used += bytes;
+        if (newline >= 0) {
+          if (used >= expected.length && partial.subarray(0, expected.length).equals(expected)) {
+            lines.push(Buffer.from(partial.subarray(0, used)));
+          }
+          used = 0;
+        }
+        offset = end;
+      }
+      return Buffer.concat(lines);
+    },
+  };
+}
+
 /** Bounded private command; a timeout is a failure unless deliberately collecting emulator output. */
-export async function runPrivate(command, args, root, label, { cwd, env = process.env, timeoutMs = 120000, allowTimeout = false, input, inputDelayMs = 0, inputReadyMarker, maxOutputBytes } = {}) {
+export async function runPrivate(command, args, root, label, { cwd, env = process.env, timeoutMs = 120000, allowTimeout = false, input, inputDelayMs = 0, inputReadyMarker, maxOutputBytes, outputLinePrefix } = {}) {
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 1200000) throw Error('emulator_timeout_bound');
   if (maxOutputBytes !== undefined && (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes < 1)) throw Error('emulator_output_bound_invalid');
+  if (outputLinePrefix !== undefined && (maxOutputBytes === undefined || typeof outputLinePrefix !== 'string' ||
+      outputLinePrefix.length === 0 || Buffer.byteLength(outputLinePrefix) > LINE_BUFFER_BYTES || /[\r\n\0]/.test(outputLinePrefix))) throw Error('emulator_output_projection_invalid');
   const writer = join(root, `${label}.writer.json`);
   await writeFile(writer, JSON.stringify({ schema: 'bitaxe-private-writer-lease-v1', parent_pid: process.pid, label }), { flag: 'wx', mode: 0o600 });
   let released = true, maybeStdout, maybeStderr, maybeFirstFailure;
@@ -19,6 +51,8 @@ export async function runPrivate(command, args, root, label, { cwd, env = proces
     const result = await new Promise((resolve, reject) => {
       let timedOut = false, interrupted = false, maybeOwnerWrite, active = true, maybeFailure;
       let outputLimitExceeded = false, outputBytes = 0, pendingWrites = Promise.resolve();
+      let persistedOutputBytes = 0, outputLineLimitExceeded = false;
+      const maybeProjection = outputLinePrefix === undefined ? undefined : stdoutProjection(outputLinePrefix);
       const capture = maxOutputBytes !== undefined;
       const child = spawn(command, args, { cwd, env, detached: true, stdio: ['pipe', capture ? 'pipe' : stdout.fd, capture ? 'pipe' : stderr.fd] });
       child.once('spawn', () => {
@@ -35,13 +69,20 @@ export async function runPrivate(command, args, root, label, { cwd, env = proces
           if (!active || outputLimitExceeded || maybeFailure) return;
           const accepted = chunk.subarray(0, Math.max(0, maxOutputBytes - outputBytes));
           outputBytes += accepted.length;
+          let projected;
+          try {
+            projected = !maybeProjection ? accepted : file === stdout ? maybeProjection.project(accepted) : Buffer.alloc(0);
+          } catch (error) {
+            outputLineLimitExceeded = true; maybeFailure ??= error; kill(); return;
+          }
+          persistedOutputBytes += projected.length;
           // Serialize both streams so the shared byte budget and descriptor lifetime are bounded.
-          if (accepted.length) {
+          if (projected.length) {
             stream.pause();
             pendingWrites = pendingWrites.then(async () => {
               let offset = 0;
-              while (offset < accepted.length) {
-                const { bytesWritten } = await file.write(accepted, offset, accepted.length - offset);
+              while (offset < projected.length) {
+                const { bytesWritten } = await file.write(projected, offset, projected.length - offset);
                 if (!bytesWritten) throw Error('emulator_log_write');
                 offset += bytesWritten;
               }
@@ -91,6 +132,8 @@ export async function runPrivate(command, args, root, label, { cwd, env = proces
           released = true;
           const result = { code, signal, timedOut, interrupted, released: true };
           if (capture) Object.assign(result, { outputLimitExceeded, outputBytes, maxOutputBytes });
+          if (maybeProjection) Object.assign(result, { outputLinePrefix, persistedOutputBytes,
+            outputLineLimitExceeded, stdoutPartialLineLimitBytes: LINE_BUFFER_BYTES });
           await writeFile(join(root, `${label}.process.json`), `${JSON.stringify(result)}\n`, { flag: 'wx', mode: 0o600 });
           if (maybeFailure) reject(maybeFailure); else resolve(result);
         } catch (error) {
