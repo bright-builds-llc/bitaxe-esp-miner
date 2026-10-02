@@ -6511,6 +6511,61 @@ Authorization: evidence/software review now; no hardware merely from dependency
 edits. Any missing smoke requires its own published bounds. No parity transition.
 Verification: Pending. Completion review: Pending.
 
+### task-control-stack-frame-pressure | 2026-10-02 | Shrink oversized control-thread frames
+
+Status: Active. Offline analysis only; no device effect under this task yet.
+Objective: restore clear stack margin on the 16 KiB control owner thread
+(`bwg_worker_usb::run_owner`) without changing any command, check or ordering.
+
+Finding (clean image `68cb7e66`, ELF `b94d6886…`):
+- The signed Start and renewal audits now pass with 3,088 and 4,592 bytes of
+  headroom. The older 16,320/16,032-byte figures came from Share002-era images.
+  A longest-descent recheck confirms the audited Ed25519 chain is the deepest
+  resolvable one: 8,464 bytes below `verify_start`.
+- The deepest resolved normal path from `run_owner` is instead the V2 command
+  route, at 13,536 bytes against the 14,336-byte budget. It runs
+  `prepare_frame` (448) → `WorkerControl::prepare_controller` (4,528) →
+  `prepare_v2` (3,600) → firmware `v2_admit` (1,264) → session publication.
+  That path excludes panic, abort and logging edges, and 628 indirect targets
+  are unresolved.
+- Both large frames are paid by paths that use none of their locals.
+
+- [x] Make `prepare_controller` a thin dispatcher and move the general command
+  `match` into a non-inlined helper. Split `prepare_v2` into thin routing plus
+  non-inlined Start-admission and observation helpers. Behavior, checks and
+  their order stay identical. The route targets `prepare_noise`,
+  `prepare_qualification_restart` and `review_serial_trace` are also outlined,
+  because they had been inlined into the router.
+- [x] Verify with the worker-control and firmware tests, ordered Cargo checks,
+  the signed Start/renew audits and a rebuilt-image depth measurement. Add a
+  repo-owned audit regression for the control path's budget.
+- [ ] Record the device-run requirement. A future owner-present noise-serial or
+  share run exercises these control frames; no new hardware effect is
+  authorized here.
+
+Result (rebuilt device image, offline):
+
+| Frame or path                                       | Before | After  |
+| --------------------------------------------------- | -----: | -----: |
+| `prepare_controller` router                         |  4,528 |     96 |
+| `prepare_v2` router                                 |  3,600 |     32 |
+| V2 Start admission (`admit_v2`) / observation       | inline | 2,112 / 2,656 |
+| Deepest resolved normal path from `run_owner`       | 13,536 | 10,000 |
+| Signed Start path (separately audited)              | 13,296 | 13,296 |
+| Signed renewal path (separately audited)            | 11,792 | 11,792 |
+
+`just audit-control-stack` now fails if the router frames exceed their caps
+(1,024/512/256 bytes), or if the deepest resolved normal path plus a 256-byte
+thread-entry allowance exceeds 14,336 bytes. On the current image it reports
+10,256 bytes with 4,080 bytes of headroom.
+
+The generic walker follows only direct calls and misses the register-loaded call
+into `prepare_start_controller`. So the largest known control path remains
+signed Start at 13,296 bytes, with 3,088 bytes of headroom (1,040 beyond the
+margin); its dedicated audit covers it. Indirect calls are not bounded. All 229
+worker-control tests and the affected suites pass. No device has run this
+change yet.
+
 ### task-ultra205-virtual-board-validation | 2026-09-30 | Full functional virtual Ultra 205 and pre-flash validation
 
 Status: Verified software milestone; full qualification blocked by corrected-target

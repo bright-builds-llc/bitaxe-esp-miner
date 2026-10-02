@@ -314,7 +314,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         })
     }
 
-    // Keep this large frame off the early signed Start and Renew paths.
+    // Keep this routing frame off the signed Start and Renew paths. It stays small:
+    // V2, Noise and qualification routes must not pay for the general match below.
     #[inline(never)]
     fn prepare_controller(
         &mut self,
@@ -366,6 +367,16 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         if request.command == "serial_trace_review" {
             return self.review_serial_trace(&request, now);
         }
+        self.prepare_general(request, now)
+    }
+
+    // The general commands' locals and inlined callees form the largest frame here.
+    #[inline(never)]
+    fn prepare_general(
+        &mut self,
+        request: ControllerRequest,
+        now: u64,
+    ) -> Result<PreparedResponse, WorkerControlError> {
         let mut result = match request.command.as_str() {
             "discover" => {
                 request.require_no_payload()?;

@@ -126,6 +126,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         }
     }
 
+    // A route target: its scratch must not inflate the shared routing frame.
+    #[inline(never)]
     pub(super) fn review_serial_trace(
         &self,
         request: &ControllerRequest,

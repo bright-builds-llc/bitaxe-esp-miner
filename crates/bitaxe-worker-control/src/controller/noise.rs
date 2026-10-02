@@ -2,6 +2,8 @@ use super::*;
 use crate::noise::{NoiseDetail, NoiseQuery, NoiseStart, NoiseState};
 
 impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
+    // A route target: its scratch must not inflate the shared routing frame.
+    #[inline(never)]
     pub(super) fn prepare_noise(
         &mut self,
         request: &ControllerRequest,

@@ -16,6 +16,15 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         if request.command == "stratum_v2_channel_start" {
             return self.admit_v2(request, now);
         }
+        self.observe_v2(request, now)
+    }
+    // Observation and cancellation scratch stays out of the Start admission path.
+    #[inline(never)]
+    fn observe_v2(
+        &mut self,
+        request: &ControllerRequest,
+        now: u64,
+    ) -> Result<PreparedResponse, WorkerControlError> {
         // The retained binding authorizes only observation/cancellation, never Start.
         if self.maybe_v2_generation != Some(self.generation) {
             self.required_active_context()?;
@@ -81,6 +90,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             _ => Err(WorkerControlError::InvalidTransition),
         }
     }
+    // Start admission's payload and snapshots live only in this frame.
+    #[inline(never)]
     fn admit_v2(
         &mut self,
         request: &ControllerRequest,

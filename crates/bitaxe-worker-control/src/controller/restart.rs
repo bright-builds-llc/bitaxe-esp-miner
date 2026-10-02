@@ -11,6 +11,8 @@ struct RestartRequest {
 }
 
 impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
+    // A route target: its scratch must not inflate the shared routing frame.
+    #[inline(never)]
     pub(super) fn prepare_qualification_restart(
         &mut self,
         request: &ControllerRequest,
