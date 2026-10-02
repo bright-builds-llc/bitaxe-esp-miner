@@ -13,7 +13,7 @@ import { admitNoisePackage } from './noise-admission.mjs';
 import { validateNativeNoiseAudit } from './noise-stack-audit.mjs';
 import { judgeTargetEvents } from './judge.mjs';
 
-export const NOISE_CHECKPOINT_EFFECTS_ENABLED = true;
+export const NOISE_CHECKPOINT_EFFECTS_ENABLED = false;
 const OBJDUMP_VERSION = 'esp-14.2.0_20260121';
 const PHASES = Object.freeze(Array.from({ length: 14 }, (_, index) => 101 + index));
 const sha = value => createHash('sha256').update(value).digest('hex');

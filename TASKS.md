@@ -6528,7 +6528,7 @@ task-scoped contract under the Effectful Hardware Task Gate and AGENTS.md.
 - [x] Build the clean device image and measure every device Noise path with the
   auditor-v2 method. Share completion needs 11,424 bytes against a 10,240-byte
   budget on the 12 KiB `stratum-primary`/`stratum-fallback` worker.
-- [ ] Split the composed virtual `Exchange::new`/`run_exchange` lifetimes as in
+- [x] Split the composed virtual `Exchange::new`/`run_exchange` lifetimes as in
   the probe. Measure the composed Start path, publish a one-use checkpoint-only
   healthy-lifecycle recheck, and run it.
 - [ ] Choose the device fix from internal-heap evidence: worker stack size,
@@ -6556,9 +6556,9 @@ Composed handshake correction | 2026-10-02 | Source and dev builds only
   `Exchange::new`. Responder boundaries are our non-inlined helpers, because the
   library calls inline into them. On the dev image all 13 paths fit and control
   isolation holds. Helper completion is 11,056 bytes; probe completion is 12,352.
-- [ ] Publish campaign004 below, build from that commit, bind a v3 receipt and run.
+- [x] Publish campaign004 below, build from that commit, bind a v3 receipt and run.
 
-noise-composed-checkpoint-enabled: true
+noise-composed-checkpoint-enabled: false
 
 Campaign004 contract (checkpoint-only composed Start): one emulated
 `healthy-lifecycle` seed-1 run with status and allocation probes. Judge only
@@ -6584,6 +6584,25 @@ The other effect, evidence, privacy and retry rules are campaign003's:
 
 Passing would show only that the corrected composed boundary works in emulation.
 It is not a device result, and full-board qualification stays false.
+
+Campaign004 outcome | 2026-10-02: published at `7fff6d3c`. The package built from
+that commit has compiled source
+`91d2f8a85379c46575c3802436fe5eab964affcdf45e9cdb8ce7199329a63d5b`, virtual ELF
+`64843495262374590798e2af5269cda04019e8832aa9714de3d6c8e16120dec9` and v3
+receipt `afe8a34516bc9cac8229bebbdb9812d8264b761205df50736c07f0dfec91d103`.
+The single claimed run passed all 18 checks; only the expected
+`strict_live_profile_share` was unsupported. The composed healthy-lifecycle
+Start reached `started`, including authenticated status, stop, close,
+accounting, the controller-owned encrypted share and the retained accepted share.
+Minimum free stack was 4,196 bytes on main and 4,960 on the handshake helper,
+heap integrity held after the scenario, and the emulator was released with empty
+stderr and no writer leases. Result digest:
+`dd1d91596c9ba1f974c4423e568792433a8679da9cc19a35a99c60f4d9386bd7`. The claim is
+consumed and the gate is disabled.
+
+This resolves run017's composed boundary in emulation: the 16 KiB main stack no
+longer carries Noise crypto. It is not device evidence. The virtual task's
+broader qualification criteria remain open.
 
 ### task-ultra205-virtual-board-validation | 2026-09-30 | Full functional virtual Ultra 205 and pre-flash validation
 
