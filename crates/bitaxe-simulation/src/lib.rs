@@ -10,6 +10,7 @@ pub mod v2;
 
 pub use scenarios::{run_scenario, run_scenario_with_observer, scenario_names};
 use serde::{Deserialize, Serialize};
+pub use v2::exchange::{set_handshake_stack_observer, HANDSHAKE_STACK_BYTES};
 
 pub const SCENARIO_VERSION: &str = "ultra205-scenarios-v1";
 

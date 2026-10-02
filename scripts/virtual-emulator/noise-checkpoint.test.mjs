@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, realpath, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkpointEvents, checkpointObservations, claimCheckpoint, judgeFullCheckpoint, redactedCheckpointFailure,
-  runNoiseCheckpoint } from './noise-checkpoint.mjs';
+import { checkpointEvents, checkpointObservations, claimCheckpoint, judgeComposedCheckpoint, judgeFullCheckpoint,
+  redactedCheckpointFailure, runNoiseCheckpoint } from './noise-checkpoint.mjs';
 
 const source = 'a'.repeat(64);
 function events() {
@@ -108,4 +108,60 @@ test('active runner uses projected records and has no debugger, panic text or co
   assert.match(code, /outputLinePrefix: 'VIRTUAL_U205 '/);
   assert.match(code, /independent_task_bounds: 'unsupported'/);
   assert.doesNotMatch(code, /from '\.\/noise\.mjs'|core-dump\/main|decodeCore|NoiseDebugger|Guru Meditation|0xf12000|first_target_fault/);
+});
+
+function composedEvents() {
+  return [{ event: 'boot', execution_profile: 'virtual-ultra205', compiled_source_sha256: source, heartbeat_cutoff_ms: 2800, boot: 1 },
+    { event: 'task', joined: true, stack_bytes: 8192, minimum_stack_free_bytes: 7000, core: 0 },
+    { event: 'status', boot: 1, internal_free: 300000, internal_largest: 100000, psram_free: 8000000 },
+    { event: 'allocation', released: true, bytes: 8192, before: 300000, during: 291800, after: 300000 },
+    { event: 'scenario', result: { scenario: 'healthy-lifecycle', seed: 1, hardware_qualified: false, actual_outcome: 'started',
+      checks: [{ id: 'controller_start', status: 'passed' }, { id: 'strict_live_profile_share', status: 'unsupported' }] } },
+    { event: 'scenario_margin', minimum_main_stack_free_bytes: 6000, required_margin_bytes: 2048, configured_main_stack_bytes: 16384,
+      handshake_minimum_stack_free_bytes: 4000, handshake_configured_stack_bytes: 16384, heap_integrity: true }];
+}
+const accepted = check => ['passed', 'expected_unsupported'].includes(check.status);
+
+test('a healthy composed run accepts only the expected coverage gap', () => {
+  // Arrange / Act
+  const checks = judgeComposedCheckpoint(composedEvents(), source);
+  // Assert
+  assert.equal(checks.every(accepted), true);
+  assert.equal(status(checks, 'scenario:strict_live_profile_share'), 'expected_unsupported');
+});
+
+test('any other unsupported composed check is a failure', () => {
+  // Arrange
+  const value = composedEvents(); value[4].result.checks[0].status = 'unsupported';
+  // Act
+  const checks = judgeComposedCheckpoint(value, source);
+  // Assert
+  assert.equal(status(checks, 'scenario:controller_start'), 'failed');
+});
+
+test('a thin helper stack or damaged heap fails the composed run', () => {
+  // Arrange
+  const thin = composedEvents(); thin[5].handshake_minimum_stack_free_bytes = 2047;
+  const damaged = composedEvents(); damaged[5].heap_integrity = false;
+  // Act
+  const thinChecks = judgeComposedCheckpoint(thin, source);
+  const damagedChecks = judgeComposedCheckpoint(damaged, source);
+  // Assert
+  assert.equal(status(thinChecks, 'handshake_stack_margin'), 'failed');
+  assert.equal(status(damagedChecks, 'heap_integrity_after_scenario'), 'failed');
+});
+
+test('a missing scenario record stops inference', () => {
+  // Arrange
+  const value = composedEvents().slice(0, 4);
+  // Act
+  const checks = judgeComposedCheckpoint(value, source);
+  // Assert
+  assert.equal(status(checks, 'scenario_started'), 'failed');
+  assert.equal(status(checks, 'handshake_stack_margin'), 'failed');
+});
+
+test('an unknown profile is rejected only after the effect gate', async () => {
+  // Arrange / Act / Assert
+  await assert.rejects(runNoiseCheckpoint('/missing', '/missing', '/missing', { auditPath: '/missing', profile: 'other', disableEffects: true }), /effect_gate_disabled/);
 });

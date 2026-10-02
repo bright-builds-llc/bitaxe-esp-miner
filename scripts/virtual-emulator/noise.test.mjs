@@ -25,15 +25,19 @@ const graph = [
   ['bitaxe_simulation::noise_probe::prepare_initiator', ['noise_sv2::initiator::Initiator::new_with_rng', 'bitaxe_stratum::v2::noise::NoiseInitiator::act_one']],
   ['noise_sv2::initiator::Initiator::new_with_rng', []],
   ['bitaxe_stratum::v2::noise::NoiseInitiator::act_one', []],
-  ['bitaxe_simulation::noise_probe::respond', ['bitaxe_simulation::noise_probe::construct_responder', 'bitaxe_simulation::noise_probe::step_responder']],
-  ['bitaxe_simulation::noise_probe::construct_responder', ['noise_sv2::responder::Responder::from_authority_kp_with_rng']],
+  ['bitaxe_simulation::noise_probe::respond', ['bitaxe_simulation::v2::exchange::construct_responder', 'bitaxe_simulation::v2::exchange::step_responder']],
+  ['bitaxe_simulation::v2::exchange::construct_responder', ['noise_sv2::responder::Responder::from_authority_kp_with_rng']],
   ['noise_sv2::responder::Responder::from_authority_kp_with_rng', []],
-  ['bitaxe_simulation::noise_probe::step_responder', ['noise_sv2::responder::Responder::step_1_with_now_rng']],
+  ['bitaxe_simulation::v2::exchange::step_responder', ['noise_sv2::responder::Responder::step_1_with_now_rng']],
   ['noise_sv2::responder::Responder::step_1_with_now_rng', []],
   [COMPLETE, ['noise_sv2::initiator::Initiator::step_2_with_now']],
   ['noise_sv2::initiator::Initiator::step_2_with_now', ['rustsecp256k1_v0_9_2_schnorrsig_verify']],
   ['rustsecp256k1_v0_9_2_schnorrsig_verify', []],
   ['bitaxe_simulation::noise_probe::frame_round_trip', []],
+  ['bitaxe_simulation::v2::exchange::Exchange::new', []],
+  ['bitaxe_simulation::v2::exchange::handshake', ['bitaxe_simulation::v2::exchange::prepare_initiator',
+    'bitaxe_simulation::v2::exchange::construct_responder', 'bitaxe_simulation::v2::exchange::step_responder', COMPLETE]],
+  ['bitaxe_simulation::v2::exchange::prepare_initiator', ['noise_sv2::initiator::Initiator::new_with_rng']],
 ];
 const addressOf = new Map(graph.map(([name], i) => [name, (0x40000000 + i * 256).toString(16)]));
 const disassembly = graph.map(([name, callees]) => `${addressOf.get(name)} <${name}>:\n ${addressOf.get(name)}: 004136 entry a1, 64\n` +

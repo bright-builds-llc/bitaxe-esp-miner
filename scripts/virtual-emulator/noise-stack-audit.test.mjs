@@ -9,6 +9,11 @@ const HANDSHAKE = 'bitaxe_simulation::noise_probe::handshake_and_frame';
 const VERIFY = 'rustsecp256k1_v0_9_2_schnorrsig_verify';
 const STRAUSS = 'rustsecp256k1_v0_9_2_ecmult_strauss_wnaf';
 const RUN = 'bitaxe_virtual_firmware::noise_probe::run_and_emit';
+const CONSTRUCT = 'bitaxe_simulation::v2::exchange::construct_responder';
+const STEP = 'bitaxe_simulation::v2::exchange::step_responder';
+const COMPLETE = 'bitaxe_stratum::v2::noise::completion::<impl bitaxe_stratum::v2::noise::NoiseInitiator>::complete_diagnostic_into';
+const SPAWN = 'bitaxe_simulation::v2::exchange::run_on_handshake_stack';
+const HELPER = 'bitaxe_simulation::v2::exchange::handshake';
 // Corrected helper topology with synthetic frame sizes; [name, frame bytes, direct callees].
 const GRAPH = [
   ['bitaxe_virtual_firmware::main', 128, ['bitaxe_virtual_firmware::guest::run']],
@@ -25,12 +30,12 @@ const GRAPH = [
   ['bitaxe_stratum::v2::noise::NoiseInitiator::act_one', 256, ['rustsecp256k1_v0_9_2_ellswift_encode']],
   ['rustsecp256k1_v0_9_2_ellswift_encode', 512, []],
   ['rustsecp256k1_v0_9_2_ecmult_gen', 1024, []],
-  ['bitaxe_simulation::noise_probe::respond', 96, ['bitaxe_simulation::noise_probe::construct_responder',
-    'bitaxe_simulation::noise_probe::step_responder']],
-  ['bitaxe_simulation::noise_probe::construct_responder', 112, ['noise_sv2::responder::Responder::from_authority_kp_with_rng']],
+  ['bitaxe_simulation::noise_probe::respond', 96, [CONSTRUCT,
+    STEP]],
+  [CONSTRUCT, 112, ['noise_sv2::responder::Responder::from_authority_kp_with_rng']],
   ['noise_sv2::responder::Responder::from_authority_kp_with_rng', 400, ['rustsecp256k1_v0_9_2_keypair_create']],
   ['rustsecp256k1_v0_9_2_keypair_create', 304, ['rustsecp256k1_v0_9_2_ecmult_gen']],
-  ['bitaxe_simulation::noise_probe::step_responder', 1408, ['noise_sv2::responder::Responder::step_1_with_now_rng']],
+  [STEP, 1408, ['noise_sv2::responder::Responder::step_1_with_now_rng']],
   ['noise_sv2::responder::Responder::step_1_with_now_rng', 5152, ['rustsecp256k1_v0_9_2_ecmult_const', 'rustsecp256k1_v0_9_2_ecmult_gen']],
   ['rustsecp256k1_v0_9_2_ecmult_const', 2000, ['memcpy']],
   ['memcpy', 4000, []],
@@ -44,6 +49,11 @@ const GRAPH = [
   ['rustsecp256k1_v0_9_2_ecmult_odd_multiples_table', 688, []],
   ['bitaxe_simulation::noise_probe::frame_round_trip', 160, ['bitaxe_stratum::v2::noise::NoiseTransport::encrypt_frame']],
   ['bitaxe_stratum::v2::noise::NoiseTransport::encrypt_frame', 400, []],
+  // The composed Start path spawns its handshake; the spawn has no direct call into it.
+  ['bitaxe_simulation::v2::exchange::Exchange::new', 80, [SPAWN]],
+  [SPAWN, 160, []],
+  [HELPER, 432, ['bitaxe_simulation::v2::exchange::prepare_initiator', CONSTRUCT, STEP, COMPLETE]],
+  ['bitaxe_simulation::v2::exchange::prepare_initiator', 208, ['noise_sv2::initiator::Initiator::new_with_rng']],
 ];
 const ADDRESS = new Map(GRAPH.map(([name], index) => [name, 0x40000000 + index * 0x100]));
 
@@ -69,7 +79,10 @@ test('corrected helper paths fit without treating SDK extra stack as spendable m
   assert.deepEqual(result.paths.map(path => [path.id, path.frame_bytes]), [
     ['initiator_constructor', 3408], ['act_one', 2640], ['responder_constructor', 3600],
     ['responder_ecdh_and_sign', 10320], ['completion', 11152], ['certificate_verification', 11152],
-    ['encrypted_frame', 2224], ['outcome_emission', 1728]]);
+    ['encrypted_frame', 2224], ['outcome_emission', 1728], ['composed_helper_initiator', 2176],
+    ['composed_helper_responder_constructor', 2272], ['composed_helper_responder_step', 8992],
+    ['composed_helper_completion', 9920], ['composed_helper_certificate', 9920]]);
+  assert.equal(result.composed_crypto_isolated_from_control_stack, true);
 });
 
 test('certificate verification counts nested Strauss descent beyond its named boundary', () => {
@@ -95,13 +108,25 @@ test('the original oversized caller frame keeps certificate verification over bu
 
 test('an oversized responder step frame fails even when completion fits', () => {
   // Arrange
-  const disassembly = fixture({ 'bitaxe_simulation::noise_probe::step_responder': 5440 });
+  const disassembly = fixture({ [STEP]: 5440 });
   // Act
   const result = auditNoiseStack(disassembly, CONFIG);
   // Assert
   assert.equal(result.selected_path_budget_fit, false);
   assert.equal(pathOf(result, 'responder_ecdh_and_sign').fit, false);
   assert.equal(pathOf(result, 'completion').fit, true);
+});
+
+test('a direct control-stack call into the handshake blocks admission', () => {
+  // Arrange
+  const disassembly = fixture().replace(`${ADDRESS.get(SPAWN).toString(16)} <${SPAWN}>:\n ${ADDRESS.get(SPAWN).toString(16)}: 004136 entry a1, 0xa0\n`,
+    `${ADDRESS.get(SPAWN).toString(16)} <${SPAWN}>:\n ${ADDRESS.get(SPAWN).toString(16)}: 004136 entry a1, 0xa0\n` +
+    ` ${ADDRESS.get(SPAWN).toString(16)}: 000005 call8 ${ADDRESS.get(HELPER).toString(16)} <${HELPER}>\n`);
+  // Act
+  const result = auditNoiseStack(disassembly, CONFIG);
+  // Assert
+  assert.equal(result.composed_crypto_isolated_from_control_stack, false);
+  assert.equal(result.selected_path_budget_fit, false);
 });
 
 test('calls outside the crypto family are reported as gaps rather than credited', () => {

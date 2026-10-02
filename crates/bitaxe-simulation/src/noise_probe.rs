@@ -6,11 +6,12 @@ use bitaxe_stratum::v2::{
         ENCRYPTED_HEADER_LEN,
     },
 };
-use noise_sv2::{NoiseCodec, Responder};
+use noise_sv2::NoiseCodec;
 use serde::Serialize;
-use std::time::Duration;
 
-use crate::v2::exchange::{SyntheticRng, OTHER_PUBLIC, PRIVATE, PUBLIC};
+use crate::v2::exchange::{
+    construct_responder, step_responder, SyntheticRng, OTHER_PUBLIC, PUBLIC,
+};
 
 pub mod prefix;
 
@@ -202,7 +203,8 @@ fn respond(
     }
     let mut responder_rng = SyntheticRng::new(seed ^ 0xaaccee);
     observe(NoisePhase::BeforeResponder);
-    let mut responder = construct_responder(&mut responder_rng)?;
+    let mut responder =
+        construct_responder(&mut responder_rng).map_err(|()| NoiseProbeError::Responder)?;
     observe(NoisePhase::AfterResponder);
     observe(NoisePhase::BeforeActTwo);
     step_responder(
@@ -211,36 +213,10 @@ fn respond(
         &mut responder_rng,
         act_two,
         server_slot,
-    )?;
+    )
+    .map_err(|()| NoiseProbeError::ActTwo)?;
     observe(NoisePhase::AfterActTwo);
     Ok(())
-}
-
-// Construction scratch stays out of the sibling frame that hosts ECDH and signing.
-#[inline(never)]
-fn construct_responder(rng: &mut SyntheticRng) -> Result<Box<Responder>, NoiseProbeError> {
-    Responder::from_authority_kp_with_rng(&PUBLIC, &PRIVATE, Duration::from_secs(3600), rng)
-        .map_err(|_| NoiseProbeError::Responder)
-}
-
-#[inline(never)]
-fn step_responder(
-    responder: &mut Responder,
-    act_one: [u8; ACT_ONE_LEN],
-    rng: &mut SyntheticRng,
-    act_two: &mut [u8; ACT_TWO_LEN],
-    server_slot: &mut Vec<NoiseCodec>,
-) -> Result<(), NoiseProbeError> {
-    // Consuming the return slot in place avoids a second stack copy of the codec.
-    match responder.step_1_with_now_rng(act_one, 100, rng) {
-        Ok((response, server)) => {
-            *act_two = response;
-            // Capacity was reserved fallibly before opaque crypto; this push cannot allocate.
-            server_slot.push(server);
-            Ok(())
-        }
-        Err(_) => Err(NoiseProbeError::ActTwo),
-    }
 }
 
 // The malformed fixture still enters the production length guard, without retaining

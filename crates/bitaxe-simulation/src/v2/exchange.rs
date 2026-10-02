@@ -1,11 +1,12 @@
 use crate::SimulationError;
 use bitaxe_stratum::v2::{
     frame::{Frame, FrameHeader, FRAME_HEADER_LEN},
-    noise::{NoiseInitiator, NoiseTransport, ENCRYPTED_HEADER_LEN},
+    noise::{NoiseInitiator, NoiseTransport, ACT_ONE_LEN, ACT_TWO_LEN, ENCRYPTED_HEADER_LEN},
 };
 use bitaxe_virtual_board::{scheduler::DeterministicScheduler, transport::VirtualTransport};
 use noise_sv2::{NoiseCodec, Responder};
 use rand::{CryptoRng, RngCore};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 pub(crate) const PRIVATE: [u8; 32] = [
@@ -51,42 +52,19 @@ impl RngCore for SyntheticRng {
 }
 impl CryptoRng for SyntheticRng {}
 
+/// Owners live in reserved heap slots so the frame holding an `Exchange` stays small
+/// while certificate verification runs.
 pub struct Exchange {
-    pub client: NoiseTransport,
-    server: NoiseCodec,
+    client: Vec<NoiseTransport>,
+    server: Vec<NoiseCodec>,
     outbound: VirtualTransport,
     inbound: VirtualTransport,
     pub delivered_frames: u32,
 }
 impl Exchange {
+    #[inline(never)]
     pub fn new(seed: u64, wrong_authority: bool) -> Result<Self, SimulationError> {
-        let mut client_rng = SyntheticRng::new(seed);
-        let mut responder_rng = SyntheticRng::new(seed ^ 0xaaccee);
-        let mut client = NoiseInitiator::new(
-            Some(if wrong_authority {
-                OTHER_PUBLIC
-            } else {
-                PUBLIC
-            }),
-            &mut client_rng,
-        )
-        .map_err(|_| SimulationError::Boundary("noise_initiator"))?;
-        let act_one = client
-            .act_one()
-            .map_err(|_| SimulationError::Boundary("noise_act_one"))?;
-        let mut responder = Responder::from_authority_kp_with_rng(
-            &PUBLIC,
-            &PRIVATE,
-            Duration::from_secs(3600),
-            &mut responder_rng,
-        )
-        .map_err(|_| SimulationError::Boundary("noise_responder"))?;
-        let (act_two, server) = responder
-            .step_1_with_now_rng(act_one, 100, &mut responder_rng)
-            .map_err(|_| SimulationError::Boundary("noise_act_two"))?;
-        let client = client
-            .complete(&act_two, 100)
-            .map_err(|_| SimulationError::Boundary("noise_authentication"))?;
+        let (client, server) = run_on_handshake_stack(seed, wrong_authority)?;
         let mut outbound = VirtualTransport::new(65536);
         outbound.connect()?;
         let mut inbound = VirtualTransport::new(65536);
@@ -99,8 +77,18 @@ impl Exchange {
             delivered_frames: 0,
         })
     }
-    pub fn encrypt_client(&mut self, frame: &Frame) -> Result<Vec<u8>, SimulationError> {
+    fn client(&mut self) -> Result<&mut NoiseTransport, SimulationError> {
         self.client
+            .first_mut()
+            .ok_or(SimulationError::Boundary("noise_client_missing"))
+    }
+    fn server(&mut self) -> Result<&mut NoiseCodec, SimulationError> {
+        self.server
+            .first_mut()
+            .ok_or(SimulationError::Boundary("noise_server_missing"))
+    }
+    pub fn encrypt_client(&mut self, frame: &Frame) -> Result<Vec<u8>, SimulationError> {
+        self.client()?
             .encrypt_frame(frame)
             .map_err(|_| SimulationError::Boundary("client_encrypt"))
     }
@@ -122,7 +110,7 @@ impl Exchange {
             return Err(SimulationError::Boundary("server_header_length"));
         }
         let mut header = bytes[..ENCRYPTED_HEADER_LEN].to_vec();
-        self.server
+        self.server()?
             .decrypt(&mut header)
             .map_err(|_| SimulationError::Boundary("server_header_authentication"))?;
         if header.len() != FRAME_HEADER_LEN {
@@ -141,7 +129,7 @@ impl Exchange {
         }
         let mut payload = bytes[ENCRYPTED_HEADER_LEN..].to_vec();
         if !payload.is_empty() {
-            self.server
+            self.server()?
                 .decrypt(&mut payload)
                 .map_err(|_| SimulationError::Boundary("server_payload_authentication"))?;
         }
@@ -159,12 +147,12 @@ impl Exchange {
         tamper: bool,
     ) -> Result<Frame, SimulationError> {
         let mut encoded = frame.header.encode().to_vec();
-        self.server
+        self.server()?
             .encrypt(&mut encoded)
             .map_err(|_| SimulationError::Boundary("server_encrypt"))?;
         if !frame.payload().is_empty() {
             let mut payload = frame.payload().to_vec();
-            self.server
+            self.server()?
                 .encrypt(&mut payload)
                 .map_err(|_| SimulationError::Boundary("server_encrypt"))?;
             encoded.extend(payload);
@@ -184,7 +172,7 @@ impl Exchange {
             return Err(SimulationError::Boundary("client_header_length"));
         }
         let frame = self
-            .client
+            .client()?
             .decrypt_frame(
                 &bytes[..ENCRYPTED_HEADER_LEN],
                 &bytes[ENCRYPTED_HEADER_LEN..],
@@ -208,5 +196,145 @@ impl Exchange {
             && !self.inbound.connected
             && self.outbound.queued_bytes() == 0
             && self.inbound.queued_bytes() == 0
+    }
+}
+
+/// Certificate verification alone needs about 10.6 KB below the handshake, so the
+/// handshake runs on its own stack instead of the control caller's, as on the device.
+pub const HANDSHAKE_STACK_BYTES: usize = 16 * 1024;
+// The deepest measured target descent from `handshake` is responder ECDH at
+// 12,192 bytes, plus 224 bytes of thread entry; the 2,048-byte margin must fit.
+const _: () = assert!(HANDSHAKE_STACK_BYTES >= 12_192 + 224 + 2_048);
+
+// The contract above is measured on optimized Xtensa frames. Unoptimized host
+// frames are far larger, so host builds use at least the standard std stack.
+const HELPER_STACK_BYTES: usize = if cfg!(target_os = "espidf") {
+    HANDSHAKE_STACK_BYTES
+} else {
+    2 * 1024 * 1024
+};
+
+static HANDSHAKE_STACK_OBSERVER: OnceLock<fn()> = OnceLock::new();
+
+/// Registers a target adapter that samples the helper stack just before the helper
+/// exits. It runs on the helper thread and must not allocate. Only the first call wins.
+pub fn set_handshake_stack_observer(observer: fn()) -> bool {
+    HANDSHAKE_STACK_OBSERVER.set(observer).is_ok()
+}
+
+#[inline(never)]
+fn run_on_handshake_stack(
+    seed: u64,
+    wrong_authority: bool,
+) -> Result<(Vec<NoiseTransport>, Vec<NoiseCodec>), SimulationError> {
+    let mut client = reserve_owner()?;
+    let mut server = reserve_owner()?;
+    // Joined before return, so ordering and outcomes stay deterministic.
+    let helper = std::thread::Builder::new()
+        .name("noise-handshake".into())
+        .stack_size(HELPER_STACK_BYTES)
+        .spawn(move || {
+            let outcome = handshake(seed, wrong_authority, &mut client, &mut server);
+            if let Some(observer) = HANDSHAKE_STACK_OBSERVER.get() {
+                observer();
+            }
+            outcome.map(|()| (client, server)).map_err(boundary_label)
+        })
+        .map_err(|_| SimulationError::Boundary("noise_handshake_spawn"))?;
+    helper
+        .join()
+        .map_err(|_| SimulationError::Boundary("noise_handshake_panicked"))?
+        .map_err(SimulationError::Boundary)
+}
+
+fn boundary_label(error: SimulationError) -> &'static str {
+    match error {
+        SimulationError::Boundary(label) => label,
+        _ => "noise_handshake_failed",
+    }
+}
+
+fn reserve_owner<T>() -> Result<Vec<T>, SimulationError> {
+    let mut slot = Vec::new();
+    slot.try_reserve_exact(1)
+        .map_err(|_| SimulationError::Boundary("noise_owner_reservation"))?;
+    Ok(slot)
+}
+
+// Runs on the handshake stack; construction, responder and completion use sibling frames.
+#[inline(never)]
+fn handshake(
+    seed: u64,
+    wrong_authority: bool,
+    client_slot: &mut Vec<NoiseTransport>,
+    server_slot: &mut Vec<NoiseCodec>,
+) -> Result<(), SimulationError> {
+    let (client, act_one) = prepare_initiator(seed, wrong_authority)?;
+    let mut act_two = [0_u8; ACT_TWO_LEN];
+    let mut responder_rng = SyntheticRng::new(seed ^ 0xaaccee);
+    let mut responder = construct_responder(&mut responder_rng)
+        .map_err(|()| SimulationError::Boundary("noise_responder"))?;
+    step_responder(
+        &mut responder,
+        act_one,
+        &mut responder_rng,
+        &mut act_two,
+        server_slot,
+    )
+    .map_err(|()| SimulationError::Boundary("noise_act_two"))?;
+    drop(responder);
+    client
+        .complete_diagnostic_into(&act_two, 100, client_slot)
+        .map_err(|_| SimulationError::Boundary("noise_authentication"))
+}
+
+#[inline(never)]
+fn prepare_initiator(
+    seed: u64,
+    wrong_authority: bool,
+) -> Result<(NoiseInitiator, [u8; ACT_ONE_LEN]), SimulationError> {
+    let mut client_rng = SyntheticRng::new(seed);
+    let mut client = NoiseInitiator::new(
+        Some(if wrong_authority {
+            OTHER_PUBLIC
+        } else {
+            PUBLIC
+        }),
+        &mut client_rng,
+    )
+    .map_err(|_| SimulationError::Boundary("noise_initiator"))?;
+    let act_one = client
+        .act_one()
+        .map_err(|_| SimulationError::Boundary("noise_act_one"))?;
+    Ok((client, act_one))
+}
+
+// Construction scratch stays out of the sibling frame that hosts ECDH and signing.
+#[inline(never)]
+pub(crate) fn construct_responder(rng: &mut SyntheticRng) -> Result<Box<Responder>, ()> {
+    Responder::from_authority_kp_with_rng(&PUBLIC, &PRIVATE, Duration::from_secs(3600), rng)
+        .map_err(|_| ())
+}
+
+#[inline(never)]
+pub(crate) fn step_responder(
+    responder: &mut Responder,
+    act_one: [u8; ACT_ONE_LEN],
+    rng: &mut SyntheticRng,
+    act_two: &mut [u8; ACT_TWO_LEN],
+    server_slot: &mut Vec<NoiseCodec>,
+) -> Result<(), ()> {
+    if !server_slot.is_empty() || server_slot.capacity() == 0 {
+        return Err(());
+    }
+    // Consuming the return slot in place avoids a second stack copy of the codec.
+    match responder.step_1_with_now_rng(act_one, 100, rng) {
+        Ok((response, server)) => {
+            *act_two = response;
+            // Capacity was reserved fallibly before opaque crypto; this push cannot allocate.
+            server_slot.push(server);
+            Ok(())
+        }
+        Err(_) => Err(()),
     }
 }

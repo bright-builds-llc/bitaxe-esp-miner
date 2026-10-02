@@ -190,6 +190,8 @@ pub(super) fn run_exchange(
         }),
     }
 }
+// The profile's frame must not stay live while `Exchange::new` verifies the certificate.
+#[inline(never)]
 fn exchange_profile(
     exchange: &mut Exchange,
     board: &mut VirtualBoard,

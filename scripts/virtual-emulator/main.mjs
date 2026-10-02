@@ -15,7 +15,7 @@ export async function main(args = process.argv.slice(2)) {
   const options = {};
   while (args.length) {
     const key = args.shift(); const value = args.shift();
-    if (!['--evidence-dir', '--manifest', '--commands', '--scenario', '--seed', '--mode', '--audit', '--stop'].includes(key) || !value || options[key]) throw Error('emulator_arguments');
+    if (!['--evidence-dir', '--manifest', '--commands', '--scenario', '--seed', '--mode', '--audit', '--stop', '--profile'].includes(key) || !value || options[key]) throw Error('emulator_arguments');
     options[key] = value;
   }
   if (command === 'noise-prefix' && ['--commands', '--scenario', '--mode'].some(key => options[key])) throw Error('noise_prefix_arguments');
@@ -37,10 +37,11 @@ export async function main(args = process.argv.slice(2)) {
   }
   if (command === 'noise-checkpoint' && options['--manifest'] && options['--audit']) {
     const result = await runNoiseCheckpoint(repo, resolve(repo, options['--manifest']), evidence,
-      { auditPath: resolve(repo, options['--audit']), seed: Number(options['--seed'] ?? 1) });
+      { auditPath: resolve(repo, options['--audit']), seed: Number(options['--seed'] ?? 1), profile: options['--profile'] ?? 'noise-probe' });
     if (result.status !== 'passed') process.exitCode = 1;
     return result;
   }
+  if (command !== 'noise-checkpoint' && options['--profile']) throw Error('emulator_arguments');
   if (command === 'noise' && options['--manifest'] && options['--audit']) {
     const result = await runNoiseProbe(repo, resolve(repo, options['--manifest']), evidence,
       { auditPath: resolve(repo, options['--audit']), seed: Number(options['--seed'] ?? 1), mode: options['--mode'] ?? 'valid' });

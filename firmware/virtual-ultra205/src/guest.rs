@@ -3,6 +3,7 @@ use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs};
 use esp_idf_svc::sys;
 use serde_json::json;
 use std::io::{Read, Write};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
 /// Exercises actual target memory, FreeRTOS pthread tasks and NVS independently of model budgets.
@@ -35,6 +36,7 @@ pub fn run() -> anyhow::Result<()> {
     emit(
         json!({"event":"task","core":joined.0,"minimum_stack_free_bytes":joined.1,"stack_bytes":8192,"joined":true}),
     )?;
+    bitaxe_simulation::set_handshake_stack_observer(record_handshake_stack);
     let installed = unsafe { sys::uart_driver_install(0, 4096, 0, 0, std::ptr::null_mut(), 0) };
     if installed != sys::ESP_OK {
         return Err(anyhow!("virtual_uart_driver_install"));
@@ -68,9 +70,14 @@ pub fn run() -> anyhow::Result<()> {
                 .map_err(|error| anyhow!("scenario_execution: {error}"))?;
                 emit(json!({"event":"scenario","result":result}))?;
                 let margin = unsafe { sys::uxTaskGetStackHighWaterMark(std::ptr::null_mut()) };
+                let handshake = HANDSHAKE_STACK_FREE.load(Ordering::Acquire);
+                let heap_integrity = unsafe { sys::heap_caps_check_integrity_all(false) };
                 emit(
                     json!({"event":"scenario_margin","minimum_main_stack_free_bytes":margin,
-                    "required_margin_bytes":2048,"configured_main_stack_bytes":16384}),
+                    "required_margin_bytes":2048,"configured_main_stack_bytes":16384,
+                    "handshake_minimum_stack_free_bytes":(handshake != u32::MAX).then_some(handshake),
+                    "handshake_configured_stack_bytes":bitaxe_simulation::HANDSHAKE_STACK_BYTES,
+                    "heap_integrity":heap_integrity}),
                 )?;
             }
             Some("noise_prefix") => crate::noise_probe::run_prefix_and_emit(&value)?,
@@ -91,6 +98,18 @@ pub fn run() -> anyhow::Result<()> {
             }
             _ => emit(json!({"event":"unsupported","category":"virtual_command_unsupported"}))?,
         }
+    }
+}
+
+static HANDSHAKE_STACK_FREE: AtomicU32 = AtomicU32::new(u32::MAX);
+
+/// Runs on the handshake helper just before it exits; keeps the lowest high-water mark.
+fn record_handshake_stack() {
+    let free = unsafe { sys::uxTaskGetStackHighWaterMark(std::ptr::null_mut()) };
+    // Helpers are joined one at a time, so a load and store keep the minimum. This
+    // also avoids `fetch_min`, which the pinned Xtensa backend fails to assemble.
+    if free < HANDSHAKE_STACK_FREE.load(Ordering::Acquire) {
+        HANDSHAKE_STACK_FREE.store(free, Ordering::Release);
     }
 }
 

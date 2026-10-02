@@ -6539,6 +6539,52 @@ task-scoped contract under the Effectful Hardware Task Gate and AGENTS.md.
 - [ ] Publish a task-scoped hardware contract only when its dependencies hold,
   then run it under the attempt policy and record the outcome.
 
+Composed handshake correction | 2026-10-02 | Source and dev builds only
+
+- [x] Split `Exchange::new` into initiator, responder and completion frames with
+  fallibly reserved heap owners, and give `exchange_profile` its own frame.
+  That cut the composed completion path from 26,256 bytes (from `run_exchange`
+  alone) to about 16,112 bytes from `main`. That was still over the 14,336-byte
+  budget, because about 10.6 KB of crypto sits under the control dispatch.
+- [x] Run the composed handshake on a joined 16 KiB `noise-handshake` helper
+  thread, mirroring the device, where Noise does not run on the control stack.
+  A compile-time contract pins the helper stack against the measured descent
+  plus margin. Host builds use a 2 MiB helper because unoptimized frames are
+  larger. A non-allocating observer reports the helper's stack high-water.
+- [x] Auditor v3 adds five helper-stack paths rooted at `handshake` and fails
+  admission if any crypto entry is directly reachable from the control-stack
+  `Exchange::new`. Responder boundaries are our non-inlined helpers, because the
+  library calls inline into them. On the dev image all 13 paths fit and control
+  isolation holds. Helper completion is 11,056 bytes; probe completion is 12,352.
+- [ ] Publish campaign004 below, build from that commit, bind a v3 receipt and run.
+
+noise-composed-checkpoint-enabled: true
+
+Campaign004 contract (checkpoint-only composed Start): one emulated
+`healthy-lifecycle` seed-1 run with status and allocation probes. Judge only
+application records: the shared target checks, the scenario reaching `started`,
+the main stack margin, the helper stack margin (at least 2,048 bytes free of
+16,384), and heap integrity after the scenario. Only
+`scenario:strict_live_profile_share` may be unsupported, matching the host.
+
+```sh
+just virtual-emulator build --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --evidence-dir scratch/virtual-noise-diagnostic/build019-composed-checkpoint
+node scripts/virtual-emulator/noise-stack-audit.mjs --elf ELF --sdkconfig CONFIG --compiled-source-sha256 SHA --output scratch/virtual-noise-diagnostic/build019-composed-checkpoint/full-audit-v3.json
+just virtual-emulator noise-checkpoint --profile healthy-lifecycle --manifest scratch/virtual-noise-diagnostic/build019-composed-checkpoint/virtual-package.json --audit scratch/virtual-noise-diagnostic/build019-composed-checkpoint/full-audit-v3.json --seed 1 --evidence-dir scratch/virtual-noise-diagnostic/composed-checkpoint001
+```
+
+The other effect, evidence, privacy and retry rules are campaign003's:
+- one bounded emulator with a 60-second window;
+- a 0700 parent, an absent child and separate 0600 wrapper logs;
+- no hardware, network, debugger, core, panic text or partition reads;
+- no limit increases;
+- the exclusive claim `scratch/virtual-noise-diagnostic/composed-checkpoint001.claim.json`;
+- no unchanged retry after the claim;
+- stop on failed checks, missing records, unproven release or drift.
+
+Passing would show only that the corrected composed boundary works in emulation.
+It is not a device result, and full-board qualification stays false.
+
 ### task-ultra205-virtual-board-validation | 2026-09-30 | Full functional virtual Ultra 205 and pre-flash validation
 
 Status: Verified software milestone; full qualification blocked by corrected-target

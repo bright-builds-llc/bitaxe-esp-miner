@@ -8,6 +8,8 @@ import { sourceSnapshot } from './identity.mjs';
 const PROFILE = 'noise-only-valid-seed1';
 const MAIN = 16384;
 const MARGIN = 2048;
+// Matches `bitaxe_simulation::HANDSHAKE_STACK_BYTES`; helper paths share the main budget.
+const HELPER_STACK = 16384;
 const OBJDUMP_VERSION = 'esp-14.2.0_20260121';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const hexDigest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -140,22 +142,44 @@ const PREFIX = ['bitaxe_virtual_firmware::main', 'bitaxe_virtual_firmware::guest
   'bitaxe_simulation::noise_probe::handshake_and_frame'];
 const INITIATOR = [...PREFIX, 'bitaxe_simulation::noise_probe::prepare_initiator'];
 const RESPONDER = [...PREFIX, 'bitaxe_simulation::noise_probe::respond'];
-const COMPLETION = [...PREFIX, 'bitaxe_stratum::v2::noise::completion::<impl bitaxe_stratum::v2::noise::NoiseInitiator>::complete_diagnostic_into'];
+const COMPLETE = 'bitaxe_stratum::v2::noise::completion::<impl bitaxe_stratum::v2::noise::NoiseInitiator>::complete_diagnostic_into';
+const COMPLETION = [...PREFIX, COMPLETE];
+const CONSTRUCT_RESPONDER = 'bitaxe_simulation::v2::exchange::construct_responder';
+const STEP_RESPONDER = 'bitaxe_simulation::v2::exchange::step_responder';
+const STEP_TWO = 'noise_sv2::initiator::Initiator::step_2_with_now';
+const VERIFY = 'rustsecp256k1_v0_9_2_schnorrsig_verify';
+// The composed Start path runs its handshake on a dedicated helper thread.
+const HELPER = ['bitaxe_simulation::v2::exchange::handshake'];
+const CONTROL_EXCHANGE = 'bitaxe_simulation::v2::exchange::Exchange::new';
 // Each crypto boundary extends its caller chain by the longest resolved crypto-family descent.
 const REQUIRED_PATHS = [
   { id: 'initiator_constructor', names: INITIATOR, crypto: 'noise_sv2::initiator::Initiator::new_with_rng' },
   { id: 'act_one', names: INITIATOR, crypto: 'bitaxe_stratum::v2::noise::NoiseInitiator::act_one' },
-  { id: 'responder_constructor', names: [...RESPONDER, 'bitaxe_simulation::noise_probe::construct_responder'],
-    crypto: 'noise_sv2::responder::Responder::from_authority_kp_with_rng' },
-  { id: 'responder_ecdh_and_sign', names: [...RESPONDER, 'bitaxe_simulation::noise_probe::step_responder'],
-    crypto: 'noise_sv2::responder::Responder::step_1_with_now_rng' },
-  { id: 'completion', names: COMPLETION, crypto: 'noise_sv2::initiator::Initiator::step_2_with_now' },
+  // Our non-inlined helpers are the boundaries; the library calls may inline into them.
+  { id: 'responder_constructor', names: RESPONDER, crypto: CONSTRUCT_RESPONDER },
+  { id: 'responder_ecdh_and_sign', names: RESPONDER, crypto: STEP_RESPONDER },
+  { id: 'completion', names: COMPLETION, crypto: STEP_TWO },
   // The valid certificate branch was previously omitted; it must be bounded by name.
-  { id: 'certificate_verification', names: [...COMPLETION, 'noise_sv2::initiator::Initiator::step_2_with_now'],
-    crypto: 'rustsecp256k1_v0_9_2_schnorrsig_verify' },
+  { id: 'certificate_verification', names: [...COMPLETION, STEP_TWO], crypto: VERIFY },
   { id: 'encrypted_frame', names: PREFIX, crypto: 'bitaxe_simulation::noise_probe::frame_round_trip' },
   { id: 'outcome_emission', names: [...PREFIX.slice(0, 3), 'bitaxe_virtual_firmware::noise_probe::emit_outcome'], crypto: null },
+  { id: 'composed_helper_initiator', names: [...HELPER, 'bitaxe_simulation::v2::exchange::prepare_initiator'],
+    crypto: 'noise_sv2::initiator::Initiator::new_with_rng' },
+  { id: 'composed_helper_responder_constructor', names: HELPER, crypto: CONSTRUCT_RESPONDER },
+  { id: 'composed_helper_responder_step', names: HELPER, crypto: STEP_RESPONDER },
+  { id: 'composed_helper_completion', names: [...HELPER, COMPLETE], crypto: STEP_TWO },
+  { id: 'composed_helper_certificate', names: [...HELPER, COMPLETE, STEP_TWO], crypto: VERIFY },
 ];
+// Crypto entry points that must never be reached on the control stack.
+const CONTROL_FORBIDDEN = [HELPER[0], COMPLETE, STEP_TWO, STEP_RESPONDER, CONSTRUCT_RESPONDER];
+
+/** True only when no direct-call path leads from the control-stack exchange into crypto. */
+export function controlStackIsolated(frames) {
+  const starts = frames.byName.get(CONTROL_EXCHANGE);
+  if (!starts) throw Error('noise_stack_required_symbol_missing');
+  return CONTROL_FORBIDDEN.every(name => [...(frames.byName.get(name) ?? [])]
+    .every(target => [...starts].every(start => pathBetween(frames, start, target) === null)));
+}
 
 function measureRequiredPath(frames, { id, names, crypto }) {
   if (crypto === null) return { id, ...measureNoisePath(frames, names), crypto_boundary: null };
@@ -177,9 +201,12 @@ export function auditNoiseStack(disassembly, config) {
     const path = measureRequiredPath(frames, required);
     return { ...path, fit: path.frame_bytes <= MAIN - MARGIN };
   });
-  return { schema: 'bitaxe-noise-stack-audit-v2', profile: PROFILE, main_stack_bytes: MAIN,
-    sdk_extra_stack_bytes: 512, required_margin_bytes: MARGIN, available_selected_path_bytes: MAIN - MARGIN,
-    selected_path_budget_fit: paths.every(path => path.fit), paths, complete_callgraph_bound: false,
+  const isolated = controlStackIsolated(frames);
+  return { schema: 'bitaxe-noise-stack-audit-v3', profile: PROFILE, main_stack_bytes: MAIN,
+    helper_stack_bytes: HELPER_STACK, sdk_extra_stack_bytes: 512, required_margin_bytes: MARGIN,
+    available_selected_path_bytes: MAIN - MARGIN, composed_crypto_isolated_from_control_stack: isolated,
+    helper_thread_entry_frames_bounded: false,
+    selected_path_budget_fit: isolated && paths.every(path => path.fit), paths, complete_callgraph_bound: false,
     scope: 'named_native_paths_with_longest_resolved_crypto_descent', runtime_high_water_required_bytes: MARGIN,
     unbounded_edges: ['indirect_calls', 'outside_crypto_family_calls', 'crypto_cycles', 'drop_glue'] };
 }
@@ -217,7 +244,8 @@ export async function validateNativeNoiseAudit(receipt, elf, repo) {
 
 /** An artifact match admits selected paths only; runtime margin and heap proof remain required. */
 export async function validateNoiseAudit(receipt, { elfSha256, sdkconfigSha256, compiledSourceSha256 }, { disassembly, sdkconfig } = {}) {
-  if (receipt?.schema !== 'bitaxe-noise-stack-audit-v2' || receipt.profile !== PROFILE ||
+  if (receipt?.schema !== 'bitaxe-noise-stack-audit-v3' || receipt.profile !== PROFILE ||
+      receipt.composed_crypto_isolated_from_control_stack !== true || receipt.helper_stack_bytes !== HELPER_STACK ||
       receipt.selected_path_budget_fit !== true || receipt.complete_callgraph_bound !== false ||
       receipt.main_stack_bytes !== MAIN || receipt.required_margin_bytes !== MARGIN ||
       receipt.available_selected_path_bytes !== MAIN - MARGIN || receipt.sdk_extra_stack_bytes !== 512 ||

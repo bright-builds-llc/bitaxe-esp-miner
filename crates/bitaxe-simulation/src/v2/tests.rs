@@ -295,3 +295,37 @@ fn partial_submission_never_emits_completed_write_observation() {
     ));
     assert_eq!(observed, vec![super::ProfileIoEvent::AsicWriteCompleted]);
 }
+
+static OBSERVED_HELPER_THREAD: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+fn record_helper_thread() {
+    if let Ok(mut observed) = OBSERVED_HELPER_THREAD.lock() {
+        *observed = std::thread::current().name().map(str::to_owned);
+    }
+}
+
+#[test]
+fn handshake_crypto_runs_on_the_dedicated_helper_thread() {
+    // Arrange
+    super::exchange::set_handshake_stack_observer(record_helper_thread);
+    // Act
+    let exchange = super::exchange::Exchange::new(5, false);
+    // Assert
+    assert!(exchange.is_ok());
+    let observed = OBSERVED_HELPER_THREAD
+        .lock()
+        .expect("observer state")
+        .clone();
+    assert_eq!(observed.as_deref(), Some("noise-handshake"));
+}
+
+#[test]
+fn helper_failure_keeps_the_typed_authentication_boundary() {
+    // Arrange / Act
+    let result = super::exchange::Exchange::new(5, true);
+    // Assert
+    assert!(matches!(
+        result,
+        Err(SimulationError::Boundary("noise_authentication"))
+    ));
+}
