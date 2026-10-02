@@ -17914,3 +17914,84 @@ commit. Earlier partial seals stay unchanged. No accepted-share, heartbeat-loss,
 four-cycle durability, historical checkpoint repair or original-panic-cause
 claim is made; parity remains 90/95. The separate Renew stack-margin prerequisite
 belongs to the accepted-share task; no renewal occurred here.
+
+### task-automation-runtime-extraction-evidence-bindings | 2026-10-02 20:20 | Rebind PWR-003 and SAFE-10 validators to the shared runtime
+
+- [x] Diagnose the `//tools/automation:automation_test` failures on `main`
+      (reproduced on `d162df7d` and `6eb1477`).
+- [x] Rebind the PWR-003 core-voltage and SAFE-10 source validators to the
+      semantics `fa62ba75` moved into `crates/bitaxe-runtime`, keeping every
+      existing fragment and binding the firmware delegation modules exactly.
+- [x] Rotate the SAFE-10 inventory identity for its changed membership and
+      keep earlier inventory versions historically valid.
+- [x] Add drift regressions for the delegated sources and delegation shims.
+- [x] Run ordered Cargo checks for the contracts crate, the redaction
+      verifier, and `bun scripts/bright-builds-check.ts all`.
+- [x] Run `bazel test //tools/automation:automation_test` on a host that can
+      reach the Bazel Central Registry.
+
+Authorization: repository source, test, documentation, commit and push work
+only. No detector, USB/device session, flash, monitor, credentials, network
+discovery, mining, hardware effect, evidence re-projection or parity status
+transition.
+
+Diagnosis: `fa62ba75` moved the ordered actuation plan, the bounded wait and
+the cooling reducer from `firmware/bitaxe` into `crates/bitaxe-runtime`. The
+firmware modules became glob re-exports, and the adapter now waits through
+`bitaxe_runtime::clock::wait_with_clock` with a firmware `ProductionClock`.
+The PWR-003 and SAFE-10 validators still read the old firmware files, so
+their fragments no longer matched. The validators were stale; the source
+change was deliberate. Reverting it would undo the shared virtual-board
+runtime.
+
+Fix: PWR-003 admits a third, shared-runtime source form. The firmware
+actuation module must contain only its re-export, so no local item can
+shadow the glob. The runtime plan, the runtime clock loop and the firmware
+`ProductionClock` join the unchanged-module comparison and the worktree check,
+and they must match the existing plan, wait and admission fragments. The
+historical blocking and in-firmware cancellable forms are unchanged. The
+SAFE-10 inventory adds `crates/bitaxe-runtime/src/{cooling,mining_actuation}.rs`
+and requires each firmware shim to be its exact re-export. That brings the
+inventory to 25 paths, 15 of them production. The projection schema rotates
+to `bitaxe-safe10-evidence-v3`; v2 (23/13) and v1 (19/9) stay historically
+valid, and mixed versions and counts are rejected. Bazel test inputs declare
+the new runtime and adapter-clock sources.
+
+Verification | 2026-10-02: Bazel 9.1.1 could not resolve modules because the
+session egress policy denies `bcr.bazel.build`. The automation sources were
+type-checked with the repository's strict `tsconfig.test.json` via `tsc`,
+then run under `node --test` against `all.test.js`. Validators came from
+`cargo +stable build -p bitaxe-automation-contracts` through a runfiles
+mirror. Baseline `main`: 16 of 520 failed. After the fix, 4 of 530 failed:
+CoreWLAN (`xcrun`), two repository-guard scans of the non-runfiles tree, and
+the theme-durability test that needs the Bazel-built parity report. All 4
+also fail on untouched `main` in this environment and do not touch these
+validators. All 23 PWR-003 and all SAFE-10/CFG-07 tests pass, including the
+new delegated-drift, shim-shadowing, clock-weakening and wait-bypass
+regressions. Contracts crate: 113 tests, `cargo fmt --check` and strict
+Clippy all pass. The semantic redaction verifier passed with 23 checks.
+Bright Builds reported zero findings, and `git diff --check` is clean.
+
+Bazel verification | 2026-10-02: after the environment allowed all traffic,
+`bazel test //tools/automation:automation_test` ran on pushed source commit
+`48cbfb75`. The session's GitHub proxy refused anonymous `github.com/.../archive`
+downloads, so the four pinned bazel_lib bats archives were rebuilt with
+`git archive | gzip -n` from their public tags and passed through `--distdir`.
+All four matched their pinned SHA-256 values, and Bazel still verified them.
+The reference's nested `libsecp256k1` submodule was initialized at its pinned
+commit for the workspace-status check. Result: 525 of 530 pass. The one
+failure is the CoreWLAN provisioning helper test, which spawns macOS-only
+`/usr/bin/xcrun`; it is unrelated to this change. All 39 PWR-003, SAFE-10 and
+CFG-07 tests pass.
+
+Completion review: the validators again admit the current source layout and
+still check every existing fragment. The shared-runtime delegation is bound
+exactly, the SAFE-10 inventory identity is rotated, and older evidence versions
+stay valid. Bazel confirmed the new test inputs.
+
+Residual risk: the CoreWLAN helper test needs a macOS host and was not
+exercised here. A current-HEAD SAFE-10 or PWR-003
+re-projection against the pre-refactor attempt commit stays fail-closed
+because the delegated sources do not exist there. That is intended: the
+refactor cannot inherit earlier hardware evidence. Checked-in evidence is
+unchanged.
