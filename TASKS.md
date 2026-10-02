@@ -6987,6 +6987,58 @@ a fresh protected root and an explicit runtime-margin and heap verdict before an
 effect gate is enabled. Until then, full qualification stays false and
 accepted-share stays unresolved. Do not archive.
 
+Full-boundary checkpoint contract (campaign003) | 2026-10-02 | Explicit owner approval
+
+- [x] Add `noise-checkpoint`, a full-probe runner that keeps only projected
+  `VIRTUAL_U205` application records. It does not use a debugger, panic text,
+  core decoding or post-run partition reads. Package admission moves to
+  `noise-admission.mjs`, so the runner never loads crash tooling. The validator
+  identity binds every visible emulator and core-dump script.
+- [ ] Publish and push this contract with both gates enabled, then build the
+  package from that exact commit and bind a fresh v2 receipt to it.
+- [ ] Run exactly one claimed execution, record the outcome, disable both gates,
+  then commit and push.
+
+noise-full-checkpoint-enabled: true
+
+Objective: one emulated valid seed-1 handshake, certificate completion and
+encrypted frame round trip on the corrected image. Judge only application
+records: boot identity, authenticated round trip, owner release, 14-phase heap
+integrity, and at least 2,048 bytes of free stack at every phase.
+
+Commands, run from a clean tree equal to `origin/main`:
+
+```sh
+just virtual-emulator build --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --evidence-dir scratch/virtual-noise-diagnostic/build013-full-checkpoint
+node scripts/virtual-emulator/noise-stack-audit.mjs --elf ELF --sdkconfig CONFIG --compiled-source-sha256 SHA --output scratch/virtual-noise-diagnostic/build013-full-checkpoint/full-audit-v2.json
+just virtual-emulator noise-checkpoint --manifest scratch/virtual-noise-diagnostic/build013-full-checkpoint/virtual-package.json --audit scratch/virtual-noise-diagnostic/build013-full-checkpoint/full-audit-v2.json --seed 1 --evidence-dir scratch/virtual-noise-diagnostic/full-checkpoint001
+```
+
+ELF, CONFIG and SHA must come from the build013 package. The receipt must pass
+before any effect. The evidence parent stays mode 0700, and the
+`full-checkpoint001` child must be absent immediately before launch. Wrapper
+stdout and stderr go to separate mode-0600 sibling files.
+
+Allowed effects: one bounded emulator process with a 60-second collection
+window, owned and reaped by `runPrivate`. Prohibited: hardware, USB, network,
+debugger, memory or core capture, reading target stderr or panic text, partition
+inspection, and raising any stack, heap or safety limit.
+
+Retry bound: one execution. The claim
+`scratch/virtual-noise-diagnostic/full-checkpoint001.claim.json` is written
+exclusively immediately before the effect. A failure before that claim consumes
+nothing and may be repaired and rerun with a fresh root. Once claimed, an
+unchanged retry is prohibited, and any successor needs a new contract and a
+verified fix.
+
+Stop conditions: a failed check, missing or invalid records, an unproven release,
+or a source or validator change. Missing normal records stop inference without
+reading crash material. Evidence and privacy: raw artifacts stay under ignored
+mode-0700 roots; commits record only digests, check outcomes and numeric
+observations. Passing would prove only this emulated diagnostic. Independent
+task bounds stay unsupported, and full-board qualification, hardware, parity
+and accepted-share remain unchanged.
+
 Verification: ordered Cargo format/Clippy/build/tests,21 affected Bazel targets,
 55 model tests,19 encrypted-profile tests,9 scenario tests, compiler-closure
 stale-source/build regressions, process/listener and evidence regressions, five

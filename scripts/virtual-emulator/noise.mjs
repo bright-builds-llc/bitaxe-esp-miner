@@ -2,50 +2,27 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile, readdir, mkdir, stat, realpath } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { MARKER, PROFILE } from './build.mjs';
+import { PROFILE } from './build.mjs';
 import { sourceDigest } from './identity.mjs';
 import { doctor, managedPaths } from './setup.mjs';
 import { qemuArguments, writeSdkEfuse } from './run.mjs';
 import { runPrivate } from './process.mjs';
 import { main as decodeCore } from '../core-dump/main.mjs';
-import { validateNoiseAudit, validateNativeNoiseAudit } from './noise-stack-audit.mjs';
+import { validateNativeNoiseAudit } from './noise-stack-audit.mjs';
+import { admitNoisePackage } from './noise-admission.mjs';
 import { EMULATOR } from './lock.mjs';
 
+export { admitNoisePackage };
 export const NOISE_BASELINE_EFFECTS_ENABLED = false;
 const digest = value => createHash('sha256').update(value).digest('hex');
 export async function noiseValidatorIdentity(repo) {
   const hash = createHash('sha256');
-  const files = ['noise.mjs', 'noise-stack-audit.mjs', 'process.mjs', 'run.mjs', 'setup.mjs', 'lock.mjs', 'build.mjs', 'identity.mjs',
+  const files = ['noise.mjs', 'noise-admission.mjs', 'noise-stack-audit.mjs', 'process.mjs', 'run.mjs', 'setup.mjs', 'lock.mjs', 'build.mjs', 'identity.mjs',
     '../core-dump/main.mjs', '../core-dump/files.mjs', '../core-dump/decode_core.py', '../core-dump/process.mjs'];
   for (const file of files) { hash.update(file); hash.update('\0'); hash.update(await readFile(join(repo, 'scripts/virtual-emulator', file))); hash.update('\0'); }
   return hash.digest('hex');
 }
 const claimName = 'scratch/virtual-noise-diagnostic/baseline001.claim.json';
-const configRequired = ['CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384', 'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048',
-  'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304', 'CONFIG_SPIRAM_MODE_OCT=y', 'CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y'];
-
-/** Read-only admission binds actual bytes and the current auditor, before any emulator effect. */
-export async function admitNoisePackage(packagePath, auditPath, currentSourceSha256, objdumpPath) {
-  const packageBytes = await readFile(packagePath), manifest = JSON.parse(packageBytes);
-  if (manifest.schema !== 'bitaxe-virtual-package-v1' || manifest.execution_profile !== PROFILE ||
-      manifest.hardware_eligible !== false || manifest.sdk !== 'v5.5.4') throw Error('noise_package_profile');
-  if (![manifest.virtual_elf, manifest.flash_image].every(name => typeof name === 'string' && /^[a-zA-Z0-9_.-]+$/.test(name))) throw Error('noise_artifact_path');
-  const root = dirname(packagePath);
-  const elf = await readFile(join(root, manifest.virtual_elf)), image = await readFile(join(root, manifest.flash_image));
-  const config = await readFile(join(root, 'virtual-ultra205.sdkconfig'));
-  if (elf.length < 52 || elf.readUInt32BE(0) !== 0x7f454c46 || elf[4] !== 1 || elf[5] !== 1 || elf.readUInt16LE(18) !== 94 || !elf.includes(Buffer.from(MARKER)) || !elf.includes(Buffer.from(currentSourceSha256)) || digest(elf) !== manifest.virtual_elf_sha256 ||
-      digest(image) !== manifest.image_sha256 || digest(config) !== manifest.virtual_sdkconfig_sha256 || image.length !== 16777216) throw Error('noise_package_digest');
-  if (manifest.board_profile?.cores !== 2 || manifest.board_profile.flash_bytes !== 16777216 || manifest.board_profile.psram_bytes !== 8388608 || manifest.board_profile.psram_mode !== 'octal') throw Error('noise_board_profile');
-  if (manifest.compiled_source_sha256 !== currentSourceSha256 || !/^[a-f0-9]{64}$/.test(currentSourceSha256)) throw Error('noise_source_identity');
-  if (!image.subarray(0xf12000, 0x1000000).every(byte => byte === 0xff)) throw Error('noise_initial_core_not_empty');
-  if (!configRequired.every(line => config.toString('utf8').split('\n').includes(line))) throw Error('noise_config_contract');
-  const auditBytes = await readFile(auditPath), audit = JSON.parse(auditBytes);
-  if (typeof objdumpPath !== 'string' || digest(await readFile(objdumpPath)) !== audit.bindings?.objdump_sha256) throw Error('noise_objdump_identity');
-  const disassembly = await readFile(`${auditPath}.disassembly.private`, 'utf8');
-  await validateNoiseAudit(audit, { elfSha256: digest(elf), sdkconfigSha256: digest(config), compiledSourceSha256: currentSourceSha256 }, { disassembly, sdkconfig: config.toString('utf8') });
-  return { manifest, packageBytes, elf, image, config, audit, auditBytes };
-}
-
 /** Fixed new ABI. Stack facts exist at stage1; heap facts remain unavailable until stage2. */
 export function parseNoiseCheckpoints(raw) {
   if (raw.length !== 768) throw Error('noise_checkpoint_length');

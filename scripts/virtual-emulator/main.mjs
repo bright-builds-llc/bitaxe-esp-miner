@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { bootstrap, doctor, newEvidenceRoot } from './setup.mjs';
 import { buildGuest } from './build.mjs';
 import { diagnoseHeap } from './diagnose.mjs';
+import { runNoiseCheckpoint } from './noise-checkpoint.mjs';
 import { runNoisePrefix } from './noise-prefix.mjs';
 import { runNoiseProbe } from './noise.mjs';
 import { runGuest } from './run.mjs';
@@ -19,6 +20,7 @@ export async function main(args = process.argv.slice(2)) {
   }
   if (command === 'noise-prefix' && ['--commands', '--scenario', '--mode'].some(key => options[key])) throw Error('noise_prefix_arguments');
   if (command === 'noise' && (options['--commands'] || options['--scenario'])) throw Error('noise_arguments');
+  if (command === 'noise-checkpoint' && ['--commands', '--scenario', '--mode', '--stop'].some(key => options[key])) throw Error('noise_checkpoint_arguments');
   const repo = process.env.BUILD_WORKSPACE_DIRECTORY ?? execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
   if (!options['--evidence-dir']) throw Error('emulator_evidence_required');
   const evidence = resolve(repo, options['--evidence-dir']);
@@ -30,6 +32,12 @@ export async function main(args = process.argv.slice(2)) {
   if (command === 'noise-prefix' && options['--manifest'] && options['--audit'] && options['--stop']) {
     const result = await runNoisePrefix(repo, resolve(repo, options['--manifest']), evidence,
       { auditPath: resolve(repo, options['--audit']), stop: Number(options['--stop']), seed: Number(options['--seed'] ?? 1) });
+    if (result.status !== 'passed') process.exitCode = 1;
+    return result;
+  }
+  if (command === 'noise-checkpoint' && options['--manifest'] && options['--audit']) {
+    const result = await runNoiseCheckpoint(repo, resolve(repo, options['--manifest']), evidence,
+      { auditPath: resolve(repo, options['--audit']), seed: Number(options['--seed'] ?? 1) });
     if (result.status !== 'passed') process.exitCode = 1;
     return result;
   }
