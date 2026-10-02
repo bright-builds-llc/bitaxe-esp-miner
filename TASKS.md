@@ -6605,8 +6605,11 @@ just stratum-v2-noise-serial finalize --private-root scratch/device-noise-worker
 just stratum-v2-noise-serial review --private-root scratch/device-noise-worker-stack/attempt-001
 ```
 
-Between `serve` and `finalize`, follow the README same-page workflow. The owner
-performs the native Web Serial permission and every Connect in desktop Chrome.
+Between `serve` and `finalize`, follow the README same-page workflow. The native
+Web Serial permission and every Connect are real input events in the owner's
+desktop Chrome. Under the owner's standing 2026-10-02 authorization (below), the
+agent may perform them through that Chrome; programmatic permission APIs and
+injected gestures stay prohibited.
 The agent may call only the page's `noiseSupervisor` methods and the repo-owned
 `installCandidate(root, index)`. That function owns fresh detection, ROM
 board-info admission and `just flash-monitor --capture-timeout-seconds 30
@@ -6649,10 +6652,14 @@ Stop on:
 - an installation failure, or a lost or ambiguous Start (never resend);
 - `noise_network_missing`, a failed check, or unproven cleanup.
 
-Human checkpoint: no attempt resource is held while waiting. Preflight has not
-run, so no ordinal is consumed. The wait for the owner has no deadline. When the
-owner says they are ready at the machine with the Ultra 205 connected and Chrome
-open, the agent runs the commands above from preflight onward.
+Owner standing authorization | 2026-10-02: the owner authorized all future
+interactions with the connected Ultra 205, which is normally powered and
+connected, and Chrome and web actions on their behalf. Every device effect still
+needs an active contract like this one, detector admission and the attempt
+policy. Direct UART and pin access keep their separate gate.
+
+Checkpoint resolved | 2026-10-02: the owner reported ready. The agent runs the
+commands above from preflight onward.
 
 Composed handshake correction | 2026-10-02 | Source and dev builds only
 
