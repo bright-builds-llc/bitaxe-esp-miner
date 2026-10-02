@@ -121,3 +121,43 @@ fn identical_seed_repeats_semantic_result() {
     // Assert
     assert_eq!(first, second);
 }
+
+#[test]
+fn failed_real_owner_reservation_stops_before_crypto_and_still_releases() {
+    // Arrange
+    let mut phases = Vec::new();
+
+    // Act
+    let result = run_with_owner_capacity(
+        1,
+        NoiseFault::None,
+        &mut |phase| phases.push(phase),
+        usize::MAX,
+    );
+
+    // Assert
+    assert_eq!(result, Err(NoiseProbeError::OwnerReservation));
+    assert_eq!(phases, vec![NoisePhase::Entry, NoisePhase::Released]);
+}
+
+#[test]
+fn unreserved_owner_slots_cannot_enter_preparation() {
+    // Arrange
+    let mut act_two = [0_u8; ACT_TWO_LEN];
+    let mut server_slot = Vec::new();
+    let mut phases = Vec::new();
+
+    // Act
+    let result = prepare_handshake(
+        1,
+        NoiseFault::None,
+        &mut act_two,
+        &mut server_slot,
+        &mut |phase| phases.push(phase),
+    );
+
+    // Assert
+    assert!(matches!(result, Err(NoiseProbeError::OwnerReservation)));
+    assert!(phases.is_empty());
+    assert!(server_slot.is_empty());
+}

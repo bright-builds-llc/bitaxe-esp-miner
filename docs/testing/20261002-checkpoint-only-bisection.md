@@ -63,3 +63,28 @@ commit. Do not read retained crash or core evidence as part of this continuation
 Full virtual-board qualification remains incomplete. Independent task bounds,
 complete-handshake behavior and the parent task's other required profiles remain
 separate requirements; partial diagnostic success cannot archive the task.
+
+## Measured campaign002 result
+
+Published source `17461e37` produced clean virtual ELF
+`6d07737269d24d3749adad65150d8285a2d7ce948469a318965f23236f9e758b`.
+Both cutoffs passed all six application checks, including recorded heap integrity,
+the unchanged 2,048-byte margin and guest resource release. Host process groups,
+descriptors and writer leases were independently released.
+
+| Cutoff | Last preparation boundary     | Minimum free main stack | Retained application bytes |
+| ------ | ----------------------------- | ----------------------: | -------------------------: |
+| 106    | Before responder construction |                   9,672 |                      2,342 |
+| 110    | Before certificate completion |                   2,296 |                      3,174 |
+
+No debugger or post-run partition inspection was used. Non-application output was
+discarded; target stderr files are empty. The campaign is closed and its claims
+remain immutable. Both results are diagnostic subsets with full qualification
+false and independent task bounds unsupported.
+
+These observations focus the next source investigation on completion and its
+live caller frame. The shortened helper's native frame differs from the original
+full probe, so this does not prove an exact faulty statement or an unchanged-image
+bisection boundary. The next checkable plan extracts preparation's native frame
+before completion, preserves real crypto behavior and tests its exact native
+resource paths before any separate full-boundary contract is admitted.

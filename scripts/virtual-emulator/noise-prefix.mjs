@@ -12,7 +12,7 @@ import { validatePrefixNoiseAudit } from './noise-prefix-audit.mjs';
 import { validateNativeNoiseAudit } from './noise-stack-audit.mjs';
 export { judgePrefixSnapshots, qualificationFailure, prefixLogFacts } from './noise-prefix-history.mjs';
 
-export const NOISE_PREFIX_EFFECTS_ENABLED = true;
+export const NOISE_PREFIX_EFFECTS_ENABLED = false;
 export const PREFIX_STOPS = Object.freeze([101, 102, 103, 105, 106, 107, 109, 110]);
 const sha = value => createHash('sha256').update(value).digest('hex');
 

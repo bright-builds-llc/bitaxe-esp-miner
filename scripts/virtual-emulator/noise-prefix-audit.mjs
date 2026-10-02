@@ -30,7 +30,8 @@ function markerAliases(elf, frames) {
   return aliases;
 }
 
-function nestedCryptoPath(frames, boundaryName) {
+/** Longest resolved crypto-family path, retaining external-edge coverage gaps. */
+export function nestedCryptoPath(frames, boundaryName) {
   const starts = frames.byName.get(boundaryName);
   if (!starts) throw Error('noise_prefix_audit_crypto_boundary');
   const family = /^(?:noise_sv2::|bitaxe_stratum::v2::noise::|secp256k1::|rustsecp256k1_v0_9_2_|sha2::|hmac::|chacha20poly1305::|chacha20::|poly1305::)/;

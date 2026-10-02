@@ -51,6 +51,8 @@ pub enum NoiseFault {
 pub enum NoiseProbeError {
     #[error("noise_prefix_unsupported")]
     PrefixUnsupported,
+    #[error("noise_owner_reservation")]
+    OwnerReservation,
     #[error("noise_initiator")]
     Initiator,
     #[error("noise_act_one")]
@@ -91,8 +93,17 @@ pub fn run(
     fault: NoiseFault,
     observe: &mut dyn FnMut(NoisePhase),
 ) -> Result<NoiseProbeResult, NoiseProbeError> {
+    run_with_owner_capacity(seed, fault, observe, 1)
+}
+
+fn run_with_owner_capacity(
+    seed: u64,
+    fault: NoiseFault,
+    observe: &mut dyn FnMut(NoisePhase),
+    owner_capacity: usize,
+) -> Result<NoiseProbeResult, NoiseProbeError> {
     observe(NoisePhase::Entry);
-    let outcome = handshake_and_frame(seed, fault, observe);
+    let outcome = handshake_and_frame(seed, fault, observe, owner_capacity);
     // The helper's local owners have dropped on both success and ordinary rejection.
     observe(NoisePhase::Released);
     outcome?;
@@ -112,7 +123,56 @@ fn handshake_and_frame(
     seed: u64,
     fault: NoiseFault,
     observe: &mut dyn FnMut(NoisePhase),
+    owner_capacity: usize,
 ) -> Result<(), NoiseProbeError> {
+    let mut server_slot = Vec::new();
+    let mut client_slot = Vec::new();
+    server_slot
+        .try_reserve_exact(owner_capacity)
+        .map_err(|_| NoiseProbeError::OwnerReservation)?;
+    client_slot
+        .try_reserve_exact(owner_capacity)
+        .map_err(|_| NoiseProbeError::OwnerReservation)?;
+    if server_slot.capacity() == 0 || client_slot.capacity() == 0 {
+        return Err(NoiseProbeError::OwnerReservation);
+    }
+    let mut act_two = [0_u8; ACT_TWO_LEN];
+    let client = prepare_handshake(seed, fault, &mut act_two, &mut server_slot, observe)?;
+    if fault == NoiseFault::TamperedActTwo {
+        act_two[80] ^= 1;
+    }
+    observe(NoisePhase::BeforeCompletion);
+    if fault == NoiseFault::TruncatedActTwo {
+        return reject_truncated_response(client, &act_two[..ACT_TWO_LEN - 1]);
+    }
+    client
+        .complete_diagnostic_into(&act_two, 100, &mut client_slot)
+        .map_err(NoiseProbeError::Completion)?;
+    observe(NoisePhase::AfterCompletion);
+    observe(NoisePhase::BeforeFrame);
+    let client = client_slot
+        .first_mut()
+        .ok_or(NoiseProbeError::Completion(NoiseCompletionFailure::State))?;
+    let server = server_slot
+        .first_mut()
+        .ok_or(NoiseProbeError::Completion(NoiseCompletionFailure::State))?;
+    frame_round_trip(client, server, fault)?;
+    observe(NoisePhase::AfterFrame);
+    Ok(())
+}
+
+// Construction and response scratch leave the call stack before certificate verification.
+#[inline(never)]
+fn prepare_handshake(
+    seed: u64,
+    fault: NoiseFault,
+    act_two: &mut [u8; ACT_TWO_LEN],
+    server_slot: &mut Vec<NoiseCodec>,
+    observe: &mut dyn FnMut(NoisePhase),
+) -> Result<NoiseInitiator, NoiseProbeError> {
+    if !server_slot.is_empty() || server_slot.capacity() == 0 {
+        return Err(NoiseProbeError::OwnerReservation);
+    }
     let mut client_rng = SyntheticRng::new(seed);
     let mut responder_rng = SyntheticRng::new(seed ^ 0xaaccee);
     observe(NoisePhase::BeforeInitiator);
@@ -139,27 +199,27 @@ fn handshake_and_frame(
     .map_err(|_| NoiseProbeError::Responder)?;
     observe(NoisePhase::AfterResponder);
     observe(NoisePhase::BeforeActTwo);
-    let (mut act_two, mut server) = responder
+    let (response, server) = responder
         .step_1_with_now_rng(act_one, 100, &mut responder_rng)
         .map_err(|_| NoiseProbeError::ActTwo)?;
+    *act_two = response;
+    // Capacity was reserved fallibly before opaque crypto; this push cannot allocate.
+    server_slot.push(server);
     observe(NoisePhase::AfterActTwo);
-    if fault == NoiseFault::TamperedActTwo {
-        act_two[80] ^= 1;
-    }
-    let response = if fault == NoiseFault::TruncatedActTwo {
-        &act_two[..ACT_TWO_LEN - 1]
-    } else {
-        &act_two[..]
-    };
-    observe(NoisePhase::BeforeCompletion);
-    let mut client = client
+    Ok(client)
+}
+
+// The malformed fixture still enters the production length guard, without retaining
+// its large by-value return scratch on the valid certificate-verification path.
+#[inline(never)]
+fn reject_truncated_response(
+    client: NoiseInitiator,
+    response: &[u8],
+) -> Result<(), NoiseProbeError> {
+    client
         .complete_diagnostic(response, 100)
-        .map_err(NoiseProbeError::Completion)?;
-    observe(NoisePhase::AfterCompletion);
-    observe(NoisePhase::BeforeFrame);
-    frame_round_trip(&mut client, &mut server, fault)?;
-    observe(NoisePhase::AfterFrame);
-    Ok(())
+        .map(|_| ())
+        .map_err(NoiseProbeError::Completion)
 }
 
 #[inline(never)]

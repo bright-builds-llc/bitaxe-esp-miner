@@ -6858,11 +6858,11 @@ Checkpoint-only continuation | 2026-10-02 | Explicit owner constraint
   Separate guest facts from unsupported independent task-bound observations.
 - [x] Verify real process projection and release plus affected scenario/CLI
   suites; run ordered Cargo, standards/reference/redaction/Markdown/diff checks.
-- [ ] Publish and push this successor contract before its first trial; collect
+- [x] Publish and push this successor contract before its first trial; collect
   106 then select the remaining half using measured application records. Missing
   completion/checkpoint output stops diagnosis without reading crash material.
 
-noise-prefix-telemetry-enabled: true
+noise-prefix-telemetry-enabled: false
 
 Successor effect contract: campaign002 replaces debugger-driven collection only.
 Use `just virtual-emulator noise-prefix --manifest scratch/virtual-noise-diagnostic/build006-clean-telemetry/virtual-package.json --audit AUDIT --stop CUTOFF --seed 1 --evidence-dir ROOT`.
@@ -6897,6 +6897,52 @@ parsing rejects malformed/non-object output before inference. Current commands
 and coverage limitations are in
 `docs/testing/20261002-checkpoint-only-bisection.md`. Publish this reviewed source
 before the first campaign002 effect and keep earlier outcomes immutable.
+
+Campaign002 measured outcome | 2026-10-02: source17461e37, clean virtual ELF
+`6d07737269d24d3749adad65150d8285a2d7ce948469a318965f23236f9e758b`,
+SDK configuration`cbe2ab13dc61885a77a0052ebee912ce0494393c41d0c3390cae293dbaabd6e1`.
+Both106 and110 pass all six application prefix checks with healthy recorded heap
+integrity and post-drop release. Minimum observed main free stack:106=9,672 bytes;
+110=2,296 bytes, above the unchanged2,048-byte requirement. Verified host process,
+descendant, descriptor and writer release passed for both. Target stderr files
+are empty; only projected ordinary records were retained (2,342/3,174 bytes).
+No debugger, memory/core acquisition, decoding, post-run partition inspection or
+examination of panic data was used. Claims and records remain immutable. Close
+campaign002 rather than spending further unchanged cutoffs. These are diagnostic
+subset passes with independent task bounds unsupported and full qualification
+false. They narrow the next source investigation to completion/live caller-frame
+overlap; changed prefix frames prevent claiming an unchanged-baseline bisection
+or a demonstrated exact failing statement.
+
+Completion lifetime correction | 2026-10-02 | Source and build artifacts only
+
+- [x] Extract preparation into a non-inlined helper whose native frame ends
+  before certificate completion. Keep actual codecs, trust, deterministic inputs,
+  clock and existing failure categories/phase ordering unchanged.
+- [x] Use fallibly reserved owner storage and the existing production completion
+  seam to reduce result-construction scratch; retain unconditional post-owner
+  release observation on every error. Add a meaningful reservation failure test.
+- [ ] Verify real host handshake/frame regressions, independent trust rejection,
+  exact target native paths through construction, ECDH/signing, valid certificate
+  verification and nested crypto, serialization and cleanup. Report unresolved
+  paths explicitly; never increase stack, heap, authority or safety limits.
+- [ ] Keep every execution gate disabled while building/auditing the correction.
+  Publish a separate checkpoint-only full-boundary diagnostic contract only if
+  its native resource admission passes. No core/panic/debugger data is permitted
+  in this continuation. Missing normal records stop inference.
+
+Current blocker: complete-boundary resource proof and a newly admitted corrected
+run do not exist yet. The known original full helper remains inadmissible. This
+source-only correction is a measured hypothesis, not a physical firmware repair
+or virtual-board qualification. Accepted-share remains unresolved; do not archive.
+
+Correction source verification | 2026-10-02: ordered Cargo format/Clippy/build
+and all-feature tests pass (2,581 passed, 0 failed), including all 11 Noise probe
+tests with real owner-reservation failure and unreserved-slot regressions. Eleven
+affected Bazel suites, standards, reference, redaction and diff checks pass. No
+local Markdown formatter is installed; none was added. Host behavior only: the
+corrected target's native resource paths remain unaudited, so items 3 and 4 stay
+open and the development build under `build007-lifetime` is not admitted.
 
 Verification: ordered Cargo format/Clippy/build/tests,21 affected Bazel targets,
 55 model tests,19 encrypted-profile tests,9 scenario tests, compiler-closure
