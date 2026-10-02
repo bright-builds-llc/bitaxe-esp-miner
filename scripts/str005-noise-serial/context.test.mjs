@@ -128,7 +128,13 @@ test("the historical profile still refuses a later ordinal", async (t) => {
 });
 test("an ordinal without a reviewed continuation is refused", async (t) => {
   const f = await fixture(t, { prepare: false, profile: "device-noise-helper" });
-  const options = { ...f.options, privateRoot: resolve(f.parent, "attempt-003"), attemptOrdinal: 3 };
+  const options = { ...f.options, privateRoot: resolve(f.parent, "attempt-004"), attemptOrdinal: 4 };
   await assert.rejects(preflight(options, f.operations), { code: "noise_retry_progress_unverified" });
+  assert.deepEqual(await readdir(f.parent), []);
+});
+test("an installed continuation without its prior attempt reserves nothing", async (t) => {
+  const f = await fixture(t, { prepare: false, profile: "device-noise-helper" });
+  const options = { ...f.options, privateRoot: resolve(f.parent, "attempt-003"), attemptOrdinal: 3 };
+  await assert.rejects(preflight(options, f.operations));
   assert.deepEqual(await readdir(f.parent), []);
 });

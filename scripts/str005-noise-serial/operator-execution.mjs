@@ -15,6 +15,9 @@ export async function admitExecution(root, mode, index, permit, operations = {})
   exactObject(permit, ["kind", "contextSha256", "claimSha256"]);
   check(permit.kind === "execute" && Number.isInteger(index) && index >= 0 && index <= 4 && ["detect", "flash"].includes(mode), "noise_execute_shape");
   root = await privateRoot(root);
+  // Commands launched after admission inherit this; their evidence must be owner-only
+  // whatever umask the operator's launcher had.
+  process.umask(0o077);
   const record = (await proof(root, "context.json")).value;
   exactObject(record, ["context", "sha256"]);
   check(record.sha256 === permit.contextSha256 && digest(JSON.stringify(record.context)) === permit.contextSha256, "noise_execute_context_changed");

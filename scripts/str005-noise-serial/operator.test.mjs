@@ -12,6 +12,8 @@ import { writeNew } from "./files.mjs";
 import { quoteJustArgument } from "./operator-execution.mjs";
 
 test("repo operator observes real gated child processes before any synthetic install effect", async (t) => {
+  // A permissive launcher umask must not leak into flash evidence (attempt-002 regression).
+  const launcherUmask = process.umask(0o022); t.after(() => process.umask(launcherUmask));
   const f = await fixture(t), bin = resolve(f.base, "bin"); await mkdir(bin, { mode: 0o700 });
   const program = resolve(bin, "just");
   const script = resolve(bin, "fake-just.mjs");

@@ -6723,6 +6723,47 @@ finalize, review and stop with no third ordinal. All other evidence, privacy,
 recovery and stop rules above apply unchanged. This contract authorizes ordinal
 2 only.
 
+Attempt-002 outcome | 2026-10-02: published at `9301a276`. The package ELF is
+`c7d6d8315754348c8a2c53d4dda540846c477440befa49b213e8cea7760e4a65`; preflight
+context is `768cef67…`.
+- Detection admitted the same physical Ultra 205. With the tab confirmed
+  visible, the owner operated the native chooser, and Connect #1 reached a
+  ready, baseline-confirmed state with no failure. Before-install accounting
+  matched next 22 / 2,280,000 ms.
+- Install 0 completed: write and exit code 0, trusted monitor, observed commit
+  `9301a276`, startup complete, safe baseline confirmed.
+- Its `/install/review` then failed with `private_path_policy`. The operator
+  parent had been launched with the default 022 umask, so the flash tool wrote
+  `install-0/` as 0755 and its files as 0644.
+- The supervisor stopped with exit code 0 and the tab was closed. `finalize`
+  wrote `final-result.json` (`unverified`, result `5df645bf…`), but its
+  inventory seal failed on the same modes. The evidence is left unaltered inside
+  its 0700 parents and has no seal.
+- No cycle, Start, Noise exchange or mining occurred. The device now runs
+  candidate `9301a276` with settings preserved, which is the before identity
+  for any continuation.
+
+Attempt-003 continuation contract | 2026-10-02 | Verified fix after attempt-002
+
+- [x] Root-cause fix: `admitExecution` sets `process.umask(0o077)` before any
+  admitted command runs. The fake flash command now uses default modes like the
+  real tool, and the real-process operator test pins a 022 launcher umask. That
+  test reproduced `private_path_policy` before the fix and passes after it.
+- [x] Continuation 3 binds attempt-002's exact result `5df645bf…` and its
+  install-0 claim, exit and flash evidence digests. It requires trusted,
+  completed and startup-complete installation of `9301a276`, and sets that
+  build (`c7d6d831…`) as the before identity. The predecessor, ledger and every
+  other bound are unchanged.
+- [ ] Owner-present run of attempt-003, then record the outcome, disable the
+  gate, and commit and push.
+
+Classification: `continue_after_verified_fix`. The new boundary is the
+evidence-mode policy at install review, now covered by a real-boundary
+regression. The commands above apply with `attempt-003` and `--attempt-ordinal
+3`, and the attempt-002 operator split applies unchanged. This contract
+authorizes ordinal 3 only. If the same boundary recurs, it ends as
+`stop_repeated_boundary`.
+
 Composed handshake correction | 2026-10-02 | Source and dev builds only
 
 - [x] Split `Exchange::new` into initiator, responder and completion frames with

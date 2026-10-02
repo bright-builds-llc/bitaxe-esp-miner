@@ -28,23 +28,50 @@ export const PROFILES = Object.freeze({
       2: { attempt: "attempt-001", resultSha256: "48ba50e976d68c8103e6d29016b2f42a2c543199cdcbc90051d393536e171568",
         inventorySha256: "d63eaaa471f5a27e25f1dfb0c54b4c0c409a6fd5e512066882725a4a0e17878e",
         remediation: "owner_operates_native_port_chooser_with_visible_tab" },
+      // Attempt-002 installed its candidate, then failed review on launcher-umask
+      // evidence modes before sealing; its install evidence fixes the before identity.
+      3: { attempt: "attempt-002", resultSha256: "5df645bf9f3c321cfea0682b53451193946715bf1981b5e277f59502f310026a",
+        inventorySha256: null, remediation: "operator_admission_restricts_umask",
+        installed: { firmware_commit: "9301a2761dfcd59a20212c5bdd084f794155b62f",
+          app_elf_sha256: "c7d6d8315754348c8a2c53d4dda540846c477440befa49b213e8cea7760e4a65",
+          evidence: { "install-0.claim.json": "4526051b939b583461360bf98c14030877e7d8b712e29c84b89d618a1fddab5c",
+            "install-0.exit.json": "5cda8c1ea18893ebb0e483fbb68b6cc39f3fe9e65a53db18e86396dfbea8f00b",
+            "install-0/flash-command-evidence.json": "679c3d7f39af4116cdd0492e612925e90cc363b7921848fe68d028343d660ee6" } } },
     }),
     admits: (previous) => previous.basis === "current_safe_recovery" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 21 },
 });
-/** A later ordinal needs a sealed, unverified prior attempt that made no device writes. */
+/** A later ordinal needs the exact unverified prior attempt. A sealed attempt must show no
+ * device write; an installed one binds its exact install evidence as the before identity. */
 export async function inspectContinuation(parent, ordinal, continuation) {
   check(continuation, "noise_retry_progress_unverified");
   await proof(parent, `ordinal-${ordinal - 1}.json`);
   const prior = resolve(parent, continuation.attempt);
-  const result = await proof(prior, "final-result.json"), seal = await proof(prior, "sealed-inventory.json");
-  check(result.sha256 === continuation.resultSha256 && seal.sha256 === continuation.inventorySha256 &&
-    result.value.schema === "noise-serial-result-v2" && result.value.status === "unverified" &&
-    seal.value.schema === "noise-serial-seal-v2" && Array.isArray(seal.value.files), "noise_continuation_predecessor");
-  await verifyInventory(prior, seal.value.files, new Set(["sealed-inventory.json"]));
-  check(seal.value.files.every((item) => !/^install-/u.test(item.path)), "noise_continuation_device_effect");
-  return { attempt: continuation.attempt, result_sha256: continuation.resultSha256,
+  const result = await proof(prior, "final-result.json");
+  check(result.sha256 === continuation.resultSha256 && result.value.schema === "noise-serial-result-v2" &&
+    result.value.status === "unverified", "noise_continuation_predecessor");
+  const binding = { attempt: continuation.attempt, result_sha256: continuation.resultSha256,
     inventory_sha256: continuation.inventorySha256, remediation: continuation.remediation };
+  if (!continuation.installed) {
+    const seal = await proof(prior, "sealed-inventory.json");
+    check(seal.sha256 === continuation.inventorySha256 && seal.value.schema === "noise-serial-seal-v2" &&
+      Array.isArray(seal.value.files), "noise_continuation_predecessor");
+    await verifyInventory(prior, seal.value.files, new Set(["sealed-inventory.json"]));
+    check(seal.value.files.every((item) => !/^install-/u.test(item.path)), "noise_continuation_device_effect");
+    return binding;
+  }
+  const installed = continuation.installed, values = {};
+  for (const [name, sha256] of Object.entries(installed.evidence)) {
+    const item = await readFile(resolve(prior, name));
+    check(digest(item) === sha256, "noise_continuation_install_evidence");
+    values[name] = JSON.parse(item.toString("utf8"));
+  }
+  const flash = values["install-0/flash-command-evidence.json"], context = (await proof(prior, "context.json")).value.context;
+  check(values["install-0.exit.json"].code === 0 && flash.flash_status === "completed" && flash.trusted_output === true &&
+    flash.observed_firmware_commit === installed.firmware_commit && flash.fixed_serial_assessment?.startup_complete === true &&
+    flash.fixed_serial_assessment?.safe_baseline_confirmed === true && context.firmware_commit === installed.firmware_commit &&
+    context.app_elf_sha256 === installed.app_elf_sha256, "noise_continuation_install_evidence");
+  return { ...binding, before_source: { firmware_commit: installed.firmware_commit, app_elf_sha256: installed.app_elf_sha256 } };
 }
 export function profileOf(context) {
   const name = context.profile ?? "historical";
@@ -200,7 +227,7 @@ export async function preflight(options, operations = {}) {
     }), "noise_native_auditor_join");
   const context = { schema: SCHEMA, contract_id: "str005-noise-serial-v2", ...(profile.name === "historical" ? {} : { profile: profile.name }), ...source,
     ordinal, attempt_id: nonce(), predecessor: { path: predecessorPath, sha256: await fileDigest(predecessorPath), inventorySha256: predecessor.inventorySha256 },
-    before_source: { firmware_commit: previous.context.firmware_commit, app_elf_sha256: previous.context.app_elf_sha256 },
+    before_source: continuation?.before_source ?? { firmware_commit: previous.context.firmware_commit, app_elf_sha256: previous.context.app_elf_sha256 },
     original_campaign_id: previous.original_campaign_id, expected_ledger: { ...profile.ledger },
     native_readiness: native, client_sha256: await fileDigest(resolve(HERE, "client.mjs")), mining_authorized: false, maximum_installations: 5,
     ...(continuation ? { continuation } : {}) };
