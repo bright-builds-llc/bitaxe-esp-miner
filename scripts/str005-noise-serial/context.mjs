@@ -23,9 +23,29 @@ export const PROFILES = Object.freeze({
   "device-noise-helper": { namespace: "scratch/device-noise-worker-stack", task: "task-device-noise-worker-stack",
     enabledLine: "Device noise serial hardware: enabled.", successor: { path: SUCCESSOR_PATH, sha256: SUCCESSOR_SHA256 },
     inspect: inspectRecoveryPredecessor, ledger: { next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 },
+    // Reviewed continuations: each binds the exact sealed prior attempt and its remediation.
+    continuations: Object.freeze({
+      2: { attempt: "attempt-001", resultSha256: "48ba50e976d68c8103e6d29016b2f42a2c543199cdcbc90051d393536e171568",
+        inventorySha256: "d63eaaa471f5a27e25f1dfb0c54b4c0c409a6fd5e512066882725a4a0e17878e",
+        remediation: "owner_operates_native_port_chooser_with_visible_tab" },
+    }),
     admits: (previous) => previous.basis === "current_safe_recovery" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 21 },
 });
+/** A later ordinal needs a sealed, unverified prior attempt that made no device writes. */
+export async function inspectContinuation(parent, ordinal, continuation) {
+  check(continuation, "noise_retry_progress_unverified");
+  await proof(parent, `ordinal-${ordinal - 1}.json`);
+  const prior = resolve(parent, continuation.attempt);
+  const result = await proof(prior, "final-result.json"), seal = await proof(prior, "sealed-inventory.json");
+  check(result.sha256 === continuation.resultSha256 && seal.sha256 === continuation.inventorySha256 &&
+    result.value.schema === "noise-serial-result-v2" && result.value.status === "unverified" &&
+    seal.value.schema === "noise-serial-seal-v2" && Array.isArray(seal.value.files), "noise_continuation_predecessor");
+  await verifyInventory(prior, seal.value.files, new Set(["sealed-inventory.json"]));
+  check(seal.value.files.every((item) => !/^install-/u.test(item.path)), "noise_continuation_device_effect");
+  return { attempt: continuation.attempt, result_sha256: continuation.resultSha256,
+    inventory_sha256: continuation.inventorySha256, remediation: continuation.remediation };
+}
 export function profileOf(context) {
   const name = context.profile ?? "historical";
   check(Object.hasOwn(PROFILES, name) && (context.profile === undefined) === (name === "historical"), "noise_profile");
@@ -157,8 +177,8 @@ export async function preflight(options, operations = {}) {
   check(profile.admits(previous) && previous.next_ordinal === profile.ledger.next_ordinal &&
     previous.total_charged_ms === profile.ledger.total_charged_ms &&
     previous.context?.firmware_commit && previous.context?.app_elf_sha256, "noise_predecessor");
-  // V2's first positive run is implemented; a later attempt needs reviewed progress.
-  check(ordinal === 1, "noise_retry_progress_unverified");
+  // V2's first positive run is implemented; a later attempt needs a reviewed continuation.
+  const continuation = ordinal === 1 ? null : await inspectContinuation(parent, ordinal, profile.continuations?.[ordinal]);
   const inspectNative = operations.inspectNative ?? (await import("../noise-native-readiness.mjs")).inspectNoiseNativeReadiness;
   const native = await inspectNative({ firmwareRoot: source.firmware_root, manifestPath: source.manifest,
     expectedSourceCommit: source.firmware_commit, expectedElfSha256: source.app_elf_sha256 });
@@ -182,7 +202,8 @@ export async function preflight(options, operations = {}) {
     ordinal, attempt_id: nonce(), predecessor: { path: predecessorPath, sha256: await fileDigest(predecessorPath), inventorySha256: predecessor.inventorySha256 },
     before_source: { firmware_commit: previous.context.firmware_commit, app_elf_sha256: previous.context.app_elf_sha256 },
     original_campaign_id: previous.original_campaign_id, expected_ledger: { ...profile.ledger },
-    native_readiness: native, client_sha256: await fileDigest(resolve(HERE, "client.mjs")), mining_authorized: false, maximum_installations: 5 };
+    native_readiness: native, client_sha256: await fileDigest(resolve(HERE, "client.mjs")), mining_authorized: false, maximum_installations: 5,
+    ...(continuation ? { continuation } : {}) };
   await writeNew(resolve(parent, `ordinal-${ordinal}.json`), { schema: "noise-serial-assignment-v2", root, context_sha256: digest(JSON.stringify(context)) });
   await (operations.beforeCreate ?? (() => {}))();
   await mkdir(root, { mode: 0o700 });

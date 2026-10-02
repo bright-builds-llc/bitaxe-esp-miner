@@ -114,3 +114,21 @@ test("a recovery predecessor with other bytes fails its exact anchor", async (t)
   await writeFile(resolve(root, "result.json"), JSON.stringify({ current_safe_recovery: true }), { mode: 0o600 });
   await assert.rejects(inspectRecoveryPredecessor(resolve(root, "result.json")), /noise_predecessor_anchor/u);
 });
+test("a device continuation without its sealed prior attempt reserves nothing", async (t) => {
+  const f = await fixture(t, { prepare: false, profile: "device-noise-helper" });
+  const options = { ...f.options, privateRoot: resolve(f.parent, "attempt-002"), attemptOrdinal: 2 };
+  await assert.rejects(preflight(options, f.operations));
+  assert.deepEqual(await readdir(f.parent), []);
+});
+test("the historical profile still refuses a later ordinal", async (t) => {
+  const f = await fixture(t, { prepare: false });
+  const options = { ...f.options, privateRoot: resolve(f.parent, "attempt-002"), attemptOrdinal: 2 };
+  await assert.rejects(preflight(options, f.operations), { code: "noise_retry_progress_unverified" });
+  assert.deepEqual(await readdir(f.parent), []);
+});
+test("an ordinal without a reviewed continuation is refused", async (t) => {
+  const f = await fixture(t, { prepare: false, profile: "device-noise-helper" });
+  const options = { ...f.options, privateRoot: resolve(f.parent, "attempt-003"), attemptOrdinal: 3 };
+  await assert.rejects(preflight(options, f.operations), { code: "noise_retry_progress_unverified" });
+  assert.deepEqual(await readdir(f.parent), []);
+});

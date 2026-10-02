@@ -6585,7 +6585,7 @@ Device Noise helper attempt contract | 2026-10-02 | Owner-present hardware run
 - [ ] Owner-present run of attempt-001, then record the outcome, disable the
   gate, and commit and push.
 
-Device noise serial hardware: disabled.
+Device noise serial hardware: enabled.
 
 Objective: install the published HEAD package state-preservingly, run the four
 v2 continuity cycles, and complete one network-only Noise diagnostic against the
@@ -6690,6 +6690,38 @@ with the qualification tab visible in the foreground window. Alternatively, a
 reviewed Gate change could reuse an already granted port, but that would relax
 its fresh-permission-per-connection design. Before any journaled click, check
 `document.visibilityState === "visible"` read-only.
+
+Attempt-002 continuation contract | 2026-10-02 | Owner chooses manual remediation
+
+- [x] Add a reviewed continuation to the `device-noise-helper` profile. Ordinal
+  2 is admitted only when sealed attempt-001 verifies exactly (result
+  `48ba50e976d68c8103e6d29016b2f42a2c543199cdcbc90051d393536e171568`, inventory
+  `d63eaaa471f5a27e25f1dfb0c54b4c0c409a6fd5e512066882725a4a0e17878e`) with
+  status `unverified` and no `install-*` evidence. The binding and remediation
+  `owner_operates_native_port_chooser_with_visible_tab` are frozen into the
+  context. Other ordinals and the historical profile still refuse.
+- [ ] Owner-present run of attempt-002, then record the outcome, disable the
+  gate, and commit and push.
+
+Continuation classification: `continue_after_manual_remediation`. The failure was
+an operator boundary before any device effect, not firmware. The remediation is
+that the owner operates Chrome's native port chooser at every Connect, and the
+agent proves `document.visibilityState === "visible"` read-only before each
+Connect click. The firmware, package, contracts and every other bound are
+unchanged.
+
+The commands above apply with `attempt-002` and `--attempt-ordinal 2`, using the
+same predecessor receipt. Operator split:
+- the agent runs detection, preflight and `serve`, opens the page, calls the
+  `noiseSupervisor` methods and `installCandidate`, and may click **Connect
+  Worker**;
+- the owner selects the Ultra 205 and confirms in Chrome's port chooser each
+  time, and keeps the qualification tab in front.
+
+A cancelled or failed Connect is journaled and ends the attempt `unverified`;
+finalize, review and stop with no third ordinal. All other evidence, privacy,
+recovery and stop rules above apply unchanged. This contract authorizes ordinal
+2 only.
 
 Composed handshake correction | 2026-10-02 | Source and dev builds only
 
