@@ -1436,7 +1436,7 @@ js_test(
 
 js_library(
     name = "virtual_emulator_sources",
-    srcs = glob(["virtual-emulator/**/*.mjs", "virtual-emulator/**/*.py"]),
+    srcs = glob(["virtual-emulator/**/*.mjs", "virtual-emulator/**/*.py", "virtual-emulator/**/*.gdb"]),
     visibility = ["//visibility:public"],
 )
 
@@ -1479,5 +1479,36 @@ js_test(
 js_test(
     name = "virtual_noise_stack_audit_test",
     entry_point = "virtual-emulator/noise-stack-audit.test.mjs",
+    data = [":virtual_emulator_sources", ":core_dump_sources"],
+)
+
+js_test(
+    name = "virtual_emulator_process_test",
+    entry_point = "virtual-emulator/process.test.mjs",
+    data = [":virtual_emulator_sources"],
+)
+
+js_test(
+    name = "virtual_noise_prefix_test",
+    entry_point = "virtual-emulator/noise-prefix.test.mjs",
+    data = [":virtual_emulator_sources", ":core_dump_sources"],
+)
+
+js_test(
+    name = "virtual_noise_prefix_audit_test",
+    entry_point = "virtual-emulator/noise-prefix-audit.test.mjs",
+    data = [":virtual_emulator_sources", ":core_dump_sources"],
+)
+
+js_binary(
+    name = "virtual_noise_prefix_audit",
+    entry_point = "virtual-emulator/noise-prefix-audit.mjs",
+    data = [":virtual_emulator_sources", ":core_dump_sources"],
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "virtual_noise_debugger_test",
+    entry_point = "virtual-emulator/noise-debugger.test.mjs",
     data = [":virtual_emulator_sources", ":core_dump_sources"],
 )

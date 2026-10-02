@@ -73,6 +73,7 @@ pub fn run() -> anyhow::Result<()> {
                     "required_margin_bytes":2048,"configured_main_stack_bytes":16384}),
                 )?;
             }
+            Some("noise_prefix") => crate::noise_probe::run_prefix_and_emit(&value)?,
             Some("noise_probe") => crate::noise_probe::run_and_emit(&value)?,
             Some("status") => emit(json!({"event":"status","boot":boot,
                 "internal_free": unsafe { sys::heap_caps_get_free_size(sys::MALLOC_CAP_INTERNAL | sys::MALLOC_CAP_8BIT) },

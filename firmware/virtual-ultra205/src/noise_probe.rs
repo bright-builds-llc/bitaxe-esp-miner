@@ -166,3 +166,121 @@ fn emit_outcome(outcome: anyhow::Result<NoiseProbeResult>) -> anyhow::Result<()>
     }
     crate::guest::emit(event)
 }
+
+#[no_mangle]
+#[used]
+#[link_section = ".dram1.coredump"]
+pub static mut BITAXE_VIRTUAL_NOISE_PREFIX_REACHED: u32 = 0;
+#[no_mangle]
+#[used]
+#[link_section = ".dram1.coredump"]
+pub static mut BITAXE_VIRTUAL_NOISE_PREFIX_RELEASED: u32 = 0;
+
+/// The debugger stops here while the selected prefix's crypto owners remain live.
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn bitaxe_virtual_noise_prefix_cutoff(phase: u32) {
+    std::hint::black_box(phase);
+}
+
+#[inline(never)]
+pub fn run_prefix_and_emit(value: &serde_json::Value) -> anyhow::Result<()> {
+    use bitaxe_simulation::noise_probe::prefix::{NoisePrefix, NoisePrefixEvent};
+    let seed = value
+        .get("seed")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or_else(|| anyhow::anyhow!("noise_prefix_seed"))?;
+    if seed != 1 {
+        return Err(anyhow::anyhow!("noise_prefix_seed_bound"));
+    }
+    let stop = value
+        .get("stop")
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .ok_or_else(|| anyhow::anyhow!("noise_prefix_stop"))?;
+    let prefix = NoisePrefix::try_from(stop)?;
+    if USED.swap(true, Ordering::AcqRel) {
+        return Err(anyhow::anyhow!("noise_probe_reused"));
+    }
+    let outcome =
+        bitaxe_simulation::noise_probe::prefix::run_until(seed, prefix, &mut |event| match event {
+            NoisePrefixEvent::Checkpoint(phase) => bitaxe_virtual_noise_checkpoint(phase as u32),
+            NoisePrefixEvent::BoundaryReached(prefix) => unsafe {
+                std::ptr::write_volatile(
+                    std::ptr::addr_of_mut!(BITAXE_VIRTUAL_NOISE_PREFIX_REACHED),
+                    prefix as u32,
+                );
+                bitaxe_virtual_noise_prefix_cutoff(prefix as u32);
+            },
+            NoisePrefixEvent::Released => {
+                bitaxe_virtual_noise_checkpoint(NoisePhase::Released as u32);
+                unsafe {
+                    std::ptr::write_volatile(
+                        std::ptr::addr_of_mut!(BITAXE_VIRTUAL_NOISE_PREFIX_RELEASED),
+                        1,
+                    )
+                };
+                bitaxe_virtual_noise_prefix_released(stop);
+            }
+        });
+    emit_prefix_outcome(stop, outcome)
+}
+
+#[inline(never)]
+fn emit_prefix_outcome(
+    stop: u32,
+    outcome: Result<
+        bitaxe_simulation::noise_probe::prefix::NoisePrefixResult,
+        bitaxe_simulation::noise_probe::NoiseProbeError,
+    >,
+) -> anyhow::Result<()> {
+    let margin = unsafe { sys::uxTaskGetStackHighWaterMark(std::ptr::null_mut()) };
+    let count = unsafe {
+        std::ptr::read_volatile(std::ptr::addr_of!(BITAXE_VIRTUAL_NOISE_CHECKPOINT_COUNT))
+    };
+    if count > 16 {
+        return Err(anyhow::anyhow!("noise_checkpoint_count"));
+    }
+    let mut checkpoints = Vec::new();
+    for index in 0..count {
+        let record = unsafe {
+            std::ptr::read_volatile(
+                std::ptr::addr_of!(BITAXE_VIRTUAL_NOISE_CHECKPOINTS)
+                    .cast::<HeapCheckpoint>()
+                    .add(index as usize),
+            )
+        };
+        if record.magic != 0x564e5031
+            || ![1, 2].contains(&record.stage)
+            || !(101..=114).contains(&record.phase)
+        {
+            return Err(anyhow::anyhow!("noise_checkpoint_format"));
+        }
+        let complete = record.stage == 2;
+        checkpoints.push(serde_json::json!({"phase":record.phase,"stage":record.stage,
+            "integrity":if complete { Some(record.integrity == 1) } else { None },
+            "stack_low_water":record.stack_low_water,"stack_pointer_inside":record.stack_pointer_inside == 1,
+            "stack_span_kind":"configured","configured_main_stack_bytes":record.stack_bytes,
+            "internal_free":if complete { Some(record.internal_free) } else { None },
+            "internal_largest":if complete { Some(record.internal_largest) } else { None }}));
+    }
+    let mut event = serde_json::json!({"selected_stop":stop,"minimum_main_stack_free_bytes":margin,"required_margin_bytes":2048,
+        "configured_main_stack_bytes":16384,"checkpoint_stack_span":"configured","checkpoints":checkpoints});
+    match outcome {
+        Ok(result) => {
+            event["event"] = "noise_prefix".into();
+            event["result"] = serde_json::to_value(result)?;
+        }
+        Err(error) => {
+            event["event"] = "noise_prefix_rejected".into();
+            event["category"] = error.to_string().into();
+        }
+    }
+    crate::guest::emit(event)
+}
+
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn bitaxe_virtual_noise_prefix_released(stop: u32) {
+    std::hint::black_box(stop);
+}

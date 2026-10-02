@@ -6690,7 +6690,7 @@ accounting/safety limits. No original seal repair or core clearing. Raw memory,
 registers/debugger output stay in ignored0700 roots/0600 files under ADR-0030;
 share only redacted findings and hashes. Parity remains90/95.
 
-noise-probe-baseline-enabled: true
+noise-probe-baseline-enabled: false
 
 Baseline execution gate enabled for exactly one clean/pushed Noise-only baseline. Admission requires a fresh exact
 marked package, verified offline stack/resource bounds and a tested repo-owned
@@ -6734,6 +6734,106 @@ Result must bind validator/source/package/auditor/emulator and verify process/FD
 release before finalization; failures/partial core survive independently. A
 collection cutoff never becomes fixture natural completion. No full lifecycle,
 physical diagnosis or parity qualification is implied by Noise-only success.
+
+Baseline001 result and re-plan | 2026-10-01: the one-use claim was consumed at
+pushed df639c99, clean virtual ELF80875ff9aaef090bc3f9016693c60de2fc99161771e66f9c87c2959b7750a94d,
+compiled sourcebfeff883011f1d720af6c4deb018c61f7ce465f086fe8a71711e5b1131d97d62.
+The minimal target panicked before a result; process/FD release passed, the virtual
+core partition was empty. The first LoadStorePIFAddrError is in TLSF integrity
+inspection; the second LoadProhibited is in panic/core-storage preparation, not
+another baseline invocation. Preserve both partial roots and the consumed claim.
+
+Correction from exact native caller instructions: optimized DWARF line attribution
+suggested BeforeCompletion, but the actual call loads phase111AfterCompletion,
+then advances to112. Valid certificate verification had returned before the
+failing heap check. Do not infer that completion was never entered. The valid
+certificate/strauss/odd-table path requires17264 bytes before additional branches,
+exceeding even nominal16896 allocation. The old selected mix_hash fit receipt
+omitted this required valid branch and cannot admit another full Noise run. No
+current task bounds/checkpoint RAM were retained, so first overwrite is still
+unseen; retain the distinction from the earlier run017 proved stack overrun.
+
+Staged emulator bisection | 2026-10-01 | Explicit owner strategy change
+
+- [x] Implement typed runtime-prefix diagnostics with checkpoint, boundary-reached
+  and released conclusions. Prefixes101..110 stop before the known oversized
+  completion branch and must never credit full authentication/frame/mining success.
+- [x] Preserve one compiled campaign image/seed/config for runtime-prefix comparisons;
+  record exact native caller frames and their delta from baseline6368. The new
+  prefix helper is a separately compiled artifact, not an unchanged baseline
+  frame. Compile-time code removal is a separate
+  corroboration artifact with changed frame measurements, never automatic fix proof.
+- [x] Strengthen native audit to bind the exact selected cutoff and constructor/act-two
+  crypto-family paths. Report unresolved external and indirect edges explicitly;
+  require independent live bounds and heap facts instead of claiming an upper bound. Full-completion admission must also include
+  certificate verification and nested crypto, blocking the known17264-byte path.
+- [x] Add a private debugger owner that pauses at reached-prefix, completed release
+  or first panic/assert before secondary panic capture. Save bounded phase RAM,
+  task stack bounds/SP/high-water and heap-integrity facts without invoking target
+  allocation functions from GDB. Verify installed debugger grammar offline first.
+- [ ] Publish/push command, tests and one-use per-cutoff inventory before effects;
+  binary-search the earliest bad prefix with fresh roots and release every owner.
+- [ ] Apply only a measured lifetime/ownership correction and real-boundary
+  regression, rebuild/audit, then independently admit the corrected full boundary.
+  Never raise stack/heap/safety limits or treat a shortened prefix as qualification.
+
+noise-prefix-bisect-enabled: true
+
+Effect contract: emulator-only prefix code bisection, no physical discovery/USB,
+credentials, grants, work/mining/ASIC, original replay, erase or parity promotion.
+Use same actual Noise initiator/responder/time100/lifetime3600/seed1 and pinned
+SDK5.5.4/QEMU backend. Keep16KiB main/configured2KiB margin, SDK extra512 and
+allocation routing/reserve unchanged. Allowed runtime cutoffs101,102,103,105,106,
+107,109,110;110 is the last pre-completion cutoff. Known bad111 is historical
+feedback only and cannot execute until a separately audited correction exists.
+Each cutoff consumes one exclusive claim bound to frozen source/ELF/config and
+native cutoff audit; max8 distinct prefix trials, no unchanged repeat. Select
+halves adaptively from recorded outcomes; distinguish boundary reached while
+owners live from cleanup/release failure. Missing facts remain unknown and halt
+binary-search inference rather than becoming a healthy prefix. Per trial bound
+QEMU35 seconds, debugger25 seconds, output2MiB, private new0700 root/0600 files.
+Always terminate/reap QEMU/GDB descendants and close listeners before finalizing.
+A cutoff image/diagnostic result is explicitly partial and physical-ineligible.
+Stop on source/identity drift, unexpected effects, unproved ownership release or
+any requirement to enter the known over-budget branch. Further trials after a
+verified boundary-changing correction use a new explicit successor inventory;
+no elapsed human-response timeout or per-trial confirmation is required.
+
+Ranked predictions after the red-capable minimal baseline: (1) overlapping virtual
+caller/crypto stack frames are strongest; retiring constructor/caller temporaries
+must lower measured native peak and restore phase111 integrity at unchanged
+limits. (2) earlier heap damage would already fail a pre-completion prefix or
+its initial checkpoint. (3) an ownership/emulator allocator defect would persist
+after stack bounds/margin and healthy pre-completion heap are independently
+proved; no current evidence proves double-free or a Noise algorithm fault.
+
+Commands: build the clean campaign package with `just virtual-emulator build`
+and the pairing manifest, then generate each cutoff receipt through
+`bazel run //scripts:virtual_noise_prefix_audit`. Execute only
+`just virtual-emulator noise-prefix --manifest scratch/virtual-noise-diagnostic/build005-clean-prefix/virtual-package.json --audit AUDIT --stop CUTOFF --seed 1 --evidence-dir ROOT`.
+The exact build/audit invocations and placeholder bindings are published in
+`docs/testing/20261001-noise-panic-diagnosis.md`. `AUDIT` and `ROOT` are fresh
+private paths for that admitted cutoff; all artifact identities are checked
+before the one-use claim and effects. Start at 106 only if its native audit
+passes, otherwise select an earlier admitted prefix.
+
+Pre-effect verification | 2026-10-02: ordered Cargo format, Clippy, all-target
+build and all-feature tests pass; nine affected Bazel suites pass. Exact native
+prefix audits for 101/106/110 pass their selected-path budgets. The campaign
+helper frame is 2,704 bytes, 3,664 below the separate baseline helper. This is a
+changed diagnostic artifact, not a corrected full-handshake claim. The retained
+110 crypto-family ECDH path is 13,600 bytes; unresolved external/indirect paths
+remain explicit and live margin/heap proof is mandatory. Offline GDB SDK ABI and
+command grammar pass against full ELF
+`1ca18eea8596e0f4eb33c5e74e5db8c065138cd71231f2bd06d97cf1468aeaa9`.
+Compiler-folded marker aliases now require mutually exclusive flag/argument
+conditions. Missing Rust DWARF object types are verified from exact ELF symbol
+sizes; no live function calls supply those facts. Standards, reference,
+redaction, scoped Markdown and diff checks pass. One debugger subagent stopped
+with a provider cybersecurity-content flag; its completed evidence was preserved,
+and local artifact validation resolved the independent preflight type failure.
+No prefix execution occurred before publication. Rebuild from this clean pushed
+source and recheck exact package/audit/debugger identities before claiming 106.
 
 Verification: ordered Cargo format/Clippy/build/tests,21 affected Bazel targets,
 55 model tests,19 encrypted-profile tests,9 scenario tests, compiler-closure

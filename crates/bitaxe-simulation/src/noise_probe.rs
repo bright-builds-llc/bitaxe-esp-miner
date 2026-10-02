@@ -11,6 +11,8 @@ use std::time::Duration;
 
 use crate::v2::exchange::{SyntheticRng, OTHER_PUBLIC, PRIVATE, PUBLIC};
 
+pub mod prefix;
+
 #[cfg(test)]
 mod tests;
 
@@ -47,6 +49,8 @@ pub enum NoiseFault {
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum NoiseProbeError {
+    #[error("noise_prefix_unsupported")]
+    PrefixUnsupported,
     #[error("noise_initiator")]
     Initiator,
     #[error("noise_act_one")]

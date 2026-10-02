@@ -11,7 +11,7 @@ import { main as decodeCore } from '../core-dump/main.mjs';
 import { validateNoiseAudit, validateNativeNoiseAudit } from './noise-stack-audit.mjs';
 import { EMULATOR } from './lock.mjs';
 
-export const NOISE_BASELINE_EFFECTS_ENABLED = true;
+export const NOISE_BASELINE_EFFECTS_ENABLED = false;
 const digest = value => createHash('sha256').update(value).digest('hex');
 export async function noiseValidatorIdentity(repo) {
   const hash = createHash('sha256');
