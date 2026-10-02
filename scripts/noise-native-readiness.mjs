@@ -7,6 +7,7 @@ import { auditOwnerStack } from './owner-stack-audit.mjs';
 import { auditTelemetryStack, parseNativeFunctions, nativeFrame as staticFrame } from './telemetry-stack-audit.mjs';
 import { noiseNativeCalls as nativeCalls, noiseNativeInstructions } from './noise-native-calls.mjs';
 import { resolveNoiseInstructions, selectedNoiseSymbol } from './noise-native-disassembly.mjs';
+import { auditDeviceNoiseStack } from './device-noise-stack-audit.mjs';
 const nativeFrame = fn => staticFrame({ ...fn, instructions: noiseNativeInstructions(fn) });
 
 const run = promisify(execFile);
@@ -17,7 +18,8 @@ export const NOISE_ENTRY_BUDGET = 8192;
 export const NOISE_PLATFORM_MARGIN_BYTES = 512;
 export const NOISE_ENTRY_SYMBOL = 'bitaxe_noise_serial_owner_entry';
 export const NATIVE_AUDITOR_SOURCES = Object.freeze(['scripts/noise-native-readiness.mjs', 'scripts/noise-native-calls.mjs',
-  'scripts/noise-native-disassembly.mjs', 'scripts/owner-stack-audit.mjs', 'scripts/telemetry-stack-audit.mjs']);
+  'scripts/noise-native-disassembly.mjs', 'scripts/owner-stack-audit.mjs', 'scripts/telemetry-stack-audit.mjs',
+  'scripts/device-noise-stack-audit.mjs', 'scripts/virtual-emulator/noise-stack-audit.mjs', 'scripts/virtual-emulator/identity.mjs']);
 const CONFIGURATION = [
   'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304',
   'CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384', 'CONFIG_ESP_MAIN_TASK_AFFINITY=0x0',
@@ -57,7 +59,12 @@ export function auditBorrowedNoisePaths(disassembly, ownerSource, transportSourc
   const one = symbol => { const found = all.filter(fn => fn.symbol === symbol); check(found.length === 1, 'noise_native_path_symbol'); return found[0]; };
   const loop = one('bitaxe_firmware::production_mining_session::transport::run_worker');
   const dispatch = one('bitaxe_firmware::production_mining_session::transport::borrow::NoiseBorrowWorker::run_job');
-  check(calls(loop).some(edge => edge.target === dispatch.address), 'noise_native_borrow_edge');
+  // The worker may load the job pointer from a literal and call it through a register
+  // the resolver cannot follow; that literal is still bound to `borrow.run_job()` above.
+  const directBorrow = calls(loop).some(edge => edge.target === dispatch.address);
+  const literalBorrow = loop.instructions.some(instruction => instruction.op === 'l32r' &&
+    instruction.args.includes(`(${dispatch.address.toString(16)} <`));
+  check(directBorrow || literalBorrow, 'noise_native_borrow_edge');
   const caller = (callee, symbol) => {
     const found = all.filter(fn => fn.symbol === symbol && fn.instructions.some(instruction => instruction.args.includes(`${callee.address.toString(16)} <`))
       && calls(fn).some(edge => edge.target === callee.address));
@@ -82,7 +89,9 @@ export function auditBorrowedNoisePaths(disassembly, ownerSource, transportSourc
     active.delete(fn.address); memo.set(fn.address, result); return result;
   };
   const suffix = visit(start);
-  check([...observed].some(name => /schnorrsig_verify/u.test(name)) && [...observed].some(name => /ellswift_encode/u.test(name)), 'noise_native_crypto_path_unproven');
+  check([...observed].some(name => /ellswift_encode/u.test(name)), 'noise_native_crypto_path_unproven');
+  // Act-two authentication now runs on the PSRAM helper, never on this worker.
+  check(![...observed].some(name => /schnorrsig_verify|step_2_with_now/u.test(name)), 'noise_native_completion_on_worker');
   const worst = [...entries, loop, dispatch].map(fn => ({ symbol: fn.symbol, entryBytes: nativeFrame(fn) })).concat(suffix);
   const bytes = total(worst);
   if (bytes + NOISE_PLATFORM_MARGIN_BYTES > NOISE_STACK_BYTES) throw Object.assign(Error('noise_native_selected_path_budget'), {
@@ -91,7 +100,8 @@ export function auditBorrowedNoisePaths(disassembly, ownerSource, transportSourc
   return { ...entry, ownership: 'existing_primary_transport_worker', addedStackBytes: 0,
     selectedPathBytes: bytes, selectedFunctions: memo.size, nodes: worst,
     requiredMarginBytes: NOISE_PLATFORM_MARGIN_BYTES, remainingStackBytes: NOISE_STACK_BYTES - bytes,
-    callbackBinding: 'source_bound_fn_pointer_registration', threadEntryBinding: 'pthread_rust_vtable_runtime', completeCallgraphBound: false };
+    callbackBinding: 'source_bound_fn_pointer_registration', threadEntryBinding: 'pthread_rust_vtable_runtime',
+    borrowEdgeBinding: directBorrow ? 'direct_call' : 'literal_reference', completeCallgraphBound: false };
 }
 
 export function requireNoiseConfiguration(sdkconfig) {
@@ -135,6 +145,7 @@ export async function inspectNoiseNativeReadiness({ firmwareRoot, manifestPath, 
   const borrowSourcePath = join(root, 'firmware/bitaxe/src/production_mining_session/transport/borrow.rs');
   const noiseSource = await readFile(noiseSourcePath, 'utf8'), productionSource = await readFile(productionSourcePath, 'utf8');
   const transportSource = await readFile(transportSourcePath, 'utf8'), borrowSource = await readFile(borrowSourcePath, 'utf8');
+  const helperSourcePath = join(root, 'firmware/bitaxe/src/noise_completion_stack.rs'), helperSource = await readFile(helperSourcePath, 'utf8');
   const tool = join(root, '.embuild/espressif/tools/xtensa-esp-elf/esp-14.2.0_20260121/xtensa-esp-elf/bin/xtensa-esp32s3-elf-objdump');
   check((await stat(tool)).isFile(), 'noise_native_objdump');
   const toolSha256 = sha(await readFile(tool));
@@ -151,6 +162,8 @@ export async function inspectNoiseNativeReadiness({ firmwareRoot, manifestPath, 
   }, { compilerPrivateSpills });
   const noise = { ...auditBorrowedNoisePaths(disassembly, noiseSource, transportSource, borrowSource, decoded.functions, { compilerPrivateSpills }),
     supplementalRanges: decoded.supplementalRanges, unresolvedJumps: decoded.unresolvedJumps };
+  const helper = auditDeviceNoiseStack(disassembly, { helper: helperSource, transport: transportSource });
+  check(helper.result === 'selected_path_with_headroom' && helper.completion_only_on_helper === true, 'noise_native_helper_budget');
   const production = auditOwnerStack(disassembly, productionSource);
   const telemetry = auditTelemetryStack(disassembly, sdkconfig);
   check(telemetry.result === 'targeted_path_fits', 'noise_native_telemetry_budget');
@@ -158,7 +171,8 @@ export async function inspectNoiseNativeReadiness({ firmwareRoot, manifestPath, 
   for (const path of NATIVE_AUDITOR_SOURCES) sources.push({ path, sha256: sha(await readFile(join(root, path))) });
   // Recheck every measured mutable input before returning a source-bound receipt.
   for (const [path, bytes] of [[canonical, manifestBytes], [elfPath, elf], [appPath, app], [configPath, sdkconfig],
-    [noiseSourcePath, noiseSource], [productionSourcePath, productionSource], [transportSourcePath, transportSource], [borrowSourcePath, borrowSource]]) {
+    [noiseSourcePath, noiseSource], [productionSourcePath, productionSource], [transportSourcePath, transportSource], [borrowSourcePath, borrowSource],
+    [helperSourcePath, helperSource]]) {
     check(sha(await readFile(path)) === sha(bytes), 'noise_native_input_changed');
   }
   check(sha(await readFile(tool)) === toolSha256, 'noise_native_tool_changed');
@@ -166,7 +180,7 @@ export async function inspectNoiseNativeReadiness({ firmwareRoot, manifestPath, 
     firmwareCommit: expectedSourceCommit, elfSha256: expectedElfSha256, packageManifestSha256: sha(manifestBytes),
     appImageSha256: sha(app), appImageBytes: app.length, imageSlotBytes: 4 * 1024 * 1024,
     sdkconfigSha256: sha(sdkconfig), noiseOwnerSourceSha256: sha(noiseSource), productionOwnerSourceSha256: sha(productionSource),
-    transportOwnerSourceSha256: sha(transportSource), borrowSourceSha256: sha(borrowSource),
-    objdumpSha256: toolSha256, auditorSources: sources, noise, production, telemetry,
+    transportOwnerSourceSha256: sha(transportSource), borrowSourceSha256: sha(borrowSource), helperSourceSha256: sha(helperSource),
+    objdumpSha256: toolSha256, auditorSources: sources, noise, helper, production, telemetry,
     hardwareQualified: false, startupHeapQualified: false, completeCallgraphBound: false };
 }

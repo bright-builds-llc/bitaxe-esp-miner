@@ -71,3 +71,46 @@ test("native receipt changes preserving ELF identity still fail historical input
   const value = JSON.parse(await readFile(path)); value.auditorSources[0].sha256 = "0".repeat(64); await writeFile(path, JSON.stringify(value));
   await assert.rejects(loadContext(f.root, { historical: true, operations: f.operations }), { code: "noise_native_snapshot_changed" });
 });
+
+test("device helper profile freezes its task gate, successor amendment and recovery ledger", async (t) => {
+  const f = await fixture(t, { profile: "device-noise-helper" });
+  assert.equal(f.context.profile, "device-noise-helper");
+  assert.deepEqual(f.context.expected_ledger, { next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 });
+  assert.equal(f.context.contracts.binding.successor.path, "docs/hardware/device-noise-helper-amendment.md");
+  assert.equal(f.context.maximum_installations, 5);
+});
+test("device helper profile without its exact enabled line reserves nothing", async (t) => {
+  const f = await fixture(t, { prepare: false, profile: "device-noise-helper" });
+  await writeFile(resolve(f.options.firmwareRoot, "TASKS.md"), "## Active\n### task-device-noise-worker-stack | synthetic\n\nDevice noise serial hardware: disabled.\n");
+  await assert.rejects(preflight(f.options, f.operations), { code: "noise_live_task_disabled" });
+  assert.deepEqual(await readdir(f.parent), []);
+});
+test("device helper profile rejects a predecessor basis with another ledger", async (t) => {
+  const f = await fixture(t, { prepare: false, profile: "device-noise-helper" }), inspect = f.operations.inspectPredecessor;
+  await assert.rejects(preflight(f.options, { ...f.operations, inspectPredecessor: async (path) => {
+    const value = await inspect(path); return { ...value, previous: { ...value.previous, next_ordinal: 23 } };
+  } }), { code: "noise_predecessor" });
+  assert.deepEqual(await readdir(f.parent), []);
+});
+test("changed successor amendment bytes cannot reserve an ordinal", async (t) => {
+  const f = await fixture(t, { prepare: false, profile: "device-noise-helper" }), path = resolve(f.options.firmwareRoot, "docs/hardware/device-noise-helper-amendment.md");
+  await writeFile(path, `${await readFile(path, "utf8")}\n`);
+  await assert.rejects(preflight(f.options, f.operations), { code: "noise_base_contract_changed" });
+  assert.deepEqual(await readdir(f.parent), []);
+});
+test("historical contexts keep their original bindings and need no successor", async (t) => {
+  const f = await fixture(t);
+  assert.equal(f.context.profile, undefined);
+  assert.equal(f.context.contracts.binding.successor, undefined);
+  assert.deepEqual(f.context.expected_ledger, { next_ordinal: 18, last_ordinal: 17, total_charged_ms: 1560000 });
+});
+test("a recovery predecessor with other bytes fails its exact anchor", async (t) => {
+  const { inspectRecoveryPredecessor } = await import("./predecessor.mjs");
+  const { mkdtemp, mkdir, realpath, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const base = await realpath(await mkdtemp(resolve(tmpdir(), "noise-recovery-")));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const root = resolve(base, "attempt"); await mkdir(root, { mode: 0o700 });
+  await writeFile(resolve(root, "result.json"), JSON.stringify({ current_safe_recovery: true }), { mode: 0o600 });
+  await assert.rejects(inspectRecoveryPredecessor(resolve(root, "result.json")), /noise_predecessor_anchor/u);
+});

@@ -70,42 +70,65 @@ const verifyName = 'rustsecp256k1_v0_9_2_schnorrsig_verify';
 const boundSource = '.dispatch(owner_entry, job_completed)';
 const boundTransport = transportSource + '\nborrow.run_job()';
 const boundBorrow = '(callbacks.run)();\n(callbacks.complete)();';
-function selectedFixture({ auth = 4096, verify = 4096, includePrepare = true } = {}) {
+const proofName = 'bitaxe_stratum::v2::noise::NoiseTransport::encrypt_frame';
+// Corrected topology: act one and proof run on the worker; act two runs on the helper.
+function selectedFixture({ prepare = 4096, proof = 2048, auth = 4096, verify = 4096, includePrepare = true, authOnWorker = false, literalBorrow = false } = {}) {
+  const entryTargets = [...(includePrepare ? [3] : []), 4, ...(authOnWorker ? [5] : [])];
   const rows = [
-    [loopName, 128, [1]], [dispatchName, 64, []], [NOISE_ENTRY_SYMBOL, 64, includePrepare ? [3, 4] : [4]],
-    [prepareName, 4096, []], [authName, auth, [5]], [verifyName, verify, []],
+    [loopName, 128, literalBorrow ? [] : [1]], [dispatchName, 64, []], [NOISE_ENTRY_SYMBOL, 64, entryTargets],
+    [prepareName, prepare, []], [proofName, proof, []], [authName, auth, [6]], [verifyName, verify, []],
     ['std::sys::backtrace::__rust_begin_short_backtrace', 32, [0]],
-    ['core::ops::function::FnOnce::call_once{{vtable.shim}}', 112, [6]],
+    ['core::ops::function::FnOnce::call_once{{vtable.shim}}', 112, [7]],
     ['std::sys::pal::unix::thread::Thread::new::thread_start', 32, []], ['pthread_task_func', 32, []],
   ];
   const address = i => (0x42001000 + i * 0x100).toString(16);
-  return rows.map(([name, bytes, targets], i) => `${address(i)} <${name}>:\n${address(i)}: 000000 entry a1, ${bytes}\n`
+  const literal = i => i === 0 && literalBorrow
+    ? `${(parseInt(address(0), 16) + 3).toString(16)}: 000000 l32r a8, 42000000 <literal> (${address(1)} <${dispatchName}>)\n` +
+      `${(parseInt(address(0), 16) + 6).toString(16)}: 000000 movi a8, 0\n${(parseInt(address(0), 16) + 9).toString(16)}: 000000 callx8 a8\n` : '';
+  return rows.map(([name, bytes, targets], i) => `${address(i)} <${name}>:\n${address(i)}: 000000 entry a1, ${bytes}\n` + literal(i)
     + targets.map((target, k) => `${(parseInt(address(i), 16) + 3 * (k + 1)).toString(16)}: 000000 call8 ${address(target)} <${rows[target][0]}>\n`).join('')
-    + `${(parseInt(address(i), 16) + 3 * (targets.length + 1)).toString(16)}: 000000 retw.n\n`).join('\n');
+    + `${(parseInt(address(i), 16) + 3 * (targets.length + 4)).toString(16)}: 000000 retw.n\n`).join('\n');
 }
 
-test('borrowed worker audit takes the maximum resolved crypto chain, not sequential-phase sum', async () => {
+test('borrowed worker audit takes the maximum resolved crypto chain, not the sum of sibling phases', async () => {
   // Arrange
   const { auditBorrowedNoisePaths } = await import('./noise-native-readiness.mjs');
   // Act
   const result = auditBorrowedNoisePaths(selectedFixture(), boundSource, boundTransport, boundBorrow);
   // Assert
-  assert.equal(result.selectedPathBytes, 8656); assert.equal(result.addedStackBytes, 0);
+  assert.equal(result.selectedPathBytes, 4560); assert.equal(result.addedStackBytes, 0);
   assert.equal(result.completeCallgraphBound, false);
   assert.equal(result.callbackBinding, 'source_bound_fn_pointer_registration');
+  assert.equal(result.borrowEdgeBinding, 'direct_call');
 });
 
 test('a known crypto chain exceeding the existing transport stack cannot qualify', async () => {
   // Arrange
   const { auditBorrowedNoisePaths } = await import('./noise-native-readiness.mjs');
   // Act / Assert
-  assert.throws(() => auditBorrowedNoisePaths(selectedFixture({ auth: 8192 }), boundSource, boundTransport, boundBorrow), /noise_native_selected_path_budget/u);
+  assert.throws(() => auditBorrowedNoisePaths(selectedFixture({ prepare: 12288 }), boundSource, boundTransport, boundBorrow), /noise_native_selected_path_budget/u);
 });
 test('the selected chain must leave the prospective platform margin', async () => {
   const { auditBorrowedNoisePaths } = await import('./noise-native-readiness.mjs');
-  const result = auditBorrowedNoisePaths(selectedFixture({ auth: 7216 }), boundSource, boundTransport, boundBorrow);
+  const result = auditBorrowedNoisePaths(selectedFixture({ prepare: 11312 }), boundSource, boundTransport, boundBorrow);
   assert.equal(result.remainingStackBytes, 512);
-  assert.throws(() => auditBorrowedNoisePaths(selectedFixture({ auth: 7232 }), boundSource, boundTransport, boundBorrow), /noise_native_selected_path_budget/u);
+  assert.throws(() => auditBorrowedNoisePaths(selectedFixture({ prepare: 11328 }), boundSource, boundTransport, boundBorrow), /noise_native_selected_path_budget/u);
+});
+test('act-two authentication reachable on the worker is rejected', async () => {
+  // Arrange
+  const { auditBorrowedNoisePaths } = await import('./noise-native-readiness.mjs');
+  // Act / Assert
+  assert.throws(() => auditBorrowedNoisePaths(selectedFixture({ authOnWorker: true }), boundSource, boundTransport, boundBorrow), /noise_native_completion_on_worker/u);
+});
+test('an exact literal-loaded borrowed job binds the edge when its register call is unresolved', async () => {
+  // Arrange
+  const { auditBorrowedNoisePaths } = await import('./noise-native-readiness.mjs');
+  const unrelated = selectedFixture({ literalBorrow: true }).replace(`<literal> (42001100 <${dispatchName}>)`, '<literal> (42001300 <unrelated>)');
+  // Act
+  const result = auditBorrowedNoisePaths(selectedFixture({ literalBorrow: true }), boundSource, boundTransport, boundBorrow);
+  // Assert
+  assert.equal(result.borrowEdgeBinding, 'literal_reference');
+  assert.throws(() => auditBorrowedNoisePaths(unrelated, boundSource, boundTransport, boundBorrow), /noise_native_borrow_edge/u);
 });
 test('a missing measured thread caller cannot be replaced by a zero frame', async () => {
   const { auditBorrowedNoisePaths } = await import('./noise-native-readiness.mjs');

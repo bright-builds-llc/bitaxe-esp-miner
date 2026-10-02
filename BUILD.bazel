@@ -325,6 +325,7 @@ js_library(
         "MODULE.bazel",
         "docs/hardware/str005-noise-serial-qualification.md",
         "docs/hardware/str005-noise-parity-scope-amendment.md",
+        "docs/hardware/device-noise-helper-amendment.md",
     ],
 )
 

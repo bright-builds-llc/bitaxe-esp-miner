@@ -144,3 +144,17 @@ test('outlined publisher with dynamic stack adjustment cannot claim a bound', ()
   // Act / Assert
   assert.throws(()=>auditTelemetryStack(text,sdkconfig), /telemetry_dynamic_stack_unknown/u);
 });
+
+test('the Xtensa or-identity no-op does not count as a stack adjustment', () => {
+  // Arrange
+  const text = fixture({publisher:true,edit:(index,ins)=>index===6 ? [ins[0],'or a1, a1, a1',...ins.slice(1)] : ins});
+  // Act / Assert
+  assert.doesNotThrow(()=>auditTelemetryStack(text,sdkconfig));
+});
+
+test('an or into the stack pointer from another register is still dynamic', () => {
+  // Arrange
+  const text = fixture({publisher:true,edit:(index,ins)=>index===6 ? [ins[0],'or a1, a2, a2',...ins.slice(1)] : ins});
+  // Act / Assert
+  assert.throws(()=>auditTelemetryStack(text,sdkconfig), /telemetry_dynamic_stack_unknown/u);
+});

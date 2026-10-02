@@ -30,6 +30,8 @@ function functions(text) {
 }
 function destination(instruction) {
   if (/^(?:s8i|s16i|s32i|ssi|ssx|s16i|s32i\.n|b\w*|j|jx|call\w*|ret\w*|nop\w*|loop\w*|memw|isync|rsync|esync|dsync|waiti|ill|break\w*)$/.test(instruction.op)) return null;
+  // `or aN, aN, aN` is the Xtensa no-op encoding; x | x = x leaves the register unchanged.
+  if (/^or(?:\.n)?$/.test(instruction.op) && /^(a\d+),\s*\1,\s*\1$/.test(instruction.args)) return null;
   const register = /^a(\d+)(?:,|$)/.exec(instruction.args);
   return register ? Number(register[1]) : null;
 }

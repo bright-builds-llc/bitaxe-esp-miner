@@ -4,7 +4,7 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLE, PAGE, admitTrust, canonicalDirectory, cleanPushed, fileDigest, git, ignored,
   missing, nonce, packageSnapshot } from "../fixed-usb-qualification/contract.mjs";
-import { inspectPredecessor } from "./predecessor.mjs";
+import { inspectPredecessor, inspectRecoveryPredecessor } from "./predecessor.mjs";
 import { verifyArtifactSnapshot } from "../fixed-usb-qualification/snapshot.mjs";
 import { BASE_CONTRACT_SHA256 } from "./contract-v2.mjs";
 import { canonical, check, digest, inventory, privateRoot, proof, protectedPath, readJson, retain, verifyInventory, writeNew } from "./files.mjs";
@@ -13,23 +13,44 @@ export const AMENDMENT_SHA256 = "64d086a8955f7715ce59b2e5ac7cf04d7cf3338b8cbd1e0
 export const SCHEMA = "noise-serial-context-v2";
 export const BASE_PATH = "docs/hardware/str005-noise-serial-qualification.md";
 export const AMENDMENT_PATH = "docs/hardware/str005-noise-parity-scope-amendment.md";
+export const SUCCESSOR_PATH = "docs/hardware/device-noise-helper-amendment.md";
+export const SUCCESSOR_SHA256 = "5fa5de42c44811dbb8b374446cbcc6d9e89358e1f752b775f4da22238367facf";
+/** Each profile owns one namespace, task gate, predecessor basis and expected ledger. */
+export const PROFILES = Object.freeze({
+  historical: { namespace: "scratch/str005-noise-serial", task: "task-str005-noise-auth-205", enabledLine: null, successor: null,
+    inspect: inspectPredecessor, ledger: { next_ordinal: 18, last_ordinal: 17, total_charged_ms: 1560000 },
+    admits: (previous) => previous.result === "passed" && previous.cleanup_confirmed === true },
+  "device-noise-helper": { namespace: "scratch/device-noise-worker-stack", task: "task-device-noise-worker-stack",
+    enabledLine: "Device noise serial hardware: enabled.", successor: { path: SUCCESSOR_PATH, sha256: SUCCESSOR_SHA256 },
+    inspect: inspectRecoveryPredecessor, ledger: { next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 },
+    admits: (previous) => previous.basis === "current_safe_recovery" && previous.cleanup_confirmed === true &&
+      previous.last_ordinal === 21 },
+});
+export function profileOf(context) {
+  const name = context.profile ?? "historical";
+  check(Object.hasOwn(PROFILES, name) && (context.profile === undefined) === (name === "historical"), "noise_profile");
+  return { name, ...PROFILES[name] };
+}
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SOURCE_DIRS = ["scripts/str005-noise-serial", "scripts/fixed-usb-qualification", "tools/stratum-v2-fixture",
   "crates/bitaxe-stratum", "crates/bitaxe-worker-control", "scripts/host-stalls"];
-const SOURCE_FILES = [BASE_PATH, AMENDMENT_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel",
+const SOURCE_FILES = [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel",
   "firmware/bitaxe/bwg/deployment-trust.json", ...NATIVE_AUDITOR_SOURCES,
-  "firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/src/production_mining_session.rs", "firmware/bitaxe/src/production_mining_session/transport.rs",
+  "firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/src/noise_completion_stack.rs", "firmware/bitaxe/src/production_mining_session.rs", "firmware/bitaxe/src/production_mining_session/transport.rs",
   "firmware/bitaxe/src/production_mining_session/transport/borrow.rs", "tools/automation/src/redaction.ts", "tools/automation/src/noise-serial-redaction.ts"];
 
-async function taskAdmission(root) {
+async function taskAdmission(root, profile = PROFILES.historical) {
   const text = await readFile(resolve(root, "TASKS.md"), "utf8");
-  let active = false;
-  const ids = [];
+  let active = false, current = null;
+  const ids = [], blocks = new Map();
   for (const line of text.split(/\r?\n/u)) {
-    if (line.startsWith("## ")) active = line === "## Active";
-    if (active && line.startsWith("### ")) ids.push(line.slice(4).split(/\s/u)[0]);
+    if (line.startsWith("## ")) { active = line === "## Active"; current = null; }
+    if (active && line.startsWith("### ")) { current = line.slice(4).split(/\s/u)[0]; ids.push(current); blocks.set(current, []); }
+    else if (current) blocks.get(current).push(line);
   }
-  check(ids.filter((id) => id === "task-str005-noise-auth-205").length === 1, "noise_live_task_inactive");
+  check(ids.filter((id) => id === profile.task).length === 1, "noise_live_task_inactive");
+  check(profile.enabledLine === null || blocks.get(profile.task).filter((line) => line === profile.enabledLine).length === 1,
+    "noise_live_task_disabled");
   const preparations = ["task-str005-noise-runtime-readiness", "task-str005-noise-fixture-evidence"];
   const archive = await readFile(resolve(root, "TASKS.archive.md"), "utf8");
   const bindings = [];
@@ -57,19 +78,25 @@ async function sourceFiles(root) {
   }
   return files;
 }
-async function contracts(root) {
+async function contracts(root, profile = PROFILES.historical) {
   const base = await fileDigest(resolve(root, BASE_PATH)), amendment = await fileDigest(resolve(root, AMENDMENT_PATH));
   check(base === BASE_CONTRACT_SHA256 && amendment === AMENDMENT_SHA256, "noise_base_contract_changed");
   const text = await readFile(resolve(root, AMENDMENT_PATH), "utf8");
   check(text.includes("Contract ID: `str005-noise-serial-v2`"), "noise_amendment_profile");
   const binding = { base: { path: BASE_PATH, sha256: base }, amendment: { path: AMENDMENT_PATH, sha256: amendment } };
+  if (profile.successor) {
+    const successor = await fileDigest(resolve(root, profile.successor.path));
+    check(successor === profile.successor.sha256, "noise_base_contract_changed");
+    check((await readFile(resolve(root, profile.successor.path), "utf8")).includes("successor profile `device-noise-helper`"), "noise_amendment_profile");
+    binding.successor = { path: profile.successor.path, sha256: successor };
+  }
   return { binding, sha256: digest(canonical(binding)) };
 }
-async function sources(options, operations) {
+async function sources(options, operations, profile = PROFILES.historical) {
   const firmwareRoot = await canonicalDirectory(options.firmwareRoot), gateRoot = await canonicalDirectory(options.gateRoot);
   const source = (operations.git ?? git)(firmwareRoot, ["rev-parse", "HEAD"]), gate = (operations.git ?? git)(gateRoot, ["rev-parse", "HEAD"]);
   (operations.cleanPushed ?? cleanPushed)(firmwareRoot, source); (operations.cleanPushed ?? cleanPushed)(gateRoot, gate);
-  const preparationRecords = await (operations.taskAdmission ?? taskAdmission)(firmwareRoot);
+  const preparationRecords = await (operations.taskAdmission ?? taskAdmission)(firmwareRoot, profile);
   const module = await readFile(resolve(firmwareRoot, "MODULE.bazel"), "utf8");
   const pins = [...module.matchAll(/strip_prefix\s*=\s*"bitaxe-turnstile-system-([a-f0-9]{40})"/gu)];
   check(pins.length === 1 && pins[0][1] === gate, "noise_gate_pin_mismatch");
@@ -89,7 +116,7 @@ async function sources(options, operations) {
     gate_page_sha256: await fileDigest(resolve(gateRoot, PAGE)), trust_sha256: digest(JSON.stringify(trust)),
     sdkconfig_sha256: await fileDigest(resolve(dirname(manifest), "bitaxe-firmware.sdkconfig")),
     preparation_records: preparationRecords, fixture_build_receipt_sha256: await fileDigest(buildReceiptPath),
-    fixture_sha256: fixtureHash, contracts: await contracts(firmwareRoot), evaluator: await sourceFiles(firmwareRoot) };
+    fixture_sha256: fixtureHash, contracts: await contracts(firmwareRoot, profile), evaluator: await sourceFiles(firmwareRoot) };
 }
 async function copySnapshot(root, context) {
   const files = [], manifest = await readJson(context.manifest);
@@ -119,12 +146,16 @@ export async function preflight(options, operations = {}) {
   await missing(root);
   const ordinal = Number(options.attemptOrdinal);
   check(Number.isSafeInteger(ordinal) && ordinal > 0 && basename(root) === `attempt-${String(ordinal).padStart(3, "0")}`, "noise_attempt_name");
-  const source = await sources(options, operations);
-  check(parent === resolve(source.firmware_root, "scratch/str005-noise-serial"), "noise_namespace");
+  const firmwareRoot = await canonicalDirectory(options.firmwareRoot);
+  const matches = Object.entries(PROFILES).filter(([, value]) => parent === resolve(firmwareRoot, value.namespace));
+  check(matches.length === 1, "noise_namespace");
+  const profile = { name: matches[0][0], ...matches[0][1] };
+  const source = await sources(options, operations, profile);
   (operations.ignored ?? ignored)(source.firmware_root, root);
   const predecessorPath = resolve(options.predecessorReceipt);
-  const predecessor = await (operations.inspectPredecessor ?? inspectPredecessor)(predecessorPath), previous = predecessor.previous;
-  check(previous.result === "passed" && previous.cleanup_confirmed && previous.next_ordinal === 18 && previous.total_charged_ms === 1560000 &&
+  const predecessor = await (operations.inspectPredecessor ?? profile.inspect)(predecessorPath), previous = predecessor.previous;
+  check(profile.admits(previous) && previous.next_ordinal === profile.ledger.next_ordinal &&
+    previous.total_charged_ms === profile.ledger.total_charged_ms &&
     previous.context?.firmware_commit && previous.context?.app_elf_sha256, "noise_predecessor");
   // V2's first positive run is implemented; a later attempt needs reviewed progress.
   check(ordinal === 1, "noise_retry_progress_unverified");
@@ -147,10 +178,10 @@ export async function preflight(options, operations = {}) {
       const matches = native.auditorSources.filter((item) => item.path === path);
       return matches.length === 1 && matches[0].sha256 === source.evaluator.find((item) => item.path === path)?.sha256;
     }), "noise_native_auditor_join");
-  const context = { schema: SCHEMA, contract_id: "str005-noise-serial-v2", ...source,
+  const context = { schema: SCHEMA, contract_id: "str005-noise-serial-v2", ...(profile.name === "historical" ? {} : { profile: profile.name }), ...source,
     ordinal, attempt_id: nonce(), predecessor: { path: predecessorPath, sha256: await fileDigest(predecessorPath), inventorySha256: predecessor.inventorySha256 },
     before_source: { firmware_commit: previous.context.firmware_commit, app_elf_sha256: previous.context.app_elf_sha256 },
-    original_campaign_id: previous.original_campaign_id, expected_ledger: { next_ordinal: 18, last_ordinal: 17, total_charged_ms: 1560000 },
+    original_campaign_id: previous.original_campaign_id, expected_ledger: { ...profile.ledger },
     native_readiness: native, client_sha256: await fileDigest(resolve(HERE, "client.mjs")), mining_authorized: false, maximum_installations: 5 };
   await writeNew(resolve(parent, `ordinal-${ordinal}.json`), { schema: "noise-serial-assignment-v2", root, context_sha256: digest(JSON.stringify(context)) });
   await (operations.beforeCreate ?? (() => {}))();
@@ -179,11 +210,12 @@ export async function loadContext(root, { historical = false, operations = {} } 
     check(item.length === entry.length && digest(item) === entry.sha256, "noise_evaluator_changed");
   }
   check(await fileDigest(context.predecessor.path) === context.predecessor.sha256, "noise_predecessor_changed");
-  const parent = await (operations.inspectPredecessor ?? inspectPredecessor)(context.predecessor.path);
+  const profile = profileOf(context);
+  const parent = await (operations.inspectPredecessor ?? profile.inspect)(context.predecessor.path);
   check(parent.inventorySha256 === context.predecessor.inventorySha256, "noise_predecessor_seal_changed");
   if (!historical) {
     await missing(resolve(root, "sealed-inventory.json")); await missing(resolve(root, "final-result.json"));
-    const observed = await sources({ firmwareRoot: context.firmware_root, gateRoot: context.gate_root, manifest: context.manifest, fixtureBinary: context.fixture_binary }, operations);
+    const observed = await sources({ firmwareRoot: context.firmware_root, gateRoot: context.gate_root, manifest: context.manifest, fixtureBinary: context.fixture_binary }, operations, profile);
     for (const key of Object.keys(observed)) check(JSON.stringify(context[key]) === JSON.stringify(observed[key]), "noise_live_source_drift");
     check(await fileDigest(resolve(HERE, "client.mjs")) === context.client_sha256, "noise_client_changed");
   }
@@ -199,7 +231,7 @@ async function proofBytes(root, name) {
 export async function verifyEffectInputs(context, operations = {}) {
   (operations.cleanPushed ?? cleanPushed)(context.firmware_root, context.firmware_commit);
   (operations.cleanPushed ?? cleanPushed)(context.gate_root, context.gate_commit);
-  await (operations.taskAdmission ?? taskAdmission)(context.firmware_root);
+  await (operations.taskAdmission ?? taskAdmission)(context.firmware_root, profileOf(context));
   const packaged = await packageSnapshot(context.firmware_root, context.manifest, context.firmware_commit);
   for (const [key, value] of Object.entries(packaged)) check(JSON.stringify(value) === JSON.stringify(context[key]), "noise_package_changed");
   for (const [path, expected] of [[context.fixture_binary, context.fixture_sha256],

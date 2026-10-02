@@ -824,8 +824,8 @@ js_test(
 
 js_library(
     name = "str005_noise_serial_sources",
-    srcs = glob(["str005-noise-serial/*.mjs"]) + ["noise-native-readiness.mjs", "noise-native-calls.mjs", "noise-native-disassembly.mjs", "owner-stack-audit.mjs", "telemetry-stack-audit.mjs"],
-    deps = [":fixed_usb_qualification_sources", "//:str005_noise_serial_contract_inputs", "//firmware/bitaxe:noise_native_readiness_sources", "//tools/automation:noise_serial_redaction_sources"],
+    srcs = glob(["str005-noise-serial/*.mjs"]) + ["noise-native-readiness.mjs", "noise-native-calls.mjs", "noise-native-disassembly.mjs", "owner-stack-audit.mjs", "telemetry-stack-audit.mjs", "device-noise-stack-audit.mjs"],
+    deps = [":virtual_emulator_sources", ":fixed_usb_qualification_sources", "//:str005_noise_serial_contract_inputs", "//firmware/bitaxe:noise_native_readiness_sources", "//tools/automation:noise_serial_redaction_sources"],
     data = [":host_stall_sources"],
 )
 
@@ -858,7 +858,7 @@ js_binary(
 js_test(
     name = "noise_native_readiness_test",
     entry_point = "noise-native-readiness.test.mjs",
-    data = ["noise-native-readiness.mjs", "noise-native-calls.mjs", "noise-native-disassembly.mjs", "owner-stack-audit.mjs", "telemetry-stack-audit.mjs"],
+    data = ["noise-native-readiness.mjs", "noise-native-calls.mjs", "noise-native-disassembly.mjs", "owner-stack-audit.mjs", "telemetry-stack-audit.mjs", "device-noise-stack-audit.mjs", ":virtual_emulator_sources"],
 )
 
 js_test(

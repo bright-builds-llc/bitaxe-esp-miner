@@ -1483,6 +1483,7 @@ rust_test(
 js_library(
     name = "noise_native_readiness_sources",
     srcs = [
+        "src/noise_completion_stack.rs",
         "src/noise_serial_runtime.rs",
         "src/production_mining_session.rs",
         "src/production_mining_session/inbox.rs",

@@ -6,19 +6,26 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLE, PAGE, digest, writeNew } from "../fixed-usb-qualification/contract.mjs";
-import { preflight, loadContext, BASE_PATH, AMENDMENT_PATH } from "./context.mjs";
+import { preflight, loadContext, BASE_PATH, AMENDMENT_PATH, PROFILES, SUCCESSOR_PATH } from "./context.mjs";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export const SOURCE = "a".repeat(40), GATE = "b".repeat(40);
 const BASELINE = Buffer.alloc(16, 4).toString("base64url");
-export async function fixture(t, { prepare = true } = {}) {
+// Synthetic task text and predecessor basis per profile; never real evidence.
+const PROFILE_FIXTURES = {
+  historical: { tasks: "## Active\n### task-str005-noise-auth-205 | synthetic live task\n",
+    previous: { result: "passed", cleanup_confirmed: true, next_ordinal: 18, total_charged_ms: 1560000 } },
+  "device-noise-helper": { tasks: "## Active\n### task-device-noise-worker-stack | synthetic live task\n\nDevice noise serial hardware: enabled.\n",
+    previous: { basis: "current_safe_recovery", cleanup_confirmed: true, next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 } },
+};
+export async function fixture(t, { prepare = true, profile = "historical" } = {}) {
   const base = await realpath(await mkdtemp(resolve(tmpdir(), "noise-v2-")));
   t.after(() => rm(base, { recursive: true, force: true }));
-  const firmwareRoot = resolve(base, "firmware"), gateRoot = resolve(base, "gate"), parent = resolve(firmwareRoot, "scratch/str005-noise-serial"), root = resolve(parent, "attempt-001");
+  const firmwareRoot = resolve(base, "firmware"), gateRoot = resolve(base, "gate"), parent = resolve(firmwareRoot, PROFILES[profile].namespace), root = resolve(parent, "attempt-001");
   const put = async (path, content) => { await mkdir(dirname(path), { recursive: true, mode: 0o700 }); await writeFile(path, content, { mode: 0o600 }); };
   await mkdir(parent, { recursive: true, mode: 0o700 });
-  await put(resolve(firmwareRoot, "TASKS.md"), "## Active\n### task-str005-noise-auth-205 | synthetic live task\n");
+  await put(resolve(firmwareRoot, "TASKS.md"), PROFILE_FIXTURES[profile].tasks);
   await put(resolve(firmwareRoot, "TASKS.archive.md"), "### task-str005-noise-runtime-readiness | synthetic\nStatus: Complete\n\n### task-str005-noise-fixture-evidence | synthetic\nStatus: Complete\n");
-  for (const path of [BASE_PATH, AMENDMENT_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel", ...NATIVE_AUDITOR_SOURCES, "firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/src/production_mining_session.rs", "firmware/bitaxe/src/production_mining_session/transport.rs", "firmware/bitaxe/src/production_mining_session/transport/borrow.rs", "tools/automation/src/redaction.ts", "tools/automation/src/noise-serial-redaction.ts"])
+  for (const path of [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel", ...NATIVE_AUDITOR_SOURCES, "firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/src/noise_completion_stack.rs", "firmware/bitaxe/src/production_mining_session.rs", "firmware/bitaxe/src/production_mining_session/transport.rs", "firmware/bitaxe/src/production_mining_session/transport/borrow.rs", "tools/automation/src/redaction.ts", "tools/automation/src/noise-serial-redaction.ts"])
     await put(resolve(firmwareRoot, path), await readFile(resolve(REPO, path)));
   await put(resolve(firmwareRoot, "MODULE.bazel"), `# synthetic test pin\nstrip_prefix = "bitaxe-turnstile-system-${GATE}"\n`);
   for (const name of await readdir(resolve(REPO, "scripts/str005-noise-serial"))) if (name.endsWith(".mjs"))
@@ -46,7 +53,7 @@ export async function fixture(t, { prepare = true } = {}) {
     sourceDirty: false, fixtureSha256: digest("synthetic executable fixture"), writerSha256: digest(await readFile(resolve(REPO, "scripts/str005-noise-serial/build-identity.mjs"))) }));
   const previousPath = resolve(base, "previous.json"); await put(previousPath, JSON.stringify({ synthetic: true }));
   execFileSync("git", ["init", "-q", firmwareRoot]); execFileSync("git", ["-C", firmwareRoot, "add", "."]);
-  const previous = { result: "passed", cleanup_confirmed: true, next_ordinal: 18, total_charged_ms: 1560000,
+  const previous = { ...PROFILE_FIXTURES[profile].previous,
     context: { firmware_commit: "d".repeat(40), app_elf_sha256: "e".repeat(64) }, original_campaign_id: BASELINE };
   const operations = { cleanPushed() {}, ignored() {}, git(path) { return path === firmwareRoot ? SOURCE : GATE; },
     inspectPredecessor: async () => ({ previous, inventorySha256: "f".repeat(64) }),

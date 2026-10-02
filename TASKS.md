@@ -6571,6 +6571,89 @@ margin. Each run needs the owner present to open the Gate page in Chrome, grant
 Web Serial access and connect for the baseline and up to five installs. The
 device must keep its provisioned Wi-Fi; ordinary updates preserve NVS.
 
+Device Noise helper attempt contract | 2026-10-02 | Owner-present hardware run
+
+- [x] Adapt `str005-noise-serial` with a `device-noise-helper` profile: this task
+  gate, namespace `scratch/device-noise-worker-stack/`, the sealed recovery006
+  predecessor, expected ledger next 22/last 21/2,280,000 ms, and the successor
+  [amendment](docs/hardware/device-noise-helper-amendment.md). Historical
+  attempt-001 contexts keep their original bindings.
+- [x] Repair native readiness for the helper design and two pre-existing auditor
+  drifts: a register-indirect `run_job` call, and Xtensa `or a1, a1, a1` no-ops
+  miscounted as stack writes. On the current package the worker path uses 5,072
+  of 12,288 bytes, the helper audit passes and telemetry fits.
+- [ ] Owner-present run of attempt-001, then record the outcome, disable the
+  gate, and commit and push.
+
+Device noise serial hardware: enabled.
+
+Objective: install the published HEAD package state-preservingly, run the four
+v2 continuity cycles, and complete one network-only Noise diagnostic against the
+local fixture. The judge requires an accepted handshake and exact encrypted
+proof, restored baseline, unchanged ledgers, `mine_on_boot=false` and host
+cleanup. Commands are run from a clean tree equal to its local upstream; do not
+fetch or pull during the attempt. `<gate-root>` is the local Gate checkout at the
+`MODULE.bazel` pin.
+
+```sh
+just package
+bazel build //tools/stratum-v2-fixture:noise_serial_build_identity
+just detect-ultra205
+just stratum-v2-noise-serial preflight --private-root scratch/device-noise-worker-stack/attempt-001 --firmware-root <repo> --gate-root <gate-root> --package-manifest <repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --attempt-ordinal 1 --predecessor-receipt <repo>/scratch/str005-share-diagnostic/recovery006/attempt/result.json
+just stratum-v2-noise-serial serve --private-root scratch/device-noise-worker-stack/attempt-001
+just stratum-v2-noise-serial finalize --private-root scratch/device-noise-worker-stack/attempt-001 --cleanup-receipt scratch/device-noise-worker-stack/attempt-001.cleanup/receipt.json
+just stratum-v2-noise-serial review --private-root scratch/device-noise-worker-stack/attempt-001
+```
+
+Between `serve` and `finalize`, follow the README same-page workflow. The owner
+performs the native Web Serial permission and every Connect in desktop Chrome.
+The agent may call only the page's `noiseSupervisor` methods and the repo-owned
+`installCandidate(root, index)`. That function owns fresh detection, ROM
+board-info admission and `just flash-monitor --capture-timeout-seconds 30
+--redact-evidence`. The 30-second capture is the contract's explicit override of
+the general 360-second minimum, as in the base contract.
+
+Allowed effects:
+- up to five state-preserving writes of the frozen package to the one admitted
+  Ultra 205;
+- Gate Connect/Close sessions with 65,536-byte probes;
+- one network-only Noise diagnostic to the local fixture on a private IPv4;
+- normal restoration.
+
+Prohibited:
+- mining Start, Work Lease, signer, grants, pool credentials or Wi-Fi provisioning;
+- factory reset, erase, rollback, `recover` or a sixth write;
+- direct UART or pin access, network discovery;
+- synthesized permission gestures;
+- publishing raw private evidence.
+
+Evidence and privacy:
+- `scratch/device-noise-worker-stack/` is an ignored mode-0700 parent. The child
+  must be absent before preflight, and wrapper stdout and stderr go to separate
+  mode-0600 siblings.
+- `finalize` seals once and publishes only the redacted v2 projection, and only
+  on a complete pass. Run `just verify-redaction` before committing any evidence.
+
+Recovery: use only normal restoration (`restoreAndRecord`, Stop/Close and proven
+host cleanup). If restoration fails, collect the bounded safe observations,
+release host owners and stop. The device may then remain on the candidate
+image. Reinstalling ce8f or any other recovery needs its own published contract.
+
+Retry: this contract authorizes ordinal 1 only, with no unchanged retry. A later
+ordinal needs a targeted, regression-backed fix under the hardware attempt policy.
+
+Stop on:
+- detection that is not exactly one admitted Ultra 205;
+- failed board-info, identity, ledger or baseline drift, or a missing
+  preservation baseline;
+- an installation failure, or a lost or ambiguous Start (never resend);
+- `noise_network_missing`, a failed check, or unproven cleanup.
+
+Human checkpoint: no attempt resource is held while waiting. Preflight has not
+run, so no ordinal is consumed. The wait for the owner has no deadline. When the
+owner says they are ready at the machine with the Ultra 205 connected and Chrome
+open, the agent runs the commands above from preflight onward.
+
 Composed handshake correction | 2026-10-02 | Source and dev builds only
 
 - [x] Split `Exchange::new` into initiator, responder and completion frames with

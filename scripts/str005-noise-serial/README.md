@@ -5,6 +5,17 @@ This implementation uses the frozen v1 contract and v2 parity amendment in
 requires completed archived runtime and fixture tasks, clean published sources,
 the exact accepted cadence predecessor, and the derived native audit.
 
+## Profiles
+
+The attempt namespace selects one profile. `scratch/str005-noise-serial/` is the
+historical noise-auth profile; its contexts carry no `profile` field and keep
+their original task, cadence predecessor and ledger. `scratch/device-noise-worker-stack/`
+is the `device-noise-helper` profile under `task-device-noise-worker-stack`. It
+also requires the exact task line `Device noise serial hardware: enabled.`,
+binds the [successor amendment](../../docs/hardware/device-noise-helper-amendment.md),
+admits the sealed safety-recovery006 result as its predecessor and expects ledger
+next 22/last 21/2,280,000 ms.
+
 ## Canonical preparation
 
 Build the clean native package and
