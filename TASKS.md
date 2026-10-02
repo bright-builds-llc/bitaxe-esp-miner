@@ -6548,6 +6548,29 @@ task-scoped contract under the Effectful Hardware Task Gate and AGENTS.md.
 - [ ] Publish a task-scoped hardware contract only when its dependencies hold,
   then run it under the attempt policy and record the outcome.
 
+Hardware path assessment | 2026-10-02 | Read-only planning; no device access
+
+No current repo-owned command can run the corrected handshake on the device.
+Installing HEAD is not blocked by USB ownership: the fixed-USB migration and
+qualification tasks are complete, so this task may own installation once it
+publishes a contract. The best fit is the `str005-noise-serial` harness, because
+it needs no signer, grant, pool or mining. To admit HEAD under this task it needs:
+
+- this task ID and an exact enabled line in place of the archived
+  `task-str005-noise-auth-205`, plus a fresh evidence namespace;
+- its predecessor and ledger expectations rebound to sealed safety-recovery006
+  (next22/last21/charged2,280,000) instead of the CPU0 cadence receipt;
+- a v3 contract amendment with updated pinned digests;
+- the native-readiness check changed, since it requires `schnorrsig_verify`
+  reachable from the worker, which the helper design now prevents; it should
+  consume the `audit-device-noise-stack` receipt instead.
+
+Recommended before freezing the package: report the helper's PSRAM stack
+high-water and heap integrity in the Noise result, so a run measures the actual
+margin. Each run needs the owner present to open the Gate page in Chrome, grant
+Web Serial access and connect for the baseline and up to five installs. The
+device must keep its provisioned Wi-Fi; ordinary updates preserve NVS.
+
 Composed handshake correction | 2026-10-02 | Source and dev builds only
 
 - [x] Split `Exchange::new` into initiator, responder and completion frames with
