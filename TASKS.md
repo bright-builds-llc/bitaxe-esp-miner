@@ -6585,7 +6585,7 @@ Device Noise helper attempt contract | 2026-10-02 | Owner-present hardware run
 - [ ] Owner-present run of attempt-001, then record the outcome, disable the
   gate, and commit and push.
 
-Device noise serial hardware: enabled.
+Device noise serial hardware: disabled.
 
 Objective: install the published HEAD package state-preservingly, run the four
 v2 continuity cycles, and complete one network-only Noise diagnostic against the
@@ -6660,6 +6660,36 @@ policy. Direct UART and pin access keep their separate gate.
 
 Checkpoint resolved | 2026-10-02: the owner reported ready. The agent runs the
 commands above from preflight onward.
+
+Attempt-001 outcome | 2026-10-02: published at `0eee06f8`, with the package and
+fixture built from it. Detection admitted exactly one Ultra 205 in the
+`serial_jtag_runtime` profile. Preflight passed (context `b8ded14b…`) and the
+supervisor served the page. The agent's first Connect click, through the owner's
+Chrome extension, failed immediately with `connect_failed`. The page journaled
+that state (`state-0002`) and wrote `failure.json`.
+
+The cause was environmental, not firmware:
+- the extension's tab reported `visibilityState: hidden`, which the Gate rejects;
+- the origin had no granted port;
+- the Gate calls `navigator.serial.requestPort()` on every Connect, and Chrome's
+  native port chooser is browser UI outside the page, which the extension cannot
+  operate.
+
+No detection-gated write, flash, ROM access or Noise exchange occurred. The
+device stays on installed ce8f/453d. The supervisor stopped with a
+parent-observed exit code of 0, the listener and tab were closed, and
+`finalize`/`review` sealed `unverified`/`stop_impossible_contract`: result
+`48ba50e9…`, inventory `d63eaaa4…`. Nothing was published, and the gate is
+disabled again.
+
+Next attempt requirements: a new ordinal needs a reviewed continuation, because
+the harness rejects ordinal >1 with `noise_retry_progress_unverified`. This is
+manual remediation of an operator-boundary failure, not a firmware fix. A person
+must select the Ultra 205 in Chrome's chooser at each of about seven Connects,
+with the qualification tab visible in the foreground window. Alternatively, a
+reviewed Gate change could reuse an already granted port, but that would relax
+its fresh-permission-per-connection design. Before any journaled click, check
+`document.visibilityState === "visible"` read-only.
 
 Composed handshake correction | 2026-10-02 | Source and dev builds only
 
