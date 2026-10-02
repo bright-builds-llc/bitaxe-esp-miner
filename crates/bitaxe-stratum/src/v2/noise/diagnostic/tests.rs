@@ -37,13 +37,50 @@ impl CryptoRng for HeldRng {}
 struct Observations {
     fail_reservation: bool,
     fail_act_two: bool,
+    maybe_helper: Option<HelperMode>,
+    helper_threads: Vec<std::thread::ThreadId>,
     cancelled: Arc<AtomicBool>,
     began: Instant,
     operations: Vec<CryptoOperation>,
     events: Vec<Event>,
     failures: Vec<(Phase, Failure)>,
 }
+#[derive(Clone, Copy)]
+enum HelperMode {
+    Complete,
+    Fail,
+}
 impl Observer for Observations {
+    fn authenticate_act_two(
+        &mut self,
+        initiator: NoiseInitiator,
+        act_two: &[u8; ACT_TWO_LEN],
+        unix_time_seconds: u32,
+        slot: &mut Vec<super::super::NoiseTransport>,
+    ) -> Result<(), Failure> {
+        let Some(mode) = self.maybe_helper else {
+            return initiator
+                .complete_diagnostic_into(act_two, unix_time_seconds, slot)
+                .map_err(Failure::Authentication);
+        };
+        // Mirrors the device: completion runs on a joined helper, not the caller.
+        let response = *act_two;
+        let mut owned = std::mem::take(slot);
+        let (thread, outcome, owned) = std::thread::spawn(move || {
+            let outcome = match mode {
+                HelperMode::Complete => {
+                    initiator.complete_diagnostic_into(&response, unix_time_seconds, &mut owned)
+                }
+                HelperMode::Fail => Err(NoiseCompletionFailure::Other),
+            };
+            (std::thread::current().id(), outcome, owned)
+        })
+        .join()
+        .expect("helper joined");
+        self.helper_threads.push(thread);
+        *slot = owned;
+        outcome.map_err(Failure::Authentication)
+    }
     fn reserve_act_two(&mut self, slot: &mut Vec<u8>) -> Result<(), Failure> {
         slot.try_reserve_exact(if self.fail_act_two {
             usize::MAX
@@ -98,6 +135,8 @@ fn cancellation_during_real_initiator_call_allows_return_but_no_next_crypto_or_n
         let mut observer = Observations {
             fail_reservation: false,
             fail_act_two: false,
+            maybe_helper: None,
+            helper_threads: Vec::new(),
             cancelled: worker_cancelled,
             began: Instant::now(),
             operations: Vec::new(),
@@ -133,6 +172,15 @@ fn responder_failure_case(
     extra: bool,
     fail_reservation: bool,
     fail_act_two: bool,
+) -> (usize, Observations) {
+    responder_case(extra, fail_reservation, fail_act_two, None)
+}
+
+fn responder_case(
+    extra: bool,
+    fail_reservation: bool,
+    fail_act_two: bool,
+    maybe_helper: Option<HelperMode>,
 ) -> (usize, Observations) {
     // Arrange: real responder sends a valid act two plus an extra byte in one write.
     let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
@@ -211,6 +259,8 @@ fn responder_failure_case(
     let mut observer = Observations {
         fail_reservation,
         fail_act_two,
+        maybe_helper,
+        helper_threads: Vec::new(),
         cancelled: Arc::new(AtomicBool::new(false)),
         began: Instant::now(),
         operations: Vec::new(),
@@ -267,6 +317,35 @@ fn fallible_act_two_buffer_failure_closes_without_authentication_or_proof() {
     assert!(!observer
         .operations
         .contains(&CryptoOperation::ActTwoAuthentication));
+    assert!(!observer
+        .operations
+        .contains(&CryptoOperation::ProofEncryption));
+}
+
+#[test]
+fn authentication_on_a_joined_helper_still_writes_the_proof() {
+    // Arrange / Act: the real responder answers and completion runs off the caller.
+    let (proof_bytes, observer) = responder_case(false, false, false, Some(HelperMode::Complete));
+    // Assert
+    assert!(proof_bytes > 0);
+    assert!(observer.failures.is_empty(), "{:?}", observer.failures);
+    assert_eq!(observer.helper_threads.len(), 1);
+    assert_ne!(observer.helper_threads[0], std::thread::current().id());
+    assert!(observer
+        .operations
+        .contains(&CryptoOperation::ProofEncryption));
+}
+
+#[test]
+fn a_failed_helper_authentication_keeps_its_typed_failure_and_sends_no_proof() {
+    // Arrange / Act
+    let (proof_bytes, observer) = responder_case(false, false, false, Some(HelperMode::Fail));
+    // Assert
+    assert_eq!(proof_bytes, 0);
+    assert!(observer.failures.contains(&(
+        Phase::Authenticate,
+        Failure::Authentication(NoiseCompletionFailure::Other)
+    )));
     assert!(!observer
         .operations
         .contains(&CryptoOperation::ProofEncryption));

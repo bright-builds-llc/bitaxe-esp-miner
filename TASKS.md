@@ -6531,11 +6531,20 @@ task-scoped contract under the Effectful Hardware Task Gate and AGENTS.md.
 - [x] Split the composed virtual `Exchange::new`/`run_exchange` lifetimes as in
   the probe. Measure the composed Start path, publish a one-use checkpoint-only
   healthy-lifecycle recheck, and run it.
-- [ ] Choose the device fix from internal-heap evidence: worker stack size,
+- [x] Choose the device fix from internal-heap evidence: worker stack size,
   stack placement or completion-frame reduction. Add a compile-time stack
   contract and a native audit regression; never weaken safety limits.
-- [ ] Validate the device change in host tests, the native audit and the virtual
-  board before proposing a hardware contract.
+  Internal RAM forbids growing the boot-time workers, and frame reduction cannot
+  recover the deficit. Completion now runs on a joined 16 KiB PSRAM-stack helper
+  via the shared `authenticate_act_two` hook; nothing else moves.
+- [x] Validate the device change in host tests, the native audit and the virtual
+  board before proposing a hardware contract. Real-socket host tests prove the
+  hook authenticates and sends the proof from a joined helper and keeps typed
+  failures. `just audit-device-noise-stack` passes on the rebuilt image: worker
+  share 5,088 and channel 4,832 of 10,240 bytes, helper 10,656 of 14,336, and
+  completion called only by the helper. The virtual board cannot run the device
+  PSRAM helper; it covers the unchanged default path and the composed helper
+  design (campaign004). Only a device run can measure PSRAM-stack runtime margin.
 - [ ] Publish a task-scoped hardware contract only when its dependencies hold,
   then run it under the attempt policy and record the outcome.
 

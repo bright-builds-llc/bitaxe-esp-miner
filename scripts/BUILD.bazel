@@ -1185,6 +1185,19 @@ js_test(
     data = ["signed-start-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs"],
 )
 js_binary(
+    name = "audit_device_noise_stack",
+    entry_point = "audit-device-noise-stack.mjs",
+    data = ["device-noise-stack-audit.mjs", ":virtual_emulator_sources"],
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "device_noise_stack_audit_test",
+    entry_point = "device-noise-stack-audit.test.mjs",
+    data = ["device-noise-stack-audit.mjs", ":virtual_emulator_sources"],
+)
+
+js_binary(
     name = "audit_signed_renew_stack",
     entry_point = "audit-signed-renew-stack.mjs",
     data = ["signed-renew-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs"],

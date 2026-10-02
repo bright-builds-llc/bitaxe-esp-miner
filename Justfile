@@ -395,6 +395,10 @@ fixed-usb-qualification *args:
 audit-owner-stack elf objdump owner_source:
     bazel run //scripts:audit_owner_stack -- "{{ elf }}" "{{ objdump }}" "{{ owner_source }}"
 
+# Audit a built device ELF's Noise completion placement and stack paths; never opens a device.
+audit-device-noise-stack elf output:
+    bazel run //scripts:audit_device_noise_stack -- --elf "{{ elf }}" --output "{{ output }}"
+
 audit-telemetry-stack elf objdump sdkconfig:
     bazel run //scripts:audit_telemetry_stack -- "{{ elf }}" "{{ objdump }}" "{{ sdkconfig }}"
 

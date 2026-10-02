@@ -23,6 +23,7 @@ mod log_buffer;
 mod mining_actuation;
 mod mining_actuation_adapter;
 mod network_stack;
+mod noise_completion_stack;
 mod noise_serial_runtime;
 mod operator_sensor_diagnostics;
 mod operator_sensor_runtime;

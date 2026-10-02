@@ -47,3 +47,37 @@ outside the crypto family and drop glue are not bounded. This does not identify
 the Share002 or status001 cause, and it is not an observed overflow. It does put
 Noise completion alongside the earlier signed-Start and renewal findings as a
 concrete stack-pressure candidate on real hardware.
+
+## Correction: completion on a PSRAM-stack helper
+
+Internal RAM rules out growing the workers. Both 12 KiB workers start at boot,
+and by the end of startup the device has only about 4.5–7.6 KB of internal/DMA
+memory free, with a largest block of 2–7 KB. Reshaping callers cannot recover
+the deficit either, because the completion return slot, the upstream
+`step_2_with_now` and Schnorr verification alone exceed the budget.
+
+The shared diagnostic now exposes `Observer::authenticate_act_two`. Its default
+keeps the original inline completion. Both device observers override it with
+`noise_completion_stack::authenticate_on_psram_stack`, which:
+
+- applies `MALLOC_CAP_SPIRAM` stack caps through `esp_pthread_set_cfg` for one
+  spawn, then restores the previous configuration;
+- spawns a 16 KiB helper (its TCB, about 350 bytes, stays in internal RAM);
+- runs only `complete_diagnostic_into` there, then joins and returns the
+  unchanged result.
+
+The helper performs no flash operation and never disables the cache, as PSRAM
+stacks require. Socket I/O and every other step stay on the worker.
+
+| Path (rebuilt device image)                 | Before | After  | Budget |
+| ------------------------------------------- | -----: | -----: | -----: |
+| Worker share entry, deepest crypto          | 11,424 |  5,088 | 10,240 |
+| Worker channel entry, deepest crypto        | ≥11,168 |  4,832 | 10,240 |
+| Worker share entry to helper spawn          |      — |  1,024 | 10,240 |
+| Helper completion and certificate           |      — | 10,656 | 14,336 |
+
+`just audit-device-noise-stack` re-measures these paths on any built image. It
+fails if any function other than the helper entry directly calls completion
+crypto, if the 12 KiB worker or the 16 KiB PSRAM helper contract changes, or if a
+path exceeds its budget. Helper entry frames and indirect calls stay unbounded,
+so this is still static evidence; only a device run can confirm runtime margin.

@@ -103,6 +103,20 @@ pub trait Observer {
     }
     /// Optional observation hook; it neither grants authority nor interrupts crypto.
     fn entering_crypto(&mut self, _operation: CryptoOperation) {}
+    /// Runs act-two authentication into the reserved slot. The default completes on
+    /// the caller's stack. A target may move only this opaque crypto onto a larger
+    /// stack, but must join it before returning and keep the result unchanged.
+    fn authenticate_act_two(
+        &mut self,
+        initiator: NoiseInitiator,
+        act_two: &[u8; ACT_TWO_LEN],
+        unix_time_seconds: u32,
+        slot: &mut Vec<super::NoiseTransport>,
+    ) -> Result<(), Failure> {
+        initiator
+            .complete_diagnostic_into(act_two, unix_time_seconds, slot)
+            .map_err(Failure::Authentication)
+    }
     /// Includes native generation/session validity and the absolute authority deadline.
     fn permitted(&mut self) -> bool;
     fn now_us(&self) -> Option<u64>;
@@ -233,13 +247,14 @@ fn exchange<R: RngCore + CryptoRng>(
     observer.entering_crypto(CryptoOperation::ActTwoAuthentication);
     observer.operation_started(Operation::ActTwoAuthentication);
     check(observer)?;
-    let authenticated = initiator.complete_diagnostic_into(
+    let authenticated = observer.authenticate_act_two(
+        initiator,
         act_two.as_slice().try_into().map_err(|_| Failure::Io)?,
         time,
         &mut noise,
     );
     observer.operation_finished(Operation::ActTwoAuthentication, authenticated.is_err());
-    authenticated.map_err(Failure::Authentication)?;
+    authenticated?;
     complete(observer, Phase::Authenticate, started, 120_000_000, None)?;
     *phase = Phase::ActTwo;
     check(observer)?;

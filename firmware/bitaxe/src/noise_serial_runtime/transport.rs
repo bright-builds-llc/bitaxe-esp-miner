@@ -42,6 +42,20 @@ pub(super) fn run(shared: &Shared, input: PreparedInput) {
 }
 struct NativeObserver<'a>(&'a Shared);
 impl Observer for NativeObserver<'_> {
+    fn authenticate_act_two(
+        &mut self,
+        initiator: bitaxe_stratum::v2::noise::NoiseInitiator,
+        act_two: &[u8; bitaxe_stratum::v2::noise::ACT_TWO_LEN],
+        unix_time_seconds: u32,
+        slot: &mut Vec<bitaxe_stratum::v2::noise::NoiseTransport>,
+    ) -> Result<(), Failure> {
+        crate::noise_completion_stack::authenticate_on_psram_stack(
+            initiator,
+            act_two,
+            unix_time_seconds,
+            slot,
+        )
+    }
     fn permitted(&mut self) -> bool {
         allowed(self.0, FailureStage::Evidence)
     }
