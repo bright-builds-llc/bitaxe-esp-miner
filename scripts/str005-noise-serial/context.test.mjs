@@ -3,7 +3,7 @@ import { readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
 import { fixture } from "./test-fixture.mjs";
-import { preflight, loadContext } from "./context.mjs";
+import { preflight, loadContext, publicationPath } from "./context.mjs";
 
 test("real protected preflight freezes thirteen artifacts and reserves before child creation", async (t) => {
   const f = await fixture(t);
@@ -137,4 +137,51 @@ test("an installed continuation without its prior attempt reserves nothing", asy
   const options = { ...f.options, privateRoot: resolve(f.parent, "attempt-003"), attemptOrdinal: 3 };
   await assert.rejects(preflight(options, f.operations));
   assert.deepEqual(await readdir(f.parent), []);
+});
+test("control stack profile freezes its task gate, successor amendment and helper-pass ledger", async (t) => {
+  // Arrange / Act
+  const f = await fixture(t, { profile: "control-stack-port-reuse" });
+  // Assert
+  assert.equal(f.context.profile, "control-stack-port-reuse");
+  assert.deepEqual(f.context.expected_ledger, { next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 });
+  assert.equal(f.context.contracts.binding.successor.path, "docs/hardware/control-stack-port-reuse-amendment.md");
+  assert.equal(f.context.continuation, undefined);
+});
+test("control stack profile without its exact enabled line reserves nothing", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "control-stack-port-reuse" });
+  await writeFile(resolve(f.options.firmwareRoot, "TASKS.md"), "## Active\n### task-control-stack-port-reuse-run | synthetic\n\nControl stack port reuse hardware: disabled.\n");
+  // Act / Assert
+  await assert.rejects(preflight(f.options, f.operations), { code: "noise_live_task_disabled" });
+  assert.deepEqual(await readdir(f.parent), []);
+});
+test("control stack profile refuses the recovery basis its predecessor profile used", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "control-stack-port-reuse" }), inspect = f.operations.inspectPredecessor;
+  // Act / Assert
+  await assert.rejects(preflight(f.options, { ...f.operations, inspectPredecessor: async (path) => {
+    const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "current_safe_recovery" } };
+  } }), { code: "noise_predecessor" });
+  assert.deepEqual(await readdir(f.parent), []);
+});
+test("control stack publication never shares the historical attempt directory", async (t) => {
+  // Arrange
+  const f = await fixture(t, { profile: "control-stack-port-reuse" }), historical = await fixture(t);
+  // Act
+  const path = publicationPath(f.context);
+  // Assert
+  assert.equal(path, resolve(f.options.firmwareRoot, "docs/parity/evidence/control-stack-port-reuse/attempt-001.json"));
+  assert.equal(publicationPath(historical.context), resolve(historical.options.firmwareRoot, "docs/parity/evidence/str005-noise-serial/attempt-001.json"));
+});
+test("a helper pass predecessor with other bytes fails its exact anchor", async (t) => {
+  // Arrange
+  const { inspectHelperPassPredecessor } = await import("./predecessor.mjs");
+  const { mkdtemp, mkdir, realpath, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const base = await realpath(await mkdtemp(resolve(tmpdir(), "noise-helper-pass-")));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const root = resolve(base, "attempt"); await mkdir(root, { mode: 0o700 });
+  await writeFile(resolve(root, "final-result.json"), JSON.stringify({ status: "passed" }), { mode: 0o600 });
+  // Act / Assert
+  await assert.rejects(inspectHelperPassPredecessor(resolve(root, "final-result.json")), /noise_predecessor_anchor/u);
 });

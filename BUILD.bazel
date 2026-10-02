@@ -326,6 +326,7 @@ js_library(
         "docs/hardware/str005-noise-serial-qualification.md",
         "docs/hardware/str005-noise-parity-scope-amendment.md",
         "docs/hardware/device-noise-helper-amendment.md",
+        "docs/hardware/control-stack-port-reuse-amendment.md",
     ],
 )
 

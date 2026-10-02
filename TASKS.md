@@ -6511,6 +6511,99 @@ Authorization: evidence/software review now; no hardware merely from dependency
 edits. Any missing smoke requires its own published bounds. No parity transition.
 Verification: Pending. Completion review: Pending.
 
+### task-control-stack-port-reuse-run | 2026-10-02 | Run the control stack and port reuse changes on the Ultra 205
+
+Status: Active. Contract published; attempt-001 pending.
+Objective: in one bounded hardware run, show that the reduced control-thread
+routing frames of `task-control-stack-frame-pressure` run every serial command on
+the device without a fault, and that every Connect reuses the granted port
+without Chrome's chooser (`task-worker-port-reuse`).
+Contract: [control stack and port reuse amendment](docs/hardware/control-stack-port-reuse-amendment.md).
+
+Owner authorization | 2026-10-02: the owner asked to write this contract and run
+both checks, under their standing authorization for Ultra 205 interactions and
+for driving their Chrome.
+
+- [x] Add the `control-stack-port-reuse` harness profile: this task gate,
+  namespace `scratch/control-stack-port-reuse/`, the sealed attempt-003 pass as
+  predecessor (before identity `68cb7e66`/`b94d6886`, ledger next 22/last
+  21/2,280,000 ms), a profile-owned publication directory, and regressions.
+- [ ] Run attempt-001 from a clean pushed HEAD, then record the outcome, disable
+  the gate, and commit and push.
+
+Control stack port reuse hardware: enabled.
+
+Objective: install the published HEAD package state-preservingly, run the four
+v2 continuity cycles, and complete one network-only Noise diagnostic against the
+local fixture. The judge requires an accepted handshake and exact encrypted
+proof, restored baseline, unchanged ledgers, `mine_on_boot=false` and host
+cleanup. Commands are run from a clean tree equal to its local upstream; do not
+fetch or pull during the attempt. `<gate-root>` is the local Gate checkout at the
+`MODULE.bazel` pin.
+
+```sh
+just package
+bazel build //tools/stratum-v2-fixture:noise_serial_build_identity
+just audit-control-stack
+just detect-ultra205
+just stratum-v2-noise-serial preflight --private-root scratch/control-stack-port-reuse/attempt-001 --firmware-root <repo> --gate-root <gate-root> --package-manifest <repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --attempt-ordinal 1 --predecessor-receipt <repo>/scratch/device-noise-worker-stack/attempt-003/final-result.json
+just stratum-v2-noise-serial serve --private-root scratch/control-stack-port-reuse/attempt-001
+just stratum-v2-noise-serial finalize --private-root scratch/control-stack-port-reuse/attempt-001 --cleanup-receipt scratch/control-stack-port-reuse/attempt-001.cleanup/receipt.json
+just stratum-v2-noise-serial review --private-root scratch/control-stack-port-reuse/attempt-001
+```
+
+Between `serve` and `finalize`, follow the README same-page workflow. The agent
+performs every Connect through the owner's desktop Chrome with a real input
+event, after a read-only `document.visibilityState` check. For each Connect it
+records whether Chrome's chooser appeared. If the chooser appears, the owner may
+pick the Ultra 205; the attempt continues, but chooser-free Connect is then not
+shown. Programmatic permission APIs and injected gestures stay prohibited. The
+agent may call only the page's `noiseSupervisor` methods and the repo-owned
+`installCandidate(root, index)`. That function owns fresh detection, ROM
+board-info admission and `just flash-monitor --capture-timeout-seconds 30
+--redact-evidence`. The 30-second capture is the contract's explicit override of
+the general 360-second minimum, as in the base contract.
+
+Allowed effects:
+- up to five state-preserving writes of the frozen package to the one admitted
+  Ultra 205;
+- Gate Connect/Close sessions with 65,536-byte probes;
+- one network-only Noise diagnostic to the local fixture on a private IPv4;
+- normal restoration.
+
+Prohibited:
+- mining Start, Work Lease, signer, grants, pool credentials or Wi-Fi provisioning;
+- factory reset, erase, rollback, `recover` or a sixth write;
+- direct UART or pin access, network discovery;
+- synthesized permission gestures;
+- publishing raw private evidence.
+
+Evidence and privacy:
+- `scratch/control-stack-port-reuse/` is an ignored mode-0700 parent. The child
+  must be absent before preflight, and wrapper stdout and stderr go to separate
+  mode-0600 siblings. Operator processes run under umask 077.
+- `finalize` seals once and publishes only the redacted v2 projection under
+  `docs/parity/evidence/control-stack-port-reuse/`, and only on a complete pass.
+  Run `just verify-redaction` before committing any evidence.
+
+Recovery: use only normal restoration (`restoreAndRecord`, Stop/Close and proven
+host cleanup). If restoration fails, collect the bounded safe observations,
+release host owners and stop. The device may then remain on the candidate
+image. Reinstalling `68cb7e66` or any other recovery needs its own published
+contract.
+
+Retry: this contract authorizes ordinal 1 only, with no unchanged retry. A later
+ordinal needs a targeted, regression-backed fix and a reviewed continuation
+under the hardware attempt policy.
+
+Stop on:
+- detection that is not exactly one admitted Ultra 205;
+- failed board-info, identity, ledger or baseline drift, or a missing
+  preservation baseline;
+- a failed `just audit-control-stack` on the frozen package;
+- an installation failure, or a lost or ambiguous Start (never resend);
+- `noise_network_missing`, a failed check, or unproven cleanup.
+
 ### task-worker-port-reuse | 2026-10-02 | Reuse a granted Worker port so Connects need no chooser
 
 Status: Active. Software complete; the first chooser-free device run is pending.
@@ -6528,8 +6621,8 @@ Evidence: [Worker port reuse amendment](docs/hardware/worker-port-reuse-amendmen
 - [x] Repin `MODULE.bazel` to the new Gate archive (SHA-256
   `5f1fa38cf60f47174c7e4ac47837d37896c0b5a12be6fefa8b212bcdace9a068`) and add
   the successor amendment, which supersedes only the earlier getPorts ban.
-- [ ] Exercise chooser-free Connects in the next contracted device run and
-  record the result.
+- [ ] Exercise chooser-free Connects in the next contracted device run
+  (`task-control-stack-port-reuse-run`) and record the result.
 
 ### task-control-stack-frame-pressure | 2026-10-02 | Shrink oversized control-thread frames
 
@@ -6559,9 +6652,8 @@ Finding (clean image `68cb7e66`, ELF `b94d6886…`):
 - [x] Verify with the worker-control and firmware tests, ordered Cargo checks,
   the signed Start/renew audits and a rebuilt-image depth measurement. Add a
   repo-owned audit regression for the control path's budget.
-- [ ] Record the device-run requirement. A future owner-present noise-serial or
-  share run exercises these control frames; no new hardware effect is
-  authorized here.
+- [ ] Record the device-run requirement. `task-control-stack-port-reuse-run`
+  owns the device run; no hardware effect is authorized here.
 
 Result (rebuilt device image, offline):
 

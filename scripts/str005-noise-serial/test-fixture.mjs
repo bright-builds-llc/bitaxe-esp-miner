@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLE, PAGE, digest, writeNew } from "../fixed-usb-qualification/contract.mjs";
-import { preflight, loadContext, BASE_PATH, AMENDMENT_PATH, PROFILES, SUCCESSOR_PATH } from "./context.mjs";
+import { preflight, loadContext, BASE_PATH, AMENDMENT_PATH, PROFILES, SUCCESSOR_PATH, CONTROL_SUCCESSOR_PATH } from "./context.mjs";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export const SOURCE = "a".repeat(40), GATE = "b".repeat(40);
 const BASELINE = Buffer.alloc(16, 4).toString("base64url");
@@ -16,6 +16,8 @@ const PROFILE_FIXTURES = {
     previous: { result: "passed", cleanup_confirmed: true, next_ordinal: 18, total_charged_ms: 1560000 } },
   "device-noise-helper": { tasks: "## Active\n### task-device-noise-worker-stack | synthetic live task\n\nDevice noise serial hardware: enabled.\n",
     previous: { basis: "current_safe_recovery", cleanup_confirmed: true, next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 } },
+  "control-stack-port-reuse": { tasks: "## Active\n### task-control-stack-port-reuse-run | synthetic live task\n\nControl stack port reuse hardware: enabled.\n",
+    previous: { basis: "device_noise_helper_pass", cleanup_confirmed: true, next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 } },
 };
 export async function fixture(t, { prepare = true, profile = "historical" } = {}) {
   const base = await realpath(await mkdtemp(resolve(tmpdir(), "noise-v2-")));
@@ -25,7 +27,7 @@ export async function fixture(t, { prepare = true, profile = "historical" } = {}
   await mkdir(parent, { recursive: true, mode: 0o700 });
   await put(resolve(firmwareRoot, "TASKS.md"), PROFILE_FIXTURES[profile].tasks);
   await put(resolve(firmwareRoot, "TASKS.archive.md"), "### task-str005-noise-runtime-readiness | synthetic\nStatus: Complete\n\n### task-str005-noise-fixture-evidence | synthetic\nStatus: Complete\n");
-  for (const path of [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel", ...NATIVE_AUDITOR_SOURCES, "firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/src/noise_completion_stack.rs", "firmware/bitaxe/src/production_mining_session.rs", "firmware/bitaxe/src/production_mining_session/transport.rs", "firmware/bitaxe/src/production_mining_session/transport/borrow.rs", "tools/automation/src/redaction.ts", "tools/automation/src/noise-serial-redaction.ts"])
+  for (const path of [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, CONTROL_SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel", ...NATIVE_AUDITOR_SOURCES, "firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/src/noise_completion_stack.rs", "firmware/bitaxe/src/production_mining_session.rs", "firmware/bitaxe/src/production_mining_session/transport.rs", "firmware/bitaxe/src/production_mining_session/transport/borrow.rs", "tools/automation/src/redaction.ts", "tools/automation/src/noise-serial-redaction.ts"])
     await put(resolve(firmwareRoot, path), await readFile(resolve(REPO, path)));
   await put(resolve(firmwareRoot, "MODULE.bazel"), `# synthetic test pin\nstrip_prefix = "bitaxe-turnstile-system-${GATE}"\n`);
   for (const name of await readdir(resolve(REPO, "scripts/str005-noise-serial"))) if (name.endsWith(".mjs"))

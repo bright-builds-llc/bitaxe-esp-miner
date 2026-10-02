@@ -1,7 +1,7 @@
 import { mkdir, readFile, open, link, unlink } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { exactObject, missing } from "../fixed-usb-qualification/contract.mjs";
-import { loadContext, recheckNative } from "./context.mjs";
+import { loadContext, publicationPath, recheckNative } from "./context.mjs";
 import { requireHostStopped } from "./cleanup.mjs";
 import { collectInputs, failureOutcome } from "./inputs.mjs";
 import { snapshotCleanup } from "./final-inputs.mjs";
@@ -55,7 +55,7 @@ export async function finalize(root, cleanupPath, operations = {}) {
     files: await inventory(root, new Set(["sealed-inventory.json"])) });
   if (accepted) {
     const publicValue = projection(context, accepted, (await proof(root, "sealed-inventory.json")).sha256, (await proof(root, "final-result.json")).sha256);
-    const publicPath = resolve(context.firmware_root, "docs/parity/evidence/str005-noise-serial", `attempt-${String(context.ordinal).padStart(3, "0")}.json`);
+    const publicPath = publicationPath(context);
     await mkdir(dirname(publicPath), { recursive: true });
     const temporary = `${publicPath}.pending`;
     const handle = await open(temporary, "wx", 0o644);
@@ -82,7 +82,7 @@ export async function review(root, operations = {}) {
     check(result.value.firstFailure === null && result.value.outcome === "complete", "noise_pass_disposition");
     const accepted = await judge(root, context, `${root}.cleanup/receipt.json`, { ...operations, checkKernel: false, cleanupSnapshot: true });
     check(JSON.stringify(accepted.inputs) === JSON.stringify(result.value.inputs), "noise_result_join");
-    const published = JSON.parse(await readFile(resolve(context.firmware_root, "docs/parity/evidence/str005-noise-serial", `attempt-${String(context.ordinal).padStart(3, "0")}.json`), "utf8"));
+    const published = JSON.parse(await readFile(publicationPath(context), "utf8"));
     check(JSON.stringify(published) === JSON.stringify(projection(context, accepted, sealed.sha256, result.sha256)), "noise_projection_changed");
   }
   if (result.value.status === "unverified") {
