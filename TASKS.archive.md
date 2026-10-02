@@ -18027,3 +18027,367 @@ through `--distdir`, as in the previous task. Bright Builds and
 Completion review: Linux runs now report the macOS-only helper test as
 skipped instead of failed, and nothing else changed. Residual risk: the real
 helper is exercised only on macOS hosts.
+
+### task-device-noise-worker-stack | 2026-10-02 | Fit device Noise completion and recheck the composed boundary
+
+Status: Complete. Attempt-003 passed: the corrected runtime authenticated a real
+Noise handshake on the Ultra 205 and restored cleanly.
+Objective: make the device's Noise handshake fit its worker stack with the
+unchanged 2,048-byte margin, correct the same lifetime defect in the composed
+virtual Start path, and verify both before any hardware run.
+Evidence: [device worker stack analysis](docs/research/20261002-device-noise-worker-stack.md).
+
+Owner authorization | 2026-10-02: the owner authorized continuing toward
+completion of the intended task, including changes that affect device firmware,
+and running those changes. Each device run still requires a complete
+task-scoped contract under the Effectful Hardware Task Gate and AGENTS.md.
+
+- [x] Build the clean device image and measure every device Noise path with the
+  auditor-v2 method. Share completion needs 11,424 bytes against a 10,240-byte
+  budget on the 12 KiB `stratum-primary`/`stratum-fallback` worker.
+- [x] Split the composed virtual `Exchange::new`/`run_exchange` lifetimes as in
+  the probe. Measure the composed Start path, publish a one-use checkpoint-only
+  healthy-lifecycle recheck, and run it.
+- [x] Choose the device fix from internal-heap evidence: worker stack size,
+  stack placement or completion-frame reduction. Add a compile-time stack
+  contract and a native audit regression; never weaken safety limits.
+  Internal RAM forbids growing the boot-time workers, and frame reduction cannot
+  recover the deficit. Completion now runs on a joined 16 KiB PSRAM-stack helper
+  via the shared `authenticate_act_two` hook; nothing else moves.
+- [x] Validate the device change in host tests, the native audit and the virtual
+  board before proposing a hardware contract. Real-socket host tests prove the
+  hook authenticates and sends the proof from a joined helper and keeps typed
+  failures. `just audit-device-noise-stack` passes on the rebuilt image: worker
+  share 5,088 and channel 4,832 of 10,240 bytes, helper 10,656 of 14,336, and
+  completion called only by the helper. The virtual board cannot run the device
+  PSRAM helper; it covers the unchanged default path and the composed helper
+  design (campaign004). Only a device run can measure PSRAM-stack runtime margin.
+- [x] Publish a task-scoped hardware contract only when its dependencies hold,
+  then run it under the attempt policy and record the outcome.
+
+Hardware path assessment | 2026-10-02 | Read-only planning; no device access
+
+No current repo-owned command can run the corrected handshake on the device.
+Installing HEAD is not blocked by USB ownership: the fixed-USB migration and
+qualification tasks are complete, so this task may own installation once it
+publishes a contract. The best fit is the `str005-noise-serial` harness, because
+it needs no signer, grant, pool or mining. To admit HEAD under this task it needs:
+
+- this task ID and an exact enabled line in place of the archived
+  `task-str005-noise-auth-205`, plus a fresh evidence namespace;
+- its predecessor and ledger expectations rebound to sealed safety-recovery006
+  (next22/last21/charged2,280,000) instead of the CPU0 cadence receipt;
+- a v3 contract amendment with updated pinned digests;
+- the native-readiness check changed, since it requires `schnorrsig_verify`
+  reachable from the worker, which the helper design now prevents; it should
+  consume the `audit-device-noise-stack` receipt instead.
+
+Recommended before freezing the package: report the helper's PSRAM stack
+high-water and heap integrity in the Noise result, so a run measures the actual
+margin. Each run needs the owner present to open the Gate page in Chrome, grant
+Web Serial access and connect for the baseline and up to five installs. The
+device must keep its provisioned Wi-Fi; ordinary updates preserve NVS.
+
+Device Noise helper attempt contract | 2026-10-02 | Owner-present hardware run
+
+- [x] Adapt `str005-noise-serial` with a `device-noise-helper` profile: this task
+  gate, namespace `scratch/device-noise-worker-stack/`, the sealed recovery006
+  predecessor, expected ledger next 22/last 21/2,280,000 ms, and the successor
+  [amendment](docs/hardware/device-noise-helper-amendment.md). Historical
+  attempt-001 contexts keep their original bindings.
+- [x] Repair native readiness for the helper design and two pre-existing auditor
+  drifts: a register-indirect `run_job` call, and Xtensa `or a1, a1, a1` no-ops
+  miscounted as stack writes. On the current package the worker path uses 5,072
+  of 12,288 bytes, the helper audit passes and telemetry fits.
+- [x] Owner-present run of attempt-001, then record the outcome, disable the
+  gate, and commit and push. It ended unverified, as recorded below.
+
+Device noise serial hardware: disabled.
+
+Objective: install the published HEAD package state-preservingly, run the four
+v2 continuity cycles, and complete one network-only Noise diagnostic against the
+local fixture. The judge requires an accepted handshake and exact encrypted
+proof, restored baseline, unchanged ledgers, `mine_on_boot=false` and host
+cleanup. Commands are run from a clean tree equal to its local upstream; do not
+fetch or pull during the attempt. `<gate-root>` is the local Gate checkout at the
+`MODULE.bazel` pin.
+
+```sh
+just package
+bazel build //tools/stratum-v2-fixture:noise_serial_build_identity
+just detect-ultra205
+just stratum-v2-noise-serial preflight --private-root scratch/device-noise-worker-stack/attempt-001 --firmware-root <repo> --gate-root <gate-root> --package-manifest <repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --attempt-ordinal 1 --predecessor-receipt <repo>/scratch/str005-share-diagnostic/recovery006/attempt/result.json
+just stratum-v2-noise-serial serve --private-root scratch/device-noise-worker-stack/attempt-001
+just stratum-v2-noise-serial finalize --private-root scratch/device-noise-worker-stack/attempt-001 --cleanup-receipt scratch/device-noise-worker-stack/attempt-001.cleanup/receipt.json
+just stratum-v2-noise-serial review --private-root scratch/device-noise-worker-stack/attempt-001
+```
+
+Between `serve` and `finalize`, follow the README same-page workflow. The native
+Web Serial permission and every Connect are real input events in the owner's
+desktop Chrome. Under the owner's standing 2026-10-02 authorization (below), the
+agent may perform them through that Chrome; programmatic permission APIs and
+injected gestures stay prohibited.
+The agent may call only the page's `noiseSupervisor` methods and the repo-owned
+`installCandidate(root, index)`. That function owns fresh detection, ROM
+board-info admission and `just flash-monitor --capture-timeout-seconds 30
+--redact-evidence`. The 30-second capture is the contract's explicit override of
+the general 360-second minimum, as in the base contract.
+
+Allowed effects:
+- up to five state-preserving writes of the frozen package to the one admitted
+  Ultra 205;
+- Gate Connect/Close sessions with 65,536-byte probes;
+- one network-only Noise diagnostic to the local fixture on a private IPv4;
+- normal restoration.
+
+Prohibited:
+- mining Start, Work Lease, signer, grants, pool credentials or Wi-Fi provisioning;
+- factory reset, erase, rollback, `recover` or a sixth write;
+- direct UART or pin access, network discovery;
+- synthesized permission gestures;
+- publishing raw private evidence.
+
+Evidence and privacy:
+- `scratch/device-noise-worker-stack/` is an ignored mode-0700 parent. The child
+  must be absent before preflight, and wrapper stdout and stderr go to separate
+  mode-0600 siblings.
+- `finalize` seals once and publishes only the redacted v2 projection, and only
+  on a complete pass. Run `just verify-redaction` before committing any evidence.
+
+Recovery: use only normal restoration (`restoreAndRecord`, Stop/Close and proven
+host cleanup). If restoration fails, collect the bounded safe observations,
+release host owners and stop. The device may then remain on the candidate
+image. Reinstalling ce8f or any other recovery needs its own published contract.
+
+Retry: this contract authorizes ordinal 1 only, with no unchanged retry. A later
+ordinal needs a targeted, regression-backed fix under the hardware attempt policy.
+
+Stop on:
+- detection that is not exactly one admitted Ultra 205;
+- failed board-info, identity, ledger or baseline drift, or a missing
+  preservation baseline;
+- an installation failure, or a lost or ambiguous Start (never resend);
+- `noise_network_missing`, a failed check, or unproven cleanup.
+
+Owner standing authorization | 2026-10-02: the owner authorized all future
+interactions with the connected Ultra 205, which is normally powered and
+connected, and Chrome and web actions on their behalf. Every device effect still
+needs an active contract like this one, detector admission and the attempt
+policy. Direct UART and pin access keep their separate gate.
+
+Checkpoint resolved | 2026-10-02: the owner reported ready. The agent runs the
+commands above from preflight onward.
+
+Attempt-001 outcome | 2026-10-02: published at `0eee06f8`, with the package and
+fixture built from it. Detection admitted exactly one Ultra 205 in the
+`serial_jtag_runtime` profile. Preflight passed (context `b8ded14b…`) and the
+supervisor served the page. The agent's first Connect click, through the owner's
+Chrome extension, failed immediately with `connect_failed`. The page journaled
+that state (`state-0002`) and wrote `failure.json`.
+
+The cause was environmental, not firmware:
+- the extension's tab reported `visibilityState: hidden`, which the Gate rejects;
+- the origin had no granted port;
+- the Gate calls `navigator.serial.requestPort()` on every Connect, and Chrome's
+  native port chooser is browser UI outside the page, which the extension cannot
+  operate.
+
+No detection-gated write, flash, ROM access or Noise exchange occurred. The
+device stays on installed ce8f/453d. The supervisor stopped with a
+parent-observed exit code of 0, the listener and tab were closed, and
+`finalize`/`review` sealed `unverified`/`stop_impossible_contract`: result
+`48ba50e9…`, inventory `d63eaaa4…`. Nothing was published, and the gate is
+disabled again.
+
+Next attempt requirements: a new ordinal needs a reviewed continuation, because
+the harness rejects ordinal >1 with `noise_retry_progress_unverified`. This is
+manual remediation of an operator-boundary failure, not a firmware fix. A person
+must select the Ultra 205 in Chrome's chooser at each of about seven Connects,
+with the qualification tab visible in the foreground window. Alternatively, a
+reviewed Gate change could reuse an already granted port, but that would relax
+its fresh-permission-per-connection design. Before any journaled click, check
+`document.visibilityState === "visible"` read-only.
+
+Attempt-002 continuation contract | 2026-10-02 | Owner chooses manual remediation
+
+- [x] Add a reviewed continuation to the `device-noise-helper` profile. Ordinal
+  2 is admitted only when sealed attempt-001 verifies exactly (result
+  `48ba50e976d68c8103e6d29016b2f42a2c543199cdcbc90051d393536e171568`, inventory
+  `d63eaaa471f5a27e25f1dfb0c54b4c0c409a6fd5e512066882725a4a0e17878e`) with
+  status `unverified` and no `install-*` evidence. The binding and remediation
+  `owner_operates_native_port_chooser_with_visible_tab` are frozen into the
+  context. Other ordinals and the historical profile still refuse.
+- [x] Owner-present run of attempt-002, then record the outcome, disable the
+  gate, and commit and push. It ended unverified, as recorded below.
+
+Continuation classification: `continue_after_manual_remediation`. The failure was
+an operator boundary before any device effect, not firmware. The remediation is
+that the owner operates Chrome's native port chooser at every Connect, and the
+agent proves `document.visibilityState === "visible"` read-only before each
+Connect click. The firmware, package, contracts and every other bound are
+unchanged.
+
+The commands above apply with `attempt-002` and `--attempt-ordinal 2`, using the
+same predecessor receipt. Operator split:
+- the agent runs detection, preflight and `serve`, opens the page, calls the
+  `noiseSupervisor` methods and `installCandidate`, and may click **Connect
+  Worker**;
+- the owner selects the Ultra 205 and confirms in Chrome's port chooser each
+  time, and keeps the qualification tab in front.
+
+A cancelled or failed Connect is journaled and ends the attempt `unverified`;
+finalize, review and stop with no third ordinal. All other evidence, privacy,
+recovery and stop rules above apply unchanged. This contract authorizes ordinal
+2 only.
+
+Attempt-002 outcome | 2026-10-02: published at `9301a276`. The package ELF is
+`c7d6d8315754348c8a2c53d4dda540846c477440befa49b213e8cea7760e4a65`; preflight
+context is `768cef67…`.
+- Detection admitted the same physical Ultra 205. With the tab confirmed
+  visible, the owner operated the native chooser, and Connect #1 reached a
+  ready, baseline-confirmed state with no failure. Before-install accounting
+  matched next 22 / 2,280,000 ms.
+- Install 0 completed: write and exit code 0, trusted monitor, observed commit
+  `9301a276`, startup complete, safe baseline confirmed.
+- Its `/install/review` then failed with `private_path_policy`. The operator
+  parent had been launched with the default 022 umask, so the flash tool wrote
+  `install-0/` as 0755 and its files as 0644.
+- The supervisor stopped with exit code 0 and the tab was closed. `finalize`
+  wrote `final-result.json` (`unverified`, result `5df645bf…`), but its
+  inventory seal failed on the same modes. The evidence is left unaltered inside
+  its 0700 parents and has no seal.
+- No cycle, Start, Noise exchange or mining occurred. The device now runs
+  candidate `9301a276` with settings preserved, which is the before identity
+  for any continuation.
+
+Attempt-003 continuation contract | 2026-10-02 | Verified fix after attempt-002
+
+- [x] Root-cause fix: `admitExecution` sets `process.umask(0o077)` before any
+  admitted command runs. The fake flash command now uses default modes like the
+  real tool, and the real-process operator test pins a 022 launcher umask. That
+  test reproduced `private_path_policy` before the fix and passes after it.
+- [x] Continuation 3 binds attempt-002's exact result `5df645bf…` and its
+  install-0 claim, exit and flash evidence digests. It requires trusted,
+  completed and startup-complete installation of `9301a276`, and sets that
+  build (`c7d6d831…`) as the before identity. The predecessor, ledger and every
+  other bound are unchanged.
+- [x] Owner-present run of attempt-003, then record the outcome, disable the
+  gate, and commit and push. It passed, as recorded below.
+
+Classification: `continue_after_verified_fix`. The new boundary is the
+evidence-mode policy at install review, now covered by a real-boundary
+regression. The commands above apply with `attempt-003` and `--attempt-ordinal
+3`, and the attempt-002 operator split applies unchanged. This contract
+authorizes ordinal 3 only. If the same boundary recurs, it ends as
+`stop_repeated_boundary`.
+
+Attempt-003 outcome | 2026-10-02: published at `68cb7e66`. Package ELF is
+`b94d6886299a7b5322b99681ae820df96fa7532f190f3e2116404416c15cad8d`; preflight
+context is `e024557b…`. The operator parent ran under umask 077.
+- Detection admitted the same physical Ultra 205. Seven native Connects (agent
+  click, owner chooser, tab verified visible each time) all reached ready,
+  baseline-confirmed states with no failure.
+- Before-install accounting matched next 22 / 2,280,000 ms. All five
+  state-preserving installs passed review with 0700/0600 evidence, and all four
+  continuity cycles verified with 65,536-byte probes.
+- One network-only Noise diagnostic ran against the local fixture. The status
+  was terminal `accepted`, with all eight ordered stages including
+  `authority_verified`: act-two authentication on the PSRAM helper.
+- Normal restoration and after accounting were recorded. Browser closure,
+  supervisor exit code 0, fixture exit and reaping, and absence of the listener
+  and serial holders were all proven.
+- `finalize` and `review` independently sealed `passed`/`complete`: result
+  `6eab33d300e76159c5e1f7328edcd35f788204bcb1060ec122e767c181f6b098`, inventory
+  `9df0113f408b1473eacb0ffe14e5d83af8895ede71ac919e6a4f630d23e84a90`.
+- The redacted projection
+  [attempt-003](docs/parity/evidence/str005-noise-serial/attempt-003.json)
+  records every criterion true, one exact peer, 64-byte act one, 22-byte
+  proof, zero new work or shares, and a 1,545 ms diagnostic.
+- The device now runs `68cb7e66` with settings, ledgers and `mine_on_boot=false`
+  preserved. The gate is disabled.
+
+Completion review | 2026-10-02:
+- The device's Noise completion now runs on a joined 16 KiB PSRAM-stack helper.
+  The worker paths fit with large margins (5,072/5,088 of 10,240 bytes), and a
+  real handshake authenticated on hardware.
+- The composed virtual Start boundary from run017 passes in emulation
+  (campaign004).
+- Supporting repairs: auditor v2/v3, the device helper audit,
+  native-readiness drift fixes, the harness device profile and continuations,
+  and the operator umask fix, each with regressions.
+
+Residual risks and non-claims:
+- The helper's PSRAM-stack runtime margin is still unmeasured, because the
+  status carries no helper high-water field; a passing run shows only that no
+  canary tripped.
+- Static paths remain lower bounds.
+- The signed-Start and renewal stack pressure on the 16 KiB control stack is a
+  separate open finding.
+- This is not channel, share or mining evidence. Accepted-share stays
+  unresolved, and parity stays 90/95.
+- Attempt-002's evidence remains unsealed but unaltered.
+
+Composed handshake correction | 2026-10-02 | Source and dev builds only
+
+- [x] Split `Exchange::new` into initiator, responder and completion frames with
+  fallibly reserved heap owners, and give `exchange_profile` its own frame.
+  That cut the composed completion path from 26,256 bytes (from `run_exchange`
+  alone) to about 16,112 bytes from `main`. That was still over the 14,336-byte
+  budget, because about 10.6 KB of crypto sits under the control dispatch.
+- [x] Run the composed handshake on a joined 16 KiB `noise-handshake` helper
+  thread, mirroring the device, where Noise does not run on the control stack.
+  A compile-time contract pins the helper stack against the measured descent
+  plus margin. Host builds use a 2 MiB helper because unoptimized frames are
+  larger. A non-allocating observer reports the helper's stack high-water.
+- [x] Auditor v3 adds five helper-stack paths rooted at `handshake` and fails
+  admission if any crypto entry is directly reachable from the control-stack
+  `Exchange::new`. Responder boundaries are our non-inlined helpers, because the
+  library calls inline into them. On the dev image all 13 paths fit and control
+  isolation holds. Helper completion is 11,056 bytes; probe completion is 12,352.
+- [x] Publish campaign004 below, build from that commit, bind a v3 receipt and run.
+
+noise-composed-checkpoint-enabled: false
+
+Campaign004 contract (checkpoint-only composed Start): one emulated
+`healthy-lifecycle` seed-1 run with status and allocation probes. Judge only
+application records: the shared target checks, the scenario reaching `started`,
+the main stack margin, the helper stack margin (at least 2,048 bytes free of
+16,384), and heap integrity after the scenario. Only
+`scenario:strict_live_profile_share` may be unsupported, matching the host.
+
+```sh
+just virtual-emulator build --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --evidence-dir scratch/virtual-noise-diagnostic/build019-composed-checkpoint
+node scripts/virtual-emulator/noise-stack-audit.mjs --elf ELF --sdkconfig CONFIG --compiled-source-sha256 SHA --output scratch/virtual-noise-diagnostic/build019-composed-checkpoint/full-audit-v3.json
+just virtual-emulator noise-checkpoint --profile healthy-lifecycle --manifest scratch/virtual-noise-diagnostic/build019-composed-checkpoint/virtual-package.json --audit scratch/virtual-noise-diagnostic/build019-composed-checkpoint/full-audit-v3.json --seed 1 --evidence-dir scratch/virtual-noise-diagnostic/composed-checkpoint001
+```
+
+The other effect, evidence, privacy and retry rules are campaign003's:
+- one bounded emulator with a 60-second window;
+- a 0700 parent, an absent child and separate 0600 wrapper logs;
+- no hardware, network, debugger, core, panic text or partition reads;
+- no limit increases;
+- the exclusive claim `scratch/virtual-noise-diagnostic/composed-checkpoint001.claim.json`;
+- no unchanged retry after the claim;
+- stop on failed checks, missing records, unproven release or drift.
+
+Passing would show only that the corrected composed boundary works in emulation.
+It is not a device result, and full-board qualification stays false.
+
+Campaign004 outcome | 2026-10-02: published at `7fff6d3c`. The package built from
+that commit has compiled source
+`91d2f8a85379c46575c3802436fe5eab964affcdf45e9cdb8ce7199329a63d5b`, virtual ELF
+`64843495262374590798e2af5269cda04019e8832aa9714de3d6c8e16120dec9` and v3
+receipt `afe8a34516bc9cac8229bebbdb9812d8264b761205df50736c07f0dfec91d103`.
+The single claimed run passed all 18 checks; only the expected
+`strict_live_profile_share` was unsupported. The composed healthy-lifecycle
+Start reached `started`, including authenticated status, stop, close,
+accounting, the controller-owned encrypted share and the retained accepted share.
+Minimum free stack was 4,196 bytes on main and 4,960 on the handshake helper,
+heap integrity held after the scenario, and the emulator was released with empty
+stderr and no writer leases. Result digest:
+`dd1d91596c9ba1f974c4423e568792433a8679da9cc19a35a99c60f4d9386bd7`. The claim is
+consumed and the gate is disabled.
+
+This resolves run017's composed boundary in emulation: the 16 KiB main stack no
+longer carries Noise crypto. It is not device evidence. The virtual task's
+broader qualification criteria remain open.
