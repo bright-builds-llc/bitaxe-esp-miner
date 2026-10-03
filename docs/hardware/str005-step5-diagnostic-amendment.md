@@ -42,12 +42,30 @@ Everything else is as the helper and control-stack amendments require:
 - Connects that reuse the single granted port;
 - mandatory `finalize` and `review`.
 
+## Phase 1b: reinstall (noise-serial profile `step5-diagnostic-reinstall`)
+
+Phase 1 attempt-003 passed, but its firmware failed the phase-2 native panic
+cutoff audit (`native_generation_revoke`). The new revocation field had let
+the compiler reorder `GenerationGate` fields, which moved the cutoff's `state`
+word off the gate symbol's address. Firmware now declares `GenerationGate`
+`#[repr(C)]` with a regression for offset 0. The Start owner admits only an
+install that passes every phase-2 audit, so the corrected firmware is
+reinstalled under successor profile `step5-diagnostic-reinstall`.
+
+| Requirement                     | Meaning                                                                                                                                                                                                                                                                            |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Predecessor                     | The sealed passing `step5-diagnostic-install` attempt-003: result SHA-256 `ed497f6142a4a6574fe4b80e7ed2944ac6a9781e25778a22b41e483c956c1ee5`, seal `b5ccca60868dfee957bfef87f63a51da4f116a36f0bd95cf7793d5139b16259b`.                                                          |
+| Before identity and ledgers     | Source `96cf5e081344446a241b3f9f9882e2eccae659cd`, ELF `d74d863a8a724fe73b591d45aebe1aa7014e4af8e24248075a256a2de3be4991`. Expected idle ledger next 22, last 21, charged 2,280,000 ms, with the original budget exhausted.                                                     |
+| Attempt namespace and task gate | Private roots live under `scratch/str005-step5-reinstall/`. Preflight requires the exact active task line `Step-5 diagnostic reinstall hardware: enabled.` A pass publishes to `docs/parity/evidence/str005-step5-reinstall/`.                                                     |
+
+Everything else is as phase 1 requires.
+
 ## Phase 2: one diagnostic Start (`scripts/str005-step5-diagnostic`)
 
 Admission: the compiled `ENABLED` flag, the exact active task line
 `Step-5 diagnostic Start hardware: enabled.`, and clean pushed source. The
-pinned phase-1 seal and result, and its installed identity, Gate and physical
-identity, must match. Preflight also requires:
+pinned install seal, result and profile (phase 1 or 1b), and that install's
+identity, Gate and physical identity, must match. Preflight also requires:
 - the fixture identity, Gate timer compatibility and native USB symbols;
 - the cutoff, store, signed Start and fault-provenance audits on the sealed
   installed ELF;

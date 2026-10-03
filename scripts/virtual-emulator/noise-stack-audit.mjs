@@ -15,13 +15,27 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const hexDigest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 
-function nativeCalls(body) {
+/** Word addresses that some `l32r` loads; their bytes are data, whatever objdump decodes them as. */
+export function literalWords(disassembly) {
+  const words = new Set();
+  for (const match of disassembly.matchAll(/\sl32r\s+a\d+,\s*([a-f0-9]+)\s/g)) words.add(Number.parseInt(match[1], 16));
+  return words;
+}
+
+function insideLiteral(address, bytes, literals) {
+  for (let offset = 0; offset < bytes; offset++) if (literals.has((address + offset) & ~3)) return true;
+  return false;
+}
+
+function nativeCalls(body, literals = new Set()) {
   const calls = [], registers = new Map();
   let indirectCalls = 0;
   for (const line of body.split('\n')) {
-    const maybeInstruction = line.match(/^\s*[a-f0-9]+:\s+[a-f0-9 ]+\s+([a-z0-9.]+)\s*(.*)$/);
+    const maybeInstruction = line.match(/^\s*([a-f0-9]+):\s+([a-f0-9][a-f0-9 ]*?)\s+([a-z][a-z0-9.]*)\s*(.*)$/);
     if (!maybeInstruction) continue;
-    const [, op, operands] = maybeInstruction;
+    const [, at, encoding, op, operands] = maybeInstruction;
+    // Literal pools between functions can decode as calls; they are never executed.
+    if (insideLiteral(Number.parseInt(at, 16), encoding.replaceAll(' ', '').length / 2, literals)) { registers.clear(); continue; }
     const maybeDirect = operands.match(/^([a-f0-9]+)\s+</);
     if (/^call(?:0|4|8|12)$/.test(op) && maybeDirect) {
       calls.push(Number.parseInt(maybeDirect[1], 16)); registers.clear(); continue;
@@ -50,12 +64,12 @@ function nativeCalls(body) {
 /** Native entries are physical frames; aliases and inline DWARF frames add no frame. */
 export function parseNoiseFrames(disassembly) {
   const byAddress = new Map(), byName = new Map();
-  const labels = [...disassembly.matchAll(/^([a-f0-9]+) <(.+)>:\s*$/gm)];
+  const labels = [...disassembly.matchAll(/^([a-f0-9]+) <(.+)>:\s*$/gm)], literals = literalWords(disassembly);
   for (let index = 0; index < labels.length; index++) {
     const label = labels[index], address = Number.parseInt(label[1], 16);
     const body = disassembly.slice(label.index + label[0].length, labels[index + 1]?.index ?? disassembly.length);
     const maybeEntry = body.match(/^\s*[a-f0-9]+:\s+[a-f0-9 ]+\s+entry\s+a1,\s*(0x[a-f0-9]+|[0-9]+)/m);
-    const observed = nativeCalls(body);
+    const observed = nativeCalls(body, literals);
     const frame = byAddress.get(address) ?? { name: label[2], bytes: maybeEntry ? Number(maybeEntry[1]) : null,
       calls: [], indirectCalls: 0, aliases: [] };
     frame.aliases.push(label[2]); frame.calls.push(...observed.calls);

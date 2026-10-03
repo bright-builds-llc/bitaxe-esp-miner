@@ -18,7 +18,7 @@ export async function installation(root, pins = PINS) {
   const context = record.context, accounting = (await proof(root, 'accounting-after.json')).value, state = accounting.state;
   const restoration = (await proof(root, 'restoration.json')).value;
   check(result.status === 'passed' && result.outcome === 'complete' && record.sha256 === digest(JSON.stringify(context)) &&
-    result.contextSha256 === record.sha256 && context.profile === 'step5-diagnostic-install' &&
+    result.contextSha256 === record.sha256 && context.profile === pins.installationProfile &&
     accounting.stage === 'after' && accounting.contextSha256 === record.sha256 && accounting.ledger?.pending === false &&
     accounting.original_budget?.pending === false && state?.expectedFirmwareSourceCommit === context.firmware_commit &&
     state.expectedAppElfSha256 === context.app_elf_sha256 && state.deviceRestorationConfirmed === true &&

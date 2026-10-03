@@ -234,3 +234,34 @@ test('a stale auditor closure is rejected', async () => {
   // Act / Assert
   await assert.rejects(validateNoiseAudit(receipt, expected, proof), /noise_audit_invalid/);
 });
+
+test('a literal pool decoded as a call is never credited as a call edge', () => {
+  // Arrange: the second function loads a literal word from the pool after the first.
+  const disassembly = [
+    '42000000 <caller>:',
+    '42000000:\t004136        \tentry\ta1, 32',
+    '42000003:\t0008e0        \tcallx8\ta8',
+    '42000008:\t3c2925        \tcall8\t42000100 <deep>',
+    '',
+    '42000010 <user>:',
+    '42000010:\t004136        \tentry\ta1, 32',
+    '42000013:\tfffd81        \tl32r\ta8, 42000008 <caller+0x8> (3c2921f0 <data>)',
+    '',
+    '42000100 <deep>:',
+    '42000100:\t004136        \tentry\ta1, 0x2000',
+  ].join('\n');
+  // Act
+  const frames = parseNoiseFrames(disassembly);
+  // Assert
+  assert.deepEqual(frames.byAddress.get(0x42000000).calls, []);
+});
+
+test('a real direct call outside any literal pool is still credited', () => {
+  // Arrange
+  const disassembly = ['42000000 <caller>:', '42000000:\t004136        \tentry\ta1, 32',
+    '42000003:\t3c2925        \tcall8\t42000100 <deep>', '', '42000100 <deep>:', '42000100:\t004136        \tentry\ta1, 64'].join('\n');
+  // Act
+  const frames = parseNoiseFrames(disassembly);
+  // Assert
+  assert.deepEqual(frames.byAddress.get(0x42000000).calls, [0x42000100]);
+});

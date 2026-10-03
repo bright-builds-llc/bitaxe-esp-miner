@@ -99,3 +99,7 @@ export const inspectHelperPassPredecessor = passPredecessor({ resultSha256: HELP
   profile: "device-noise-helper", basis: "device_noise_helper_pass" });
 export const inspectControlStackPassPredecessor = passPredecessor({ resultSha256: CONTROL_PASS_RESULT, sealSha256: CONTROL_PASS_SEAL,
   profile: "control-stack-port-reuse", basis: "control_stack_port_reuse_pass" });
+export const inspectStep5InstallPassPredecessor = passPredecessor({
+  resultSha256: "ed497f6142a4a6574fe4b80e7ed2944ac6a9781e25778a22b41e483c956c1ee5",
+  sealSha256: "b5ccca60868dfee957bfef87f63a51da4f116a36f0bd95cf7793d5139b16259b",
+  profile: "step5-diagnostic-install", basis: "step5_install_pass" });

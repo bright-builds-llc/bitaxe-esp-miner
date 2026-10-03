@@ -4,7 +4,7 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLE, PAGE, admitTrust, canonicalDirectory, cleanPushed, fileDigest, git, ignored,
   missing, nonce, packageSnapshot } from "../fixed-usb-qualification/contract.mjs";
-import { inspectControlStackPassPredecessor, inspectHelperPassPredecessor, inspectPredecessor, inspectRecoveryPredecessor } from "./predecessor.mjs";
+import { inspectControlStackPassPredecessor, inspectHelperPassPredecessor, inspectPredecessor, inspectRecoveryPredecessor, inspectStep5InstallPassPredecessor } from "./predecessor.mjs";
 import { verifyArtifactSnapshot } from "../fixed-usb-qualification/snapshot.mjs";
 import { BASE_CONTRACT_SHA256 } from "./contract-v2.mjs";
 import { canonical, check, digest, inventory, privateRoot, proof, protectedPath, readJson, retain, verifyInventory, writeNew } from "./files.mjs";
@@ -18,7 +18,7 @@ export const SUCCESSOR_SHA256 = "5fa5de42c44811dbb8b374446cbcc6d9e89358e1f752b77
 export const CONTROL_SUCCESSOR_PATH = "docs/hardware/control-stack-port-reuse-amendment.md";
 export const CONTROL_SUCCESSOR_SHA256 = "2730e27edb7f547aa467634386919da79d3a57d5bfaabebc131ce7a18e90f66b";
 export const STEP5_SUCCESSOR_PATH = "docs/hardware/str005-step5-diagnostic-amendment.md";
-export const STEP5_SUCCESSOR_SHA256 = "859074779e856adff2ffa3f4c0660a6c0a4b06407bdecc7a816e133f478bd2e3";
+export const STEP5_SUCCESSOR_SHA256 = "73b5d6bdac3e31b1555ca62eb2a439d1ca50624dc4c0677b65a2f8982e8e5532";
 const PUBLICATION = "docs/parity/evidence/str005-noise-serial";
 /** Each profile owns one namespace, task gate, predecessor basis and expected ledger. */
 export const PROFILES = Object.freeze({
@@ -73,6 +73,12 @@ export const PROFILES = Object.freeze({
             "install-0/flash-command-evidence.json": "b26a5fae20cce0c7636d02a876d8f688b85960a2eae3d665f18b0e48e77968e0" } } },
     }),
     admits: (previous) => previous.basis === "control_stack_port_reuse_pass" && previous.cleanup_confirmed === true &&
+      previous.last_ordinal === 21 },
+  "step5-diagnostic-reinstall": { namespace: "scratch/str005-step5-reinstall", task: "task-str005-step5-revocation-detail",
+    enabledLine: "Step-5 diagnostic reinstall hardware: enabled.", successor: { path: STEP5_SUCCESSOR_PATH, sha256: STEP5_SUCCESSOR_SHA256 },
+    publication: "docs/parity/evidence/str005-step5-reinstall",
+    inspect: inspectStep5InstallPassPredecessor, ledger: { next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 },
+    admits: (previous) => previous.basis === "step5_install_pass" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 21 },
 });
 /** Public projection path; ordinals restart per profile, so each profile owns its directory. */

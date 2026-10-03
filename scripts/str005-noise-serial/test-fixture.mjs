@@ -20,6 +20,8 @@ const PROFILE_FIXTURES = {
     previous: { basis: "device_noise_helper_pass", cleanup_confirmed: true, next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 } },
   "step5-diagnostic-install": { tasks: "## Active\n### task-str005-step5-revocation-detail | synthetic live task\n\nStep-5 diagnostic install hardware: enabled.\n",
     previous: { basis: "control_stack_port_reuse_pass", cleanup_confirmed: true, next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 } },
+  "step5-diagnostic-reinstall": { tasks: "## Active\n### task-str005-step5-revocation-detail | synthetic live task\n\nStep-5 diagnostic reinstall hardware: enabled.\n",
+    previous: { basis: "step5_install_pass", cleanup_confirmed: true, next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 } },
 };
 export async function fixture(t, { prepare = true, profile = "historical" } = {}) {
   const base = await realpath(await mkdtemp(resolve(tmpdir(), "noise-v2-")));

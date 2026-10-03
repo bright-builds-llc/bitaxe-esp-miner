@@ -210,3 +210,10 @@ test("a step-5 install continuation without its sealed prior attempt reserves no
   await assert.rejects(preflight(options, f.operations));
   assert.deepEqual(await readdir(f.parent), []);
 });
+test("step-5 reinstall profile binds the step-5 install pass and its own publication", async (t) => {
+  // Arrange / Act
+  const f = await fixture(t, { profile: "step5-diagnostic-reinstall" });
+  // Assert
+  assert.equal(f.context.profile, "step5-diagnostic-reinstall");
+  assert.equal(publicationPath(f.context), resolve(f.options.firmwareRoot, "docs/parity/evidence/str005-step5-reinstall/attempt-001.json"));
+});

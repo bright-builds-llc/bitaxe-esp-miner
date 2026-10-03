@@ -5308,7 +5308,7 @@ Phase 1 attempt-003 | 2026-10-03 | Passed
 
 Phase 2 Start contract | 2026-10-03
 
-Step-5 diagnostic Start hardware: enabled.
+Step-5 diagnostic Start hardware: disabled.
 
 `PINS` now bind the phase-1 seal and `ENABLED=true`. The signing authority is
 the owner's existing protected development authority under
@@ -5337,6 +5337,40 @@ Between `serve` and `finish`, the steps follow status-repro:
 The serve owner runs detached with no wall-clock deadline while it waits for
 the owner. Effects, limits, evidence, outcomes, prohibitions, recovery, retry
 (ordinal 1 only) and stop conditions are exactly the amendment's phase 2.
+
+Phase 2 preflight start001 | 2026-10-03 | Refused before any effect
+
+`scratch/str005-step5-diagnostic/start001/attempt` preflight failed in the
+core-dump native cutoff audit (`native_generation_revoke`) on the installed ELF
+`d74d863a…`. The new `unsafe_detail` field had let the compiler reorder
+`GenerationGate` fields, so the panic cutoff's `state` word no longer sat at
+the gate symbol address. Earlier checks had run six audits, but not this one.
+There was no signer, Start or device effect. The ledger is unchanged.
+
+Fixes:
+- `GenerationGate` is `#[repr(C)]` with a regression for `state` at offset 0.
+  On the rebuilt ELF, the native cutoff, store, signed Start (3,088 bytes of
+  headroom), fault provenance, native USB symbol, renewal, device Noise and
+  telemetry audits pass.
+- The control-stack audit then reported 15,200 bytes through an impossible
+  `base64::add_padding` to `run_channel` edge. Objdump had decoded an `l32r`
+  literal pool after a no-return panic call as `call8`. The shared frame
+  parser now treats `l32r` literal words as data, with regressions. The
+  deepest path is 10,256 bytes with 4,080 of headroom.
+- Every phase-2 audit must pass before any install that phase 2 will use.
+- Phase 1b reinstalls the corrected firmware (amendment phase 1b), and the
+  Start owner is disabled and unpinned again until it passes.
+
+Phase 1b reinstall contract | 2026-10-03
+
+Step-5 diagnostic reinstall hardware: enabled.
+
+Same commands and terms as phase 1, with namespace
+`scratch/str005-step5-reinstall/attempt-001`, `--attempt-ordinal 1` and
+`--predecessor-receipt <repo>/scratch/str005-step5-install/attempt-003/final-result.json`.
+Before preflight, the frozen package must pass the full phase-2 audit set:
+cutoff, store, signed Start, fault provenance and native USB symbols, plus the
+control-stack audit. The parent runs detached.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 

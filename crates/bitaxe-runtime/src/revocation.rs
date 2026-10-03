@@ -33,6 +33,9 @@ pub use bitaxe_api::SafetyVerdict;
 pub use types::{RevocationTiming, WorkPermit, WorkerGeneration};
 pub use unsafe_detail::{UnsafeObservationDetail, UnsafeTrigger};
 
+/// `repr(C)` keeps `state` at offset 0: the native panic cutoff revokes by
+/// storing to the gate symbol's address, and the native audit requires that.
+#[repr(C)]
 pub struct GenerationGate {
     state: AtomicU32,
     diagnostic_reason: AtomicU32,

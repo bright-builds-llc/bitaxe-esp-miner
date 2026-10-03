@@ -617,3 +617,9 @@ fn native_panic_revokes_active_and_unleased_work_without_cleanup() {
     assert!(!gate.heartbeat(generation, 1));
     assert!(gate.begin_link(2).is_none());
 }
+
+#[test]
+fn the_panic_cutoff_state_word_is_the_gate_address() {
+    // Arrange / Act / Assert
+    assert_eq!(std::mem::offset_of!(GenerationGate, state), 0);
+}

@@ -4,13 +4,13 @@ import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 export const TASK = 'task-str005-step5-revocation-detail';
 export const ENABLED_LINE = 'Step-5 diagnostic Start hardware: enabled.';
-export const ENABLED = true;
+export const ENABLED = false;
 export const CONTRACT = 'docs/hardware/str005-step5-diagnostic-amendment.md';
 /** Phase-1 install seal; set only after that attempt passes, finalizes and is reviewed. */
-export const PINS = Object.freeze({
-  installationResult: 'ed497f6142a4a6574fe4b80e7ed2944ac6a9781e25778a22b41e483c956c1ee5',
-  installationSeal: 'b5ccca60868dfee957bfef87f63a51da4f116a36f0bd95cf7793d5139b16259b',
-  gate: '86fc62d7a9d75da1affa2d51bc3b9eab41d86031' });
+// Phase-1 attempt-003's firmware failed the native panic cutoff audit; the corrected
+// firmware is pinned here only after its phase-1b reinstall passes.
+export const PINS = Object.freeze({ installationProfile: 'step5-diagnostic-reinstall', installationResult: null,
+  installationSeal: null, gate: '86fc62d7a9d75da1affa2d51bc3b9eab41d86031' });
 /** The exact task line under `## Active` and the compiled flag both admit effects. */
 export function taskEnabled(tasks, compiled = ENABLED) {
   const active = tasks.split(/^## Active$/mu)[1]?.split(/^## /mu)[0] ?? '';
