@@ -18391,3 +18391,218 @@ consumed and the gate is disabled.
 This resolves run017's composed boundary in emulation: the 16 KiB main stack no
 longer carries Noise crypto. It is not device evidence. The virtual task's
 broader qualification criteria remain open.
+
+### task-control-stack-frame-pressure | 2026-10-02 | Shrink oversized control-thread frames
+
+Status: Complete. Device-verified by attempt-001 of
+`task-control-stack-port-reuse-run`.
+Objective: restore clear stack margin on the 16 KiB control owner thread
+(`bwg_worker_usb::run_owner`) without changing any command, check or ordering.
+
+Finding (clean image `68cb7e66`, ELF `b94d6886…`):
+- The signed Start and renewal audits now pass with 3,088 and 4,592 bytes of
+  headroom. The older 16,320/16,032-byte figures came from Share002-era images.
+  A longest-descent recheck confirms the audited Ed25519 chain is the deepest
+  resolvable one: 8,464 bytes below `verify_start`.
+- The deepest resolved normal path from `run_owner` is instead the V2 command
+  route, at 13,536 bytes against the 14,336-byte budget. It runs
+  `prepare_frame` (448) → `WorkerControl::prepare_controller` (4,528) →
+  `prepare_v2` (3,600) → firmware `v2_admit` (1,264) → session publication.
+  That path excludes panic, abort and logging edges, and 628 indirect targets
+  are unresolved.
+- Both large frames are paid by paths that use none of their locals.
+
+- [x] Make `prepare_controller` a thin dispatcher and move the general command
+  `match` into a non-inlined helper. Split `prepare_v2` into thin routing plus
+  non-inlined Start-admission and observation helpers. Behavior, checks and
+  their order stay identical. The route targets `prepare_noise`,
+  `prepare_qualification_restart` and `review_serial_trace` are also outlined,
+  because they had been inlined into the router.
+- [x] Verify with the worker-control and firmware tests, ordered Cargo checks,
+  the signed Start/renew audits and a rebuilt-image depth measurement. Add a
+  repo-owned audit regression for the control path's budget.
+- [x] Record the device-run requirement. `task-control-stack-port-reuse-run`
+  owned the device run, which passed without a fault.
+
+Result (rebuilt device image, offline):
+
+| Frame or path                                       | Before | After  |
+| --------------------------------------------------- | -----: | -----: |
+| `prepare_controller` router                         |  4,528 |     96 |
+| `prepare_v2` router                                 |  3,600 |     32 |
+| V2 Start admission (`admit_v2`) / observation       | inline | 2,112 / 2,656 |
+| Deepest resolved normal path from `run_owner`       | 13,536 | 10,000 |
+| Signed Start path (separately audited)              | 13,296 | 13,296 |
+| Signed renewal path (separately audited)            | 11,792 | 11,792 |
+
+`just audit-control-stack` now fails if the router frames exceed their caps
+(1,024/512/256 bytes), or if the deepest resolved normal path plus a 256-byte
+thread-entry allowance exceeds 14,336 bytes. On the current image it reports
+10,256 bytes with 4,080 bytes of headroom.
+
+The generic walker follows only direct calls and misses the register-loaded call
+into `prepare_start_controller`. So the largest known control path remains
+signed Start at 13,296 bytes, with 3,088 bytes of headroom (1,040 beyond the
+margin); its dedicated audit covers it. Indirect calls are not bounded. All 229
+worker-control tests and the affected suites pass. No device has run this
+change yet.
+
+Completion review: done. The changed routing ran all of attempt-001's serial
+commands on the Ultra 205: Hello, probes, Noise Start, status, Stop and restore.
+The audit on that package showed 3,824 bytes of headroom. Residual risks are
+recorded in `task-control-stack-port-reuse-run`.
+
+### task-worker-port-reuse | 2026-10-02 | Reuse a granted Worker port so Connects need no chooser
+
+Status: Complete. Attempt-001 of `task-control-stack-port-reuse-run` performed
+all seven Connects without a chooser.
+Objective: let qualification Connects reuse the single granted Ultra 205 port, so
+neither the owner nor the agent must operate Chrome's port chooser. Port
+selection must stay non-authoritative.
+Evidence: [Worker port reuse amendment](docs/hardware/worker-port-reuse-amendment.md).
+
+- [x] Gate `8b835c2c09148ec946396cfb4660222a92853c81` (ADR-0101): add
+  `selectWorkerPort`, which reuses exactly one granted, attached port matching
+  the Worker filter and otherwise falls back to `requestPort()`. All later
+  checks are unchanged. The Gate typecheck, 869 tests, format and standards pass.
+- [x] Read-only browser check: at origin `127.0.0.1:48765`, `getPorts()`
+  returned one connected `303a:1001` grant after attempt-003's reflashes.
+- [x] Repin `MODULE.bazel` to the new Gate archive (SHA-256
+  `5f1fa38cf60f47174c7e4ac47837d37896c0b5a12be6fefa8b212bcdace9a068`) and add
+  the successor amendment, which supersedes only the earlier getPorts ban.
+- [x] Exercise chooser-free Connects in the next contracted device run
+  (`task-control-stack-port-reuse-run`) and record the result. All seven
+  Connects reused the single granted `303a:1001` port after a real click, across
+  five reflashes; none showed the chooser.
+
+Completion review: done. A run still needs the Gate tab visible and active in its
+Chrome window. Computer use cannot raise a Chrome window, so the owner may need
+to bring the tab forward once. The chooser returns for a first grant, several
+granted Workers or a revoked permission.
+
+### task-control-stack-port-reuse-run | 2026-10-02 | Run the control stack and port reuse changes on the Ultra 205
+
+Status: Complete. Attempt-001 passed: the reduced control routing ran every serial
+command on the device, and all seven Connects reused the granted port without a chooser.
+Objective: in one bounded hardware run, show that the reduced control-thread
+routing frames of `task-control-stack-frame-pressure` run every serial command on
+the device without a fault, and that every Connect reuses the granted port
+without Chrome's chooser (`task-worker-port-reuse`).
+Contract: [control stack and port reuse amendment](docs/hardware/control-stack-port-reuse-amendment.md).
+
+Owner authorization | 2026-10-02: the owner asked to write this contract and run
+both checks, under their standing authorization for Ultra 205 interactions and
+for driving their Chrome.
+
+- [x] Add the `control-stack-port-reuse` harness profile: this task gate,
+  namespace `scratch/control-stack-port-reuse/`, the sealed attempt-003 pass as
+  predecessor (before identity `68cb7e66`/`b94d6886`, ledger next 22/last
+  21/2,280,000 ms), a profile-owned publication directory, and regressions.
+- [x] Run attempt-001 from a clean pushed HEAD, then record the outcome, disable
+  the gate, and commit and push.
+
+Control stack port reuse hardware: disabled.
+
+Objective: install the published HEAD package state-preservingly, run the four
+v2 continuity cycles, and complete one network-only Noise diagnostic against the
+local fixture. The judge requires an accepted handshake and exact encrypted
+proof, restored baseline, unchanged ledgers, `mine_on_boot=false` and host
+cleanup. Commands are run from a clean tree equal to its local upstream; do not
+fetch or pull during the attempt. `<gate-root>` is the local Gate checkout at the
+`MODULE.bazel` pin.
+
+```sh
+just package
+bazel build //tools/stratum-v2-fixture:noise_serial_build_identity
+just audit-control-stack
+just detect-ultra205
+just stratum-v2-noise-serial preflight --private-root scratch/control-stack-port-reuse/attempt-001 --firmware-root <repo> --gate-root <gate-root> --package-manifest <repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --attempt-ordinal 1 --predecessor-receipt <repo>/scratch/device-noise-worker-stack/attempt-003/final-result.json
+just stratum-v2-noise-serial serve --private-root scratch/control-stack-port-reuse/attempt-001
+just stratum-v2-noise-serial finalize --private-root scratch/control-stack-port-reuse/attempt-001 --cleanup-receipt scratch/control-stack-port-reuse/attempt-001.cleanup/receipt.json
+just stratum-v2-noise-serial review --private-root scratch/control-stack-port-reuse/attempt-001
+```
+
+Between `serve` and `finalize`, follow the README same-page workflow. The agent
+performs every Connect through the owner's desktop Chrome with a real input
+event, after a read-only `document.visibilityState` check. For each Connect it
+records whether Chrome's chooser appeared. If the chooser appears, the owner may
+pick the Ultra 205; the attempt continues, but chooser-free Connect is then not
+shown. Programmatic permission APIs and injected gestures stay prohibited. The
+agent may call only the page's `noiseSupervisor` methods and the repo-owned
+`installCandidate(root, index)`. That function owns fresh detection, ROM
+board-info admission and `just flash-monitor --capture-timeout-seconds 30
+--redact-evidence`. The 30-second capture is the contract's explicit override of
+the general 360-second minimum, as in the base contract.
+
+Allowed effects:
+- up to five state-preserving writes of the frozen package to the one admitted
+  Ultra 205;
+- Gate Connect/Close sessions with 65,536-byte probes;
+- one network-only Noise diagnostic to the local fixture on a private IPv4;
+- normal restoration.
+
+Prohibited:
+- mining Start, Work Lease, signer, grants, pool credentials or Wi-Fi provisioning;
+- factory reset, erase, rollback, `recover` or a sixth write;
+- direct UART or pin access, network discovery;
+- synthesized permission gestures;
+- publishing raw private evidence.
+
+Evidence and privacy:
+- `scratch/control-stack-port-reuse/` is an ignored mode-0700 parent. The child
+  must be absent before preflight, and wrapper stdout and stderr go to separate
+  mode-0600 siblings. Operator processes run under umask 077.
+- `finalize` seals once and publishes only the redacted v2 projection under
+  `docs/parity/evidence/control-stack-port-reuse/`, and only on a complete pass.
+  Run `just verify-redaction` before committing any evidence.
+
+Recovery: use only normal restoration (`restoreAndRecord`, Stop/Close and proven
+host cleanup). If restoration fails, collect the bounded safe observations,
+release host owners and stop. The device may then remain on the candidate
+image. Reinstalling `68cb7e66` or any other recovery needs its own published
+contract.
+
+Retry: this contract authorizes ordinal 1 only, with no unchanged retry. A later
+ordinal needs a targeted, regression-backed fix and a reviewed continuation
+under the hardware attempt policy.
+
+Stop on:
+- detection that is not exactly one admitted Ultra 205;
+- failed board-info, identity, ledger or baseline drift, or a missing
+  preservation baseline;
+- a failed `just audit-control-stack` on the frozen package;
+- an installation failure, or a lost or ambiguous Start (never resend);
+- `noise_network_missing`, a failed check, or unproven cleanup.
+
+Attempt-001 result | 2026-10-02 | Passed
+
+- Package: source `2bd65aa0`, ELF `bbd4500d…`, Gate `8b835c2c`. On the
+  frozen ELF, `just audit-control-stack` reported a deepest resolved normal
+  path of 10,512 bytes against the 14,336-byte budget (3,824 bytes of
+  headroom), with every routing frame under its cap.
+- Detection admitted exactly one Ultra 205 (`serial_jtag_runtime`). Preflight
+  bound the sealed attempt-003 pass as predecessor.
+- The run made five state-preserving writes (install 0 and cycles 1–4). Each
+  review passed, each cycle recorded a fresh maximum-frame probe, and the
+  network-only Noise diagnostic was accepted: 64-byte act one, 22-byte proof,
+  one exact peer, no new work or shares. Restoration was confirmed, the ledger
+  stayed idle at next 22/last 21/2,280,000 ms, and `mine_on_boot` stayed false.
+- Port reuse: all seven Connects (baseline, after install 0, cycles 1–4 and the
+  restore) completed with no chooser. Each was a real click after a read-only
+  visibility check, and a desktop screenshot after each Connect showed no
+  chooser. `getPorts()` listed the single attached `303a:1001` grant
+  throughout. The owner once brought the Gate tab to the front, because Chrome
+  is read-tier for computer use and the tab was not active in its window.
+- Finalize and review: `passed`/`complete`, result
+  `973ee99497104eb9f9b74a9c947a09f8f2983b5373d496621b427a0ce16babc7`, seal
+  `e84ad6b0132774a512491e4882c13c9f4ac3d27378a286130cf5ee0b3f9c902c`. The
+  redacted projection is
+  [attempt-001](docs/parity/evidence/control-stack-port-reuse/attempt-001.json).
+- The device remains on the candidate `2bd65aa0`/`bbd4500d`, with the restored
+  baseline and NVS preserved.
+
+Residual risks: the run does not measure the control thread's runtime
+high-water mark; a stack-canary fault would have failed it. Signed mining Start
+and renewal were not exercised on the device; their offline audits (3,088 and
+4,592 bytes of headroom) still govern. Indirect calls stay unbounded. Parity
+stays 90/95.

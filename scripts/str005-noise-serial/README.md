@@ -15,6 +15,14 @@ also requires the exact task line `Device noise serial hardware: enabled.`,
 binds the [successor amendment](../../docs/hardware/device-noise-helper-amendment.md),
 admits the sealed safety-recovery006 result as its predecessor and expects ledger
 next 22/last 21/2,280,000 ms.
+`scratch/control-stack-port-reuse/` is the `control-stack-port-reuse` profile
+under `task-control-stack-port-reuse-run`. It requires the exact task line
+`Control stack port reuse hardware: enabled.`, binds the
+[control stack amendment](../../docs/hardware/control-stack-port-reuse-amendment.md)
+and admits the sealed `device-noise-helper` attempt-003 pass as its predecessor,
+with the same ledger expectations. It publishes under
+`docs/parity/evidence/control-stack-port-reuse/`, because ordinals restart per
+profile.
 
 ## Canonical preparation
 
