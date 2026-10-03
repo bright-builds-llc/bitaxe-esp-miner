@@ -5245,6 +5245,27 @@ Phase 2 stays disabled: `ENABLED=false` and no `PINS` until phase 1 passes,
 finalizes and reviews. A separate commit then pins the seal and adds the Start
 line.
 
+Phase 1 attempt-001 | 2026-10-03 | Unverified, no device effect
+
+Package `ac8fd2c9` (ELF `16324f65…`). Detection admitted exactly one Ultra 205,
+and preflight passed. While the Gate tab waited for the owner to bring it
+forward, the agent's tool runtime killed the parent operator at its 2-hour
+background limit, taking the supervisor with it. That violated the repo's
+no-deadline rule for human waits. No Connect, install or other device effect
+occurred.
+- Finalize/review: `unverified`, `stop_impossible_contract` (first failure:
+  missing cleanup evidence).
+- Result `839964e820f643a8123b9fc59e9bfbce39900c9720f5a5d5745c22209474de45`,
+  seal `7afe9459419719e53cf198d80e7ae2cdf2cdc7727fc4444e057fbdd1f9e20dac`, with
+  no install files.
+
+Remediation and attempt-002: the profile now carries a reviewed continuation
+bound to that exact seal. The parent operator is launched detached (`nohup`)
+from a normal shell, so no tool or wall-clock deadline applies while it waits
+for the owner. Its live parent PID 1 or launcher-independent session is
+recorded before the page opens. Attempt-002 uses the same commands with
+`attempt-002` and `--attempt-ordinal 2`. Every other phase-1 term is unchanged.
+
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
 Status: Current safety verified after status001; diagnostic self-test captured a useful original frame. Share001's cause remains unavailable, and status001 ended at unsafe revocation during preparation step5. Qualification blocked; all effect gates disabled.

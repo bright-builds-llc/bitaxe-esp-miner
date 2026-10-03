@@ -55,6 +55,13 @@ export const PROFILES = Object.freeze({
     enabledLine: "Step-5 diagnostic install hardware: enabled.", successor: { path: STEP5_SUCCESSOR_PATH, sha256: STEP5_SUCCESSOR_SHA256 },
     publication: "docs/parity/evidence/str005-step5-install",
     inspect: inspectControlStackPassPredecessor, ledger: { next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 },
+    // Attempt-001's parent operator was killed by a tool time limit while waiting for the
+    // owner, before any Connect or write; the parent now runs detached with no deadline.
+    continuations: Object.freeze({
+      2: { attempt: "attempt-001", resultSha256: "839964e820f643a8123b9fc59e9bfbce39900c9720f5a5d5745c22209474de45",
+        inventorySha256: "7afe9459419719e53cf198d80e7ae2cdf2cdc7727fc4444e057fbdd1f9e20dac",
+        remediation: "operator_parent_waits_without_wall_clock_deadline" },
+    }),
     admits: (previous) => previous.basis === "control_stack_port_reuse_pass" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 21 },
 });

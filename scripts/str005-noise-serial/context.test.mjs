@@ -202,3 +202,11 @@ test("step-5 install profile refuses the helper-pass basis", async (t) => {
   } }), { code: "noise_predecessor" });
   assert.deepEqual(await readdir(f.parent), []);
 });
+test("a step-5 install continuation without its sealed prior attempt reserves nothing", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "step5-diagnostic-install" });
+  const options = { ...f.options, privateRoot: resolve(f.parent, "attempt-002"), attemptOrdinal: 2 };
+  // Act / Assert
+  await assert.rejects(preflight(options, f.operations));
+  assert.deepEqual(await readdir(f.parent), []);
+});
