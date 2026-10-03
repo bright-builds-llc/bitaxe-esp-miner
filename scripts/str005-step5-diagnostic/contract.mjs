@@ -4,7 +4,7 @@ import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 export const TASK = 'task-str005-step5-revocation-detail';
 export const ENABLED_LINE = 'Step-5 diagnostic Start hardware: enabled.';
-export const ENABLED = true;
+export const ENABLED = false;
 export const CONTRACT = 'docs/hardware/str005-step5-diagnostic-amendment.md';
 /** Phase-1 install seal; set only after that attempt passes, finalizes and is reviewed. */
 // Phase-1 attempt-003's firmware failed the native panic cutoff audit; the corrected

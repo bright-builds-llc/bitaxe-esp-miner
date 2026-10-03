@@ -24,9 +24,9 @@ test('effects need both the compiled flag and the exact active task line', () =>
   assert.throws(() => taskEnabled(`## Future\n### ${TASK} | x\n\n${ENABLED_LINE}\n`, true), /step5_disabled/u);
 });
 
-test('the compiled effect flag is on only with a pinned install seal', () => {
+test('the compiled effect flag requires a pinned install seal', () => {
   // Arrange / Act / Assert
-  assert.equal(ENABLED, PINS.installationResult !== null && PINS.installationSeal !== null);
+  assert.ok(!ENABLED || (PINS.installationResult !== null && PINS.installationSeal !== null));
 });
 
 test('arguments are absolute, exact and action-specific', () => {

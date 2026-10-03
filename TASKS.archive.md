@@ -18606,3 +18606,294 @@ high-water mark; a stack-canary fault would have failed it. Signed mining Start
 and renewal were not exercised on the device; their offline audits (3,088 and
 4,592 bytes of headroom) still govern. Indirect calls stay unbounded. Parity
 stays 90/95.
+
+### task-str005-step5-revocation-detail | 2026-10-02 | Preserve the step-5 unsafe-observation trigger and Start rejection
+
+Status: Complete. The diagnostic Start passed step 5; status001's revocation did not
+recur, and the instrumentation stays in place for any future recurrence.
+Objective: make the next diagnostic Start record exactly why the device revoked
+a mining generation and why the Gate rejected Start, so status001's step-5
+`unsafe_observation` gap can be resolved by evidence instead of guesswork.
+References: `task-str005-v2-accepted-share-probe` (status001, recovery006) and
+[safety recovery evidence](docs/parity/evidence/20260929-str005-safety-recovery.md).
+
+Owner authorization | 2026-10-02: the owner asked to implement the offline
+instrumentation and then a bounded diagnostic Start contract and run.
+
+Findings (read-only, 2026-10-02):
+- Step 5 only waits 500 ms; revocation comes from the safety publisher
+  (`check_safety`: unsafe sample or zero fan after fan proof) or the 1-second
+  no-safe-sample deadline (`check_deadline`). The adapter reduces samples to two
+  booleans, so the failing fact, state, value and age are discarded.
+- status001's bus voltage was 5.464 V before and 5.475 V after, within 37 mV of
+  the 5.5 V ceiling. This is a lead only. Upstream applies 5 V +/-10% only in
+  self-test; this firmware applies it continuously. Thresholds stay unchanged
+  without evidence.
+- The Gate keeps the real rejection in `WorkerControlRejection.rejection` and a
+  page-local `control_failure` row; harness clients collapse it to
+  `operation_failed`, and evidence projection keeps only boot rows.
+- Gate status JSON is exact-key strict; unknown diagnostic lines are dropped.
+  A new diagnostic line plus a Gate grammar is the compatible channel.
+- A V2 Start must be `normal`: it consumes ordinal 22 and charges 180,000 ms
+  (ledger 2,280,000 to 2,460,000 ms). There is no absolute cap.
+
+- [x] Firmware core: add a pure first-failure safety verdict (fact, state,
+  value, age) that `is_ultra_205_mining_safe_at` delegates to, preserving its
+  exact semantics and order, with tests. `SafetyVerdict` in
+  `crates/bitaxe-api/src/observation/safety_verdict.rs`; 8 tests plus the
+  existing predicate tests.
+- [x] Revocation: record a closed first-wins detail (trigger, verdict, sample
+  age) beside the `unsafe_observation` reason for all three triggers, with tests.
+  Only the call that wins the generation's revocation records it; other reasons
+  record none. Lock-free, RAM only; 7 tests.
+- [x] Emit `worker_revocation_detail schema=v1 ... redacted=true` while a detail
+  exists, alternating with the 1 Hz admission marker, with a render test.
+  Verified: ordered fmt/Clippy, 2,600 host tests, 95 firmware/crate Bazel
+  tests, a target ELF containing the marker, and the control (4,080 bytes
+  headroom), signed Start (3,088), renewal (4,592), device Noise, telemetry and
+  fault-provenance audits. The provenance audit's missing Bazel runfiles were
+  fixed.
+- [x] Gate: grammar and page display for the new line; tests and ADR; push and
+  repin. Gate `86fc62d7a9d75da1affa2d51bc3b9eab41d86031` (ADR-0102): the
+  closed `worker_revocation_detail` grammar, which drops inconsistent
+  fact/state/value combinations; 875 Gate tests pass. Archive SHA-256
+  `17e5c990baac77d542ae6a5e37a86371208b20fe6c47e012f1612cfd60605235`; the full
+  firmware Bazel suite passes 284/284. The range limits stay in
+  `observation.rs`, where parity evidence inventories pin them; `99081666` had
+  moved them and broken `automation_test` until this fix.
+- [x] Harness: a successor diagnostic-Start owner that installs the
+  instrumented package state-preservingly, signs one zero-renewal normal Start,
+  and preserves the Gate rejection category, the preparation receipt, the
+  revocation detail and `control_failure` rows in private evidence.
+  - Install: the noise-serial profile `step5-diagnostic-install`, whose
+    predecessor is the sealed control-stack attempt-001 pass.
+  - Start: `scripts/str005-step5-diagnostic` reuses status-repro's server,
+    page, policy and finisher, serves on the granted origin
+    `127.0.0.1:48765`, and records a closed step-5 summary.
+  - Shared: the recovery diagnostics projection now keeps strictly validated
+    safety rows, and `str005-client-failure-v2` adds the closed rejection.
+- [x] Phase 1: run the install contract below and record the outcome. Attempt-003
+  passed (result `ed497f61…`, seal `b5ccca60…`).
+- [x] Phase 2: pin the install seal, enable the Start owner, run the single
+  diagnostic Start, and record the outcome. Start002 passed step 5; see below.
+
+Contract: [step-5 diagnostic amendment](docs/hardware/str005-step5-diagnostic-amendment.md).
+
+Phase 1 install contract | 2026-10-02
+
+Step-5 diagnostic install hardware: disabled.
+
+Commands run from a clean tree equal to its upstream; `<gate-root>` is the local
+Gate checkout at the `MODULE.bazel` pin:
+
+```sh
+just package
+bazel build //tools/stratum-v2-fixture:noise_serial_build_identity
+just detect-ultra205
+just stratum-v2-noise-serial preflight --private-root <repo>/scratch/str005-step5-install/attempt-001 --firmware-root <repo> --gate-root <gate-root> --package-manifest <repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --attempt-ordinal 1 --predecessor-receipt <repo>/scratch/control-stack-port-reuse/attempt-001/final-result.json
+just stratum-v2-noise-serial serve --private-root <repo>/scratch/str005-step5-install/attempt-001
+just stratum-v2-noise-serial finalize --private-root <repo>/scratch/str005-step5-install/attempt-001 --cleanup-receipt <repo>/scratch/str005-step5-install/attempt-001.cleanup/receipt.json
+just stratum-v2-noise-serial review --private-root <repo>/scratch/str005-step5-install/attempt-001
+```
+
+The same-page workflow, gestures, allowed and prohibited effects, evidence,
+recovery, retry (ordinal 1 only) and stop conditions are exactly those of the
+archived `task-control-stack-port-reuse-run` contract. Its successor meaning is
+in the amendment's phase 1. The page is served on `127.0.0.1:48765`, so Connects
+reuse the granted port. Operator processes run under umask 077.
+
+Phase 2 stays disabled: `ENABLED=false` and no `PINS` until phase 1 passes,
+finalizes and reviews. A separate commit then pins the seal and adds the Start
+line.
+
+Phase 1 attempt-001 | 2026-10-03 | Unverified, no device effect
+
+Package `ac8fd2c9` (ELF `16324f65…`). Detection admitted exactly one Ultra 205,
+and preflight passed. While the Gate tab waited for the owner to bring it
+forward, the agent's tool runtime killed the parent operator at its 2-hour
+background limit, taking the supervisor with it. That violated the repo's
+no-deadline rule for human waits. No Connect, install or other device effect
+occurred.
+- Finalize/review: `unverified`, `stop_impossible_contract` (first failure:
+  missing cleanup evidence).
+- Result `839964e820f643a8123b9fc59e9bfbce39900c9720f5a5d5745c22209474de45`,
+  seal `7afe9459419719e53cf198d80e7ae2cdf2cdc7727fc4444e057fbdd1f9e20dac`, with
+  no install files.
+
+Remediation and attempt-002: the profile now carries a reviewed continuation
+bound to that exact seal. The parent operator is launched detached (`nohup`)
+from a normal shell, so no tool or wall-clock deadline applies while it waits
+for the owner. Its live parent PID 1 or launcher-independent session is
+recorded before the page opens. Attempt-002 uses the same commands with
+`attempt-002` and `--attempt-ordinal 2`. Every other phase-1 term is unchanged.
+
+Phase 1 attempt-002 | 2026-10-03 | Unverified after install 0
+
+Package `2b8ca6b3` (ELF `0bf9a7db…`). The detached parent (PPID 1) held the page
+through the owner's wait.
+- The baseline Connect and Connect #2 both reused the grant with no chooser.
+- Install 0 wrote and reviewed the instrumented candidate, which the device now
+  runs with its baseline confirmed.
+- The agent then called `recordCycle(1)` before install 1. Its probe claim had
+  no install-1 review, so the server latched `noise_operation_failed`
+  (`evidence_incomplete`). This was an operator sequencing error, not a device
+  fault.
+- Normal close, flush, supervisor stop and finalize/review followed:
+  `unverified`/`stop_impossible_contract`, result `2fdc92b9…`, seal
+  `72716b01…`. The cleanup record failed with `ENOENT`.
+
+Remediation and attempt-003:
+- The page client now calls a read-only `/cycle/ready` before any device read
+  and refuses an out-of-order cycle without latching (server and client
+  regressions).
+- The profile's reviewed continuation 3 binds attempt-002's exact install-0
+  evidence: before identity `2b8ca6b3`/`0bf9a7db`.
+- Attempt-003 uses the same commands with `attempt-003` and
+  `--attempt-ordinal 3`, and the detached parent.
+
+Phase 1 attempt-003 | 2026-10-03 | Passed
+
+- Package `96cf5e08` (ELF `d74d863a…`), Gate `86fc62d7`. The detached parent
+  had PPID 1.
+- All seven Connects reused the grant with no chooser. Cycles ran in order and
+  the guard was not triggered.
+- Five state-preserving writes were each reviewed. The Noise diagnostic was
+  accepted, restoration was confirmed, the ledger stayed idle at 22/21/2,280,000
+  ms, and `mine_on_boot` stayed false.
+- Finalize/review: `passed`/`complete`, result
+  `ed497f6142a4a6574fe4b80e7ed2944ac6a9781e25778a22b41e483c956c1ee5`, seal
+  `b5ccca60868dfee957bfef87f63a51da4f116a36f0bd95cf7793d5139b16259b`.
+  Projection: [attempt-003](docs/parity/evidence/str005-step5-install/attempt-003.json).
+- The device now runs the instrumented `96cf5e08`/`d74d863a`.
+
+Phase 2 Start contract | 2026-10-03
+
+Step-5 diagnostic Start hardware: disabled.
+
+`PINS` now bind the phase-1 seal and `ENABLED=true`. The signing authority is
+the owner's existing protected development authority under
+`~/.local/share/`. Its public `trust.json` key IDs (update
+`dev-update-PY57O77eAUFmYzGW`, lease `dev-lease-BtqZlfzZctrmykUz`, profile 0.2)
+match `firmware/bitaxe/bwg/deployment-trust.json`; private files are never read
+by the agent. Commands, from a clean tree equal to its upstream:
+
+```sh
+bazel build //tools/stratum-v2-fixture:stratum_v2_fixture //tools/stratum-v2-fixture:v2_serial_build_identity
+just detect-ultra205   # stdout saved as <parent>/detector.stdout.log
+just str005-step5-diagnostic preflight --private-root <repo>/scratch/str005-step5-diagnostic/start002/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001
+just str005-step5-diagnostic serve --private-root <same> --authority-directory <protected-authority>
+just str005-step5-diagnostic finish --private-root <same>
+```
+
+Between `serve` and `finish`, the steps follow status-repro:
+1. Save a fresh `startup-detector.stdout.log` before the Run button.
+2. Connect with a real click after a read-only visibility check; the grant is
+   reused at `127.0.0.1:48765`.
+3. Use the page's single Run.
+4. Close the page.
+5. Stop the server owner.
+6. Save `final-detector.stdout.log`.
+
+The serve owner runs detached with no wall-clock deadline while it waits for
+the owner. Effects, limits, evidence, outcomes, prohibitions, recovery, retry
+(ordinal 1 only) and stop conditions are exactly the amendment's phase 2.
+
+Phase 2 preflight start001 | 2026-10-03 | Refused before any effect
+
+`scratch/str005-step5-diagnostic/start001/attempt` preflight failed in the
+core-dump native cutoff audit (`native_generation_revoke`) on the installed ELF
+`d74d863a…`. The new `unsafe_detail` field had let the compiler reorder
+`GenerationGate` fields, so the panic cutoff's `state` word no longer sat at
+the gate symbol address. Earlier checks had run six audits, but not this one.
+There was no signer, Start or device effect. The ledger is unchanged.
+
+Fixes:
+- `GenerationGate` is `#[repr(C)]` with a regression for `state` at offset 0.
+  On the rebuilt ELF, the native cutoff, store, signed Start (3,088 bytes of
+  headroom), fault provenance, native USB symbol, renewal, device Noise and
+  telemetry audits pass.
+- The control-stack audit then reported 15,200 bytes through an impossible
+  `base64::add_padding` to `run_channel` edge. Objdump had decoded an `l32r`
+  literal pool after a no-return panic call as `call8`. The shared frame
+  parser now treats `l32r` literal words as data, with regressions. The
+  deepest path is 10,256 bytes with 4,080 of headroom.
+- Every phase-2 audit must pass before any install that phase 2 will use.
+- Phase 1b reinstalls the corrected firmware (amendment phase 1b), and the
+  Start owner is disabled and unpinned again until it passes.
+
+Phase 1b reinstall contract | 2026-10-03
+
+Step-5 diagnostic reinstall hardware: disabled.
+
+Same commands and terms as phase 1, with namespace
+`scratch/str005-step5-reinstall/attempt-001`, `--attempt-ordinal 1` and
+`--predecessor-receipt <repo>/scratch/str005-step5-install/attempt-003/final-result.json`.
+Before preflight, the frozen package must pass the full phase-2 audit set:
+cutoff, store, signed Start, fault provenance and native USB symbols, plus the
+control-stack audit. The parent runs detached.
+
+Phase 1b attempt-001 | 2026-10-03 | Passed
+
+- Package `654338d0` (ELF `2641c24f…`). Before preflight, every phase-2 audit
+  passed on the frozen ELF: native cutoff, store, signed Start, fault
+  provenance, native USB symbols, and control stack (4,080 bytes of headroom).
+- The owner brought the dedicated tab forward once, using a remote app. Then
+  all seven Connects reused the grant, five writes were each reviewed, four
+  in-order cycles and an accepted Noise diagnostic followed, and restoration
+  completed with the ledger at 22/21/2,280,000 ms and `mine_on_boot=false`.
+- Per the new persistent-tab rule, the page was closed with
+  `location.replace('about:blank')`; the tab stayed open.
+- Finalize/review: `passed`/`complete`, result
+  `04f2f8d1689f8059eb59a8522c7b582b87dbb22375436f6fd4294d4b654afa46`, seal
+  `0751d602e4874a1224923d8e5ef2b86e492fbfc9f7b382140965cb7519a81092`.
+  Projection: [attempt-001](docs/parity/evidence/str005-step5-reinstall/attempt-001.json).
+- The Start owner's `PINS` now bind this seal with profile
+  `step5-diagnostic-reinstall`, `ENABLED=true`. Phase 2 runs as published above,
+  using `start002` because start001's root was consumed by the refused preflight.
+
+Phase 2 start002 | 2026-10-03 | Step 5 passed; sealed result incomplete
+
+Summary: [step-5 diagnostic evidence](docs/parity/evidence/20261003-str005-step5-diagnostic.md).
+The dedicated tab was reused (visible, no chooser).
+- Preflight passed: lineage, the four native audits, Gate, fixture and
+  detector. The authority directory was admitted.
+- One `normal` Start (generation 4, zero renewals) replied after about 10 s,
+  and Stop was requested 0.7 s later. Status saw the generation running, and
+  one job was dispatched.
+- The device stopped normally (`restoration_requested`) with safe stop
+  complete. There was no `unsafe_observation`, so no revocation detail was
+  emitted, as designed.
+- The ledger charged exactly as contracted: next 23/last 22/2,460,000 ms.
+  The retained record is terminal with resources released. The device is
+  restored, the lease is inactive and `mine_on_boot=false`.
+- Bus voltage read 5.475–5.479 V, the same near-ceiling range as status001, but
+  nothing revoked.
+- Fresh recovery collection is recorded. The page was closed via
+  `about:blank`, then the server stopped, the final detector ran and `finish`
+  sealed: result `0a66996aea4bd8f611df9f817b5348bf51c1b2baa11e4e27b6dd72a1484ae371`,
+  seal `1b2fbfcb0fb2e250e2856b4c273f227768751e4c073a833622f44f84ec6ceeea`.
+- The sealed result is `complete=false` for non-safety reasons:
+  - the status-repro judge requires `authorization_high_water_match`, which a
+    successful signed Start advances;
+  - the fixture did not finish its scripted session in the short run;
+  - the page's 10-second release was rejected while the fixture was active.
+- The summary outcome is therefore `unverified`, although the step-5 boundary
+  itself passed.
+
+Completion review: done. The offline instrumentation (firmware, Gate ADR-0102 and
+harness) is verified and installed, and the single contracted Start ran without
+the status001 revocation. Both gates are disabled and `ENABLED=false`. Process
+lessons recorded:
+- operator parents now run detached;
+- cycles are refused unlatched when out of order;
+- every phase-2 audit runs before any install that phase 2 uses;
+- the `GenerationGate` layout is pinned;
+- literal pools are excluded from the frame parser.
+
+Residual risks and next steps for `task-str005-v2-accepted-share-probe`:
+- status001's cause is unreproduced and could recur; the revocation detail
+  will now name it.
+- A successful-Start judge must accept an authorization-recovery match instead
+  of requiring an unchanged high-water mark.
+- Fixture lifetime and page release must fit a short diagnostic run.
+- Parity stays 90/95.
