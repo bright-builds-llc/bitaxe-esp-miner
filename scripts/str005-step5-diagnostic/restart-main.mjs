@@ -13,11 +13,11 @@ import { createCurrentRecoveryServer, RECOVERY_STAGES } from '../str005-startup-
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { createRestartServer } from '../str005-startup-preparation/server.mjs';
 import { conclusion, restartEvidence, STAGES, FRESH_MS } from '../str005-startup-preparation/model.mjs';
-import { PINS } from './contract.mjs';
+import { RESTART } from './restart-config.mjs';
 /** One no-mining qualification restart that clears the previous Start's retained V2 record. */
-export const ENABLED = false;
-const TASK = 'task-str005-step5-diagnostic-rerun', CONTRACT = 'docs/hardware/str005-step5-diagnostic-amendment.md';
-const ENABLED_LINE = 'Step-5 restart hardware: enabled.';
+export const ENABLED = true;
+const TASK = RESTART.task, CONTRACT = RESTART.contract;
+const ENABLED_LINE = RESTART.enabledLine;
 // The origin that holds the Ultra 205 Web Serial grant.
 const PORT = 48765;
 export function argumentsFor(argv, enabled = ENABLED) {
@@ -43,8 +43,8 @@ async function parts(root, names) { const result = {}; for (const name of names)
   catch (error) { if (error.code !== 'ENOENT') throw error; } } return result; }
 /** The pinned sealed step-5 Start: its attempt, generation, fresh-recovery ledger and boot. */
 async function parents(roots) {
-  await sealed(roots.start, PINS.previousStartSeal);
-  check(await fileDigest(resolve(roots.start, 'result.json')) === PINS.previousStartResult, 'preparation_parent_seal');
+  await sealed(roots.start, RESTART.startSeal);
+  check(await fileDigest(resolve(roots.start, 'result.json')) === RESTART.startResult, 'preparation_parent_seal');
   const start = (await proof(roots.start, 'context.json')).value, before = (await proof(roots.start, 'before.json')).value;
   const run = (await proof(roots.start, 'run.json')).value, recovered = await parts(roots.start,
     ['recovery-1-ledger', 'recovery-1-original_budget', 'recovery-1-status']);
@@ -56,7 +56,7 @@ async function parents(roots) {
     physical: start.physical, attemptId: before.attempt.id, originalGeneration: run.proof.generation,
     expectedLedger: recovered['recovery-1-ledger'], originalBudget: recovered['recovery-1-original_budget'],
     original_campaign_id: start.original_campaign_id, before_boot_ordinal: boot, parentRoots: roots,
-    parentSeals: { start: PINS.previousStartSeal } };
+    parentSeals: { start: RESTART.startSeal } };
 }
 async function detector(root, context, stage, final = false) {
   const path = resolve(dirname(root), `${stage}-${final ? 'final-' : ''}detector.stdout.log`); await protectedPath(path);

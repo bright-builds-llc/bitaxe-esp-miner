@@ -1486,6 +1486,25 @@ js_binary(
     entry_point = "str005-step5-diagnostic/restart-main.mjs",
 )
 
+js_library(
+    name = "str005_accepted_share_sources",
+    srcs = glob(["str005-accepted-share/*.mjs", "str005-share-probe/*.mjs"]),
+    deps = [":str005_step5_diagnostic_sources", ":str005_startup_probe_sources"],
+)
+
+js_binary(
+    name = "str005_accepted_share",
+    chdir = "..",
+    data = [":str005_accepted_share_sources", "//tools/stratum-v2-fixture:stratum_v2_fixture", "//tools/stratum-v2-fixture:v2_serial_build_identity"],
+    entry_point = "str005-accepted-share/main.mjs",
+)
+
+js_test(
+    name = "str005_accepted_share_test",
+    data = [":str005_accepted_share_sources"],
+    entry_point = "str005-accepted-share/share.test.mjs",
+)
+
 js_test(
     name = "str005_step5_diagnostic_test",
     data = [":str005_step5_diagnostic_sources"],

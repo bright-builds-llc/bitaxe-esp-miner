@@ -18,19 +18,22 @@ import { installation, previousStart, restartAfter } from './lineage.mjs';
 export const SCHEMA = 'str005-step5-diagnostic-context-v1';
 export const ADMISSION = 'diagnostic-step5-v1';
 
-/** Effect-free admission of one diagnostic Start against the sealed phase-1 install. */
-export async function preflight(repo, root, options, source, operations = {}) {
+export const STEP5_PROFILE = Object.freeze({ pins: PINS, schema: SCHEMA, admission: ADMISSION });
+
+/** Effect-free admission of one Start against the sealed install, previous Start and restart. */
+export async function preflight(repo, root, options, source, operations = {}, profile = STEP5_PROFILE) {
+  const pins = profile.pins;
   ignored(repo, root); await missing(root); await privateRoot(dirname(root));
-  const installed = await (operations.installation ?? installation)(options['--installation-root']);
+  const installed = await (operations.installation ?? installation)(options['--installation-root'], pins);
   const maybePrevious = options['--previous-start-root']
-    ? await (operations.previousStart ?? previousStart)(options['--previous-start-root'], installed) : null;
-  check((maybePrevious !== null) === Boolean(PINS.previousStartResult), 'step5_previous_required');
+    ? await (operations.previousStart ?? previousStart)(options['--previous-start-root'], installed, pins) : null;
+  check((maybePrevious !== null) === Boolean(pins.previousStartResult), 'step5_previous_required');
   const maybeRestart = options['--restart-root'] && maybePrevious
-    ? await (operations.restartAfter ?? restartAfter)(options['--restart-root'], maybePrevious) : null;
-  check((maybeRestart !== null) === Boolean(PINS.restartResult), 'step5_restart_required');
+    ? await (operations.restartAfter ?? restartAfter)(options['--restart-root'], maybePrevious, pins) : null;
+  check((maybeRestart !== null) === Boolean(pins.restartResult), 'step5_restart_required');
   const current = maybeRestart ?? maybePrevious;
   const gateRoot = options['--gate-root'];
-  check(gateRoot === installed.gate_root && installed.identity.gate_commit === PINS.gate, 'step5_gate');
+  check(gateRoot === installed.gate_root && installed.identity.gate_commit === pins.gate, 'step5_gate');
   cleanPushed(gateRoot, installed.identity.gate_commit);
   const pin = (await readFile(resolve(repo, 'MODULE.bazel'), 'utf8')).match(/strip_prefix\s*=\s*"bitaxe-turnstile-system-([a-f0-9]{40})"/u);
   check(pin?.[1] === installed.identity.gate_commit, 'step5_gate_pin');
@@ -58,7 +61,7 @@ export async function preflight(repo, root, options, source, operations = {}) {
   const symbolsPath = resolve(repo, 'scripts/verify-native-usb-symbols.mjs');
   const symbols = execFileSync(process.execPath, [symbolsPath, installed.candidateElf], { encoding: 'utf8', timeout: 30000, maxBuffer: 65536 });
   check(symbols.trim() === 'native_usb_symbols=verified', 'step5_native_usb');
-  const context = { schema: SCHEMA, admission: ADMISSION, source_commit: source.commit, contractSha256: source.contractSha256,
+  const context = { schema: profile.schema, admission: profile.admission, source_commit: source.commit, contractSha256: source.contractSha256,
     ...installed.identity, firmware_root: repo, gate_root: gateRoot, before_source: installed.identity, scope: 'share',
     attemptId: nonce(), expectedBootOrdinal: current?.expectedBootOrdinal ?? installed.expectedBootOrdinal,
     expectedLedger: current?.ledger ?? installed.ledger,

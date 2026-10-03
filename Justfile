@@ -428,6 +428,10 @@ str005-share-probe action *args:
 str005-status-repro action *args:
     bazel run //scripts:str005_status_repro -- {{ action }} {{ args }}
 
+# One bounded accepted-share Start after a sealed restart; task-gated.
+str005-accepted-share action *args:
+    bazel run //scripts:str005_accepted_share -- {{ action }} {{ args }}
+
 # One no-mining qualification restart after a sealed step-5 Start; task-gated.
 str005-step5-restart action *args:
     bazel run //scripts:str005_step5_restart -- {{ action }} {{ args }}

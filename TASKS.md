@@ -5150,7 +5150,8 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Status: Current safety verified after status001; diagnostic self-test captured a useful original frame. Share001's cause remains unavailable, and status001 ended at unsafe revocation during preparation step5. Qualification blocked; all effect gates disabled.
+Status: Active. Step 5 passed on the instrumented firmware (start004 complete); accepted-share
+contract published 2026-10-03 (restart002, then share001).
 Objective: prove a correlated real ASIC result, encrypted submission, independent
 fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
 Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
@@ -6421,6 +6422,49 @@ so there is no new crash dump to decode. This is a precise diagnostic gap, not
 a demonstrated repairable root cause. Any further instrumentation or Start
 requires a new separately published bounded contract; no blind mining retry.
 Parity90/95; original Share001 seal, private cores and accepted-share task remain.
+
+Accepted-share probe contract | 2026-10-03 | Restart002 then share001
+
+Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendment.md).
+Owner authorization | 2026-10-03: the owner approved this probe and authorized
+autonomous, iterative fixes and fresh attempts.
+Basis: the step-5 work (archived `task-str005-step5-revocation-detail` and
+`task-str005-step5-diagnostic-rerun`) installed and audited `654338d0`, and
+start004 sealed complete.
+
+- [x] Software:
+  - a `str005-accepted-share` owner reuses the step-5 lineage and preflight
+    with a profile parameter, plus share-probe's routes, page, coordinator,
+    signing and judge, on the granted origin;
+  - the restart owner takes its parent and task gate from `restart-config.mjs`
+    (start004, this task);
+  - regressions cover both.
+- [ ] Phase A restart002, then pin it in `scripts/str005-accepted-share/contract.mjs`.
+- [ ] Phase B share001, then record the outcome; on a pass, run the remaining
+  verification items above before archiving.
+
+Accepted share restart hardware: enabled.
+Accepted share probe hardware: disabled.
+
+```sh
+just str005-step5-restart preflight --private-root <repo>/scratch/str005-share-restart/restart002 --start-root <repo>/scratch/str005-step5-diagnostic/start004/attempt --gate-root <gate-root>
+# recovery stage then restart stage, exactly as restart001 (detectors <stage>-detector / <stage>-final-detector)
+just str005-accepted-share preflight --private-root <repo>/scratch/str005-accepted-share/share001/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-step5-diagnostic/start004/attempt --restart-root <repo>/scratch/str005-share-restart/restart002
+just str005-accepted-share serve --private-root <same> --authority-directory <protected-authority>   # detached
+just str005-accepted-share finish --private-root <same>
+```
+
+The page runs in the persistent tab:
+1. Connect, then "Record baseline and configure candidate".
+2. Take a fresh `startup-detector.stdout.log`.
+3. Connect, then "Run one accepted-share probe".
+4. Connect, wait at least 8 s, then "Collect fresh recovery and close".
+5. Close the page via `about:blank`.
+6. Stop the server with SIGTERM, take `final-detector.stdout.log`, then run
+   `finish`.
+
+Retry: restart002 and share001 are ordinal 1 of each. A further attempt needs a
+targeted, regression-backed fix, and a new restart before any further Start.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
