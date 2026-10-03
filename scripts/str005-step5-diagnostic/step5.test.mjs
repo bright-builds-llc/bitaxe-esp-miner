@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { argumentsFor, ENABLED, ENABLED_LINE, PINS, taskEnabled, TASK } from './contract.mjs';
-import { installation, previousStart } from './lineage.mjs';
+import { installation, previousStart, restartAfter } from './lineage.mjs';
 import { cleanDiagnosticClose } from './fixture-close.mjs';
 import { authorizationRestored } from '../str005-v2-serial/recovery-evidence.mjs';
 import { step5Summary } from './summary.mjs';
@@ -110,4 +110,19 @@ test('authorization is restored by the Start generation\'s own authenticated rec
 test('a rerun without its pinned previous Start is never admitted', async () => {
   // Arrange / Act / Assert
   await assert.rejects(previousStart('/nonexistent', {}, { previousStartResult: null, previousStartSeal: null }), /step5_previous_unpinned/u);
+});
+
+test('the restart owner admits exactly one pinned Start root and a stage', async () => {
+  // Arrange
+  const { argumentsFor: restartArguments } = await import('./restart-main.mjs');
+  // Act / Assert
+  assert.deepEqual(restartArguments(['preflight', '--private-root', '/p', '--start-root', '/s', '--gate-root', '/g'], true).options,
+    { '--private-root': '/p', '--start-root': '/s', '--gate-root': '/g' });
+  assert.throws(() => restartArguments(['serve', '--private-root', '/p', '--stage', 'restart'], false), /preparation_disabled/u);
+  assert.throws(() => restartArguments(['preflight', '--private-root', '/p', '--startup-root', '/s', '--gate-root', '/g'], true), /preparation_arguments/u);
+});
+
+test('a rerun after a restart needs that restart pinned', async () => {
+  // Arrange / Act / Assert
+  await assert.rejects(restartAfter('/nonexistent', {}, { restartResult: null, restartSeal: null }), /step5_restart_unpinned/u);
 });

@@ -10,7 +10,7 @@ import { createServerOwner } from '../str005-startup-probe/server.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { argumentsFor, source } from './contract.mjs';
 import { preflight, SCHEMA, ADMISSION } from './preflight.mjs';
-import { installation, previousStart } from './lineage.mjs';
+import { installation, previousStart, restartAfter } from './lineage.mjs';
 import { routePolicy } from '../str005-status-repro/policy.mjs';
 import { finalize } from '../str005-status-repro/finish.mjs';
 import { extendResult } from './summary.mjs';
@@ -35,6 +35,10 @@ export async function main(argv) {
     if (context.anchors.previousStart) {
       const previous = await previousStart(context.anchors.previousStart.root, installed);
       check(previous.seal === context.anchors.previousStart.seal, 'step5_lineage_changed');
+      if (context.anchors.restart) {
+        const restarted = await restartAfter(context.anchors.restart.root, previous);
+        check(restarted.seal === context.anchors.restart.seal, 'step5_lineage_changed');
+      }
     }
     check(installed.seal === context.anchors.installation.seal && installed.identity.firmware_commit === context.firmware_commit &&
       installed.identity.app_elf_sha256 === context.app_elf_sha256 && installed.physical === context.physical &&

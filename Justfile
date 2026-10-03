@@ -428,6 +428,10 @@ str005-share-probe action *args:
 str005-status-repro action *args:
     bazel run //scripts:str005_status_repro -- {{ action }} {{ args }}
 
+# One no-mining qualification restart after a sealed step-5 Start; task-gated.
+str005-step5-restart action *args:
+    bazel run //scripts:str005_step5_restart -- {{ action }} {{ args }}
+
 # One bounded step-5 diagnostic Start against the sealed instrumented install; task-gated.
 str005-step5-diagnostic action *args:
     bazel run //scripts:str005_step5_diagnostic -- {{ action }} {{ args }}

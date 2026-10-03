@@ -1479,6 +1479,13 @@ js_binary(
     entry_point = "str005-step5-diagnostic/main.mjs",
 )
 
+js_binary(
+    name = "str005_step5_restart",
+    chdir = "..",
+    data = [":str005_step5_diagnostic_sources", ":str005_startup_probe_sources"],
+    entry_point = "str005-step5-diagnostic/restart-main.mjs",
+)
+
 js_test(
     name = "str005_step5_diagnostic_test",
     data = [":str005_step5_diagnostic_sources"],

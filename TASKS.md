@@ -5170,7 +5170,7 @@ fixes and fresh attempts as needed.
 - [ ] Run start003 under the contract below; on a fixable failure, fix it, add
   a regression and continue with a fresh ordinal.
 
-Step-5 diagnostic Start hardware: enabled.
+Step-5 diagnostic Start hardware: disabled.
 
 Commands, from a clean tree equal to its upstream:
 
@@ -5197,6 +5197,54 @@ amendment's phase 2.
 Retry: a later ordinal (`start004` and up) needs a targeted, regression-backed
 fix and pins the latest sealed Start as its previous Start. There is no
 unchanged retry.
+
+Start003 | 2026-10-03 | Refused at baseline; no Start
+
+The baseline's null-attempt share status read returned `invalid_transition`,
+followed by a serial timeout and disconnect. Firmware keeps start002's
+terminal V2 record until reboot, by design, and a null status query is
+idle-only. There was no signer, Start or ledger effect, and boot stayed 11.
+The page was closed via `about:blank` and the server stopped. `finish`
+sealed `complete=false` with `observed_start=false`: result
+`31bc298bfbe03616bd7f9fb965f976aa028b008676098ce9ea22077d2b7e6617`, seal `8d53be8f62dc99c9427a2b92c17cc060293d290f3ac9aa39be5a75fea8053bd5`.
+
+Remediation (regression-backed):
+- A no-mining restart owner, `just str005-step5-restart`, reuses the
+  startup-preparation recovery and restart servers and evidence model, with
+  start002 pinned as its parent. Stage `recovery` reads the retained record by
+  ID; stage `restart` performs one `qualificationRestart` and proves boot N+1
+  with the ledger and budget unchanged.
+- The Start owner's next preflight binds that sealed restart through
+  `--restart-root` (`PINS.restartResult`/`restartSeal`). The Start owner is
+  `ENABLED=false` until then.
+
+Restart contract | 2026-10-03
+
+Step-5 restart hardware: enabled.
+
+```sh
+just str005-step5-restart preflight --private-root <repo>/scratch/str005-step5-restart/restart001 --start-root <repo>/scratch/str005-step5-diagnostic/start002/attempt --gate-root <gate-root>
+just detect-ultra205   # saved as <parent>/recovery-detector.stdout.log, then serve within 60 s
+just str005-step5-restart serve --private-root <same> --stage recovery   # detached; page: Connect, Run
+just detect-ultra205   # saved as <parent>/recovery-final-detector.stdout.log
+just str005-step5-restart finish --private-root <same> --stage recovery
+just detect-ultra205   # saved as <parent>/restart-detector.stdout.log, within 120 s of recovery
+just str005-step5-restart serve --private-root <same> --stage restart    # detached; page: Connect, Run
+just detect-ultra205   # saved as <parent>/restart-final-detector.stdout.log
+just str005-step5-restart finish --private-root <same> --stage restart
+```
+
+Effects:
+- read-only Gate sessions;
+- exactly one software `qualificationRestart`;
+- normal close.
+
+Prohibited: Start, signer, flash, erase, mining, and any second restart.
+Pages run in the persistent dedicated tab and close via `about:blank`.
+Retry: ordinal 1 only (`restart001`); no unchanged retry.
+
+Then Start004 pins this restart and runs the start003 contract with
+`--restart-root`.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 

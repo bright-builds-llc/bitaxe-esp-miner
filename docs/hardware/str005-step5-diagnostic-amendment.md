@@ -130,6 +130,19 @@ new `normal` attempt charges another 180,000 ms (expected after: next 24, last
 revocation detail (every 2 s) reach the page. All other phase-2 terms are
 unchanged.
 
+Start003 was refused at baseline before any effect. After a completed Start,
+the Worker keeps that attempt's terminal V2 record until reboot, so the
+baseline's null-attempt status query fails with `invalid_transition`. Firmware
+has no clear path other than reboot. Each further Start is therefore preceded
+by one no-mining qualification restart (`scripts/str005-step5-diagnostic/restart-main.mjs`,
+`just str005-step5-restart`). It reuses the startup-preparation recovery and
+restart servers and the restart evidence model, served on the granted origin:
+- stage `recovery` freshly reads the retained record by its attempt ID;
+- stage `restart` performs exactly one `qualificationRestart` on a separate
+  restart-only page, with the ledger and budget unchanged and boot N+1 proven.
+The next Start then binds the sealed restart: boot N+1, with the ledger
+unchanged.
+
 ## Prohibited
 
 - pool credentials, Wi-Fi provisioning, factory reset, erase or rollback;

@@ -62,3 +62,19 @@ export async function previousStart(root, installed, pins = PINS) {
   'step5_previous_state');
   return { root, seal: sealed.sha256, ledger, expectedBootOrdinal: status.observation.bootOrdinal };
 }
+
+/** A sealed, complete no-mining restart after the previous Start: same ledger, boot ordinal N + 1. */
+export async function restartAfter(root, previous, pins = PINS) {
+  check(pins.restartResult && pins.restartSeal, 'step5_restart_unpinned');
+  check(await realpath(root) === resolve(root), 'step5_restart_alias'); await protectedPath(root, true);
+  check(await fileDigest(resolve(root, 'result.json')) === pins.restartResult, 'step5_restart_anchor');
+  const sealed = await proof(root, 'sealed-inventory.json');
+  check(sealed.sha256 === pins.restartSeal, 'step5_restart_seal');
+  await verifyInventory(root, sealed.value.files, new Set(['sealed-inventory.json']));
+  const result = (await proof(root, 'result.json')).value;
+  check(result.schema === 'str005-startup-preparation-result-v1' && result.complete === true && result.mining_started === false &&
+    result.parentSeals?.start === previous.seal && Number.isSafeInteger(result.after_boot_ordinal) &&
+    result.after_boot_ordinal === result.before_boot_ordinal + 1 && result.before_boot_ordinal === previous.expectedBootOrdinal &&
+    result.ledger?.pending === false && JSON.stringify(result.ledger) === JSON.stringify(previous.ledger), 'step5_restart_state');
+  return { root, seal: sealed.sha256, ledger: result.ledger, expectedBootOrdinal: result.after_boot_ordinal };
+}

@@ -13,7 +13,7 @@ import { main as provenanceAudit } from '../audit-fault-provenance.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { verifyGateCompatibility } from '../str005-startup-probe/gate-compatibility.mjs';
 import { PINS } from './contract.mjs';
-import { installation, previousStart } from './lineage.mjs';
+import { installation, previousStart, restartAfter } from './lineage.mjs';
 
 export const SCHEMA = 'str005-step5-diagnostic-context-v1';
 export const ADMISSION = 'diagnostic-step5-v1';
@@ -25,6 +25,10 @@ export async function preflight(repo, root, options, source, operations = {}) {
   const maybePrevious = options['--previous-start-root']
     ? await (operations.previousStart ?? previousStart)(options['--previous-start-root'], installed) : null;
   check((maybePrevious !== null) === Boolean(PINS.previousStartResult), 'step5_previous_required');
+  const maybeRestart = options['--restart-root'] && maybePrevious
+    ? await (operations.restartAfter ?? restartAfter)(options['--restart-root'], maybePrevious) : null;
+  check((maybeRestart !== null) === Boolean(PINS.restartResult), 'step5_restart_required');
+  const current = maybeRestart ?? maybePrevious;
   const gateRoot = options['--gate-root'];
   check(gateRoot === installed.gate_root && installed.identity.gate_commit === PINS.gate, 'step5_gate');
   cleanPushed(gateRoot, installed.identity.gate_commit);
@@ -56,13 +60,14 @@ export async function preflight(repo, root, options, source, operations = {}) {
   check(symbols.trim() === 'native_usb_symbols=verified', 'step5_native_usb');
   const context = { schema: SCHEMA, admission: ADMISSION, source_commit: source.commit, contractSha256: source.contractSha256,
     ...installed.identity, firmware_root: repo, gate_root: gateRoot, before_source: installed.identity, scope: 'share',
-    attemptId: nonce(), expectedBootOrdinal: maybePrevious?.expectedBootOrdinal ?? installed.expectedBootOrdinal,
-    expectedLedger: maybePrevious?.ledger ?? installed.ledger,
+    attemptId: nonce(), expectedBootOrdinal: current?.expectedBootOrdinal ?? installed.expectedBootOrdinal,
+    expectedLedger: current?.ledger ?? installed.ledger,
     original_campaign_id: installed.original_campaign_id, physical: installed.physical, detector, ...tools,
     candidateElf: installed.candidateElf, retainedManifest: installed.retainedManifest,
     retainedManifestSha256: installed.retainedManifestSha256,
     anchors: { installation: { root: installed.root, seal: installed.seal },
-      ...(maybePrevious ? { previousStart: { root: maybePrevious.root, seal: maybePrevious.seal } } : {}) },
+      ...(maybePrevious ? { previousStart: { root: maybePrevious.root, seal: maybePrevious.seal } } : {}),
+      ...(maybeRestart ? { restart: { root: maybeRestart.root, seal: maybeRestart.seal } } : {}) },
     auditSha256: audits, gateCompatibilitySha256: await fileDigest(resolve(root, 'gate-compatibility.json')),
     symbolVerifierSha256: await fileDigest(symbolsPath),
     assetHashes: Object.fromEntries(Object.entries(assets).map(([name, bytes]) => [name, sha256(bytes)])) };

@@ -18,7 +18,7 @@ export const SUCCESSOR_SHA256 = "5fa5de42c44811dbb8b374446cbcc6d9e89358e1f752b77
 export const CONTROL_SUCCESSOR_PATH = "docs/hardware/control-stack-port-reuse-amendment.md";
 export const CONTROL_SUCCESSOR_SHA256 = "2730e27edb7f547aa467634386919da79d3a57d5bfaabebc131ce7a18e90f66b";
 export const STEP5_SUCCESSOR_PATH = "docs/hardware/str005-step5-diagnostic-amendment.md";
-export const STEP5_SUCCESSOR_SHA256 = "3bfda9247769350e43dd21a11d2b46c89d178b3a2c56025a434e2b4f42d63885";
+export const STEP5_SUCCESSOR_SHA256 = "eb90f2856cc9455c6c8f04ec47fd4231dde425758589ada631d56055173b96d1";
 const PUBLICATION = "docs/parity/evidence/str005-noise-serial";
 /** Each profile owns one namespace, task gate, predecessor basis and expected ledger. */
 export const PROFILES = Object.freeze({
