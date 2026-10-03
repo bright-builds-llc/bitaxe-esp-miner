@@ -4,7 +4,7 @@ import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 export const TASK = 'task-str005-heartbeat-shutdown-probe';
 export const ENABLED_LINE = 'Heartbeat shutdown probe hardware: enabled.';
-export const ENABLED = false;
+export const ENABLED = true;
 export const CONTRACT = 'docs/hardware/str005-heartbeat-shutdown-amendment.md';
 export const SCHEMA = 'str005-heartbeat-shutdown-context-v1';
 export const ADMISSION = 'heartbeat-shutdown-v1';
@@ -14,7 +14,9 @@ export const PINS = Object.freeze({ installationProfile: 'step5-diagnostic-reins
   installationSeal: '0751d602e4874a1224923d8e5ef2b86e492fbfc9f7b382140965cb7519a81092',
   previousStartResult: '9e17a8b28e0146f41c9d8d1079b42b86bb1b26c4236b70f157df85cb85d5a402',
   previousStartSeal: 'abde26a6e92e3a8e0d1edfa18558c68bc24e880a027644cb51f98bfef39aedff',
-  restartResult: null, restartSeal: null,
+  // Restart003: one no-mining restart after share001 (boot 13 -> 14, ledger unchanged).
+  restartResult: 'c8893b66f34c25aeb0d678209df4c864d5014608cdbd4ebfa74d14426202e9ec',
+  restartSeal: '67d50e3a57b56df061b321aedde3312ca4cb9bdda8a3c973f31df03b8169965a',
   gate: '86fc62d7a9d75da1affa2d51bc3b9eab41d86031' });
 /** The exact active task line and the compiled flag both admit effects; a restart must be pinned. */
 export function taskEnabled(tasks, compiled = ENABLED, pins = PINS) {

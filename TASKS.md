@@ -5225,11 +5225,16 @@ audited `654338d0` image).
     observer-provenance hook;
   - the restart owner now follows share001;
   - regressions cover all of it.
-- [ ] Phase A restart003, then pin it in `scripts/str005-heartbeat-shutdown/contract.mjs`.
+- [x] Phase A restart003, then pin it in `scripts/str005-heartbeat-shutdown/contract.mjs`.
+  Complete: the recovery stage read share001's record by ID, then one software
+  restart took boot 13 to 14 with the ledger (25/24/2,820,000 ms) and budget
+  unchanged. Result `c8893b66f34c25aeb0d678209df4c864d5014608cdbd4ebfa74d14426202e9ec`,
+  seal `67d50e3a57b56df061b321aedde3312ca4cb9bdda8a3c973f31df03b8169965a`.
+  It is pinned, and the probe is `ENABLED=true`.
 - [ ] Phase B heartbeat001, then record the outcome.
 
-Heartbeat restart hardware: enabled.
-Heartbeat shutdown probe hardware: disabled.
+Heartbeat restart hardware: disabled.
+Heartbeat shutdown probe hardware: enabled.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart/restart003 --start-root <repo>/scratch/str005-accepted-share/share001/attempt --gate-root <gate-root>
