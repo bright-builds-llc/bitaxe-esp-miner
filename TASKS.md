@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-step5-revocation-detail | 2026-10-02 | Preserve the step-5 unsafe-observation trigger and Start rejection
 
-Status: Active. Offline instrumentation in progress; no device effect yet.
+Status: Active. Offline instrumentation complete; phase 1 install contract published.
 Objective: make the next diagnostic Start record exactly why the device revoked
 a mining generation and why the Gate rejected Start, so status001's step-5
 `unsafe_observation` gap can be resolved by evidence instead of guesswork.
@@ -5201,12 +5201,49 @@ Findings (read-only, 2026-10-02):
   firmware Bazel suite passes 284/284. The range limits stay in
   `observation.rs`, where parity evidence inventories pin them; `99081666` had
   moved them and broken `automation_test` until this fix.
-- [ ] Harness: a successor diagnostic-Start owner that installs the
+- [x] Harness: a successor diagnostic-Start owner that installs the
   instrumented package state-preservingly, signs one zero-renewal normal Start,
   and preserves the Gate rejection category, the preparation receipt, the
   revocation detail and `control_failure` rows in private evidence.
-- [ ] Publish the bounded hardware contract, run it under the attempt policy,
-  and record the outcome.
+  - Install: the noise-serial profile `step5-diagnostic-install`, whose
+    predecessor is the sealed control-stack attempt-001 pass.
+  - Start: `scripts/str005-step5-diagnostic` reuses status-repro's server,
+    page, policy and finisher, serves on the granted origin
+    `127.0.0.1:48765`, and records a closed step-5 summary.
+  - Shared: the recovery diagnostics projection now keeps strictly validated
+    safety rows, and `str005-client-failure-v2` adds the closed rejection.
+- [ ] Phase 1: run the install contract below and record the outcome.
+- [ ] Phase 2: pin the install seal, enable the Start owner, run the single
+  diagnostic Start, and record the outcome.
+
+Contract: [step-5 diagnostic amendment](docs/hardware/str005-step5-diagnostic-amendment.md).
+
+Phase 1 install contract | 2026-10-02
+
+Step-5 diagnostic install hardware: enabled.
+
+Commands run from a clean tree equal to its upstream; `<gate-root>` is the local
+Gate checkout at the `MODULE.bazel` pin:
+
+```sh
+just package
+bazel build //tools/stratum-v2-fixture:noise_serial_build_identity
+just detect-ultra205
+just stratum-v2-noise-serial preflight --private-root <repo>/scratch/str005-step5-install/attempt-001 --firmware-root <repo> --gate-root <gate-root> --package-manifest <repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --attempt-ordinal 1 --predecessor-receipt <repo>/scratch/control-stack-port-reuse/attempt-001/final-result.json
+just stratum-v2-noise-serial serve --private-root <repo>/scratch/str005-step5-install/attempt-001
+just stratum-v2-noise-serial finalize --private-root <repo>/scratch/str005-step5-install/attempt-001 --cleanup-receipt <repo>/scratch/str005-step5-install/attempt-001.cleanup/receipt.json
+just stratum-v2-noise-serial review --private-root <repo>/scratch/str005-step5-install/attempt-001
+```
+
+The same-page workflow, gestures, allowed and prohibited effects, evidence,
+recovery, retry (ordinal 1 only) and stop conditions are exactly those of the
+archived `task-control-stack-port-reuse-run` contract. Its successor meaning is
+in the amendment's phase 1. The page is served on `127.0.0.1:48765`, so Connects
+reuse the granted port. Operator processes run under umask 077.
+
+Phase 2 stays disabled: `ENABLED=false` and no `PINS` until phase 1 passes,
+finalizes and reviews. A separate commit then pins the seal and adds the Start
+line.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 

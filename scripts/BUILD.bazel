@@ -548,6 +548,12 @@ js_test(
 )
 
 js_test(
+    name = "str005_safety_diagnostics_test",
+    data = [":str005_v2_serial_sources", ":str005_startup_probe_sources"],
+    entry_point = "str005-v2-serial/safety-diagnostics.test.mjs",
+)
+
+js_test(
     name = "str005_recovery_client_test",
     data = [":str005_v2_serial_sources"],
     entry_point = "str005-v2-serial/recovery-client.test.mjs",
@@ -1458,6 +1464,25 @@ js_test(
         "@bwg_gate_contract//:share_authority_sources_js",
     ],
     entry_point = "str005-status-repro/probe.test.mjs",
+)
+
+js_library(
+    name = "str005_step5_diagnostic_sources",
+    srcs = glob(["str005-step5-diagnostic/*.mjs"]) + ["noise-native-calls.mjs", "noise-native-disassembly.mjs"],
+    deps = [":str005_status_repro_sources", ":str005_v2_serial_sources", "//:str005_noise_serial_contract_inputs"],
+)
+
+js_binary(
+    name = "str005_step5_diagnostic",
+    chdir = "..",
+    data = [":str005_step5_diagnostic_sources", "//tools/stratum-v2-fixture:stratum_v2_fixture", "//tools/stratum-v2-fixture:v2_serial_build_identity"],
+    entry_point = "str005-step5-diagnostic/main.mjs",
+)
+
+js_test(
+    name = "str005_step5_diagnostic_test",
+    data = [":str005_step5_diagnostic_sources"],
+    entry_point = "str005-step5-diagnostic/step5.test.mjs",
 )
 
 js_library(

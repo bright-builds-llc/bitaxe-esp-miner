@@ -121,6 +121,8 @@ export async function finalize(root, context, operations = {}) {
   result.first_failure = ownerWasFirst ? { phase: ownerFailure.phase, category: ownerFailure.category } : result.client_first_failure;
   if (ownerFailure) { result.blockers.push('status_repro_owner_failed'); result.complete = false; result.qualification_success = false; }
   result.cleanup_failures = cleanupBlockers;
+  // Successor owners may add closed summaries; they never change completion.
+  if (operations.extendResult) Object.assign(result, await operations.extendResult(root, parts, result));
   if (!ownersGone) { await writeNew(resolve(root, `finish-blocker-${Date.now()}.json`), result); return { ...result, sealed: false }; }
   await writeNew(resolve(root, 'result.json'), result);
   await writeNew(resolve(root, 'sealed-inventory.json'), { files: await inventory(root) });

@@ -62,32 +62,40 @@ export async function inspectRecoveryPredecessor(path) {
 
 export const HELPER_PASS_RESULT = "6eab33d300e76159c5e1f7328edcd35f788204bcb1060ec122e767c181f6b098";
 export const HELPER_PASS_SEAL = "9df0113f408b1473eacb0ffe14e5d83af8895ede71ac919e6a4f630d23e84a90";
+export const CONTROL_PASS_RESULT = "973ee99497104eb9f9b74a9c947a09f8f2983b5373d496621b427a0ce16babc7";
+export const CONTROL_PASS_SEAL = "e84ad6b0132774a512491e4882c13c9f4ac3d27378a286130cf5ee0b3f9c902c";
 
-/** Exact sealed device-noise-helper attempt-003 pass. It left its candidate installed with an
- * idle ledger and a confirmed baseline, so that candidate is the next attempt's before identity. */
-export async function inspectHelperPassPredecessor(path) {
-  check(await realpath(path) === resolve(path), "noise_predecessor_alias");
-  await protectedPath(path); const root = dirname(path); await protectedPath(root, true);
-  check(await fileDigest(path) === HELPER_PASS_RESULT, "noise_predecessor_anchor");
-  const sealed = await proof(root, "sealed-inventory.json");
-  check(sealed.sha256 === HELPER_PASS_SEAL && sealed.value.schema === "noise-serial-seal-v2" && Array.isArray(sealed.value.files), "noise_predecessor_seal");
-  await verifyInventory(root, sealed.value.files, new Set(["sealed-inventory.json"]));
-  const result = (await proof(root, "final-result.json")).value, record = (await proof(root, "context.json")).value;
-  const accounting = (await proof(root, "accounting-after.json")).value, context = record.context, state = accounting.state;
-  check(result.schema === "noise-serial-result-v2" && result.status === "passed" && result.firstFailure === null &&
-    result.outcome === "complete" && record.sha256 === digest(JSON.stringify(context)) &&
-    result.contextSha256 === record.sha256 && sealed.value.contextSha256 === record.sha256 && context.profile === "device-noise-helper" &&
-    accounting.schema === "noise-serial-accounting-v2" && accounting.contextSha256 === record.sha256 && accounting.stage === "after" &&
-    state?.expectedFirmwareSourceCommit === context.firmware_commit && state.expectedAppElfSha256 === context.app_elf_sha256 &&
-    state.deviceRestorationConfirmed === true && state.deviceBaselineConfirmed === true && state.deviceLeaseInactive === true &&
-    state.running === false && state.preservation?.mine_on_boot === false, "noise_predecessor_pass");
-  const ledger = accounting.ledger, original = accounting.original_budget;
-  check(ledger?.schema === "worker-qualification-ledger-v1" && ledger.pending === false &&
-    original?.schema === "worker-budget-review-v1" && original.campaign_match === true && original.pending === false &&
-    original.reserved_mask === original.completed_mask, "noise_predecessor_ledger");
-  const previous = { basis: "device_noise_helper_pass", cleanup_confirmed: true, next_ordinal: ledger.next_ordinal,
-    last_ordinal: ledger.last_completed_ordinal, total_charged_ms: ledger.total_charged_ms,
-    context: { firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256 },
-    original_campaign_id: context.original_campaign_id };
-  return { previous, resultSha256: HELPER_PASS_RESULT, inventorySha256: HELPER_PASS_SEAL };
+/** Exact sealed passing noise-serial attempt. It left its candidate installed with an idle ledger
+ * and a confirmed baseline, so that candidate is the next attempt's before identity. */
+function passPredecessor({ resultSha256, sealSha256, profile, basis }) {
+  return async function inspectPassPredecessor(path) {
+    check(await realpath(path) === resolve(path), "noise_predecessor_alias");
+    await protectedPath(path); const root = dirname(path); await protectedPath(root, true);
+    check(await fileDigest(path) === resultSha256, "noise_predecessor_anchor");
+    const sealed = await proof(root, "sealed-inventory.json");
+    check(sealed.sha256 === sealSha256 && sealed.value.schema === "noise-serial-seal-v2" && Array.isArray(sealed.value.files), "noise_predecessor_seal");
+    await verifyInventory(root, sealed.value.files, new Set(["sealed-inventory.json"]));
+    const result = (await proof(root, "final-result.json")).value, record = (await proof(root, "context.json")).value;
+    const accounting = (await proof(root, "accounting-after.json")).value, context = record.context, state = accounting.state;
+    check(result.schema === "noise-serial-result-v2" && result.status === "passed" && result.firstFailure === null &&
+      result.outcome === "complete" && record.sha256 === digest(JSON.stringify(context)) &&
+      result.contextSha256 === record.sha256 && sealed.value.contextSha256 === record.sha256 && context.profile === profile &&
+      accounting.schema === "noise-serial-accounting-v2" && accounting.contextSha256 === record.sha256 && accounting.stage === "after" &&
+      state?.expectedFirmwareSourceCommit === context.firmware_commit && state.expectedAppElfSha256 === context.app_elf_sha256 &&
+      state.deviceRestorationConfirmed === true && state.deviceBaselineConfirmed === true && state.deviceLeaseInactive === true &&
+      state.running === false && state.preservation?.mine_on_boot === false, "noise_predecessor_pass");
+    const ledger = accounting.ledger, original = accounting.original_budget;
+    check(ledger?.schema === "worker-qualification-ledger-v1" && ledger.pending === false &&
+      original?.schema === "worker-budget-review-v1" && original.campaign_match === true && original.pending === false &&
+      original.reserved_mask === original.completed_mask, "noise_predecessor_ledger");
+    const previous = { basis, cleanup_confirmed: true, next_ordinal: ledger.next_ordinal,
+      last_ordinal: ledger.last_completed_ordinal, total_charged_ms: ledger.total_charged_ms,
+      context: { firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256 },
+      original_campaign_id: context.original_campaign_id };
+    return { previous, resultSha256, inventorySha256: sealSha256 };
+  };
 }
+export const inspectHelperPassPredecessor = passPredecessor({ resultSha256: HELPER_PASS_RESULT, sealSha256: HELPER_PASS_SEAL,
+  profile: "device-noise-helper", basis: "device_noise_helper_pass" });
+export const inspectControlStackPassPredecessor = passPredecessor({ resultSha256: CONTROL_PASS_RESULT, sealSha256: CONTROL_PASS_SEAL,
+  profile: "control-stack-port-reuse", basis: "control_stack_port_reuse_pass" });

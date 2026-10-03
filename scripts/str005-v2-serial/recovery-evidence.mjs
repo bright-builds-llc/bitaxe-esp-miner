@@ -3,6 +3,7 @@ import { requireExhaustedOriginal, validateLedger } from "../fixed-usb-qualifica
 import { parseStatus } from "./device.mjs";
 import { parseDeviceRecord } from "./device-record.mjs";
 import { boolean, check, nullable, object, uint } from "./values.mjs";
+import { SAFETY_CATEGORIES, validateSafetyDiagnostic } from "./safety-diagnostics.mjs";
 
 const stages = ["ledger", "original_budget", "state", "closed", "status", "diagnostics"];
 const observationKeys = ["bootOrdinal", "workerGeneration", "serialTransportEpoch", "observedAtUs", "clockValid"];
@@ -52,7 +53,7 @@ export function validateRecoveryParts(parts, context) {
   return parts;
 }
 
-/** Retain a small diagnostic subset; unknown categories never cross persistence. */
+/** Retain boot and closed safety rows; unknown categories never cross persistence. */
 function projectDiagnostics(value) {
   object(value, ["schema", "observations"]);
   check(value.schema === "worker-diagnostic-export-v1" && Array.isArray(value.observations) && value.observations.length <= 40,
@@ -60,6 +61,7 @@ function projectDiagnostics(value) {
   const observations = [];
   for (const row of value.observations) {
     check(row !== null && typeof row === "object" && !Array.isArray(row), "recovery_diagnostics_shape");
+    if (SAFETY_CATEGORIES.includes(row.category)) { observations.push(validateSafetyDiagnostic(row)); continue; }
     if (row.category !== "boot") continue;
     object(row, ["category", "authoritative", "boot_ordinal", "reset_reason", "uptime_ms"]);
     uint(row.boot_ordinal); uint(row.uptime_ms);

@@ -185,3 +185,20 @@ test("a helper pass predecessor with other bytes fails its exact anchor", async 
   // Act / Assert
   await assert.rejects(inspectHelperPassPredecessor(resolve(root, "final-result.json")), /noise_predecessor_anchor/u);
 });
+test("step-5 install profile binds the control-stack pass and its own task line", async (t) => {
+  // Arrange / Act
+  const f = await fixture(t, { profile: "step5-diagnostic-install" });
+  // Assert
+  assert.equal(f.context.profile, "step5-diagnostic-install");
+  assert.equal(f.context.contracts.binding.successor.path, "docs/hardware/str005-step5-diagnostic-amendment.md");
+  assert.equal(publicationPath(f.context), resolve(f.options.firmwareRoot, "docs/parity/evidence/str005-step5-install/attempt-001.json"));
+});
+test("step-5 install profile refuses the helper-pass basis", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "step5-diagnostic-install" }), inspect = f.operations.inspectPredecessor;
+  // Act / Assert
+  await assert.rejects(preflight(f.options, { ...f.operations, inspectPredecessor: async (path) => {
+    const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "device_noise_helper_pass" } };
+  } }), { code: "noise_predecessor" });
+  assert.deepEqual(await readdir(f.parent), []);
+});

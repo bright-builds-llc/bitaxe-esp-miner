@@ -4,7 +4,7 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLE, PAGE, admitTrust, canonicalDirectory, cleanPushed, fileDigest, git, ignored,
   missing, nonce, packageSnapshot } from "../fixed-usb-qualification/contract.mjs";
-import { inspectHelperPassPredecessor, inspectPredecessor, inspectRecoveryPredecessor } from "./predecessor.mjs";
+import { inspectControlStackPassPredecessor, inspectHelperPassPredecessor, inspectPredecessor, inspectRecoveryPredecessor } from "./predecessor.mjs";
 import { verifyArtifactSnapshot } from "../fixed-usb-qualification/snapshot.mjs";
 import { BASE_CONTRACT_SHA256 } from "./contract-v2.mjs";
 import { canonical, check, digest, inventory, privateRoot, proof, protectedPath, readJson, retain, verifyInventory, writeNew } from "./files.mjs";
@@ -17,6 +17,8 @@ export const SUCCESSOR_PATH = "docs/hardware/device-noise-helper-amendment.md";
 export const SUCCESSOR_SHA256 = "5fa5de42c44811dbb8b374446cbcc6d9e89358e1f752b775f4da22238367facf";
 export const CONTROL_SUCCESSOR_PATH = "docs/hardware/control-stack-port-reuse-amendment.md";
 export const CONTROL_SUCCESSOR_SHA256 = "2730e27edb7f547aa467634386919da79d3a57d5bfaabebc131ce7a18e90f66b";
+export const STEP5_SUCCESSOR_PATH = "docs/hardware/str005-step5-diagnostic-amendment.md";
+export const STEP5_SUCCESSOR_SHA256 = "859074779e856adff2ffa3f4c0660a6c0a4b06407bdecc7a816e133f478bd2e3";
 const PUBLICATION = "docs/parity/evidence/str005-noise-serial";
 /** Each profile owns one namespace, task gate, predecessor basis and expected ledger. */
 export const PROFILES = Object.freeze({
@@ -48,6 +50,12 @@ export const PROFILES = Object.freeze({
     publication: "docs/parity/evidence/control-stack-port-reuse",
     inspect: inspectHelperPassPredecessor, ledger: { next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 },
     admits: (previous) => previous.basis === "device_noise_helper_pass" && previous.cleanup_confirmed === true &&
+      previous.last_ordinal === 21 },
+  "step5-diagnostic-install": { namespace: "scratch/str005-step5-install", task: "task-str005-step5-revocation-detail",
+    enabledLine: "Step-5 diagnostic install hardware: enabled.", successor: { path: STEP5_SUCCESSOR_PATH, sha256: STEP5_SUCCESSOR_SHA256 },
+    publication: "docs/parity/evidence/str005-step5-install",
+    inspect: inspectControlStackPassPredecessor, ledger: { next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 },
+    admits: (previous) => previous.basis === "control_stack_port_reuse_pass" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 21 },
 });
 /** Public projection path; ordinals restart per profile, so each profile owns its directory. */
@@ -94,7 +102,7 @@ export function profileOf(context) {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SOURCE_DIRS = ["scripts/str005-noise-serial", "scripts/fixed-usb-qualification", "tools/stratum-v2-fixture",
   "crates/bitaxe-stratum", "crates/bitaxe-worker-control", "scripts/host-stalls"];
-const SOURCE_FILES = [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, CONTROL_SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel",
+const SOURCE_FILES = [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, CONTROL_SUCCESSOR_PATH, STEP5_SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel",
   "firmware/bitaxe/bwg/deployment-trust.json", ...NATIVE_AUDITOR_SOURCES,
   "firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/src/noise_completion_stack.rs", "firmware/bitaxe/src/production_mining_session.rs", "firmware/bitaxe/src/production_mining_session/transport.rs",
   "firmware/bitaxe/src/production_mining_session/transport/borrow.rs", "tools/automation/src/redaction.ts", "tools/automation/src/noise-serial-redaction.ts"];
