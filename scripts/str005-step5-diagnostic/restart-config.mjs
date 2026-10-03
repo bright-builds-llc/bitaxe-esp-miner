@@ -1,9 +1,9 @@
 /** Which sealed Start the next no-mining restart follows, and which active task owns it. */
 export const RESTART = Object.freeze({
-  task: 'task-str005-v2-accepted-share-probe',
-  enabledLine: 'Accepted share restart hardware: enabled.',
-  contract: 'docs/hardware/str005-accepted-share-amendment.md',
-  // Start004: complete step-5 diagnostic Start whose terminal V2 record must be cleared.
-  startResult: '4ea90e4f71ad877e9c480f1edc30b00248f0d54910d178c85f755675030208ea',
-  startSeal: 'd37808f87818e418449fee720c8618d31ea79a2a39ebc90d8002d4699238623c',
+  task: 'task-str005-heartbeat-shutdown-probe',
+  enabledLine: 'Heartbeat restart hardware: enabled.',
+  contract: 'docs/hardware/str005-heartbeat-shutdown-amendment.md',
+  // Share001: complete accepted-share Start whose terminal V2 record must be cleared.
+  startResult: '9e17a8b28e0146f41c9d8d1079b42b86bb1b26c4236b70f157df85cb85d5a402',
+  startSeal: 'abde26a6e92e3a8e0d1edfa18558c68bc24e880a027644cb51f98bfef39aedff',
 });

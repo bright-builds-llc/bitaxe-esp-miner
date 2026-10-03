@@ -40,8 +40,8 @@ export async function preflight(repo, root, options, source, operations = {}, pr
   const tools = await canonicalFixture(repo, options['--fixture-binary'], source.commit);
   const assets = { page: await readFile(resolve(gateRoot, PAGE)), bundle: await readFile(resolve(gateRoot, BUNDLE)),
     trust: await readFile(resolve(repo, 'firmware/bitaxe/bwg/deployment-trust.json')) };
-  check([installed.identity.gate_commit, 'startWindow', 'loadSignedWindow', 'worker_revocation_detail'].every(marker => assets.bundle.includes(marker)),
-    'step5_gate_bundle');
+  check([installed.identity.gate_commit, 'startWindow', 'loadSignedWindow', 'worker_revocation_detail', ...(profile.bundleMarkers ?? [])]
+    .every(marker => assets.bundle.includes(marker)), 'step5_gate_bundle');
   const compatibility = await verifyGateCompatibility(gateRoot);
   check(compatibility.zeroRenewalsAccepted === true && compatibility.renewAfterMilliseconds === 20000 &&
     compatibility.renewalOrigin === 'completed-controller-start', 'step5_gate_timer');
@@ -74,6 +74,7 @@ export async function preflight(repo, root, options, source, operations = {}, pr
     auditSha256: audits, gateCompatibilitySha256: await fileDigest(resolve(root, 'gate-compatibility.json')),
     symbolVerifierSha256: await fileDigest(symbolsPath),
     assetHashes: Object.fromEntries(Object.entries(assets).map(([name, bytes]) => [name, sha256(bytes)])) };
+  if (operations.extraContext) Object.assign(context, await operations.extraContext(repo, source));
   await writeNew(resolve(root, 'context.json'), context);
   return { preflight: 'passed', device_effects: false, attempt_issued: false };
 }

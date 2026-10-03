@@ -1505,6 +1505,26 @@ js_test(
     entry_point = "str005-accepted-share/share.test.mjs",
 )
 
+js_library(
+    name = "str005_heartbeat_shutdown_sources",
+    srcs = glob(["str005-heartbeat-shutdown/*.mjs"]),
+    deps = [":str005_heartbeat_probe_sources", ":str005_accepted_share_sources"],
+)
+
+js_binary(
+    name = "str005_heartbeat_shutdown",
+    chdir = "..",
+    data = [":str005_heartbeat_shutdown_sources", "//tools/stratum-v2-fixture:stratum_v2_fixture", "//tools/stratum-v2-fixture:v2_serial_build_identity",
+        "//tools/http-transport:cadence_observer", "//tools/http-transport:v2_observer_build_identity"],
+    entry_point = "str005-heartbeat-shutdown/main.mjs",
+)
+
+js_test(
+    name = "str005_heartbeat_shutdown_test",
+    data = [":str005_heartbeat_shutdown_sources"],
+    entry_point = "str005-heartbeat-shutdown/heartbeat.test.mjs",
+)
+
 js_test(
     name = "str005_step5_diagnostic_test",
     data = [":str005_step5_diagnostic_sources"],

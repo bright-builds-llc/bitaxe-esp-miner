@@ -49,11 +49,12 @@ export async function previousStart(root, installed, pins = PINS) {
   const sealed = await proof(root, 'sealed-inventory.json');
   check(sealed.sha256 === pins.previousStartSeal, 'step5_previous_seal');
   await verifyInventory(root, sealed.value.files, new Set(['sealed-inventory.json']));
-  const result = (await proof(root, 'result.json')).value, context = (await proof(root, 'context.json')).value;
+  const context = (await proof(root, 'context.json')).value, run = (await proof(root, 'run.json')).value;
   const ledger = (await proof(root, 'recovery-1-ledger.json')).value, state = (await proof(root, 'recovery-1-state.json')).value;
   const status = (await proof(root, 'recovery-1-status.json')).value, closed = (await proof(root, 'recovery-1-closed.json')).value;
   const finished = (await proof(root, 'recovery-1-finished.json')).value;
-  check(result.observed_start === true && context.anchors?.installation?.seal === installed.seal &&
+  // Diagnostic and share results differ in shape; both persist the observed Start in run.json.
+  check(run.observedStart === true && context.anchors?.installation?.seal === installed.seal &&
     context.firmware_commit === installed.identity.firmware_commit && context.app_elf_sha256 === installed.identity.app_elf_sha256 &&
     context.physical === installed.physical && ledger.pending === false && Array.isArray(finished.failures) && finished.failures.length === 0 &&
     state.deviceRestorationConfirmed === true && state.deviceBaselineConfirmed === true && state.deviceLeaseInactive === true &&

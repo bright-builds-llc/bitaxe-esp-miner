@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
-Status: Startup prerequisite passed; focused heartbeat-loss implementation and published live contract remain required.
+Status: Active. Re-based heartbeat owner and contract published 2026-10-03 (restart003, then heartbeat001).
 Objective: prove device-local heartbeat revocation/shutdown and bounded cooling,
 followed by authenticated restoration/accounting and complete cleanup.
 Depends on: `task-str005-mining-startup-probe`; recovery readiness is inherited.
@@ -5205,6 +5205,48 @@ claim hardware behavior. Both source gates remain disabled until the new image,
 share prerequisite and exact preparation seal are qualified and published.
 The implementation contract is `scripts/str005-heartbeat-probe/README.md`.
 No hardware, task archival or parity promotion is implied by software completion.
+
+Heartbeat-loss probe contract | 2026-10-03 | Restart003 then heartbeat001
+
+Contract: [heartbeat-shutdown amendment](docs/hardware/str005-heartbeat-shutdown-amendment.md).
+Owner authorization | 2026-10-03: the owner approved this probe and authorized
+autonomous, iterative fixes and fresh attempts.
+Basis: archived `task-str005-v2-accepted-share-probe` (share001 complete on the
+audited `654338d0` image).
+
+- [x] Software:
+  - a `str005-heartbeat-shutdown` owner re-bases the qualified heartbeat probe
+    (coordinator, page, suppression and checkpoint seam, passive cadence
+    observer, judge, inspector) onto the install, previous Start and restart
+    lineage, on the granted origin, with zero renewals and no share
+    requirement;
+  - previous-Start lineage now reads `run.json`, so share results qualify;
+  - the step-5 preflight adds per-profile bundle markers and an
+    observer-provenance hook;
+  - the restart owner now follows share001;
+  - regressions cover all of it.
+- [ ] Phase A restart003, then pin it in `scripts/str005-heartbeat-shutdown/contract.mjs`.
+- [ ] Phase B heartbeat001, then record the outcome.
+
+Heartbeat restart hardware: enabled.
+Heartbeat shutdown probe hardware: disabled.
+
+```sh
+just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart/restart003 --start-root <repo>/scratch/str005-accepted-share/share001/attempt --gate-root <gate-root>
+# recovery stage then restart stage, exactly as restart002
+bazel build //tools/http-transport:cadence_observer //tools/http-transport:v2_observer_build_identity //tools/stratum-v2-fixture:stratum_v2_fixture //tools/stratum-v2-fixture:v2_serial_build_identity
+just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat001/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-accepted-share/share001/attempt --restart-root <repo>/scratch/str005-heartbeat-restart/restart003
+just str005-heartbeat-shutdown serve --private-root <same> --authority-directory <protected-authority>   # detached
+just str005-heartbeat-shutdown finish --private-root <same>
+```
+
+The page runs in the persistent tab, as for share001, with "Run one
+heartbeat-loss probe". It then waits for the coordinator's suppression, 8-s tail, Stop and
+recovery before running the fresh-recovery collection.
+
+Retry: restart003 and heartbeat001 are ordinal 1 of each. A further attempt
+needs a targeted, regression-backed fix and a new restart before any further
+Start.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
