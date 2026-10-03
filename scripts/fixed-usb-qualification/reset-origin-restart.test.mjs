@@ -150,3 +150,27 @@ test("installation claim rejects failure persisted during deferred source verifi
   await assert.rejects(readFile(resolve(f.root, "install-consumed.json")), { code: "ENOENT" });
   assert.equal((await readJson(resolve(f.root, "restart-failure.json"))).code, "fixture_terminal_failure");
 });
+
+const completedAdmission = { category: "worker_admission", authoritative: false, stage: "complete", first_failure: "none",
+  readiness: 63, budget_reserved_ms: 240000, budget_complete: "true" };
+test("a restart after a completed Start admits that attempt's pre-reset terminal admission marker", () => {
+  // Arrange
+  const value = restartPacket(context);
+  value.observations.unshift({ record: 1, atMs: 5, diagnostic: completedAdmission });
+  // Act / Assert
+  assert.equal(validateRestartEvidence(value, { ...context, prior_attempt_completed: true }, 7).summary.ackMatched, true);
+});
+test("a completed admission marker is unexpected work unless the restart follows a completed Start", () => {
+  // Arrange
+  const value = restartPacket(context);
+  value.observations.unshift({ record: 1, atMs: 5, diagnostic: completedAdmission });
+  // Act / Assert
+  assert.throws(() => validateRestartEvidence(value, context, 7), { code: "restart_unexpected_work" });
+});
+test("a completed admission marker after the new boot is always unexpected work", () => {
+  // Arrange
+  const value = restartPacket(context);
+  value.observations[1] = { ...value.observations[1], diagnostic: completedAdmission };
+  // Act / Assert
+  assert.throws(() => validateRestartEvidence(value, { ...context, prior_attempt_completed: true }, 7), { code: "restart_unexpected_work" });
+});

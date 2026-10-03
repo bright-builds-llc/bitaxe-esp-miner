@@ -5220,7 +5220,7 @@ Remediation (regression-backed):
 
 Restart contract | 2026-10-03
 
-Step-5 restart hardware: enabled.
+Step-5 restart hardware: disabled.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-step5-restart/restart001 --start-root <repo>/scratch/str005-step5-diagnostic/start002/attempt --gate-root <gate-root>
@@ -5245,6 +5245,35 @@ Retry: ordinal 1 only (`restart001`); no unchanged retry.
 
 Then Start004 pins this restart and runs the start003 contract with
 `--restart-root`.
+
+Restart001 | 2026-10-03 | Device restarted; evidence rule too strict
+
+- Recovery stage: start002's retained record was read fresh by ID, with
+  current recovery complete.
+- Restart stage, one software `qualificationRestart`:
+  - the device acknowledged and came up on boot 12 with a software reset, the
+    same identity and a completed Hello;
+  - the ledger and budget were unchanged and same-page preservation held;
+  - mining did not start.
+- The evidence was refused with `restart_unexpected_work`. The rule demands that
+  every `worker_admission` row read `idle`, but the first row came from the old
+  boot before the reset and reported start002's normally completed attempt
+  (`stage=complete`, `first_failure=none`).
+- Sealed `complete=false`: result `ee488c744f3cfae1de02a8d5bfcd7e4481ebe6fcf9c584f6a5249fc05384ea9e`, seal `f50da3d5ca65e8bee50bacbce6c56a6026baa9def7c932938dd4b3251b003543`.
+
+Fix (regression-backed):
+- The restart evidence validator now admits that pre-reset `complete` marker
+  only when the restart context sets `prior_attempt_completed`, which the
+  step-5 restart owner sets. Rows after the new boot must still be idle. Three
+  regressions cover this.
+- A new effect-free `just str005-step5-restart review --private-root <root>`
+  re-judges a sealed restart's immutable evidence into a sibling `-review`
+  root. A dry run over restart001 gives `complete=true`, boot 11→12, ledger
+  unchanged.
+- The device needs no second restart: the record is already cleared on boot 12.
+- Next steps: run the review from the committed source, pin its result and seal
+  in `PINS.restartResult`/`restartSeal`, enable the Start owner, and run
+  start004 with `--restart-root <restart001-review>`.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 

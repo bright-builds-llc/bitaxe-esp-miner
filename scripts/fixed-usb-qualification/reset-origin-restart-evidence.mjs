@@ -107,6 +107,9 @@ export function validateRestartEvidence(value, context, expectedBootOrdinal) {
   time = 0;
   record = 0;
   const observations = [];
+  // A restart after a completed Start may see that attempt's terminal admission marker before the reset.
+  const firstNewBoot = value.observations.find((row) => row.diagnostic?.category === "boot" &&
+    row.diagnostic.boot_ordinal === expectedBootOrdinal + 1)?.record ?? Number.POSITIVE_INFINITY;
   for (const row of value.observations) {
     exactObject(row, ["record", "atMs", "diagnostic"]);
     check(
@@ -121,7 +124,8 @@ export function validateRestartEvidence(value, context, expectedBootOrdinal) {
       continue;
     }
     if (d?.category === "worker_admission") {
-      check(d.authoritative === false && d.stage === "idle" && d.first_failure === "none", "restart_unexpected_work");
+      const priorComplete = context.prior_attempt_completed === true && row.record < firstNewBoot && d.stage === "complete";
+      check(d.authoritative === false && (d.stage === "idle" || priorComplete) && d.first_failure === "none", "restart_unexpected_work");
       continue;
     }
     const parsed = parseResetOriginDiagnostic(d);

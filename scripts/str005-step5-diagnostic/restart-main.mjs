@@ -21,12 +21,13 @@ const ENABLED_LINE = 'Step-5 restart hardware: enabled.';
 // The origin that holds the Ultra 205 Web Serial grant.
 const PORT = 48765;
 export function argumentsFor(argv, enabled = ENABLED) {
-  const [action, ...args] = argv, options = {}; check(['preflight', 'serve', 'finish'].includes(action) && args.length % 2 === 0, 'preparation_arguments');
-  if (action !== 'finish') check(enabled, 'preparation_disabled');
+  const [action, ...args] = argv, options = {}; check(['preflight', 'serve', 'finish', 'review'].includes(action) && args.length % 2 === 0, 'preparation_arguments');
+  if (!['finish', 'review'].includes(action)) check(enabled, 'preparation_disabled');
   for (let i = 0; i < args.length; i += 2) { const key = args[i], value = args[i + 1];
     check(['--private-root', '--start-root', '--gate-root', '--stage'].includes(key) && !options[key] && typeof value === 'string' &&
       (key === '--stage' ? ['recovery', 'restart'].includes(value) : resolve(value) === value), 'preparation_arguments'); options[key] = value; }
-  check(options['--private-root'] && (action === 'preflight' ? options['--start-root'] && options['--gate-root'] && Object.keys(options).length === 3 : options['--stage'] && Object.keys(options).length === 2), 'preparation_arguments');
+  check(options['--private-root'] && (action === 'preflight' ? options['--start-root'] && options['--gate-root'] && Object.keys(options).length === 3
+    : action === 'review' ? Object.keys(options).length === 1 : options['--stage'] && Object.keys(options).length === 2), 'preparation_arguments');
   return { action, options };
 }
 async function sealed(root, expected) { await privateRoot(root); const seal = await proof(root, 'sealed-inventory.json');
@@ -74,6 +75,7 @@ async function recoveryReady(root, context, fresh) {
 export async function main(argv) {
   const { action, options } = argumentsFor(argv), root = options['--private-root'];
   const firmwareRoot = process.env.BUILD_WORKSPACE_DIRECTORY ?? git(process.cwd(), ['rev-parse', '--show-toplevel']); ignored(firmwareRoot, root);
+  if (action === 'review') return review(root);
   const published = await source(firmwareRoot, action !== 'finish');
   if (action === 'preflight') {
     await missing(root); await privateRoot(dirname(root)); const bound = await parents({ start: options['--start-root'] });
@@ -83,7 +85,7 @@ export async function main(argv) {
     const assets = { page: await readFile(resolve(gateRoot, PAGE)), bundle: await readFile(resolve(gateRoot, BUNDLE)),
       trust: await readFile(resolve(firmwareRoot, 'firmware/bitaxe/bwg/deployment-trust.json')) };
     check(assets.bundle.includes(gateCommit) && assets.bundle.includes('qualificationRestart'), 'preparation_gate_bundle');
-    const context = { schema: 'str005-step5-restart-context-v1', ...published, ...bound, firmware_root: firmwareRoot,
+    const context = { schema: 'str005-step5-restart-context-v1', ...published, ...bound, prior_attempt_completed: true, firmware_root: firmwareRoot,
       gate_root: gateRoot, gate_commit: gateCommit, scope: 'share', assetHashes: Object.fromEntries(Object.entries(assets).map(([key, value]) => [key, sha256(value)])) };
     await mkdir(root, { mode: 0o700 }); await writeNew(resolve(root, 'context.json'), context);
     for (const [key, value] of Object.entries(assets)) await retain(resolve(root, `gate-${key}`), value);
@@ -148,6 +150,27 @@ async function finish(root, child, stage, context) {
   await writeNew(resolve(child, 'result.json'), result); await writeNew(resolve(child, 'sealed-inventory.json'), { files: await inventory(child) });
   result.restartSealSha256 = await fileDigest(resolve(child, 'sealed-inventory.json'));
   await writeNew(resolve(root, 'result.json'), result); await writeNew(resolve(root, 'sealed-inventory.json'), { files: await inventory(root) }); return result;
+}
+/** Effect-free re-judgment of a sealed restart's immutable evidence with the corrected
+ * prior-attempt rule; it writes a sibling `-review` root and never touches the original. */
+async function review(root) {
+  await privateRoot(root); const rootSeal = await sealed(root);
+  const context = (await proof(root, 'context.json')).value, child = resolve(root, 'restart'), reviewRoot = `${root}-review`;
+  await missing(reviewRoot); await sealed(child);
+  check(context.schema === 'str005-step5-restart-context-v1', 'preparation_review_context');
+  const observed = await parts(child, [...STAGES, 'finished', 'evidence', 'first-failure']), claim = await parts(child, ['restart-claim']);
+  check(observed.evidence && claim['restart-claim'], 'preparation_review_evidence');
+  observed.evidence = await restartEvidence(observed.evidence, { ...context, prior_attempt_completed: true }, claim['restart-claim'].request);
+  observed.evidenceVerified = true; observed.firstFailure = observed['first-failure'] ?? null;
+  // The page's only collection failure was the evidence verification this review now performs.
+  const remaining = (observed.finished?.failures ?? ['missing']).filter(stage => stage !== 'evidence');
+  if (remaining.length === 0) observed.finished = { failures: [] };
+  const result = conclusion(observed, context, true);
+  result.review = { schema: 'str005-step5-restart-review-v1', source_seal: rootSeal, rule: 'prior_attempt_completed' };
+  await mkdir(reviewRoot, { mode: 0o700 });
+  await writeNew(resolve(reviewRoot, 'result.json'), result);
+  await writeNew(resolve(reviewRoot, 'sealed-inventory.json'), { files: await inventory(reviewRoot) });
+  return result;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main(process.argv.slice(2)).then(value => process.stdout.write(`${JSON.stringify({ complete: value.complete ?? value.current_recovery_complete ?? null, preflight: value.preflight ?? null, stage: value.stage ?? null, released: value.released ?? null, blockers: value.blockers ?? [], mining_started: false })}\n`)).catch(error => {
   process.stdout.write(`${JSON.stringify({ complete: false, blocker: /^preparation_[a-z_]+$/u.test(error.code ?? '') ? error.code : 'preparation_rejected' })}\n`); process.exitCode = 1;
