@@ -5253,6 +5253,38 @@ Retry: restart003 and heartbeat001 are ordinal 1 of each. A further attempt
 needs a targeted, regression-backed fix and a new restart before any further
 Start.
 
+Heartbeat001 | 2026-10-03 | Refused in prepare; no Start
+
+- Preflight, baseline and the startup detector passed.
+- The coordinator's prearmed passive cadence observer failed its WebSocket
+  connect to the device's freshly reported telemetry endpoint within 38 ms
+  (`connect_failed`, zero bytes). `prepare` then failed closed before Start:
+  there was no signer use, Start, ledger charge or fault, the device stayed
+  idle on boot 14, and no retained record was created.
+- `finish` sealed `complete=false` (`heartbeat_evidence_unverified`,
+  `startup_owner_failed`): result
+  `dd0eb75d07ad756dfa68f3336bd891661e6a0f4bcdd5c941114c8ba2b63e171c`, seal
+  `9ebc63cedb4b314c20c212ad9fd5c8657265b15a973add6085c89b8b5d62d38a`.
+
+Diagnosis: a read-only check of the same self-reported endpoint succeeded from
+Chrome (HTTP reachable in 575 ms). From the agent's shell, Node and `nc` both
+failed instantly with `EHOSTUNREACH`. Host processes launched under the Claude
+desktop app (via its bundled Claude Code `claude.app` and a `disclaimer`
+helper) lack macOS Local Network permission. This is a host privacy-setting
+blocker, not a firmware or harness defect. The agent may not change OS privacy
+settings.
+
+Remediation and heartbeat002:
+- The owner grants Local Network access to the Claude app in System Settings,
+  under Privacy & Security, then Local Network.
+- The agent proves the boundary changed: one TCP connect from its shell to the
+  device's freshly reported endpoint succeeds.
+- Heartbeat002 then reruns the same contract with `heartbeat002`. The lineage
+  is unchanged: restart003, boot 14, ledger 25, with no new retained record
+  because no Start ran.
+- No restart is needed, and an unchanged retry without that proof is not
+  allowed.
+
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
 Status: Blocked on independent checkpoint results; no campaign is pre-authorized.
