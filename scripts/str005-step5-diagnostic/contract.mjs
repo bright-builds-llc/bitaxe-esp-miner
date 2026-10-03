@@ -4,7 +4,7 @@ import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 export const TASK = 'task-str005-step5-diagnostic-rerun';
 export const ENABLED_LINE = 'Step-5 diagnostic Start hardware: enabled.';
-export const ENABLED = false;
+export const ENABLED = true;
 export const CONTRACT = 'docs/hardware/str005-step5-diagnostic-amendment.md';
 /** Phase-1 install seal; set only after that attempt passes, finalizes and is reviewed. */
 // Phase-1 attempt-003's firmware failed the native panic cutoff audit; the corrected
@@ -16,7 +16,8 @@ export const PINS = Object.freeze({ installationProfile: 'step5-diagnostic-reins
   previousStartResult: '0a66996aea4bd8f611df9f817b5348bf51c1b2baa11e4e27b6dd72a1484ae371',
   previousStartSeal: '1b2fbfcb0fb2e250e2856b4c273f227768751e4c073a833622f44f84ec6ceeea',
   // The retained V2 record clears only on reboot; the next Start binds the sealed restart after start002.
-  restartResult: null, restartSeal: null,
+  restartResult: '18e5df9ce605a65e9fded19c895c3ac20561fc649144c1541e6703df15722daf',
+  restartSeal: '0d6e09860a68242b2182033b43f8892228022af64984a8699a61ecf5094ffe00',
   gate: '86fc62d7a9d75da1affa2d51bc3b9eab41d86031' });
 /** The exact task line under `## Active` and the compiled flag both admit effects. */
 export function taskEnabled(tasks, compiled = ENABLED) {

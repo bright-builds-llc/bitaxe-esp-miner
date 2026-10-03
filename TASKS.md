@@ -5170,7 +5170,7 @@ fixes and fresh attempts as needed.
 - [ ] Run start003 under the contract below; on a fixable failure, fix it, add
   a regression and continue with a fresh ordinal.
 
-Step-5 diagnostic Start hardware: disabled.
+Step-5 diagnostic Start hardware: enabled.
 
 Commands, from a clean tree equal to its upstream:
 
@@ -5274,6 +5274,16 @@ Fix (regression-backed):
 - Next steps: run the review from the committed source, pin its result and seal
   in `PINS.restartResult`/`restartSeal`, enable the Start owner, and run
   start004 with `--restart-root <restart001-review>`.
+
+Restart001 review | 2026-10-03 | Complete
+
+`just str005-step5-restart review` ran from `4d13ab36` and wrote the sibling
+`restart001-review` root: `complete=true`, boot 11→12, ledger and budget
+unchanged. Result `18e5df9ce605a65e9fded19c895c3ac20561fc649144c1541e6703df15722daf`,
+seal `0d6e09860a68242b2182033b43f8892228022af64984a8699a61ecf5094ffe00`. Both
+are pinned in the Start owner, which is `ENABLED=true` again. Start004 runs the
+start003 contract with `start004` and
+`--restart-root <repo>/scratch/str005-step5-restart/restart001-review`.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
