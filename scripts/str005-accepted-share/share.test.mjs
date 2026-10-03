@@ -4,11 +4,12 @@ import { argumentsFor, ENABLED_LINE, PINS, TASK, taskEnabled } from './contract.
 
 const tasks = line => `## Active\n### ${TASK} | 2026-09-27 | synthetic\n\n${line}\n\n## Future\n`;
 const pinned = { ...PINS, restartResult: 'a'.repeat(64), restartSeal: 'b'.repeat(64) };
+const unpinned = { ...PINS, restartResult: null, restartSeal: null };
 
 test('share effects need the compiled flag, the exact active line and a pinned restart', () => {
   // Arrange / Act / Assert
   assert.doesNotThrow(() => taskEnabled(tasks(ENABLED_LINE), true, pinned));
-  assert.throws(() => taskEnabled(tasks(ENABLED_LINE), true, PINS), /share_disabled/u);
+  assert.throws(() => taskEnabled(tasks(ENABLED_LINE), true, unpinned), /share_disabled/u);
   assert.throws(() => taskEnabled(tasks(ENABLED_LINE), false, pinned), /share_disabled/u);
   assert.throws(() => taskEnabled(tasks('Accepted share probe hardware: disabled.'), true, pinned), /share_disabled/u);
 });

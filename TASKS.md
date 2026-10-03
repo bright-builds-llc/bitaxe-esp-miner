@@ -6439,12 +6439,18 @@ start004 sealed complete.
   - the restart owner takes its parent and task gate from `restart-config.mjs`
     (start004, this task);
   - regressions cover both.
-- [ ] Phase A restart002, then pin it in `scripts/str005-accepted-share/contract.mjs`.
+- [x] Phase A restart002, then pin it in `scripts/str005-accepted-share/contract.mjs`.
+  Complete: the recovery stage read start004's record by ID, then one
+  software restart took boot 12 to 13 with the ledger (24/23/2,640,000 ms)
+  and budget unchanged. The evidence verified under the prior-attempt rule.
+  Result `98bdfdf2e4cc10b718d9bed093626bdd8e7cc54ebbfedafe136afdc6e010a899`,
+  seal `7f602f4f01ce607f99bd00c9a46155234716851b11cbfb6b7ee374bb65e59af2`.
+  It is pinned, and the share owner is `ENABLED=true`.
 - [ ] Phase B share001, then record the outcome; on a pass, run the remaining
   verification items above before archiving.
 
-Accepted share restart hardware: enabled.
-Accepted share probe hardware: disabled.
+Accepted share restart hardware: disabled.
+Accepted share probe hardware: enabled.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-share-restart/restart002 --start-root <repo>/scratch/str005-step5-diagnostic/start004/attempt --gate-root <gate-root>
