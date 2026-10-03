@@ -1,0 +1,54 @@
+{
+  "schema_version": "bitaxe-stratum-v2-noise-serial-projection-v2",
+  "status": "accepted",
+  "board": 205,
+  "diagnostic_ordinal": 3,
+  "source_commit": "96cf5e081344446a241b3f9f9882e2eccae659cd",
+  "gate_commit": "86fc62d7a9d75da1affa2d51bc3b9eab41d86031",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "provenance": {
+    "app_elf": "d74d863a8a724fe73b591d45aebe1aa7014e4af8e24248075a256a2de3be4991",
+    "package_manifest": "b7f83d35a89823ffb66317c348bf6caf20f3d04a4acdaef444fb92eb9b795bc8",
+    "contract": "d1c472d229d43a5304dd877a9a9f4973407f61799192558551a03a0b1642cd4f",
+    "fixture": "66b6659b43f0c1f49cd61886138c882dee9cecab7a449cc5b1ca6e2dcbdb0a22",
+    "evaluator": "c452f3ea7a40b7885b9392a8802959073704e3b001c546c29a5009a6c01ce685",
+    "sealed_inventory": "b5ccca60868dfee957bfef87f63a51da4f116a36f0bd95cf7793d5139b16259b",
+    "private_result": "ed497f6142a4a6574fe4b80e7ed2944ac6a9781e25778a22b41e483c956c1ee5"
+  },
+  "criteria": {
+    "identity": true,
+    "continuity": true,
+    "authority": true,
+    "tcp_delivery": true,
+    "noise_authentication": true,
+    "encrypted_proof": true,
+    "no_new_work": true,
+    "preservation": true,
+    "accounting": true,
+    "restoration": true,
+    "cleanup": true,
+    "privacy": true
+  },
+  "timings_ms": {
+    "preparation": 150,
+    "connect": 292,
+    "act_one_write": 2,
+    "act_two_read": 603,
+    "proof_write": 3,
+    "diagnostic": 1653,
+    "device_cleanup": 24,
+    "fixture_lifetime": 2073,
+    "host_cleanup": 9
+  },
+  "counts": {
+    "exact_peer_connections": 1,
+    "unexpected_peer_connections": 0,
+    "act_one_written": 64,
+    "act_one_received": 64,
+    "proof_written": 22,
+    "proof_received": 22,
+    "new_work": 0,
+    "new_shares": 0
+  },
+  "redaction_status": "passed"
+}

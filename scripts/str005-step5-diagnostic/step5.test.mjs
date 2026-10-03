@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { argumentsFor, ENABLED_LINE, PINS, taskEnabled, TASK } from './contract.mjs';
+import { argumentsFor, ENABLED, ENABLED_LINE, PINS, taskEnabled, TASK } from './contract.mjs';
 import { installation } from './lineage.mjs';
 import { step5Summary } from './summary.mjs';
 import { maybeRejection } from './client-core.mjs';
@@ -24,9 +24,9 @@ test('effects need both the compiled flag and the exact active task line', () =>
   assert.throws(() => taskEnabled(`## Future\n### ${TASK} | x\n\n${ENABLED_LINE}\n`, true), /step5_disabled/u);
 });
 
-test('the source keeps the compiled effect flag off until the install is pinned', () => {
+test('the compiled effect flag is on only with a pinned install seal', () => {
   // Arrange / Act / Assert
-  assert.equal(PINS.installationResult, null);
+  assert.equal(ENABLED, PINS.installationResult !== null && PINS.installationSeal !== null);
 });
 
 test('arguments are absolute, exact and action-specific', () => {
@@ -44,7 +44,7 @@ test('an unpinned or mismatched installation is never admitted', async t => {
   const root = resolve(base, 'attempt-001'); await mkdir(root, { mode: 0o700 });
   await writeFile(resolve(root, 'final-result.json'), '{}', { mode: 0o600 });
   // Act / Assert
-  await assert.rejects(installation(root), /step5_installation_unpinned/u);
+  await assert.rejects(installation(root, { installationResult: null, installationSeal: null }), /step5_installation_unpinned/u);
   await assert.rejects(installation(root, { installationResult: 'a'.repeat(64), installationSeal: 'b'.repeat(64) }), /step5_installation_anchor/u);
 });
 

@@ -5212,7 +5212,8 @@ Findings (read-only, 2026-10-02):
     `127.0.0.1:48765`, and records a closed step-5 summary.
   - Shared: the recovery diagnostics projection now keeps strictly validated
     safety rows, and `str005-client-failure-v2` adds the closed rejection.
-- [ ] Phase 1: run the install contract below and record the outcome.
+- [x] Phase 1: run the install contract below and record the outcome. Attempt-003
+  passed (result `ed497f61…`, seal `b5ccca60…`).
 - [ ] Phase 2: pin the install seal, enable the Start owner, run the single
   diagnostic Start, and record the outcome.
 
@@ -5220,7 +5221,7 @@ Contract: [step-5 diagnostic amendment](docs/hardware/str005-step5-diagnostic-am
 
 Phase 1 install contract | 2026-10-02
 
-Step-5 diagnostic install hardware: enabled.
+Step-5 diagnostic install hardware: disabled.
 
 Commands run from a clean tree equal to its upstream; `<gate-root>` is the local
 Gate checkout at the `MODULE.bazel` pin:
@@ -5289,6 +5290,53 @@ Remediation and attempt-003:
   evidence: before identity `2b8ca6b3`/`0bf9a7db`.
 - Attempt-003 uses the same commands with `attempt-003` and
   `--attempt-ordinal 3`, and the detached parent.
+
+Phase 1 attempt-003 | 2026-10-03 | Passed
+
+- Package `96cf5e08` (ELF `d74d863a…`), Gate `86fc62d7`. The detached parent
+  had PPID 1.
+- All seven Connects reused the grant with no chooser. Cycles ran in order and
+  the guard was not triggered.
+- Five state-preserving writes were each reviewed. The Noise diagnostic was
+  accepted, restoration was confirmed, the ledger stayed idle at 22/21/2,280,000
+  ms, and `mine_on_boot` stayed false.
+- Finalize/review: `passed`/`complete`, result
+  `ed497f6142a4a6574fe4b80e7ed2944ac6a9781e25778a22b41e483c956c1ee5`, seal
+  `b5ccca60868dfee957bfef87f63a51da4f116a36f0bd95cf7793d5139b16259b`.
+  Projection: [attempt-003](docs/parity/evidence/str005-step5-install/attempt-003.json).
+- The device now runs the instrumented `96cf5e08`/`d74d863a`.
+
+Phase 2 Start contract | 2026-10-03
+
+Step-5 diagnostic Start hardware: enabled.
+
+`PINS` now bind the phase-1 seal and `ENABLED=true`. The signing authority is
+the owner's existing protected development authority under
+`~/.local/share/`. Its public `trust.json` key IDs (update
+`dev-update-PY57O77eAUFmYzGW`, lease `dev-lease-BtqZlfzZctrmykUz`, profile 0.2)
+match `firmware/bitaxe/bwg/deployment-trust.json`; private files are never read
+by the agent. Commands, from a clean tree equal to its upstream:
+
+```sh
+bazel build //tools/stratum-v2-fixture:stratum_v2_fixture //tools/stratum-v2-fixture:v2_serial_build_identity
+just detect-ultra205   # stdout saved as <parent>/detector.stdout.log
+just str005-step5-diagnostic preflight --private-root <repo>/scratch/str005-step5-diagnostic/start001/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-install/attempt-003
+just str005-step5-diagnostic serve --private-root <same> --authority-directory <protected-authority>
+just str005-step5-diagnostic finish --private-root <same>
+```
+
+Between `serve` and `finish`, the steps follow status-repro:
+1. Save a fresh `startup-detector.stdout.log` before the Run button.
+2. Connect with a real click after a read-only visibility check; the grant is
+   reused at `127.0.0.1:48765`.
+3. Use the page's single Run.
+4. Close the page.
+5. Stop the server owner.
+6. Save `final-detector.stdout.log`.
+
+The serve owner runs detached with no wall-clock deadline while it waits for
+the owner. Effects, limits, evidence, outcomes, prohibitions, recovery, retry
+(ordinal 1 only) and stop conditions are exactly the amendment's phase 2.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
