@@ -7,7 +7,7 @@ import { configuration, serveAsset } from "./server-assets.mjs";
 import { saveFirstFailure } from "./first-failure.mjs";
 import { loadContext, recheckNative, verifyEffectInputs } from "./context.mjs";
 import { baseline, healthy, readJournal, readNoiseJournal, recordNoise, recordState, saveAccounting } from "./journal.mjs";
-import { claimInstall, reviewInstall, recordCycle, claimProbe, completeProbe } from "./install.mjs";
+import { claimInstall, reviewInstall, recordCycle, cycleReady, claimProbe, completeProbe } from "./install.mjs";
 import { startFixture, selectInterface } from "./fixture-owner.mjs";
 import { parseStartV2 } from "./contract-v2.mjs";
 import { parseNoiseStatusV2 } from "./device-v2.mjs";
@@ -112,6 +112,7 @@ export async function createSupervisor(options, operations = {}) {
         phase = "candidate"; return result;
       }
       if (url.pathname === "/candidate-context") { exactObject(input, []); check(phase === "candidate", "noise_install_required"); return config("candidate"); }
+      if (url.pathname === "/cycle/ready") { exactObject(input, ["index"]); return { ready: await cycleReady(root, input.index) }; }
       if (url.pathname === "/probe/claim") { exactObject(input, ["index", "status"]); return claimProbe(root, context, input.index, input.status, now()); }
       if (url.pathname === "/probe/complete") return completeProbe(root, context, input, now());
       if (url.pathname === "/cycle") { exactObject(input, ["index"]); return recordCycle(root, context, input.index); }

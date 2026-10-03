@@ -58,3 +58,23 @@ test("cross-origin writes are rejected before recording", async (t) => {
   assert.equal(result.status, 400);
   await assert.rejects(readFile(resolve(f.root, "state-0001.json")), { code: "ENOENT" });
 });
+test("a cycle before its install review is refused without latching the attempt", async (t) => {
+  // Arrange
+  const f = await serving(t);
+  // Act
+  const response = await f.request("/cycle/ready", { index: 1 });
+  // Assert
+  assert.deepEqual(await response.json(), { ready: false });
+  assert.equal(await readFile(resolve(f.root, "failure.json")).then(() => true, () => false), false);
+});
+test("a cycle becomes ready only once its install review exists", async (t) => {
+  // Arrange
+  const f = await serving(t);
+  const { writeNew } = await import("./files.mjs");
+  await writeNew(resolve(f.root, "install-1.review.json"), { schema: "synthetic-review" });
+  // Act
+  const first = await (await f.request("/cycle/ready", { index: 1 })).json();
+  const second = await (await f.request("/cycle/ready", { index: 2 })).json();
+  // Assert
+  assert.deepEqual([first.ready, second.ready], [true, false]);
+});

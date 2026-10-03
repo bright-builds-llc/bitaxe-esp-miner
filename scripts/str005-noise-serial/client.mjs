@@ -51,6 +51,8 @@ async function configureCandidate() {
   return { configured: true };
 }
 async function recordCycle(index) {
+  // A cycle before its install review is an operator ordering error, not attempt evidence.
+  if (!(await post("/cycle/ready", { index })).ready) throw new Error("noise_cycle_not_ready");
   operationPhase = "probe";
   await refresh();
   const binding = await window.workerAcceptance.noiseDiagnosticPossession();

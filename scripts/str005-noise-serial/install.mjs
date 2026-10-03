@@ -110,6 +110,13 @@ export async function reviewInstall(root, context, index, now, operations = {}) 
   await writeNew(resolve(root, `install-${index}.review.json`), value);
   return { install_verified: true, index };
 }
+/** Read-only ordering check before any cycle device read; it never latches a failure. */
+export async function cycleReady(root, index) {
+  if (!Number.isInteger(index) || index < 1 || index > 4) return false;
+  const present = async (name) => { try { await proof(root, name); return true; } catch (error) { if (error.code === "ENOENT") return false; throw error; } };
+  return await present(`install-${index}.review.json`) && !await present(`cycle-${index}.json`) &&
+    (index === 1 || await present(`cycle-${index - 1}.json`));
+}
 export async function recordCycle(root, context, index) {
   check(Number.isInteger(index) && index >= 1 && index <= 4, "noise_cycle_index");
   const review = (await proof(root, `install-${index}.review.json`)).value;

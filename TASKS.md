@@ -5266,6 +5266,30 @@ for the owner. Its live parent PID 1 or launcher-independent session is
 recorded before the page opens. Attempt-002 uses the same commands with
 `attempt-002` and `--attempt-ordinal 2`. Every other phase-1 term is unchanged.
 
+Phase 1 attempt-002 | 2026-10-03 | Unverified after install 0
+
+Package `2b8ca6b3` (ELF `0bf9a7db…`). The detached parent (PPID 1) held the page
+through the owner's wait.
+- The baseline Connect and Connect #2 both reused the grant with no chooser.
+- Install 0 wrote and reviewed the instrumented candidate, which the device now
+  runs with its baseline confirmed.
+- The agent then called `recordCycle(1)` before install 1. Its probe claim had
+  no install-1 review, so the server latched `noise_operation_failed`
+  (`evidence_incomplete`). This was an operator sequencing error, not a device
+  fault.
+- Normal close, flush, supervisor stop and finalize/review followed:
+  `unverified`/`stop_impossible_contract`, result `2fdc92b9…`, seal
+  `72716b01…`. The cleanup record failed with `ENOENT`.
+
+Remediation and attempt-003:
+- The page client now calls a read-only `/cycle/ready` before any device read
+  and refuses an out-of-order cycle without latching (server and client
+  regressions).
+- The profile's reviewed continuation 3 binds attempt-002's exact install-0
+  evidence: before identity `2b8ca6b3`/`0bf9a7db`.
+- Attempt-003 uses the same commands with `attempt-003` and
+  `--attempt-ordinal 3`, and the detached parent.
+
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
 Status: Current safety verified after status001; diagnostic self-test captured a useful original frame. Share001's cause remains unavailable, and status001 ended at unsafe revocation during preparation step5. Qualification blocked; all effect gates disabled.

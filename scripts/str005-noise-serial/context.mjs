@@ -61,6 +61,16 @@ export const PROFILES = Object.freeze({
       2: { attempt: "attempt-001", resultSha256: "839964e820f643a8123b9fc59e9bfbce39900c9720f5a5d5745c22209474de45",
         inventorySha256: "7afe9459419719e53cf198d80e7ae2cdf2cdc7727fc4444e057fbdd1f9e20dac",
         remediation: "operator_parent_waits_without_wall_clock_deadline" },
+      // Attempt-002 installed its candidate, then an operator recorded cycle 1 before install 1;
+      // the probe claim latched a failure. Cycles are now refused, unlatched, until reviewed.
+      3: { attempt: "attempt-002", resultSha256: "2fdc92b96e080e027c97db58b7e722d90ad2248c017360cf5a3aa2e24ffe13ac",
+        inventorySha256: "72716b017bfc897a736587fff8ea0c3f9e88af32cd727dc9baf8bcd4e8426202",
+        remediation: "cycle_refused_until_install_reviewed",
+        installed: { firmware_commit: "2b8ca6b372bab8815d9374b3210f79c43a076e4a",
+          app_elf_sha256: "0bf9a7db3bb8ce195725a8227c6f2d7c69a9becb8508333272bcf0596e72d5f5",
+          evidence: { "install-0.claim.json": "767a241a156288f6a8538116866f986ee274469aa9d3efdb690f7862bfa6ea6f",
+            "install-0.exit.json": "72efdbd7b75d3080b1a0f339f6af9c75d6c4900e30de2cdf603704cc5c426b34",
+            "install-0/flash-command-evidence.json": "b26a5fae20cce0c7636d02a876d8f688b85960a2eae3d665f18b0e48e77968e0" } } },
     }),
     admits: (previous) => previous.basis === "control_stack_port_reuse_pass" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 21 },

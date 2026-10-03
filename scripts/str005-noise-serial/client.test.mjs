@@ -49,6 +49,7 @@ async function browser(options = {}) {
       if (path === "/start/claim") value = { ...example().start, schema: "worker-noise-diagnostic-start-v2" };
       if (path === "/restoration/context") value = { attemptId: example().start.attemptId };
       if (path === "/probe/claim") value = { probe_nonce: "fresh-probe-ticket" };
+      if (path === "/cycle/ready") value = { ready: options.cycleReady ?? true };
       return { ok: true, json: async () => { jsonBodies++; return value; } };
     },
   };
@@ -86,4 +87,12 @@ test("fresh probe receipt waits for the actual Gate probe promise", async () => 
   const completed = b.requests.find((row) => row.path === "/probe/complete");
   assert.equal(completed.input.nonce, "fresh-probe-ticket");
   assert.equal(completed.input.probe.requestPayloadBytes, 65536);
+});
+test("a cycle that is not ready never reads or probes the device", async () => {
+  // Arrange
+  const b = await browser({ cycleReady: false });
+  // Act / Assert
+  await assert.rejects(b.driver.recordCycle(1), /noise_cycle_not_ready/u);
+  assert.deepEqual(b.calls, []);
+  assert.deepEqual(b.requests.map((row) => row.path), ["/cycle/ready"]);
 });
