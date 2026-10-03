@@ -4,7 +4,7 @@ import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 export const TASK = 'task-str005-v2-accepted-share-probe';
 export const ENABLED_LINE = 'Accepted share probe hardware: enabled.';
-export const ENABLED = true;
+export const ENABLED = false;
 export const CONTRACT = 'docs/hardware/str005-accepted-share-amendment.md';
 export const SCHEMA = 'str005-accepted-share-context-v1';
 export const ADMISSION = 'accepted-share-v1';
