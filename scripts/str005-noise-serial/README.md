@@ -88,8 +88,10 @@ permission gesture or adopt a new page baseline.
    for fresh retained-job/preservation proof and after accounting. This helper
    can record safe restoration of a failed retained job without promoting that
    job's outcome.
-1. Close the Worker, await `noiseSupervisor.flush()`, close the actual browser
-   tab, and stop the supervisor. Preserve every actual nonzero exit/failure.
+1. Close the Worker, await `noiseSupervisor.flush()`, close the Gate page, and
+   stop the supervisor. Preserve every actual nonzero exit/failure. Per
+   AGENTS.md "Persistent Gate Browser Tab", close the page by navigating the
+   dedicated tab to `about:blank` rather than closing the tab.
 
 The diagnostic uses no Work Lease signer, pool credentials, mining allowance or
 mining route. `recover` is unsupported and returns `noise_recovery_unavailable`;
@@ -103,7 +105,8 @@ parent's normal stop signal; `receipt()` requires observed exit and a
 same-parent hrtime interval no longer than five seconds. The owner must identify
 that exact child. Do not label an unrelated wrapper's exit as the server's exit.
 
-After actual browser closure, construct the closed parent browser witness from
+After actual page closure (the dedicated tab confirmed at `about:blank`),
+construct the closed parent browser witness from
 that observation and the exact last journal row; this is the one external UI
 fact the process observer cannot invent. Pass `{browser, supervisor}` to
 `recordCleanup(root, context, input)` from `cleanup.mjs`. It derives the fixture

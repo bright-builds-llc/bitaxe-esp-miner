@@ -294,6 +294,27 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 
 ### Autonomous Ultra 205 Hardware Verification
 
+### Persistent Gate Browser Tab
+
+- Owner rule, 2026-10-03: keep one dedicated Gate tab open, never close it, and
+  reuse it for every Web Serial harness run. The owner brings it forward once;
+  after that, agents act without asking for it again.
+- Open each run's page by navigating that same tab, not by creating a new tab.
+  Serve harness pages on `127.0.0.1:48765`, the origin that holds the Ultra 205
+  grant, so Connect reuses the granted port without the chooser.
+- When a procedure says to close the browser page or tab, navigate the
+  dedicated tab to `about:blank` instead, via the page's own
+  `location.replace('about:blank')`; the extension cannot navigate there
+  directly. That unloads the Gate page and releases its serial port, so it
+  satisfies page-closure and cleanup evidence.
+  Confirm read-only that the tab shows `about:blank` before recording the
+  closure. Never close the tab itself.
+- Before every journaled click, still check `document.visibilityState`
+  read-only. If the tab is hidden (the owner switched tabs or windows, or the
+  screen is locked), hold the run in its declared safe state and wait for the
+  owner without a deadline. Agents cannot raise a Chrome tab themselves, and
+  must never work around that with synthesized focus or permission tricks.
+
 ### Fixed USB Ownership
 
 - Before changing USB startup, transport, detection, flashing, monitoring, or recovery, read ADR-0021, ADR-0023 and `docs/hardware/native-usb-ownership.md`.

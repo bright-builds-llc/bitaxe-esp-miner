@@ -5308,7 +5308,7 @@ Phase 1 attempt-003 | 2026-10-03 | Passed
 
 Phase 2 Start contract | 2026-10-03
 
-Step-5 diagnostic Start hardware: disabled.
+Step-5 diagnostic Start hardware: enabled.
 
 `PINS` now bind the phase-1 seal and `ENABLED=true`. The signing authority is
 the owner's existing protected development authority under
@@ -5320,7 +5320,7 @@ by the agent. Commands, from a clean tree equal to its upstream:
 ```sh
 bazel build //tools/stratum-v2-fixture:stratum_v2_fixture //tools/stratum-v2-fixture:v2_serial_build_identity
 just detect-ultra205   # stdout saved as <parent>/detector.stdout.log
-just str005-step5-diagnostic preflight --private-root <repo>/scratch/str005-step5-diagnostic/start001/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-install/attempt-003
+just str005-step5-diagnostic preflight --private-root <repo>/scratch/str005-step5-diagnostic/start002/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001
 just str005-step5-diagnostic serve --private-root <same> --authority-directory <protected-authority>
 just str005-step5-diagnostic finish --private-root <same>
 ```
@@ -5363,7 +5363,7 @@ Fixes:
 
 Phase 1b reinstall contract | 2026-10-03
 
-Step-5 diagnostic reinstall hardware: enabled.
+Step-5 diagnostic reinstall hardware: disabled.
 
 Same commands and terms as phase 1, with namespace
 `scratch/str005-step5-reinstall/attempt-001`, `--attempt-ordinal 1` and
@@ -5371,6 +5371,25 @@ Same commands and terms as phase 1, with namespace
 Before preflight, the frozen package must pass the full phase-2 audit set:
 cutoff, store, signed Start, fault provenance and native USB symbols, plus the
 control-stack audit. The parent runs detached.
+
+Phase 1b attempt-001 | 2026-10-03 | Passed
+
+- Package `654338d0` (ELF `2641c24f…`). Before preflight, every phase-2 audit
+  passed on the frozen ELF: native cutoff, store, signed Start, fault
+  provenance, native USB symbols, and control stack (4,080 bytes of headroom).
+- The owner brought the dedicated tab forward once, using a remote app. Then
+  all seven Connects reused the grant, five writes were each reviewed, four
+  in-order cycles and an accepted Noise diagnostic followed, and restoration
+  completed with the ledger at 22/21/2,280,000 ms and `mine_on_boot=false`.
+- Per the new persistent-tab rule, the page was closed with
+  `location.replace('about:blank')`; the tab stayed open.
+- Finalize/review: `passed`/`complete`, result
+  `04f2f8d1689f8059eb59a8522c7b582b87dbb22375436f6fd4294d4b654afa46`, seal
+  `0751d602e4874a1224923d8e5ef2b86e492fbfc9f7b382140965cb7519a81092`.
+  Projection: [attempt-001](docs/parity/evidence/str005-step5-reinstall/attempt-001.json).
+- The Start owner's `PINS` now bind this seal with profile
+  `step5-diagnostic-reinstall`, `ENABLED=true`. Phase 2 runs as published above,
+  using `start002` because start001's root was consumed by the refused preflight.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
