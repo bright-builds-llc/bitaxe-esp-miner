@@ -5193,8 +5193,14 @@ Findings (read-only, 2026-10-02):
   headroom), signed Start (3,088), renewal (4,592), device Noise, telemetry and
   fault-provenance audits. The provenance audit's missing Bazel runfiles were
   fixed.
-- [ ] Gate: grammar and page display for the new line; tests and ADR; push and
-  repin.
+- [x] Gate: grammar and page display for the new line; tests and ADR; push and
+  repin. Gate `86fc62d7a9d75da1affa2d51bc3b9eab41d86031` (ADR-0102): the
+  closed `worker_revocation_detail` grammar, which drops inconsistent
+  fact/state/value combinations; 875 Gate tests pass. Archive SHA-256
+  `17e5c990baac77d542ae6a5e37a86371208b20fe6c47e012f1612cfd60605235`; the full
+  firmware Bazel suite passes 284/284. The range limits stay in
+  `observation.rs`, where parity evidence inventories pin them; `99081666` had
+  moved them and broken `automation_test` until this fix.
 - [ ] Harness: a successor diagnostic-Start owner that installs the
   instrumented package state-preservingly, signs one zero-renewal normal Start,
   and preserves the Gate rejection category, the preparation receipt, the

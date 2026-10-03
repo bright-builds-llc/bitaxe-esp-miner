@@ -2,14 +2,9 @@
 //! verdict decides exactly what `is_ultra_205_mining_safe_at` decides.
 
 use bitaxe_safety::observation::{MonotonicMillis, Observation, StampedSample};
-use bitaxe_safety::{
-    power::{INPUT_VOLTAGE_MARGIN_RATIO, INPUT_VOLTAGE_NOMINAL_VOLTS, POWER_SAMPLE_STALE_AFTER_MS},
-    thermal::{ASIC_THROTTLE_TEMP_C, MIN_PLAUSIBLE_TEMP_C},
-};
+use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
 
-use super::TelemetryObservations;
-
-const ULTRA_205_MAX_INPUT_POWER_WATTS: f64 = 15.0;
+use super::{maybe_out_of_range_fact, TelemetryObservations};
 
 /// Safety facts in the order the mining predicate evaluates them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -138,29 +133,15 @@ impl TelemetryObservations {
             return Some(rejection.verdict(SafetyFact::FanRpm));
         }
 
-        let min_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 - INPUT_VOLTAGE_MARGIN_RATIO);
-        let max_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 + INPUT_VOLTAGE_MARGIN_RATIO);
-        [
-            (
-                SafetyFact::Power,
-                power,
-                (0.0..=ULTRA_205_MAX_INPUT_POWER_WATTS).contains(&power.0),
-            ),
-            (
-                SafetyFact::BusVoltage,
-                bus_voltage,
-                (min_input_voltage..=max_input_voltage).contains(&bus_voltage.0),
-            ),
-            (SafetyFact::Current, current, current.0 >= 0.0),
-            (
-                SafetyFact::ChipTemperature,
-                chip_temperature,
-                (MIN_PLAUSIBLE_TEMP_C..ASIC_THROTTLE_TEMP_C).contains(&chip_temperature.0),
-            ),
-        ]
-        .into_iter()
-        .find(|(_, (value, _), in_range)| !(value.is_finite() && *in_range))
-        .map(|(fact, (value, age_ms), _)| SafetyVerdict {
+        let fact = maybe_out_of_range_fact(power.0, bus_voltage.0, current.0, chip_temperature.0)?;
+        let (value, age_ms) = match fact {
+            SafetyFact::Power => power,
+            SafetyFact::BusVoltage => bus_voltage,
+            SafetyFact::Current => current,
+            // Fan RPM has freshness but no range limit, so it never fails here.
+            SafetyFact::ChipTemperature | SafetyFact::FanRpm => chip_temperature,
+        };
+        Some(SafetyVerdict {
             fact,
             state: SafetyFactState::OutOfRange,
             maybe_value_milli: maybe_milli(value),

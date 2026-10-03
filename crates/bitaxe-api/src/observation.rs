@@ -3,7 +3,13 @@
 use bitaxe_safety::observation::{
     FaultReason, MonotonicMillis, Observation, StaleReason, StampedSample, UnavailableReason,
 };
+use bitaxe_safety::{
+    power::{INPUT_VOLTAGE_MARGIN_RATIO, INPUT_VOLTAGE_NOMINAL_VOLTS},
+    thermal::{ASIC_THROTTLE_TEMP_C, MIN_PLAUSIBLE_TEMP_C},
+};
 use serde::{Deserialize, Serialize};
+
+const ULTRA_205_MAX_INPUT_POWER_WATTS: f64 = 15.0;
 
 mod safety_verdict;
 pub use safety_verdict::{SafetyFact, SafetyFactState, SafetyVerdict};
@@ -125,6 +131,35 @@ impl TelemetryObservations {
     pub fn is_ultra_205_mining_safe_at(&self, now: MonotonicMillis) -> bool {
         self.ultra_205_mining_safety_verdict_at(now).is_none()
     }
+}
+
+/// The first fresh Ultra 205 safety fact outside its mining range, in predicate order.
+fn maybe_out_of_range_fact(
+    power_watts: f64,
+    bus_voltage_volts: f64,
+    current_amps: f64,
+    chip_temp_celsius: f64,
+) -> Option<SafetyFact> {
+    let min_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 - INPUT_VOLTAGE_MARGIN_RATIO);
+    let max_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 + INPUT_VOLTAGE_MARGIN_RATIO);
+    if !(power_watts.is_finite() && (0.0..=ULTRA_205_MAX_INPUT_POWER_WATTS).contains(&power_watts))
+    {
+        return Some(SafetyFact::Power);
+    }
+    if !(bus_voltage_volts.is_finite()
+        && (min_input_voltage..=max_input_voltage).contains(&bus_voltage_volts))
+    {
+        return Some(SafetyFact::BusVoltage);
+    }
+    if !(current_amps.is_finite() && current_amps >= 0.0) {
+        return Some(SafetyFact::Current);
+    }
+    if !(chip_temp_celsius.is_finite()
+        && (MIN_PLAUSIBLE_TEMP_C..ASIC_THROTTLE_TEMP_C).contains(&chip_temp_celsius))
+    {
+        return Some(SafetyFact::ChipTemperature);
+    }
+    None
 }
 
 impl Default for TelemetryObservations {
