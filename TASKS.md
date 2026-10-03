@@ -5148,6 +5148,60 @@ the required authorization recovery checkpoint. See the
 [startup001 report](docs/parity/evidence/20260928-str005-startup001-partial.md).
 No further Start, flash, clear or self-test is admitted by this consumed trial.
 
+### task-str005-step5-revocation-detail | 2026-10-02 | Preserve the step-5 unsafe-observation trigger and Start rejection
+
+Status: Active. Offline instrumentation in progress; no device effect yet.
+Objective: make the next diagnostic Start record exactly why the device revoked
+a mining generation and why the Gate rejected Start, so status001's step-5
+`unsafe_observation` gap can be resolved by evidence instead of guesswork.
+References: `task-str005-v2-accepted-share-probe` (status001, recovery006) and
+[safety recovery evidence](docs/parity/evidence/20260929-str005-safety-recovery.md).
+
+Owner authorization | 2026-10-02: the owner asked to implement the offline
+instrumentation and then a bounded diagnostic Start contract and run.
+
+Findings (read-only, 2026-10-02):
+- Step 5 only waits 500 ms; revocation comes from the safety publisher
+  (`check_safety`: unsafe sample or zero fan after fan proof) or the 1-second
+  no-safe-sample deadline (`check_deadline`). The adapter reduces samples to two
+  booleans, so the failing fact, state, value and age are discarded.
+- status001's bus voltage was 5.464 V before and 5.475 V after, within 37 mV of
+  the 5.5 V ceiling. This is a lead only. Upstream applies 5 V +/-10% only in
+  self-test; this firmware applies it continuously. Thresholds stay unchanged
+  without evidence.
+- The Gate keeps the real rejection in `WorkerControlRejection.rejection` and a
+  page-local `control_failure` row; harness clients collapse it to
+  `operation_failed`, and evidence projection keeps only boot rows.
+- Gate status JSON is exact-key strict; unknown diagnostic lines are dropped.
+  A new diagnostic line plus a Gate grammar is the compatible channel.
+- A V2 Start must be `normal`: it consumes ordinal 22 and charges 180,000 ms
+  (ledger 2,280,000 to 2,460,000 ms). There is no absolute cap.
+
+- [x] Firmware core: add a pure first-failure safety verdict (fact, state,
+  value, age) that `is_ultra_205_mining_safe_at` delegates to, preserving its
+  exact semantics and order, with tests. `SafetyVerdict` in
+  `crates/bitaxe-api/src/observation/safety_verdict.rs`; 8 tests plus the
+  existing predicate tests.
+- [x] Revocation: record a closed first-wins detail (trigger, verdict, sample
+  age) beside the `unsafe_observation` reason for all three triggers, with tests.
+  Only the call that wins the generation's revocation records it; other reasons
+  record none. Lock-free, RAM only; 7 tests.
+- [x] Emit `worker_revocation_detail schema=v1 ... redacted=true` while a detail
+  exists, alternating with the 1 Hz admission marker, with a render test.
+  Verified: ordered fmt/Clippy, 2,600 host tests, 95 firmware/crate Bazel
+  tests, a target ELF containing the marker, and the control (4,080 bytes
+  headroom), signed Start (3,088), renewal (4,592), device Noise, telemetry and
+  fault-provenance audits. The provenance audit's missing Bazel runfiles were
+  fixed.
+- [ ] Gate: grammar and page display for the new line; tests and ADR; push and
+  repin.
+- [ ] Harness: a successor diagnostic-Start owner that installs the
+  instrumented package state-preservingly, signs one zero-renewal normal Start,
+  and preserves the Gate rejection category, the preparation receipt, the
+  revocation detail and `control_failure` rows in private evidence.
+- [ ] Publish the bounded hardware contract, run it under the attempt policy,
+  and record the outcome.
+
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
 Status: Current safety verified after status001; diagnostic self-test captured a useful original frame. Share001's cause remains unavailable, and status001 ended at unsafe revocation during preparation step5. Qualification blocked; all effect gates disabled.

@@ -75,7 +75,8 @@ pub use network::{
 };
 pub use observation::{
     project_observation, ObservationReasonWire, ObservationStampWire, ObservationStateWire,
-    ObservationStore, ObservationTruthWire, TelemetryObservations,
+    ObservationStore, ObservationTruthWire, SafetyFact, SafetyFactState, SafetyVerdict,
+    TelemetryObservations,
 };
 pub use operator_snapshot::{
     BootSessionId, OperatorSnapshotIdentity, OperatorSnapshotIdentityError,

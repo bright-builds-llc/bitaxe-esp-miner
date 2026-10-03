@@ -1399,7 +1399,7 @@ js_test(
 js_binary(
     name = "audit_fault_provenance",
     entry_point = "audit-fault-provenance.mjs",
-    data = [":core_dump_sources"],
+    data = [":core_dump_sources", "noise-native-calls.mjs", "noise-native-disassembly.mjs"],
     visibility = ["//visibility:public"],
 )
 

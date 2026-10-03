@@ -124,6 +124,7 @@ pub(super) fn run(
     let mut last_replay = 0;
     let mut next_startup_marker = 0;
     let mut next_admission_marker = 0;
+    let mut admission_turn = false;
     let mut last_heartbeat = 0;
     let mut credited_bytes = 0;
     let mut maybe_write_failure = None;
@@ -290,8 +291,16 @@ pub(super) fn run(
                     ))
                 } else if now >= next_admission_marker {
                     next_admission_marker = now.saturating_add(1000);
+                    // Once a revocation detail exists, alternate it with the
+                    // admission marker so each still repeats every two seconds.
+                    admission_turn = !admission_turn;
+                    let maybe_detail = (!admission_turn)
+                        .then(crate::production_mining_session::revocation::maybe_unsafe_detail_marker)
+                        .flatten();
                     Some((
-                        crate::production_mining_session::admission_diagnostics::marker(),
+                        maybe_detail.unwrap_or_else(
+                            crate::production_mining_session::admission_diagnostics::marker,
+                        ),
                         RecordKind::Admission,
                         false,
                     ))

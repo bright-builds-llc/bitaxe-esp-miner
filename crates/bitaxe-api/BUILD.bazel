@@ -136,6 +136,8 @@ rust_library(
         "src/mining.rs",
         "src/network.rs",
         "src/observation.rs",
+        "src/observation/safety_verdict.rs",
+        "src/observation/safety_verdict_tests.rs",
         "src/observation/tests.rs",
         "src/operator_snapshot.rs",
         "src/operator_snapshot_publication.rs",

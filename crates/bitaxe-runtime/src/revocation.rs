@@ -27,7 +27,11 @@ pub use reason::RevocationReason;
 
 #[path = "revocation/types.rs"]
 mod types;
+#[path = "revocation/unsafe_detail.rs"]
+mod unsafe_detail;
+pub use bitaxe_api::SafetyVerdict;
 pub use types::{RevocationTiming, WorkPermit, WorkerGeneration};
+pub use unsafe_detail::{UnsafeObservationDetail, UnsafeTrigger};
 
 pub struct GenerationGate {
     state: AtomicU32,
@@ -59,6 +63,7 @@ pub struct GenerationGate {
     halted_ms: AtomicU32,
     fan_proof_generation: AtomicU32,
     last_safety_ms: AtomicU32,
+    unsafe_detail: unsafe_detail::UnsafeDetailCell,
     submitted: AtomicU32,
     accepted: AtomicU32,
     rejected: AtomicU32,
@@ -104,6 +109,7 @@ impl GenerationGate {
             halted_ms: AtomicU32::new(0),
             fan_proof_generation: AtomicU32::new(0),
             last_safety_ms: AtomicU32::new(0),
+            unsafe_detail: unsafe_detail::UnsafeDetailCell::new(),
             submitted: AtomicU32::new(0),
             accepted: AtomicU32::new(0),
             rejected: AtomicU32::new(0),
@@ -407,7 +413,13 @@ impl GenerationGate {
             && self.fan_proof_generation.load(Ordering::Acquire) == state & !FLAGS
             && now.wrapping_sub(self.last_safety_ms.load(Ordering::Acquire)) > 1_000
         {
-            RevocationReason::UnsafeObservation
+            self.revoke_unsafe_at(
+                WorkerGeneration(state & !FLAGS),
+                now_ms,
+                UnsafeTrigger::NoSafeSample,
+                None,
+            );
+            return;
         } else {
             return;
         };
@@ -421,21 +433,6 @@ impl GenerationGate {
         self.last_safety_ms.store(now_ms as u32, Ordering::Release);
         self.fan_proof_generation
             .store(generation.0, Ordering::Release);
-    }
-
-    pub fn check_safety(&self, safe: bool, nonzero_fan: bool, now_ms: u64) {
-        let state = self.state.load(Ordering::Acquire);
-        if state & FLAGS != ACTIVE {
-            return;
-        }
-        let generation = WorkerGeneration(state & !FLAGS);
-        if !safe
-            || (self.fan_proof_generation.load(Ordering::Acquire) == generation.0 && !nonzero_fan)
-        {
-            self.revoke_reason_at(generation, now_ms, RevocationReason::UnsafeObservation);
-            return;
-        }
-        self.last_safety_ms.store(now_ms as u32, Ordering::Release);
     }
 
     pub fn maybe_revoked(&self) -> Option<WorkerGeneration> {

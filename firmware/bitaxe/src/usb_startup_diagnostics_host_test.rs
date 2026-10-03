@@ -556,6 +556,11 @@ mod production_mining_session {
             "worker_admission schema=v1 stage=idle first_failure=none readiness=0 budget_reserved_ms=180000 budget_complete=false redacted=true".to_owned()
         }
     }
+    pub mod revocation {
+        pub fn maybe_unsafe_detail_marker() -> Option<String> {
+            None
+        }
+    }
 }
 
 #[test]

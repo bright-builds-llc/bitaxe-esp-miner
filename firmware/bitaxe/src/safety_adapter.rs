@@ -17,9 +17,10 @@ pub(crate) use observation_store::observation_snapshot;
 
 pub(crate) fn replace_observations_from_producer(observations: bitaxe_api::TelemetryObservations) {
     let now_ms = crate::runtime_uptime::millis();
-    crate::production_mining_session::revocation::check_safety(
-        observations
-            .is_ultra_205_mining_safe_at(bitaxe_safety::observation::MonotonicMillis::new(now_ms)),
+    crate::production_mining_session::revocation::check_safety_verdict(
+        observations.ultra_205_mining_safety_verdict_at(
+            bitaxe_safety::observation::MonotonicMillis::new(now_ms),
+        ),
         observations
             .fan_rpm
             .maybe_last_good()

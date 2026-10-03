@@ -65,8 +65,16 @@ pub fn check_deadline(now_ms: u64) {
 pub(crate) fn note_fan_proof(generation: WorkerGeneration, now_ms: u64) {
     GATE.note_fan_proof(generation, now_ms);
 }
-pub(crate) fn check_safety(safe: bool, nonzero_fan: bool, now_ms: u64) {
-    GATE.check_safety(safe, nonzero_fan, now_ms);
+pub(crate) fn check_safety_verdict(
+    maybe_verdict: Option<bitaxe_runtime::revocation::SafetyVerdict>,
+    nonzero_fan: bool,
+    now_ms: u64,
+) {
+    GATE.check_safety_verdict(maybe_verdict, nonzero_fan, now_ms);
+}
+/// Diagnostic line for the latest unsafe-observation revocation; never authority.
+pub(crate) fn maybe_unsafe_detail_marker() -> Option<String> {
+    GATE.maybe_unsafe_detail().map(|detail| detail.marker())
 }
 pub(crate) fn release_unbudgeted_reservation(generation: WorkerGeneration) -> bool {
     GATE.release_unbudgeted_reservation(generation)
