@@ -35,3 +35,27 @@ records the trigger, failing fact, value and age of any future
 `unsafe_observation`, and the harness keeps that line together with the
 Worker's rejection. Raw device, signer and fixture inputs stay in ignored
 private roots; this summary carries only redacted categories and values.
+
+## Rerun: start004 seals complete
+
+The judge fixes, a no-mining qualification restart and a fresh Start produced
+a fully complete diagnostic result. Start003 was refused at baseline because
+the previous Start's retained V2 record only clears on reboot; restart001
+cleared it. Its reviewed evidence (boot 11 -> 12, ledger and budget unchanged)
+anchors the rerun.
+
+| Boundary          | Direct evidence                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| Start             | One `normal` attempt on boot 12, generation 3, zero renewals; reply after about 10.3 s; Stop 0.76 s later |
+| Running proof     | Known-attempt status observed running; one job dispatched                                           |
+| Preparation       | Current-boot receipt: all 9 steps completed; internal heap free 4,211 bytes at the last step        |
+| Revocation        | `restoration_requested` (normal Stop); safe stop complete; no `unsafe_observation`                  |
+| Safety readings   | Bus voltage 5.479 V before and 5.473 V after; chip temperature 31–32 °C                              |
+| Accounting        | Ledger next 24 / last 23 / charged 2,640,000 ms, not pending; original budget complete              |
+| Fixture           | Exact peer only, natural exit, peer/socket/listener closed, no shares received (status-only design) |
+| Result            | `complete=true`, no blockers, current safe recovery, host and serial released; step-5 summary `step5_passed` |
+
+Two independent Starts on the instrumented firmware passed preparation step 5
+at near-ceiling bus voltage. Status001's revocation therefore remains
+unreproduced. Any recurrence would now be named by the retained revocation
+detail.

@@ -15,7 +15,7 @@ import { createRestartServer } from '../str005-startup-preparation/server.mjs';
 import { conclusion, restartEvidence, STAGES, FRESH_MS } from '../str005-startup-preparation/model.mjs';
 import { PINS } from './contract.mjs';
 /** One no-mining qualification restart that clears the previous Start's retained V2 record. */
-export const ENABLED = true;
+export const ENABLED = false;
 const TASK = 'task-str005-step5-diagnostic-rerun', CONTRACT = 'docs/hardware/str005-step5-diagnostic-amendment.md';
 const ENABLED_LINE = 'Step-5 restart hardware: enabled.';
 // The origin that holds the Ultra 205 Web Serial grant.
