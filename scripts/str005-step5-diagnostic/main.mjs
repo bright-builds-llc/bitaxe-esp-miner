@@ -10,10 +10,11 @@ import { createServerOwner } from '../str005-startup-probe/server.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { argumentsFor, source } from './contract.mjs';
 import { preflight, SCHEMA, ADMISSION } from './preflight.mjs';
-import { installation } from './lineage.mjs';
+import { installation, previousStart } from './lineage.mjs';
 import { routePolicy } from '../str005-status-repro/policy.mjs';
 import { finalize } from '../str005-status-repro/finish.mjs';
 import { extendResult } from './summary.mjs';
+import { cleanDiagnosticClose, fixtureFacts } from './fixture-close.mjs';
 
 // The origin that holds the Ultra 205 Web Serial grant; another port would show the chooser.
 export const PORT = 48765;
@@ -31,6 +32,10 @@ export async function main(argv) {
     check(context.schema === SCHEMA && context.admission === ADMISSION &&
       context.source_commit === live.commit && context.contractSha256 === live.contractSha256, 'step5_source_changed');
     const installed = await installation(context.anchors.installation.root);
+    if (context.anchors.previousStart) {
+      const previous = await previousStart(context.anchors.previousStart.root, installed);
+      check(previous.seal === context.anchors.previousStart.seal, 'step5_lineage_changed');
+    }
     check(installed.seal === context.anchors.installation.seal && installed.identity.firmware_commit === context.firmware_commit &&
       installed.identity.app_elf_sha256 === context.app_elf_sha256 && installed.physical === context.physical &&
       installed.candidateElf === context.candidateElf && installed.retainedManifestSha256 === context.retainedManifestSha256,
@@ -47,7 +52,8 @@ export async function main(argv) {
       'step5_gate_compatibility_changed');
   };
   await verify();
-  if (action === 'finish') return finalize(root, context, { extendResult });
+  if (action === 'finish') return finalize(root, context, { extendResult,
+    fixtureCompletion: async (privateRoot, completion) => cleanDiagnosticClose(completion, await fixtureFacts(privateRoot)) });
   check(action === 'serve', 'step5_action');
   for (const fd of [1, 2]) check(fstatSync(fd).isFile() && (fstatSync(fd).mode & 0o777) === 0o600, 'step5_private_output');
   check(fstatSync(1).ino !== fstatSync(2).ino || fstatSync(1).dev !== fstatSync(2).dev, 'step5_distinct_output');
@@ -69,7 +75,7 @@ export async function main(argv) {
   await writeNew(resolve(root, 'serve-claim.json'), { schema: 'str005-startup-serve-claim-v1', owner,
     contextSha256: sha256(JSON.stringify(context)) });
   const server = await createServerOwner({ root, context, assets, authorityDirectory: options['--authority-directory'], verify }, {
-    routePolicy: routePolicy(), extraAssets, finishFixture: fixture => fixture.finish(),
+    routePolicy: routePolicy(), extraAssets,
     admitContext: value => check(value.schema === SCHEMA && value.admission === ADMISSION, 'step5_context'),
   });
   let maybeClosing;

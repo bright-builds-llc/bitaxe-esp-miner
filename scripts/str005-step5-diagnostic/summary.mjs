@@ -1,5 +1,6 @@
 import { optionalProof } from '../str005-startup-probe/finish.mjs';
 import { validateSafetyDiagnostic } from '../str005-v2-serial/safety-diagnostics.mjs';
+import { fixtureFacts } from './fixture-close.mjs';
 
 /** Closed step-5 conclusion; the judge's completion is unchanged and parity is never promoted. */
 export function step5Summary(parts, result, clientFailure) {
@@ -15,7 +16,11 @@ export function step5Summary(parts, result, clientFailure) {
 
 /** A malformed summary input leaves the sealed result truthful rather than blocking the seal. */
 export async function extendResult(root, parts, result) {
-  try { return step5Summary(parts, result, await optionalProof(root, 'client-failure.json')); }
+  try {
+    const summary = step5Summary(parts, result, await optionalProof(root, 'client-failure.json'));
+    summary.step5.fixture = await fixtureFacts(root);
+    return summary;
+  }
   catch { return { step5: { schema: 'str005-step5-summary-v1', outcome: 'unverified', summary_error: 'step5_summary_invalid',
     cause_proven: false, parity_promotion: false } }; }
 }

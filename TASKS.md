@@ -5148,6 +5148,56 @@ the required authorization recovery checkpoint. See the
 [startup001 report](docs/parity/evidence/20260928-str005-startup001-partial.md).
 No further Start, flash, clear or self-test is admitted by this consumed trial.
 
+### task-str005-step5-diagnostic-rerun | 2026-10-03 | Rerun the step-5 diagnostic Start with corrected judges
+
+Status: Active. Judge fixes implemented; rerun contract published.
+Objective: repeat one bounded diagnostic Start on the installed revocation-detail
+firmware, so that a step-5 pass also seals `complete=true`.
+References: archived `task-str005-step5-revocation-detail` (start002 result
+`0a66996a…`) and [the amendment's rerun section](docs/hardware/str005-step5-diagnostic-amendment.md).
+
+Owner authorization | 2026-10-03: the owner authorized autonomous, iterative
+fixes and fresh attempts as needed.
+
+- [x] Fix the three non-safety blockers:
+  - accept the Start generation's authenticated authorization recovery match
+    (shared `authorizationRestored`);
+  - define diagnostic fixture completion as a clean natural close with no share
+    claim;
+  - stop page release from depending on a share-only exit.
+  Regressions cover all three, and the rerun lineage pins start002 for current
+  ledger and boot facts.
+- [ ] Run start003 under the contract below; on a fixable failure, fix it, add
+  a regression and continue with a fresh ordinal.
+
+Step-5 diagnostic Start hardware: enabled.
+
+Commands, from a clean tree equal to its upstream:
+
+```sh
+bazel build //tools/stratum-v2-fixture:stratum_v2_fixture //tools/stratum-v2-fixture:v2_serial_build_identity
+just detect-ultra205   # saved as <parent>/detector.stdout.log, then preflight within 60 s
+just str005-step5-diagnostic preflight --private-root <repo>/scratch/str005-step5-diagnostic/start003/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-step5-diagnostic/start002/attempt
+just str005-step5-diagnostic serve --private-root <same> --authority-directory <protected-authority>   # detached
+just str005-step5-diagnostic finish --private-root <same>
+```
+
+The page runs in the persistent dedicated tab:
+1. Connect, then "Record baseline and configure candidate".
+2. Take a fresh `startup-detector.stdout.log`.
+3. Connect, then Run.
+4. Connect, wait at least 8 s, then "Collect fresh recovery and close".
+5. Close the page with `location.replace('about:blank')`.
+6. Stop the server owner with SIGTERM, take `final-detector.stdout.log`, then
+   run `finish`.
+
+Effects, limits, evidence, prohibitions, recovery and stop conditions are the
+amendment's phase 2.
+
+Retry: a later ordinal (`start004` and up) needs a targeted, regression-backed
+fix and pins the latest sealed Start as its previous Start. There is no
+unchanged retry.
+
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
 Status: Current safety verified after status001; diagnostic self-test captured a useful original frame. Share001's cause remains unavailable, and status001 ended at unsafe revocation during preparation step5. Qualification blocked; all effect gates disabled.

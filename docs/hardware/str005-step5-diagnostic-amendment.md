@@ -103,6 +103,33 @@ Outcomes:
   boundary did not recur, and this is still not share evidence.
 - **Unverified**: neither of the above, or missing cleanup.
 
+## Phase 2 rerun (owner `task-str005-step5-diagnostic-rerun`)
+
+Start002 passed step 5 but sealed `complete=false` for three judge blockers.
+None of them was a device-safety failure. The owner fixes them as follows:
+
+- **Authorization.** A signed Start advances the authorization high-water
+  mark. The device's authenticated `authorizationRecovery` match for the
+  Start's own generation now counts as restored, the same rule the shared
+  recovery check uses.
+- **Fixture completion.** The share-scope fixture waits for a share, so a
+  status-only Start can never satisfy its natural exit code 0. This owner
+  requires no share (`required: false`). It counts completion as a clean
+  natural close: the exact peer only, no rejected or duplicate share, closed
+  peer, socket and listener, a natural exit, and either an accepted outcome or
+  `peer_eof`. The fixture's own outcome and share counts stay in the result,
+  and no share is claimed.
+- **Page release.** Release no longer waits on that share-only exit.
+
+The rerun preflight pins start002 (result `0a66996a…`, seal `1b2fbfcb…`) as the
+previous Start. Its fresh recovery supplies the ledger the new baseline must
+observe unchanged (next 23, last 22, 2,460,000 ms) and the boot ordinal. One
+new `normal` attempt charges another 180,000 ms (expected after: next 24, last
+23, 2,640,000 ms). Before collecting fresh recovery, the operator waits at least
+8 s after Connect, so the replayed preparation receipt (every 6 s) and any
+revocation detail (every 2 s) reach the page. All other phase-2 terms are
+unchanged.
+
 ## Prohibited
 
 - pool credentials, Wi-Fi provisioning, factory reset, erase or rollback;

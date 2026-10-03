@@ -90,11 +90,17 @@ export function projectRecoveryPart(stage, value, context) {
   return structuredClone(value);
 }
 
+/** A signed Start advances the high-water mark; its own generation's authenticated recovery match restores it. */
+export function authorizationRestored(state, maybeGeneration) {
+  if (state?.preservation?.authorization_high_water_match === true) return true;
+  const recovered = state?.authorizationRecovery;
+  return Boolean(recovered?.matched === true && recovered.generation > 0 && recovered.generation === state.qualification?.generation &&
+    (maybeGeneration === undefined || recovered.generation === maybeGeneration));
+}
+
 function restored(state) {
   const preservation = state?.preservation;
-  const authorization = preservation?.authorization_high_water_match === true ||
-    (state?.authorizationRecovery?.matched === true && state.authorizationRecovery.generation > 0 &&
-      state.authorizationRecovery.generation === state.qualification?.generation);
+  const authorization = authorizationRestored(state);
   return Boolean(state?.deviceRestorationConfirmed === true && state.deviceBaselineConfirmed === true &&
     state.deviceLeaseInactive === true && state.running === false && state.heartbeatSuppressed === false &&
     preservation?.device_identity_match === true && preservation.settings_match === true && preservation.mine_on_boot === false && authorization);

@@ -4,7 +4,7 @@ import { fixtureCompletionComplete, fixtureReleaseComplete } from '../str005-sta
 import { optionalProof } from '../str005-startup-probe/finish.mjs';
 import { normalStopVerified } from '../str005-startup-probe/normal-stop.mjs';
 import { validateFailure } from '../str005-startup-probe/failure.mjs';
-import { validateRecoveryParts } from '../str005-v2-serial/recovery-evidence.mjs';
+import { authorizationRestored, validateRecoveryParts } from '../str005-v2-serial/recovery-evidence.mjs';
 import { requireGone, requireNoHolders, requireLsofAbsent, signerExitProofs } from '../str005-v2-serial/host-resources.mjs';
 import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { proof, writeNew, inventory } from '../str005-noise-serial/files.mjs';
@@ -33,7 +33,7 @@ export function judge(parts, context) {
     recovery.state.deviceBaselineConfirmed === true && recovery.state.deviceLeaseInactive === true &&
     recovery.state.connected === true && recovery.state.running === false &&
     recovery.state.preservation?.settings_match === true && recovery.state.preservation?.device_identity_match === true &&
-    recovery.state.preservation?.authorization_high_water_match === true &&
+    authorizationRestored(recovery.state, run?.proof?.generation) &&
     recovery.closed?.status === 'closed' && recovery.closed.connected === false &&
     recovery.closed.deviceRestorationConfirmed === true && recovery.closed.serialOwnershipReleased === true &&
     recovery.closed.preservation?.baseline_id === recovery.state.preservation.baseline_id &&
@@ -77,7 +77,9 @@ export async function finalize(root, context, operations = {}) {
   const release = await optionalProof(root, 'fixture-release.json'), completion = await optionalProof(root, 'fixture-completion.json');
   parts.fixtureStarted = Boolean(fixtureClaim);
   parts.fixtureReleased = release ? fixtureReleaseComplete(release) : !fixtureClaim;
-  parts.fixtureCompletion = completion ? fixtureCompletionComplete(completion) : false;
+  // Successor owners may define completion for a fixture whose share outcome is out of scope.
+  parts.fixtureCompletion = operations.fixtureCompletion ? await operations.fixtureCompletion(root, completion)
+    : completion ? fixtureCompletionComplete(completion) : false;
   const cleanupBlockers = []; let ownersGone = true, serialReleased = true;
   if (fixtureClaim && !fixtureOwner) { ownersGone = false; cleanupBlockers.push('status_repro_fixture_owner_unknown'); }
   try {

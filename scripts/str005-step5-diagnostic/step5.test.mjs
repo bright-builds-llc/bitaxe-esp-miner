@@ -4,7 +4,9 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { argumentsFor, ENABLED, ENABLED_LINE, PINS, taskEnabled, TASK } from './contract.mjs';
-import { installation } from './lineage.mjs';
+import { installation, previousStart } from './lineage.mjs';
+import { cleanDiagnosticClose } from './fixture-close.mjs';
+import { authorizationRestored } from '../str005-v2-serial/recovery-evidence.mjs';
 import { step5Summary } from './summary.mjs';
 import { maybeRejection } from './client-core.mjs';
 
@@ -75,4 +77,37 @@ test('only a closed Worker rejection is kept, including inside a cleanup aggrega
   assert.equal(maybeRejection(rejected), 'session_failed');
   assert.equal(maybeRejection(new AggregateError([new Error('stop'), rejected])), 'session_failed');
   assert.equal(maybeRejection(Object.assign(new Error('x'), { rejection: 'free text' })), null);
+});
+
+const facts = { natural_exit: true, exact_peer: true, closed: true, received_shares: 0, accepted_shares: 0, invalid_shares: 0,
+  outcome: 'unverified', first_failure_stage: 'peer_eof' };
+const optional = { schema: 'str005-startup-fixture-completion-v1', required: false, complete: null };
+
+test('a status-only Start completes its fixture by a clean natural close without a share', () => {
+  // Arrange / Act / Assert
+  assert.equal(cleanDiagnosticClose(optional, facts), true);
+});
+
+test('a share-required, terminated, foreign-peer or invalid-share fixture is not a clean close', () => {
+  // Arrange
+  const cases = [[{ ...optional, required: true, complete: false }, facts], [optional, { ...facts, natural_exit: false }],
+    [optional, { ...facts, exact_peer: false }], [optional, { ...facts, invalid_shares: 1 }],
+    [optional, { ...facts, first_failure_stage: 'connect' }]];
+  // Act / Assert
+  assert.deepEqual(cases.map(([completion, value]) => cleanDiagnosticClose(completion, value)), [false, false, false, false, false]);
+});
+
+test('authorization is restored by the Start generation\'s own authenticated recovery match', () => {
+  // Arrange
+  const state = { preservation: { authorization_high_water_match: false }, qualification: { generation: 4 },
+    authorizationRecovery: { matched: true, generation: 4 } };
+  // Act / Assert
+  assert.equal(authorizationRestored(state, 4), true);
+  assert.equal(authorizationRestored(state, 3), false);
+  assert.equal(authorizationRestored({ ...state, authorizationRecovery: { matched: null, generation: 4 } }, 4), false);
+});
+
+test('a rerun without its pinned previous Start is never admitted', async () => {
+  // Arrange / Act / Assert
+  await assert.rejects(previousStart('/nonexistent', {}, { previousStartResult: null, previousStartSeal: null }), /step5_previous_unpinned/u);
 });

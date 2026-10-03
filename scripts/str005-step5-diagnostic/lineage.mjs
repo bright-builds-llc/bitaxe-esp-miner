@@ -39,3 +39,26 @@ export async function installation(root, pins = PINS) {
     original_campaign_id: context.original_campaign_id, candidateElf, retainedManifest,
     retainedManifestSha256: await fileDigest(retainedManifest) };
 }
+
+/** Current safe facts after a sealed earlier Start on the same install: its fresh recovery
+ * (round 1) supplies the ledger and boot ordinal the next baseline must observe unchanged. */
+export async function previousStart(root, installed, pins = PINS) {
+  check(pins.previousStartResult && pins.previousStartSeal, 'step5_previous_unpinned');
+  check(await realpath(root) === resolve(root), 'step5_previous_alias'); await protectedPath(root, true);
+  check(await fileDigest(resolve(root, 'result.json')) === pins.previousStartResult, 'step5_previous_anchor');
+  const sealed = await proof(root, 'sealed-inventory.json');
+  check(sealed.sha256 === pins.previousStartSeal, 'step5_previous_seal');
+  await verifyInventory(root, sealed.value.files, new Set(['sealed-inventory.json']));
+  const result = (await proof(root, 'result.json')).value, context = (await proof(root, 'context.json')).value;
+  const ledger = (await proof(root, 'recovery-1-ledger.json')).value, state = (await proof(root, 'recovery-1-state.json')).value;
+  const status = (await proof(root, 'recovery-1-status.json')).value, closed = (await proof(root, 'recovery-1-closed.json')).value;
+  const finished = (await proof(root, 'recovery-1-finished.json')).value;
+  check(result.observed_start === true && context.anchors?.installation?.seal === installed.seal &&
+    context.firmware_commit === installed.identity.firmware_commit && context.app_elf_sha256 === installed.identity.app_elf_sha256 &&
+    context.physical === installed.physical && ledger.pending === false && Array.isArray(finished.failures) && finished.failures.length === 0 &&
+    state.deviceRestorationConfirmed === true && state.deviceBaselineConfirmed === true && state.deviceLeaseInactive === true &&
+    state.running === false && state.preservation?.mine_on_boot === false && closed.status === 'closed' &&
+    closed.serialOwnershipReleased === true && status.state === 'terminal' && Number.isSafeInteger(status.observation?.bootOrdinal),
+  'step5_previous_state');
+  return { root, seal: sealed.sha256, ledger, expectedBootOrdinal: status.observation.bootOrdinal };
+}
