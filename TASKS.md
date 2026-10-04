@@ -5366,9 +5366,28 @@ Wedge observation | 2026-10-04 | Owner: "yes, go ahead with 1, 2, then 3"
    - Interpretation: nonzero bytes on repeated drains mean the firmware's
      always-on output is alive and only the control path is stuck; zero
      bytes on every drain is consistent with a frozen CPU or USB stack.
-2. Debugger snapshot: needs the pinned ESP-IDF `openocd-esp32` tool, a
-   download pending the owner's explicit OK. Its contract is added before use.
-3. Recover: a reset, then a current recovery proving Gate service is restored.
+   - Result: three drains, 15 s apart, each read 0 bytes in 2,000 ms, with
+     cleanup complete. This fits a frozen device, but an idle device with no
+     session may also be silent, so it is not proof.
+2. Debugger snapshot. The owner approved the download of the pinned
+   `openocd-esp32` v0.12.0-esp32-20251215, installed through `idf_tools.py`
+   into `.embuild` with SHA-256 `e6414c8d…7e2e823` verified.
+   - Commands: `openocd -c "set ESP_FLASH_SIZE 0" -c "set ESP_RTOS FreeRTOS"
+     -f board/esp32s3-builtin.cfg` over the built-in USB-JTAG on the normal
+     USB cable, then one bounded batch `xtensa-esp32s3-elf-gdb` against the
+     exact installed ELF (`d986b2ea…`, from the install's snapshot).
+   - `ESP_FLASH_SIZE 0` disables the gdb-attach `reset halt`, so attaching
+     only halts and the frozen state survives.
+   - Capture: threads, backtraces and registers;
+     `BITAXE_CONTROL_STACK_TRACE`, `BITAXE_PANIC_FRAME_RECORD` and the
+     allocation history header; one private binary dump of internal DRAM
+     (`0x3fc88000`–`0x3fd00000`).
+   - Evidence goes to mode-0600 files under a mode-0700 ignored root. No flash
+     write, erase or register write, and no pins.
+3. Recover: `monitor reset run` in the same session (one JTAG system reset),
+   then OpenOCD exits. A fresh current recovery must prove Gate service and
+   the unchanged ledger. Stop on any failure to resume; the owner can then
+   power-cycle.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
