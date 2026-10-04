@@ -139,7 +139,7 @@ fn revoked_pre_control_heartbeat_cannot_resume_a_queued_control_response() {
     let (entered, waiting) = mpsc::channel();
     let (release, blocked) = mpsc::channel();
     *usb_runtime::BLOCK_NEXT.lock().expect("test block") = Some((entered, blocked));
-    let (receipt, completion) = mpsc::sync_channel(1);
+    let (receipt, completion) = bitaxe_runtime::reply::reply();
     sender
         .send(writer::Output::Control {
             epoch: 20,
@@ -489,7 +489,7 @@ fn peer_heartbeat_has_priority_during_continuous_control_output() {
     // Act
     let producer = std::thread::spawn(move || {
         for _ in 0..600 {
-            let (receipt, completion) = mpsc::sync_channel(1);
+            let (receipt, completion) = bitaxe_runtime::reply::reply();
             sender
                 .send(writer::Output::Control {
                     epoch: 2,
@@ -524,7 +524,7 @@ fn long_control_reply_refreshes_peer_heartbeat_before_the_indivisible_record() {
         })
         .expect("hello queued");
     writer.expect_marker("\"kind\":\"session\"");
-    let (receipt, completion) = mpsc::sync_channel(1);
+    let (receipt, completion) = bitaxe_runtime::reply::reply();
     let bytes = serde_json::to_vec(&serde_json::json!({"padding":"x".repeat(8192)}))
         .expect("fixed large payload");
     // Act

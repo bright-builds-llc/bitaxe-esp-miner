@@ -1,4 +1,5 @@
 use super::*;
+use bitaxe_runtime::reply::ReplySender;
 use bitaxe_stratum::v1::production_session::{
     LivePoolCredentials, LiveRuntimeConfig, MiningCampaignLease, MiningCampaignLeaseId,
     MiningCampaignMonotonicDeadline, MiningCampaignState, MiningCampaignStopCondition,
@@ -42,30 +43,30 @@ pub(super) enum OwnerCommand {
     Cooling {
         generation: revocation::WorkerGeneration,
         restore: bool,
-        reply: SyncSender<Result<serde_json::Value, Error>>,
+        reply: ReplySender<Result<serde_json::Value, Error>>,
     },
     Start {
         generation: revocation::WorkerGeneration,
         worker_lease_id: String,
         deadline: MiningCampaignMonotonicDeadline,
         pools: ProductionPoolSet,
-        reply: SyncSender<Result<(), Error>>,
+        reply: ReplySender<Result<(), Error>>,
     },
     Renew {
         generation: revocation::WorkerGeneration,
         worker_lease_id: String,
         deadline: MiningCampaignMonotonicDeadline,
-        reply: SyncSender<Result<(), Error>>,
+        reply: ReplySender<Result<(), Error>>,
     },
     SafeStop {
-        reply: SyncSender<Result<(), Error>>,
+        reply: ReplySender<Result<(), Error>>,
     },
 }
 
 pub(super) enum PendingReply {
-    Start(SyncSender<Result<(), Error>>),
-    Renew(SyncSender<Result<(), Error>>),
-    SafeStop(SyncSender<Result<(), Error>>),
+    Start(ReplySender<Result<(), Error>>),
+    Renew(ReplySender<Result<(), Error>>),
+    SafeStop(ReplySender<Result<(), Error>>),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -127,7 +128,7 @@ pub(crate) fn cooling(
     generation: revocation::WorkerGeneration,
     restore: bool,
 ) -> Result<serde_json::Value, Error> {
-    let (reply, receiver) = mpsc::sync_channel(1);
+    let (reply, receiver) = bitaxe_runtime::reply::reply();
     notifications()?
         .try_send(OwnerInboxMessage::Bwg(OwnerCommand::Cooling {
             generation,
@@ -141,7 +142,7 @@ pub(crate) fn cooling(
 }
 
 pub(crate) fn safe_stop() -> Result<(), Error> {
-    let (reply, receiver) = mpsc::sync_channel(1);
+    let (reply, receiver) = bitaxe_runtime::reply::reply();
     notifications()?
         .try_send(OwnerInboxMessage::Bwg(OwnerCommand::SafeStop { reply }))
         .map_err(|_| Error::Unavailable)?;
@@ -151,10 +152,10 @@ pub(crate) fn safe_stop() -> Result<(), Error> {
 }
 
 fn request(
-    command: impl FnOnce(SyncSender<Result<(), Error>>) -> OwnerCommand,
+    command: impl FnOnce(ReplySender<Result<(), Error>>) -> OwnerCommand,
     deadlines: LeaseDeadlines,
 ) -> Result<(), Error> {
-    let (reply, receiver) = mpsc::sync_channel(1);
+    let (reply, receiver) = bitaxe_runtime::reply::reply();
     notifications()?
         .try_send(OwnerInboxMessage::Bwg(command(reply)))
         .map_err(|_| Error::Unavailable)?;
@@ -243,7 +244,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 reply,
             } => {
                 let result = self.cooling_command(generation, restore, snapshot);
-                let _ = reply.try_send(result);
+                let _ = reply.send(result);
                 self.wake_event(None, now_ms, snapshot, false)
             }
             OwnerCommand::Start {
@@ -266,16 +267,16 @@ impl OrdinaryEspProductionSessionAdapter {
                         MiningHardwareState::Unprepared | MiningHardwareState::Stopped
                     )
                 {
-                    let _ = reply.try_send(Err(Error::Rejected));
+                    let _ = reply.send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
                 }
                 let Some(id) = maybe_next_lease_id else {
-                    let _ = reply.try_send(Err(Error::Rejected));
+                    let _ = reply.send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
                 };
                 revocation::check_deadline(now_ms);
                 if !revocation::activate(generation, now_ms) {
-                    let _ = reply.try_send(Err(Error::Rejected));
+                    let _ = reply.send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
                 }
                 self.maybe_cooling_generation = None; // Ownership transfers to ordered mining cleanup.
@@ -313,7 +314,7 @@ impl OrdinaryEspProductionSessionAdapter {
                         && revocation::permits(Some(generation))
                 });
                 if !same_lease || snapshot.campaign_state != MiningCampaignState::Active {
-                    let _ = reply.try_send(Err(Error::Rejected));
+                    let _ = reply.send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
                 }
                 let Some(id) = self
@@ -321,7 +322,7 @@ impl OrdinaryEspProductionSessionAdapter {
                     .as_ref()
                     .map(|session| session.lease.id())
                 else {
-                    let _ = reply.try_send(Err(Error::Rejected));
+                    let _ = reply.send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
                 };
                 let lease = lease(id, deadline);
@@ -337,7 +338,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 }
                 if self.maybe_bwg_session.is_none() {
                     let result = self.restore_owned_cooling(snapshot);
-                    let _ = reply.try_send(result);
+                    let _ = reply.send(result);
                     return self.wake_event(None, now_ms, snapshot, false);
                 }
                 self.maybe_bwg_reply = Some(PendingReply::SafeStop(reply));
@@ -479,7 +480,7 @@ impl OrdinaryEspProductionSessionAdapter {
             PendingReply::Start(sender)
             | PendingReply::Renew(sender)
             | PendingReply::SafeStop(sender) => {
-                let _ = sender.try_send(result);
+                let _ = sender.send(result);
             }
         }
     }

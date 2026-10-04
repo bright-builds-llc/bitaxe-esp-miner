@@ -114,7 +114,7 @@ fn actual_start_rejects_full_owner_queue_without_activation() {
         NOTIFICATIONS.set(sender).is_ok(),
         "only this test installs owner queue"
     );
-    let (reply, _reply_receiver) = mpsc::sync_channel(1);
+    let (reply, _reply_receiver) = bitaxe_runtime::reply::reply();
     NOTIFICATIONS
         .get()
         .expect("owner queue")

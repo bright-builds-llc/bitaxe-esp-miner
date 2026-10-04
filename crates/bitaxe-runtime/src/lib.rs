@@ -9,6 +9,7 @@ pub mod clock;
 pub mod cooling;
 pub mod i2c_retry;
 pub mod mining_actuation;
+pub mod reply;
 pub mod request_queue;
 pub mod revocation;
 pub mod shutdown_budget;

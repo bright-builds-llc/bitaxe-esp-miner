@@ -19,7 +19,7 @@ use bitaxe_stratum::v1::production_session::{
 };
 use bitaxe_stratum::v1::state::MiningOperatorIntent;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, SyncSender};
+use std::sync::mpsc::{self, SyncSender};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::Duration;
 
@@ -152,11 +152,11 @@ fn start(
     core: &mut ProductionMiningSession,
 ) -> (
     revocation::WorkerGeneration,
-    Receiver<Result<(), bwg::Error>>,
+    bitaxe_runtime::reply::ReplyReceiver<Result<(), bwg::Error>>,
 ) {
     let generation = scope.link();
     assert!(revocation::admit_budget(generation, 180_000));
-    let (reply, receiver) = mpsc::sync_channel(1);
+    let (reply, receiver) = bitaxe_runtime::reply::reply();
     let event = adapter.event(
         bwg::OwnerCommand::Start {
             generation,
@@ -393,7 +393,7 @@ fn safe_stop_ack_waits_for_durable_finalization_after_hardware_confirmation() {
         .expect("registered owner")
         .lease
         .id();
-    let (reply, receiver) = mpsc::sync_channel(1);
+    let (reply, receiver) = bitaxe_runtime::reply::reply();
     let event = adapter.event(
         bwg::OwnerCommand::SafeStop { reply },
         1_100,
@@ -490,7 +490,7 @@ fn rejected_unprepared_start_does_not_acknowledge_stop_during_budget_failure() {
     worker_acceptance_budget::FAIL_FINISH.store(true, Ordering::SeqCst);
     let (_, start_reply) = start(&mut scope, &mut adapter, &mut core);
     assert_eq!(start_reply.try_recv(), Ok(Err(bwg::Error::Rejected)));
-    let (reply, receiver) = mpsc::sync_channel(1);
+    let (reply, receiver) = bitaxe_runtime::reply::reply();
     let event = adapter.event(
         bwg::OwnerCommand::SafeStop { reply },
         1_100,
@@ -542,7 +542,7 @@ fn cooling_owner_fences_link_without_reserving_mining_budget() {
     let generation = scope.link();
     let mut adapter = blocked_adapter();
     let snapshot = ProductionMiningSession::new().snapshot();
-    let (reply, receiver) = mpsc::sync_channel(1);
+    let (reply, receiver) = bitaxe_runtime::reply::reply();
     // Act
     adapter.event(
         bwg::OwnerCommand::Cooling {
@@ -577,7 +577,7 @@ fn no_session_safe_stop_cannot_acknowledge_failed_cooling_restore() {
     cooling::FAIL_RESTORE.store(true, Ordering::SeqCst);
     revocation::revoke_at(generation, 1_000);
     let snapshot = ProductionMiningSession::new().snapshot();
-    let (reply, receiver) = mpsc::sync_channel(1);
+    let (reply, receiver) = bitaxe_runtime::reply::reply();
     // Act
     adapter.event(
         bwg::OwnerCommand::SafeStop { reply },

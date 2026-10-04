@@ -49,7 +49,6 @@ pub(crate) use adc::Ultra205CoreVoltageAdc;
 pub(crate) use i2c_retry::{RuntimeI2cBudget, RuntimeI2cBudgetOutcome};
 
 use request_queue::ACTUATION_REQUEST_CAPACITY;
-const ACTUATION_REPLY_CAPACITY: usize = 1;
 const ACTUATION_REPLY_TIMEOUT: Duration = Duration::from_millis(1_500);
 
 static ACTUATION_REQUEST_SENDER: OnceLock<SyncSender<SafetyActuationEnvelope>> = OnceLock::new();
@@ -111,7 +110,7 @@ pub(crate) enum SafetyActuationQueueOutcome {
 }
 
 pub(crate) struct PendingSafetyActuation {
-    reply_receiver: Receiver<SafetyActuationReply>,
+    reply_receiver: bitaxe_runtime::reply::ReplyReceiver<SafetyActuationReply>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -199,7 +198,8 @@ pub(crate) fn request_safety_actuation(
     let Some(request_sender) = ACTUATION_REQUEST_SENDER.get() else {
         return SafetyActuationRequestOutcome::OwnerUnavailable;
     };
-    let (reply_sender, reply_receiver) = mpsc::sync_channel(ACTUATION_REPLY_CAPACITY);
+    // Per-request replies avoid std channels; see `bitaxe_runtime::reply`.
+    let (reply_sender, reply_receiver) = bitaxe_runtime::reply::reply();
     match enqueue(request_sender, stamp_safety_command(command), reply_sender) {
         EnqueueOutcome::Queued => {}
         EnqueueOutcome::Full => return SafetyActuationRequestOutcome::QueueFull,
@@ -233,7 +233,7 @@ pub(crate) fn queue_safety_actuation(
         return SafetyActuationQueueOutcome::OwnerUnavailable;
     };
 
-    let (reply_sender, reply_receiver) = mpsc::sync_channel(ACTUATION_REPLY_CAPACITY);
+    let (reply_sender, reply_receiver) = bitaxe_runtime::reply::reply();
     match enqueue(request_sender, stamp_safety_command(command), reply_sender) {
         EnqueueOutcome::Queued => {
             SafetyActuationQueueOutcome::Queued(PendingSafetyActuation { reply_receiver })
@@ -276,7 +276,7 @@ pub(crate) fn service_next_safety_actuation_request(
     if reply == SafetyActuationReply::HardwareWriteFailed {
         log::warn!("safety_actuation=fault category=hardware_write_failed");
     }
-    if reply_sender.try_send(reply).is_err() {
+    if reply_sender.send(reply).is_err() {
         log::warn!("safety_actuation=fault category=reply_receiver_unavailable");
     }
     SafetyActuationOwnerWait::Serviced

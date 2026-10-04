@@ -1,0 +1,15 @@
+{
+  "schema": "stack-realignment-allowlist-v1",
+  "rationale": "Each entry creates a long-lived std channel once during startup; per-request replies use bitaxe_runtime::reply.",
+  "callers": [
+    { "symbol": "bitaxe_firmware::bwg_worker_usb::install_diagnostics", "reason": "startup: serial writer output queue" },
+    { "symbol": "bitaxe_firmware::bwg_worker_usb::prepare", "reason": "startup: control event queue" },
+    { "symbol": "bitaxe_firmware::bwg_worker_usb::writer::prepare_diagnostics", "reason": "startup: diagnostic line queue" },
+    { "symbol": "bitaxe_firmware::http_api::deferred_effects::initialize_deferred_effect_worker", "reason": "startup: deferred effect worker queue" },
+    { "symbol": "bitaxe_firmware::production_mining_session::asic_worker::AsicWorker::spawn", "reason": "startup: owner constructor spawns the ASIC worker once" },
+    { "symbol": "bitaxe_firmware::production_mining_session::start", "reason": "startup: owner notification queue" },
+    { "symbol": "bitaxe_firmware::production_mining_session::transport::spawn_worker", "reason": "startup: owner constructor spawns both pool transport workers once" },
+    { "symbol": "bitaxe_firmware::safety_adapter::prepare_safety_actuation_owner", "reason": "startup: safety actuation request queue" },
+    { "symbol": "bitaxe_firmware::wifi_adapter::reconnect::preparation::prepare_credentials", "reason": "startup: Wi-Fi reconnect event queue" }
+  ]
+}

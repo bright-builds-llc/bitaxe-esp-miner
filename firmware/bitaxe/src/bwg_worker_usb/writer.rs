@@ -20,7 +20,7 @@ pub(super) enum Output {
         epoch: u32,
         request_sequence: u32,
         bytes: SecretBytes,
-        receipt: SyncSender<bool>,
+        receipt: bitaxe_runtime::reply::ReplySender<bool>,
     },
 }
 
@@ -40,7 +40,9 @@ pub(super) fn send_control(
     correlation: SerialTraceCorrelation,
     bytes: &[u8],
 ) -> anyhow::Result<()> {
-    let (receipt, completion) = mpsc::sync_channel(1);
+    // A per-reply std channel realigns its stack frame without `movsp` on this
+    // toolchain and can corrupt this owner's registers; see `bitaxe_runtime::reply`.
+    let (receipt, completion) = bitaxe_runtime::reply::reply();
     let result = OUTPUT
         .get()
         .ok_or_else(|| anyhow::anyhow!("serial_writer_unavailable"))
@@ -258,7 +260,7 @@ pub(super) fn run(
                     retain_write_failure(&mut maybe_write_failure, error);
                 }
                 let sent = current && result.is_ok() && OutputAdmission::active(epoch).permits();
-                if receipt.try_send(sent).is_err() || !sent {
+                if receipt.send(sent).is_err() || !sent {
                     revoke_epoch(wanted);
                 }
             }

@@ -2,6 +2,8 @@
 
 use std::sync::mpsc::{SyncSender, TrySendError};
 
+use crate::reply::ReplySender;
+
 /// Existing physical safety-owner request capacity.
 pub const ACTUATION_REQUEST_CAPACITY: usize = 4;
 
@@ -14,11 +16,11 @@ pub enum EnqueueOutcome {
 
 pub struct ActuationEnvelope<C, R> {
     command: C,
-    reply_sender: SyncSender<R>,
+    reply_sender: ReplySender<R>,
 }
 
 impl<C, R> ActuationEnvelope<C, R> {
-    pub fn into_parts(self) -> (C, SyncSender<R>) {
+    pub fn into_parts(self) -> (C, ReplySender<R>) {
         (self.command, self.reply_sender)
     }
 }
@@ -26,7 +28,7 @@ impl<C, R> ActuationEnvelope<C, R> {
 pub fn enqueue<C, R>(
     sender: &SyncSender<ActuationEnvelope<C, R>>,
     command: C,
-    reply_sender: SyncSender<R>,
+    reply_sender: ReplySender<R>,
 ) -> EnqueueOutcome {
     let envelope = ActuationEnvelope {
         command,
@@ -44,12 +46,13 @@ mod tests {
     use std::sync::mpsc;
 
     use super::*;
+    use crate::reply::reply;
 
     #[test]
     fn deferred_effect_enqueue_does_not_wait_for_its_reply() {
         // Arrange
         let (sender, receiver) = mpsc::sync_channel(1);
-        let (reply_sender, reply_receiver) = mpsc::sync_channel(1);
+        let (reply_sender, reply_receiver) = reply();
 
         // Act
         let outcome = enqueue(&sender, 7_u8, reply_sender);
@@ -58,7 +61,7 @@ mod tests {
             .expect("queued deferred effect must be available")
             .into_parts();
         queued_reply_sender
-            .try_send(11_u8)
+            .send(11_u8)
             .expect("deferred reply channel must remain connected");
 
         // Assert
@@ -71,7 +74,7 @@ mod tests {
     fn synchronous_effect_enqueue_preserves_its_reply_channel() {
         // Arrange
         let (sender, receiver) = mpsc::sync_channel(1);
-        let (reply_sender, reply_receiver) = mpsc::sync_channel(1);
+        let (reply_sender, reply_receiver) = reply();
 
         // Act
         let outcome = enqueue(&sender, 7_u8, reply_sender);
@@ -80,7 +83,7 @@ mod tests {
             .expect("queued synchronous effect must be available")
             .into_parts();
         queued_reply_sender
-            .try_send(11_u8)
+            .send(11_u8)
             .expect("reply channel must remain connected");
 
         // Assert
@@ -92,8 +95,8 @@ mod tests {
     fn bounded_queue_reports_backpressure_without_blocking() {
         // Arrange
         let (sender, _receiver) = mpsc::sync_channel(1);
-        let (first_reply_sender, _first_reply_receiver) = mpsc::sync_channel::<u8>(1);
-        let (second_reply_sender, _second_reply_receiver) = mpsc::sync_channel::<u8>(1);
+        let (first_reply_sender, _first_reply_receiver) = reply::<u8>();
+        let (second_reply_sender, _second_reply_receiver) = reply::<u8>();
         let first = enqueue(&sender, 7_u8, first_reply_sender);
 
         // Act

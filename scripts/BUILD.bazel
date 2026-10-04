@@ -1455,6 +1455,18 @@ js_test(
 )
 
 js_binary(
+    name = "audit_stack_realignment",
+    entry_point = "audit-stack-realignment.mjs",
+    data = ["stack-realignment-audit.mjs", "stack-realignment-allowlist.json"],
+)
+
+js_test(
+    name = "stack_realignment_audit_test",
+    entry_point = "stack-realignment-audit.test.mjs",
+    data = ["stack-realignment-audit.mjs", "stack-realignment-allowlist.json"],
+)
+
+js_binary(
     name = "audit_fault_provenance",
     entry_point = "audit-fault-provenance.mjs",
     data = [":core_dump_sources", "noise-native-calls.mjs", "noise-native-disassembly.mjs"],

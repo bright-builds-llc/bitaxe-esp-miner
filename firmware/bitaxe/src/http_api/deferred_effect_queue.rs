@@ -2,6 +2,8 @@
 
 use std::sync::mpsc::{self, Receiver, SyncSender};
 
+use bitaxe_runtime::reply::{reply, ReplyReceiver, ReplySender};
+
 use bitaxe_api::DeferredEffectQueueUnavailable;
 
 /// Queue handle used by request handlers to transfer effect ownership.
@@ -23,8 +25,10 @@ impl<Effect> DeferredEffectQueue<Effect> {
         &self,
         effect: Effect,
     ) -> Result<DeferredEffectLease, DeferredEffectQueueUnavailable> {
-        let (ownership_sender, ownership_receiver) = mpsc::sync_channel(0);
-        let (release_sender, release_receiver) = mpsc::sync_channel(0);
+        // Per-request std channels realign their frames without `movsp` on this
+        // toolchain; one-shot replies keep the handshake off that path.
+        let (ownership_sender, ownership_receiver) = reply();
+        let (release_sender, release_receiver) = reply();
         self.sender
             .send(DeferredEffectRequest {
                 effect,
@@ -42,7 +46,7 @@ impl<Effect> DeferredEffectQueue<Effect> {
 
 /// Worker-owned effect waiting for the request handler to schedule its response.
 pub(super) struct DeferredEffectLease {
-    release_sender: SyncSender<()>,
+    release_sender: ReplySender<()>,
 }
 
 impl DeferredEffectLease {
@@ -56,8 +60,8 @@ impl DeferredEffectLease {
 
 struct DeferredEffectRequest<Effect> {
     effect: Effect,
-    ownership_sender: SyncSender<()>,
-    release_receiver: Receiver<()>,
+    ownership_sender: ReplySender<()>,
+    release_receiver: ReplyReceiver<()>,
 }
 
 /// Creates a worker-owned queue through an injectable process-lifetime spawn boundary.

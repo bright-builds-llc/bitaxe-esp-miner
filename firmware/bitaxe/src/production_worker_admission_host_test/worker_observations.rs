@@ -51,7 +51,7 @@ fn new_owner_first_accepted_share_is_not_hidden_by_previous_pool_baseline() {
     previous.lifetime_share_counters.accepted = 1;
     previous.lifetime_share_counters.qualified_candidates = 1;
     let mut adapter = blocked_adapter();
-    let (reply, _receiver) = mpsc::sync_channel(1);
+    let (reply, _receiver) = bitaxe_runtime::reply::reply();
     adapter.event(
         bwg::OwnerCommand::Start {
             generation,

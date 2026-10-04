@@ -227,17 +227,18 @@ impl RuntimeBoardAdapter {
     fn saturated_queue(&mut self) -> Result<(), &'static str> {
         use bitaxe_runtime::request_queue::{enqueue, EnqueueOutcome, ACTUATION_REQUEST_CAPACITY};
         let (sender, receiver) = std::sync::mpsc::sync_channel(ACTUATION_REQUEST_CAPACITY);
-        let (reply_sender, _reply_receiver) = std::sync::mpsc::sync_channel::<u8>(1);
         for _ in 0..ACTUATION_REQUEST_CAPACITY {
+            let (reply_sender, _reply_receiver) = bitaxe_runtime::reply::reply::<u8>();
             if enqueue(
                 &sender,
                 PreparationStep::SetFanDutyTo100Percent,
-                reply_sender.clone(),
+                reply_sender,
             ) != EnqueueOutcome::Queued
             {
                 return Err("queue_fixture_failed");
             }
         }
+        let (reply_sender, _reply_receiver) = bitaxe_runtime::reply::reply::<u8>();
         let blocked = enqueue(
             &sender,
             PreparationStep::SetFanDutyTo100Percent,

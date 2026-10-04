@@ -405,6 +405,10 @@ audit-owner-stack elf objdump owner_source:
     bazel run //scripts:audit_owner_stack -- "{{ elf }}" "{{ objdump }}" "{{ owner_source }}"
 
 # Audit a built device ELF's control-thread routing frames and deepest normal path; never opens a device.
+# Fails if a windowed function that realigns a1 without movsp is reachable outside startup.
+audit-stack-realignment elf output:
+    bazel run //scripts:audit_stack_realignment -- --elf "{{ elf }}" --output "{{ output }}"
+
 audit-control-stack elf output:
     bazel run //scripts:audit_control_stack -- --elf "{{ elf }}" --output "{{ output }}"
 

@@ -5480,19 +5480,31 @@ Root cause (offline forensics, 2026-10-04; confirmed in the disassembly):
   metadata shape does not match, and nothing else points into the stack.
 
 Plan (`task-str005-start-panic-diagnosis`, correction):
-- [ ] Add a project-owned one-shot reply primitive with no over-aligned types,
-      host-tested in `bitaxe-runtime`.
-- [ ] Use it at every per-request reply site:
-      - `bwg_worker_usb/writer.rs` `send_control`;
-      - `production_mining_session/bwg.rs` (3 sites);
-      - `safety_adapter.rs` (2 sites);
-      - `http_api/deferred_effect_queue.rs` acquire/release;
-      - `bitaxe-runtime` `request_queue` reply types.
-      Startup-created long-lived queues stay on std channels.
-- [ ] ELF regression: a static audit lists every function that writes `a1`
-      outside `entry`/`movsp`. It fails if any non-std caller of one is not
-      in an explicit startup allowlist. It must fail on `d986b2ea` (send
-      control) and pass on the corrected image.
+- [x] `bitaxe_runtime::reply`: a one-shot slot (`Arc` of `Mutex` plus `Condvar`).
+      Send, `try_recv`, `recv` and `recv_timeout` keep std's disconnect
+      semantics. 7 host tests.
+- [x] Every per-request reply site uses it:
+      - `writer::send_control`;
+      - `bwg::cooling`, `safe_stop` and `request` (Worker Start, Renew,
+        SafeStop);
+      - `request_safety_actuation` and `queue_safety_actuation` via
+        `request_queue::ActuationEnvelope`;
+      - the deferred-effect acquire/release handshake.
+      Host tests and the simulation fixture are updated. Bazel: 75 firmware
+      and runtime tests pass. Cargo default members: fmt and clippy clean,
+      2,608 tests pass.
+- [x] ELF regression, `just audit-stack-realignment <elf> <output>`
+      (`scripts/stack-realignment-audit.mjs`, allowlist
+      `scripts/stack-realignment-allowlist.json`, 5 fixture tests):
+      - It flags windowed functions whose prologue writes `a1, a1, aX`. These
+        are exactly the 14 `std::sync::mpmc` constructors on `d986b2ea`.
+      - It walks callers through `call*` and `l32r` literals and the std
+        wrappers.
+      - It blocks `d986b2ea`, whose unexpected callers include
+        `send_control`, Worker Start/Renew/SafeStop, `bwg::cooling`,
+        deferred-effect `acquire` and the safety requests.
+      - The corrected dirty build `de1cc19d…` passes with 9 startup-only
+        callers.
 - [ ] Build, run native audits, and install the corrected image
       state-preservingly through a new noise-serial profile.
 - [ ] Verify on hardware: five batched loops (500 rounds); loop005 had
