@@ -5285,6 +5285,11 @@ Remediation and heartbeat002:
 - No restart is needed, and an unchanged retry without that proof is not
   allowed.
 
+Remediation proof | 2026-10-03: the owner enabled Local Network access for the
+Claude app. One TCP connect from the agent shell to the device's freshly
+reported telemetry endpoint now succeeds (159 ms), where it previously failed
+with `EHOSTUNREACH`. Heartbeat002 is admitted.
+
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
 Status: Blocked on independent checkpoint results; no campaign is pre-authorized.
