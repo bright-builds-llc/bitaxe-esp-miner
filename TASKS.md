@@ -5461,6 +5461,46 @@ Wedge observation | 2026-10-04 | Owner: "yes, go ahead with 1, 2, then 3"
    - Secondary defect: after the panic's software reset, the USB link
      (device USB-Serial/JTAG or host state) stayed unusable until a physical
      USB replug. Hello, JTAG EP0 and the control-line reset all failed.
+
+Root cause (offline forensics, 2026-10-04; confirmed in the disassembly):
+- `std::sync::mpmc::sync_channel` (13 monomorphized copies) and `mpmc::channel`
+  open with `entry a1, 0x1a0`, then realign the stack pointer to 64 bytes for
+  `CachePadded` with a plain `add.n a1, a1, a8`. Under the Xtensa windowed ABI
+  that needs `movsp`. This is from the esp rustc 1.88-nightly LLVM fork.
+- ESP-IDF spills every register window on interrupt entry. An interrupt
+  between `entry` and the `add` saves the caller's a0–a3 below the old SP;
+  `retw` then reloads them from below the new SP, which holds stale data.
+- The reconstructed frames prove the callee returned correctly and only the
+  caller's restore was wrong: garbage return address, garbage return-slot
+  pointer, then `StoreProhibited`.
+- Both dumps fault at `sync_channel+22` right after this callee, on different
+  stacks.
+- `writer::send_control` creates `sync_channel(1)` for every control reply,
+  which explains crashes after minutes of command traffic. The allocator
+  metadata shape does not match, and nothing else points into the stack.
+
+Plan (`task-str005-start-panic-diagnosis`, correction):
+- [ ] Add a project-owned one-shot reply primitive with no over-aligned types,
+      host-tested in `bitaxe-runtime`.
+- [ ] Use it at every per-request reply site:
+      - `bwg_worker_usb/writer.rs` `send_control`;
+      - `production_mining_session/bwg.rs` (3 sites);
+      - `safety_adapter.rs` (2 sites);
+      - `http_api/deferred_effect_queue.rs` acquire/release;
+      - `bitaxe-runtime` `request_queue` reply types.
+      Startup-created long-lived queues stay on std channels.
+- [ ] ELF regression: a static audit lists every function that writes `a1`
+      outside `entry`/`movsp`. It fails if any non-std caller of one is not
+      in an explicit startup allowlist. It must fail on `d986b2ea` (send
+      control) and pass on the corrected image.
+- [ ] Build, run native audits, and install the corrected image
+      state-preservingly through a new noise-serial profile.
+- [ ] Verify on hardware: five batched loops (500 rounds); loop005 had
+      panicked at round 20. Then resume the heartbeat-loss retry.
+- [ ] Separately track the secondary defect: the USB link stays stuck after a
+      panic reset until a replug.
+- [ ] Report the codegen bug upstream (esp-rs/rust LLVM Xtensa); that is
+      external, so only a report draft goes here.
 Control diagnostic recovery hardware: disabled.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
