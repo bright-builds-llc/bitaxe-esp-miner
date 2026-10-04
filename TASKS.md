@@ -5234,7 +5234,7 @@ audited `654338d0` image).
 - [ ] Phase B heartbeat001, then record the outcome.
 
 Heartbeat restart hardware: disabled.
-Heartbeat shutdown probe hardware: enabled.
+Heartbeat shutdown probe hardware: disabled.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart/restart003 --start-root <repo>/scratch/str005-accepted-share/share001/attempt --gate-root <gate-root>
@@ -5416,6 +5416,34 @@ attribution and validator folding.
 
 Heartbeat006 reruns the unchanged contract. If the timeout recurs, the named
 operation is the new signature to diagnose before any further attempt.
+
+Heartbeat006 | 2026-10-04 | Refused at baseline on boot drift; the device had panicked; STOP
+- The new attribution named the failure on its first use: operation
+  `baseline`, owner category `startup_prepared_baseline`. Every serial review
+  succeeded, but the device reported boot 16 where the pinned lineage expects
+  15. Nothing ran: no candidate, observer, signer use, Start or charge; the
+  ledger stayed at next 26.
+- The pre-baseline diagnostics show boot 16, `reset_reason=panic`, uptime
+  about 458 s. The boot time therefore matches heartbeat005's baseline step.
+- Correction to heartbeat005: its Gate serial `timeout` was the firmware
+  panicking and rebooting during a read-only baseline review. The device was
+  idle, not mining, and had no grant. Heartbeat004 had passed the same reviews
+  on the same boot about 10 minutes earlier.
+- Sealed `complete=false` (`heartbeat_evidence_unverified`,
+  `startup_owner_failed`): result
+  `9ee3e0237ec211c5fcf7894617eb378aa99914b48f75c1e36796e2779e4ce976`, seal
+  `47b11ee8d7c8483d16a7352a4759e82d79a974b8c3965ce118740e2d0986a694`.
+
+Outcome: `stop_hardware_blocker` under the contract's "new panic" stop
+condition. The heartbeat gate is disabled again.
+- Device behavior under heartbeat loss already met every native bound in
+  heartbeat002; only its seal is unverified.
+- A sealed pass needs the idle-review panic diagnosed and corrected first,
+  then a new restart (boot 16 to 17) and a fresh attempt.
+- Next step: acquire and decode the development core dump of the boot-15 panic
+  under `task-str005-start-panic-diagnosis` (ADR-0030/0031, the staged panic
+  probe contract). Its acquisition gate is disabled and needs a contract for
+  the installed `654338d0` image first.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart-004/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
