@@ -5527,10 +5527,22 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: enabled.
-Control review loop hardware: enabled.
-- [ ] Verify on hardware: five batched loops (500 rounds); loop005 had
-      panicked at round 20. Then resume the heartbeat-loss retry.
+Control diagnostic recovery hardware: disabled.
+Control review loop hardware: disabled.
+- [x] Hardware verification on `7ca3e29c`:
+      - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
+        five fresh Connects) with no failure. On the previous image, loop004
+        ended at round 128 (the nonce cap) and loop005 panicked at round 20.
+        Seal `39c4e5e614ce9458abd02ea63662b0759fe710f5941cf17bf8b6f43da8809fb4`.
+      - recovery008: current safe recovery, boot 5 with `reset_reason=other`,
+        booted at the install's last reset before the loop began, so no
+        reboot during it. Ledger 26/25/3,000,000 ms unchanged. Seal
+        `ae846b78784c5c2ec3321f2e62515745e9936292f33bccade16782d7f14224c4`.
+      - Interpretation: strong evidence. The previous image failed under the
+        same load, and the deterministic audit proves the hazard is
+        unreachable from runtime paths.
+- [ ] Resume the heartbeat-loss retry on the corrected image (a new restart
+      and probe lineage).
 - [ ] Separately track the secondary defect: the USB link stays stuck after a
       panic reset until a replug.
 - [ ] Report the codegen bug upstream (esp-rs/rust LLVM Xtensa); that is

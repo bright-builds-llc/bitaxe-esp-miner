@@ -46,3 +46,47 @@ This is a hypothesis for the next diagnostic, not a proven root cause.
 Raw dumps, decoder output and memory contents remain in protected private roots
 under `scratch/str005-idle-panic*`. This summary carries only categories and
 symbol names.
+
+## Reproduction, root cause and correction
+
+A diagnostic image (`c634cc20`) added three things:
+- an end-of-stack watchpoint;
+- per-command internal-heap integrity checks;
+- a captured control-stack trace.
+
+A bounded read-only review loop then reproduced the panic: loop005 failed at
+round 20, and the device rebooted with `reset_reason=panic`. The archive-bound
+clear had emptied the core partition, so that dump was stored and read.
+
+| Finding                    | Direct evidence                                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Same fault                 | `StoreProhibited` at `std::sync::mpsc::sync_channel<bool>+22` in `writer::send_control`, control owner |
+| Not a stack overflow       | At least 6,100 of 16,384 bytes always free across 106 commands; end-of-stack watchpoint never fired  |
+| Not heap corruption        | No panic-details note: heap integrity checks passed; no allocation failures                          |
+| Mechanism                  | `std::sync::mpmc` channel constructors realign their frame to 64 bytes with `add.n a1, a1, a8` instead of `movsp`. An interrupt in that prologue saves the caller's registers below the old stack pointer, and the return reloads them from below the new one. |
+| Reconstructed frames       | The callee returned correctly. Only the caller's restored return address and return-slot pointer were stale, giving the near-null store. |
+
+The correction (`24af10be`) gives per-request replies a one-shot slot that
+holds only a mutex and a condition variable (`bitaxe_runtime::reply`). It is
+used for:
+- control replies;
+- Worker Start, Renew, SafeStop and cooling;
+- safety actuation requests;
+- deferred HTTP effects.
+
+`just audit-stack-realignment` blocks any non-startup caller of a realigning
+function. It blocks the previous image (17 callers, including
+`send_control`) and passes the corrected one (9 startup-only callers).
+
+Verification on the corrected image (`7ca3e29c`, ELF `227bc380…`):
+- a state-preserving install with all native audits passing;
+- 500 read-only review rounds in five fresh sessions with no failure;
+- a current recovery shows no reboot during the loop and the ledger unchanged
+  at next 26.
+
+Residual risk:
+- The toolchain hazard remains for the nine startup-time channel creations.
+  Each is one call per boot, and a panic there resets safely.
+- A separate defect: after a panic reset, the USB link stayed unusable until
+  a physical USB replug.
+- Parity stays 90/95.
