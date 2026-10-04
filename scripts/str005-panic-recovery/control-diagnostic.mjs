@@ -7,7 +7,7 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { validateLedger } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { main as collect } from '../str005-share-recovery/main.mjs';
 
-export const ENABLED = false;
+export const ENABLED = true;
 // The currently installed qualified image: realignment-fix install attempt-001, sealed and
 // complete with the ledger unchanged. Retarget these pins whenever a later install replaces it.
 export const INSTALL = Object.freeze({

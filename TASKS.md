@@ -5527,7 +5527,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: disabled.
+Control diagnostic recovery hardware: enabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
@@ -5570,8 +5570,19 @@ Control review loop hardware: disabled.
       - `bazel test //...` passes except
         `usb_bootstrap_measure_regression_process_test`, which fails under high
         host load and passes 4/4 when rerun with the change applied.
-- [ ] Hardware: install the queue image and run a bounded review loop. This
-      needs its own install profile and amendment; not started.
+- [ ] Hardware, per the owner (2026-10-04): install the queue image and run
+      a bounded review loop. Order:
+      1. recovery009: a current recovery on `7ca3e29c` after heartbeat007
+         (`just str005-control-diagnostic-recovery`, unchanged contract; the
+         expected ledger is next 27, last 26, 3,180,000 ms);
+      2. a `queue-workaround-install` successor profile pinned to recovery009,
+         with its own amendment. The candidate is the clean pushed HEAD
+         package, and `just audit-stack-realignment` on its exact ELF must
+         report no callers;
+      3. retarget the recovery and review-loop owners to that install, then
+         loop007 (5 batches of 100 rounds) and recovery010.
+      Each gate is enabled only for its own step. Stop on any panic, ledger
+      or identity drift, or unproven cleanup.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
