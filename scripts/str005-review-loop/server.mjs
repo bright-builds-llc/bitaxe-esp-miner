@@ -19,10 +19,13 @@ export function validateRow(value, iterations = LIMITS.iterations) {
   return value;
 }
 
-/** The Gate refuses Connect without a V2 scope, so the loop context must name the share scope. */
+/**
+ * The Gate refuses Connect without a V2 scope, and admits possession and V2 status
+ * reads only for the candidate phase, so the loop serves the installed image as candidate.
+ */
 export function gateConfiguration(context, trust) {
   check(context.scope === 'share', 'review_loop_scope');
-  return configuration({ ...context, before_source: context }, 'before', trust);
+  return configuration({ ...context, before_source: context }, 'candidate', trust);
 }
 
 /** One loop per served root; begin is one-use and every row is persisted in order. */

@@ -5266,6 +5266,16 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
       - Fix: the loop context names `scope: 'share'`, and the `/context`
         configuration goes through `gateConfiguration`, which refuses a
         missing scope. Regression added. Retry as loop002.
+      - loop002: Connect succeeded and round 1's ledger and budget reviews
+        passed. The page's Gate then refused possession before any device
+        exchange (`v2_page_admission`): in the `before` phase it admits
+        possession and V2 status only with core-dump self-test qualification.
+        Sealed with one failure row: result
+        `994ec7a78503ba0b23a68b289b214566985565e35b0f6d1c04f50973eefbf0e0`,
+        seal `0b8a28f8f9f925dde44958274a74dd8c80dfbebe882a76421d484e4e06b55d9d`.
+      - Fix: `/context` serves the installed image as the share-scoped
+        `candidate` phase, as the recovery collector does after its prepare
+        step. Regression updated. Retry as loop003.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
 Control diagnostic recovery hardware: enabled.
