@@ -5276,6 +5276,15 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
       - Fix: `/context` serves the installed image as the share-scoped
         `candidate` phase, as the recovery collector does after its prepare
         step. Regression updated. Retry as loop003.
+      - loop003: Connect was refused locally with the `candidate`
+        configuration served directly. The Gate arms candidate V2 reads only on
+        a `before` to `candidate` transition after a before-phase baseline in
+        the same page. Nothing ran. Sealed with zero rows: seal
+        `94a11851a7105b1c07d9dc337675a372d4952c6ff2127940377c40bae149f7a2`.
+      - Fix: `/context` serves `before`. A "Prepare candidate session" step
+        checks the idle baseline, stops and closes, and configures `candidate`
+        from `/loop/candidate`, as the recovery collector does. Regression and
+        amendment updated. Retry as loop004.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
 Control diagnostic recovery hardware: enabled.

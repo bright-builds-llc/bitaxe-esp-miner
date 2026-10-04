@@ -67,8 +67,11 @@ just str005-review-loop finish --private-root <loop-parent>/loop001   # after fi
 Task line: `Control review loop hardware: enabled.`
 
 In the persistent Gate tab:
-1. Click Connect Worker, then "Run bounded read-only review loop".
-2. The page requires an idle, ready session with the lease inactive.
+1. Click Connect Worker on the `before` configuration, then "Prepare
+   candidate session". The page requires an idle, ready, baseline-confirmed
+   session with the lease inactive. It stops and closes that session and
+   configures the `candidate` phase, which the Gate requires for V2 reads.
+2. Click Connect Worker again, then "Run bounded read-only review loop".
 3. It runs up to 300 rounds of the reviews the panicked baseline issued: the
    ledger, budget, V2 possession and V2 status. Each review is bounded at 5 s,
    and the loop stops at the first failure.

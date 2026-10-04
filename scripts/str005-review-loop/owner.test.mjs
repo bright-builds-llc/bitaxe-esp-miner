@@ -32,13 +32,14 @@ test('rows carry only counts and closed categories', () => {
   assert.throws(() => validateRow({ kind: 'progress', completed: 25, payload: 'x' }));
 });
 
-test('the Gate configuration is the share-scoped candidate phase and refuses a context without a scope', () => {
+test('the Gate configuration starts before and moves to the share-scoped candidate phase', () => {
   // Arrange
   const context = { scope: 'share', gate_commit: 'g', firmware_commit: 'f', app_elf_sha256: 'e' };
   // Act
-  const config = gateConfiguration(context, { keys: [] });
+  const [before, candidate] = ['before', 'candidate'].map(phase => gateConfiguration(context, { keys: [] }, phase));
   // Assert
-  assert.equal(config.stratumV2Scope, 'share');
-  assert.equal(config.stratumV2Qualification, 'candidate');
-  assert.throws(() => gateConfiguration({ ...context, scope: undefined }, {}), /review_loop_scope/u);
+  assert.deepEqual([before.stratumV2Qualification, candidate.stratumV2Qualification], ['before', 'candidate']);
+  assert.equal(candidate.stratumV2Scope, 'share');
+  assert.throws(() => gateConfiguration({ ...context, scope: undefined }, {}, 'before'), /review_loop_scope/u);
+  assert.throws(() => gateConfiguration(context, {}, 'restart'), /review_loop_scope/u);
 });

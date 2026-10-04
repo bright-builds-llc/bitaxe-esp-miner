@@ -20,12 +20,13 @@ export function validateRow(value, iterations = LIMITS.iterations) {
 }
 
 /**
- * The Gate refuses Connect without a V2 scope, and admits possession and V2 status
- * reads only for the candidate phase, so the loop serves the installed image as candidate.
+ * The Gate refuses Connect without a V2 scope. It admits possession and V2 status only in
+ * the candidate phase, and only after a before-phase baseline in the same page, so the page
+ * starts on `before` and reconfigures to `candidate` once that baseline exists.
  */
-export function gateConfiguration(context, trust) {
-  check(context.scope === 'share', 'review_loop_scope');
-  return configuration({ ...context, before_source: context }, 'candidate', trust);
+export function gateConfiguration(context, trust, phase) {
+  check(context.scope === 'share' && ['before', 'candidate'].includes(phase), 'review_loop_scope');
+  return configuration({ ...context, before_source: context }, phase, trust);
 }
 
 /** One loop per served root; begin is one-use and every row is persisted in order. */
@@ -38,7 +39,7 @@ export function createLoopServer({ root, context, assets, verify }, operations =
     check(request.headers.host === host, 'review_loop_host'); const path = new URL(request.url, origin).pathname;
     if (request.method === 'GET') {
       if (path === '/') return send(response, 200, Buffer.from(`${assets.page}\n<script type="module" src="/loop-page.mjs"></script>`), 'text/html');
-      if (path === '/context') return send(response, 200, gateConfiguration(context, assets.trust));
+      if (path === '/context') return send(response, 200, gateConfiguration(context, assets.trust, 'before'));
       const asset = path === `/${BUNDLE}` ? assets.bundle : assets.modules?.[path];
       if (asset) return send(response, 200, asset, 'text/javascript');
       return send(response, 404, { error: 'review_loop_route' });
@@ -46,6 +47,7 @@ export function createLoopServer({ root, context, assets, verify }, operations =
     check(request.method === 'POST' && (request.headers.origin === origin || (!request.headers.origin && request.headers['sec-fetch-site'] === 'same-origin')), 'review_loop_origin');
     const input = await body(request);
     if (path === '/activate') { object(input, []); await verify(); return send(response, 200, challenge); }
+    if (path === '/loop/candidate') { object(input, []); await verify(); return send(response, 200, gateConfiguration(context, assets.trust, 'candidate')); }
     if (path === '/loop/begin') {
       object(input, ['state']); await verify(); check(!begun, 'review_loop_consumed');
       check(input.state?.status === 'ready' && input.state.connected === true && input.state.running === false &&
