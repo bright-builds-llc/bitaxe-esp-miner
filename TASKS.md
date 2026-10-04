@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: disabled (control repro capture001 completed).
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5327,6 +5327,12 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
         Connect. Batch admission and rows carry the batch number. Regressions
         cover batch ordering and stopping, and assert the proof budget stays
         under the cap.
+      - loop005, batch 1: 19 clean rounds (about 13 s). Round 20's budget review
+        then failed with a Gate serial `timeout`, after only about 41 proofs,
+        so the nonce cap cannot explain it. Sealed: result
+        `0a7459d30f8408cc2f3f44b0edc331db43ec1cbe55e7f3149f1105d4d067a331`,
+        seal `4dae00bd7b0c8562c6cee2c54821a3c66ea70c5b85eef567bc47fda8e2a8cf1e`.
+        A recovery and read follow.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
