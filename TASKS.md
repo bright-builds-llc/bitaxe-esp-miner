@@ -5368,6 +5368,30 @@ sequence. Each step needs Connect Worker first:
 The lineage is unchanged (heartbeat002, then restart004, boot 15, ledger 26).
 No restart is needed, because no Start ran.
 
+Heartbeat004 | 2026-10-04 | Refused at the cooling review by a missing startup detector; no Start
+- The baseline was recorded and the candidate configured. The agent then
+  clicked Run without first writing the fresh pre-Start detector
+  (`startup-detector.stdout.log` beside the attempt root).
+- `verifyEffect` hit ENOENT on the first effect route, the cooling review.
+  That error had no named category, so the owner recorded only
+  `startup_operation_rejected` (phase `cooling`). `prepare` failed closed: no
+  signer use, Start, charge, fault or retained record. The ledger stayed at
+  next 26, 3,000,000 ms, on boot 15.
+- Sealed `complete=false` (`heartbeat_evidence_unverified`,
+  `startup_owner_failed`): result
+  `f435bba2b24d102e991310668d09bd6f4eea0788240ecdbae03ea5c2a59632a9`, seal
+  `38fb5de3a1cb5c1cf2b15a14e8138d6dde1e18e1dd873bf2e94b6ce62cd4c2ca`.
+- The first `finish` was refused (`heartbeat_failed`) because the fix was still
+  uncommitted in the tree. It was re-run on clean pinned source; the refused
+  logs are kept beside the root.
+
+Fix: `readStartupDetector` now reports a missing file as the recorded
+category `startup_detector_missing`, with a regression. The amendment now
+lists the full operator sequence, including the startup detector.
+
+Heartbeat005 reruns the unchanged contract with that sequence. The lineage is
+unchanged, and no restart is needed because no Start ran.
+
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart-004/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
 just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat003/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --restart-root <repo>/scratch/str005-heartbeat-restart-004/restart004

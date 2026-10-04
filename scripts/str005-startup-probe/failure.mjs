@@ -5,7 +5,7 @@ const categories = new Set(['panic_detector_stale', 'panic_detector_physical', '
   'startup_delivery_consumed', 'startup_start_binding', 'startup_start_session', 'startup_effect_admission', 'startup_baseline_stale',
   'startup_prepared_baseline', 'v2_authority_failed', 'v2_authority_unavailable', 'v2_signer_failed',
   'status_repro_record_unverified', 'status_repro_observation_consumed', 'status_repro_source_changed',
-  'status_repro_late_completion', 'startup_operation_rejected']);
+  'status_repro_late_completion', 'startup_detector_missing', 'startup_operation_rejected']);
 const phases = new Map([
   ['/cooling-review-context', 'cooling'], ['/cooling-review', 'cooling'], ['/budget-review-context', 'budget'], ['/budget-review', 'budget'],
   ['/startup/fixture', 'fixture'], ['/authorization-context', 'signing'], ['/window-artifacts', 'delivery'], ['/startup/start-admit', 'start_admission'],

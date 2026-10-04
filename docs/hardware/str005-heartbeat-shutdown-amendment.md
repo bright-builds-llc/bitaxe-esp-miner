@@ -81,6 +81,23 @@ A pass requires every heartbeat judge and inspector criterion. The core ones:
 
 Any shortfall seals `unverified`.
 
+## Operator sequence
+
+Use the persistent Gate tab and click Connect Worker before each step:
+1. Run the detector into `<parent>/detector.stdout.log`, then preflight and
+   serve.
+2. Click "Record baseline and configure candidate".
+3. Write a fresh `<parent>/startup-detector.stdout.log` with
+   `just detect-ultra205` while the page holds no connection. The first effect
+   route must read it within 60 s.
+4. Click "Run one heartbeat-loss probe".
+5. Click "Collect fresh recovery and close".
+6. Stop the server, write `<parent>/final-detector.stdout.log`, and run
+   `finish` on clean pushed source.
+
+The page refuses Run before the baseline. A missing startup detector fails as
+`startup_detector_missing` before any Start.
+
 ## Prohibited
 
 - an external pool or pool credentials, Wi-Fi provisioning, or any firmware

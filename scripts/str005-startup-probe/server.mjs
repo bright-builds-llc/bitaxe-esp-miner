@@ -1,9 +1,10 @@
 import { createReleaseOwner } from './server-release.mjs';
+import { readStartupDetector } from './startup-detector.mjs';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { BUNDLE, admitTrust, protectedPath } from '../fixed-usb-qualification/contract.mjs';
+import { BUNDLE, admitTrust } from '../fixed-usb-qualification/contract.mjs';
 import { body, send } from '../fixed-usb-qualification/http.mjs';
 import { configuration } from '../str005-v2-serial/server-assets.mjs';
 import { createSigner } from '../str005-v2-serial/signing.mjs';
@@ -11,7 +12,6 @@ import { startFixture } from '../str005-v2-serial/fixture-owner.mjs';
 import { requireGone, requirePoolListenerAbsent } from '../str005-v2-serial/host-resources.mjs';
 import { validateDiagnosticExport } from '../fixed-usb-qualification/diagnostic-export.mjs';
 import { proof, writeNew } from '../str005-noise-serial/files.mjs';
-import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { createRoutes } from './routes.mjs';
 
@@ -28,11 +28,7 @@ export async function createServerOwner({ root, context, assets, authorityDirect
     await verify();
     if (operations.admitContext) operations.admitContext(context);
     else check(context.admission === 'prepared-normal-stop-v1', 'startup_prepared_admission');
-    const path = resolve(dirname(root), 'startup-detector.stdout.log'); await protectedPath(path);
-    const bytes = await readFile(path), age = Date.now() - (await stat(path)).mtimeMs;
-    let detector;
-    try { detector = parseDetector(bytes.toString('utf8'), context.physical, age); }
-    catch (error) { if (error.code === 'panic_detector_stale') error.detectorAgeMs = Math.floor(age); throw error; }
+    const { bytes, detector } = await readStartupDetector(resolve(dirname(root), 'startup-detector.stdout.log'), context.physical);
     const digest = sha256(bytes); check(!maybeDetectorSha || digest === maybeDetectorSha, 'startup_physical_changed');
     if (!maybeDetectorSha) { await persist('start-detector.json', { ...detector, sha256: digest, observedAtUnixMs: Date.now() }); maybeDetectorSha = digest; }
   };
