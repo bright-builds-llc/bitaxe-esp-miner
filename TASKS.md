@@ -5402,6 +5402,14 @@ Wedge observation | 2026-10-04 | Owner: "yes, go ahead with 1, 2, then 3"
      power-cycle: barrel off, then USB, then restore barrel then USB.
    - Then a fresh current recovery must prove Gate service and the unchanged
      ledger.
+   - Result: one `board-info` attempt with the pinned espflash failed
+     ("Failed to connect to the device"). ROM entry through the serial
+     control lines also failed. There was no write. Afterwards the detector
+     still admits one device in native serial runtime.
+   - Software recovery is exhausted. Waiting for the owner to power-cycle:
+     barrel off, USB off, wait 10 s, then barrel on, then USB on. There is no
+     deadline on this wait. Afterwards: detector, then a fresh current
+     recovery proving Gate service and the unchanged ledger.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
