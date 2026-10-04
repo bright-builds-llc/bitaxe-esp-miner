@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: disabled (no current proof; device wedged).
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5425,7 +5425,20 @@ Wedge observation | 2026-10-04 | Owner: "yes, go ahead with 1, 2, then 3"
      device, and OpenOCD `init` now finds both TAPs and examines both CPUs.
      The earlier EP0 failure was therefore a stuck USB link (device
      USB-Serial/JTAG peripheral or host USB state), not a frozen CPU.
-   - Next: recovery006 checks whether the firmware answers the Gate's hello.
+   - recovery006: Gate hello answered and current safe recovery was proven
+        (ledger 26/25/3,000,000 ms, not pending). Diagnostics show boot 8 with
+        `reset_reason=panic`, 3,043,786 ms of uptime.
+      - Boot 8 began at 13:23:54, the same second loop005's round-20
+        budget-review failure was recorded. So loop005 reproduced the panic
+        and the device rebooted.
+      - The "wedge" was a stuck USB link after that panic reboot, cleared only
+        by a USB replug. That is a secondary defect to track.
+      - The cleared core partition should now hold this panic's dump.
+      Result `473546a8…`, seal
+      `00c9f5eb07293d3ca6068155bbfaa95b77e4274977e80bb5ecff98f021af4ffe`.
+   - Next: recovery007 and one core-dump read inside its proof window, then
+     offline analysis of the panic frame, the control-stack trace and any
+     panic-details note.
 Control diagnostic recovery hardware: enabled.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
