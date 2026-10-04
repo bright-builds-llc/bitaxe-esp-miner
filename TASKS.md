@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: disabled (idle-panic capture001 completed).
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5285,6 +5285,13 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
         checks the idle baseline, stops and closes, and configures `candidate`
         from `/loop/candidate`, as the recovery collector does. Regression and
         amendment updated. Retry as loop004.
+      - loop004: 127 complete rounds (508 reviews in about 72 s). Round 128's
+        possession review then failed, and the Gate recorded serial `timeout`,
+        the same signature as heartbeat005's panic. Sealed: result
+        `be86fa6fff942ad272e6e41c11c227f7e016473d4022f1bf17fcbe1bb56c570e`,
+        seal `86ddf3c52e3103f9a4168b080654485339de100b025f73ba6529aa0e2adecfb2`.
+- [ ] Phase D: recovery003 and one core-dump read inside its proof window,
+      then offline analysis.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
 Control diagnostic recovery hardware: enabled.
