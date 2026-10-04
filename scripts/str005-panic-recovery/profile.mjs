@@ -1,5 +1,5 @@
 /** Current recovery after the idle-review panic on the installed step-5 image (heartbeat005, boot 15). */
-export const ENABLED = true;
+export const ENABLED = false;
 export const PANIC_RECOVERY = Object.freeze({
   enabled: ENABLED,
   task: 'task-str005-start-panic-diagnosis',

@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
+Development core-dump acquisition: disabled (idle-panic capture001 completed).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5161,14 +5161,25 @@ reset with `reset_reason=panic`, taking boot 15 to 16; see
 - [x] Regressions cover the profile gate, the generic predecessor option, and
       the failed-boot threshold on the real conclusion fixture. The share
       recovery and share diagnostic suites still pass.
-- [ ] Phase A recovery001: a complete current recovery writes
-      `current-recovery.json`.
-- [ ] Phase B capture001: one `core-dump-read` inside the 120-second proof
-      window, with guarded return, identity check and release.
-- [ ] Phase C: offline `core-dump inspect`/`analyze` against the retained exact
-      ELF, recording a redacted cause, or the dump's absence, as evidence.
-- [ ] Then implement a regression-backed correction, or record the blocker.
-Idle panic recovery hardware: enabled.
+- [x] Phase A recovery001: `current_safe_recovery=true` (idle V2, ledger 26/25/3,000,000 ms
+      unchanged, restoration and release proven); fresh proof written.
+- [x] Phase B capture001: one read inside the proof window; ROM admitted,
+      partition read only, application identity restored, cleanup complete,
+      no erase or write. The return reset the device (boot 17).
+- [x] Phase C: dump checksum and full ELF identity verified (`2641c24f…`),
+      allocation history bound to boot 15 with zero allocation failures, and no
+      abort-message note. The firmware's captured panic-frame record shows a
+      CPU `StoreProhibited` in `std::sync::mpsc::sync_channel`, called from
+      `bwg_worker_usb::writer::send_control` on the Worker control owner. The
+      SP and return-slot pointer were restored from an overwritten spill area
+      as a heap address and a small integer. That signature is heap/stack
+      memory corruption, not an overflow or OOM. See the
+      [evidence](docs/parity/evidence/20261004-str005-idle-panic-capture.md).
+- [ ] Find the corrupting writer with instrumented firmware (heap integrity
+      checks or poisoning around the control path, then a bounded no-mining
+      reproduction). This needs its own installation contract. Then make a
+      regression-backed correction.
+Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.
 
@@ -5468,6 +5479,14 @@ condition. The heartbeat gate is disabled again.
   under `task-str005-start-panic-diagnosis` (ADR-0030/0031, the staged panic
   probe contract). Its acquisition gate is disabled and needs a contract for
   the installed `654338d0` image first.
+
+Panic capture | 2026-10-04: captured and decoded under
+`task-str005-start-panic-diagnosis`. The cause is a `StoreProhibited` on the
+Worker control owner in `writer::send_control` → `sync_channel`, after memory
+corruption of its register spill area
+([evidence](docs/parity/evidence/20261004-str005-idle-panic-capture.md)). The
+heartbeat probe stays stopped until a corrected image exists. The device is
+now on boot 17 after the read's return reset.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart-004/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
