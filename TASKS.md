@@ -5218,9 +5218,19 @@ the noise-serial successor profile `control-stack-diagnostic-install`.
 - [x] Pre-commit audits on the build: control-stack headroom 4,080 bytes;
       signed-start, core-store, fault-provenance and native-panic audits pass.
       The signed-Start path already uses 13,296 of 16,384 stack bytes.
-- [ ] Install attempt-001 from the clean pushed package, then a read-only review
-      reproduction under its own contract.
-Control stack diagnostic install hardware: enabled.
+- [x] Attempt-001 installed the clean pushed package `c634cc20` (ELF
+      `d986b2ead04672f42dbab9eb8c17e52f63cf1877881cf4c7ddcdb276cf8b5770`)
+      state-preservingly:
+      - five reviewed installs and four continuity cycles;
+      - the network-only Noise diagnostic exchange recorded;
+      - baseline restored, ledger 26/25/3,000,000 ms unchanged, cleanup proven.
+      Finalize and review both passed (`complete`): result
+      `923b9c6a6a0d36140ebb4db83c763830acf6a65026013202e83711fff8388ad4`, seal
+      `91144bd89061d83104e9def3ba44db381bcbc83d3709cb0e9229d8fd69b005e6`. No
+      panic occurred during the install.
+      ([projection](docs/parity/evidence/str005-control-stack-diagnostic/attempt-001.json))
+- [ ] Read-only review reproduction on this image under its own contract.
+Control stack diagnostic install hardware: disabled.
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.
