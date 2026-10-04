@@ -5353,6 +5353,22 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
         Next effect, pending the owner's choice: a passive receive-only
         serial observation, a JTAG halt-and-dump over the built-in USB-JTAG,
         or a reset or power cycle to recover.
+
+Wedge observation | 2026-10-04 | Owner: "yes, go ahead with 1, 2, then 3"
+1. Passive listen:
+   - Command: `just drain-worker-serial --board 205 --port <fresh detector
+     port> --evidence-dir <0700 parent>/drainN`.
+   - At most three drains, at least 15 s apart, each after a fresh
+     `just detect-ultra205`.
+   - Receive-only metadata: discarded byte count and elapsed time, at most
+     2 s and 65 KiB per drain. No write, reset, bootloader entry or Gate
+     session.
+   - Interpretation: nonzero bytes on repeated drains mean the firmware's
+     always-on output is alive and only the control path is stuck; zero
+     bytes on every drain is consistent with a frozen CPU or USB stack.
+2. Debugger snapshot: needs the pinned ESP-IDF `openocd-esp32` tool, a
+   download pending the owner's explicit OK. Its contract is added before use.
+3. Recover: a reset, then a current recovery proving Gate service is restored.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
