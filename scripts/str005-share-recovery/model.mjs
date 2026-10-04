@@ -30,7 +30,7 @@ export function conclusion(parts, context, hostReleased) {
   if (parts.finished?.failures.length) blockers.push('collection_failed');
   if (!hostReleased) blockers.push('host_resources_unreleased');
   if (!parts.errors || parts.errors.errors.length) blockers.push('collection_errors');
-  if (!(parts.status?.observation.bootOrdinal > 15)) blockers.push('post_failure_boot_unconfirmed');
+  if (!(parts.status?.observation.bootOrdinal > (context.failed_boot_ordinal ?? 15))) blockers.push('post_failure_boot_unconfirmed');
   const boots = parts.diagnostics?.observations?.filter(row => row.category === 'boot') ?? [];
   if (!boots.length || boots.at(-1).boot_ordinal !== parts.status?.observation.bootOrdinal) blockers.push('current_boot_correlation_missing');
   const preservation = parts.state?.preservation, closed = parts.closed;

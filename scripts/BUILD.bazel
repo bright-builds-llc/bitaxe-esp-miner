@@ -1377,6 +1377,25 @@ js_test(
 )
 
 js_library(
+    name = "str005_panic_recovery_sources",
+    srcs = glob(["str005-panic-recovery/*.mjs"]),
+    deps = [":str005_share_recovery_sources"],
+)
+
+js_binary(
+    name = "str005_panic_recovery",
+    chdir = "..",
+    data = [":str005_panic_recovery_sources"],
+    entry_point = "str005-panic-recovery/main.mjs",
+)
+
+js_test(
+    name = "str005_panic_recovery_test",
+    data = [":str005_panic_recovery_sources"],
+    entry_point = "str005-panic-recovery/profile.test.mjs",
+)
+
+js_library(
     name = "str005_share_crash_sources",
     srcs = glob(["str005-share-crash/*.mjs"]),
     deps = [":str005_v2_serial_sources"],

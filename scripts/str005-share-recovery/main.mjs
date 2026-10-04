@@ -9,21 +9,22 @@ import { privateRoot, proof, writeNew, retain, inventory } from '../str005-noise
 import { processSnapshot, sameProcess, requireNoHolders, requireLsofAbsent } from '../str005-v2-serial/host-resources.mjs';
 import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
-import { currentSource, predecessor, argumentsFor, SHARE_SEAL } from './contract.mjs';
+import { currentSource, predecessor, argumentsFor, SHARE001 } from './contract.mjs';
 import { STAGES, conclusion, recoveryProof } from './model.mjs';
 import { createRecoveryServer } from './server.mjs';
 async function detect(root, physical, final = false) {
   const path = resolve(dirname(root), `${final ? 'final-' : ''}detector.stdout.log`); await protectedPath(path);
   return parseDetector(await readFile(path, 'utf8'), physical, Date.now() - (await stat(path)).mtimeMs);
 }
-export async function main(argv) {
-  const { action, options } = argumentsFor(argv);
+/** Runs one current-recovery collection bound to the profile's sealed predecessor; Share001 is the default. */
+export async function main(argv, profile = SHARE001) {
+  const { action, options } = argumentsFor(argv, profile.enabled, profile);
   const firmwareRoot = process.env.BUILD_WORKSPACE_DIRECTORY ?? git(process.cwd(), ['rev-parse', '--show-toplevel']);
   const root = options['--private-root']; ignored(firmwareRoot, root);
-  const source = await currentSource(firmwareRoot, action !== 'finish');
+  const source = await currentSource(firmwareRoot, action !== 'finish', profile);
   if (action === 'preflight') {
-    await missing(root); await privateRoot(dirname(root)); ignored(firmwareRoot, options['--share-root']);
-    const prior = await predecessor(firmwareRoot, options['--share-root']), before = prior.context;
+    await missing(root); await privateRoot(dirname(root)); ignored(firmwareRoot, options[profile.rootOption]);
+    const prior = await predecessor(firmwareRoot, options[profile.rootOption], profile), before = prior.context;
     const gateRoot = options['--gate-root']; cleanPushed(gateRoot, before.gate_commit);
     const pins = [...(await readFile(resolve(firmwareRoot, 'MODULE.bazel'), 'utf8')).matchAll(/strip_prefix\s*=\s*"bitaxe-turnstile-system-([a-f0-9]{40})"/gu)];
     check(pins.length === 1 && pins[0][1] === before.gate_commit, 'share_recovery_gate_pin');
@@ -32,7 +33,7 @@ export async function main(argv) {
     check(assets.bundle.includes(before.gate_commit), 'share_recovery_gate_bundle');
     for (const [key, bytes] of Object.entries(assets)) check(sha256(bytes) === before.assetHashes[key], 'share_recovery_historical_asset');
     const context = { schema: 'str005-share-failure-recovery-context-v1', ...source, firmware_root: firmwareRoot, gate_root: gateRoot,
-      shareRoot: options['--share-root'], shareSeal: SHARE_SEAL, firmware_commit: before.firmware_commit, app_elf_sha256: before.app_elf_sha256,
+      shareRoot: options[profile.rootOption], shareSeal: profile.seal, failed_boot_ordinal: profile.failedBootOrdinal, firmware_commit: before.firmware_commit, app_elf_sha256: before.app_elf_sha256,
       gate_commit: before.gate_commit, physical: before.physical, before_source: { firmware_commit: before.firmware_commit, app_elf_sha256: before.app_elf_sha256 },
       scope: 'share', attemptId: prior.before.attempt.id, original_campaign_id: before.original_campaign_id,
       historical_before_ledger: prior.before.ledger, assetHashes: before.assetHashes };
@@ -43,13 +44,13 @@ export async function main(argv) {
   await privateRoot(root); await missing(resolve(root, 'sealed-inventory.json'));
   const context = (await proof(root, 'context.json')).value;
   check(context.schema === 'str005-share-failure-recovery-context-v1' && context.source_commit === source.source_commit &&
-    context.contractSha256 === source.contractSha256 && context.shareSeal === SHARE_SEAL, 'share_recovery_source_changed');
-  const prior = await predecessor(firmwareRoot, context.shareRoot);
+    context.contractSha256 === source.contractSha256 && context.shareSeal === profile.seal, 'share_recovery_source_changed');
+  const prior = await predecessor(firmwareRoot, context.shareRoot, profile);
   check(context.firmware_commit === prior.context.firmware_commit && context.app_elf_sha256 === prior.context.app_elf_sha256 &&
     context.gate_commit === prior.context.gate_commit && context.attemptId === prior.before.attempt.id && context.physical === prior.context.physical,
   'share_recovery_context_changed');
   if (action === 'finish') return finish(root, context);
-  const verify = async () => { const current = await currentSource(firmwareRoot); check(current.source_commit === context.source_commit && current.contractSha256 === context.contractSha256,
+  const verify = async () => { const current = await currentSource(firmwareRoot, true, profile); check(current.source_commit === context.source_commit && current.contractSha256 === context.contractSha256,
     'share_recovery_source_changed'); cleanPushed(context.gate_root, context.gate_commit); };
   await verify(); const selected = await detect(root, context.physical); requireNoHolders(selected.port);
   for (const fd of [1, 2]) check(fstatSync(fd).isFile() && (fstatSync(fd).mode & 0o777) === 0o600, 'share_recovery_private_output');
@@ -64,7 +65,7 @@ export async function main(argv) {
   const stop = () => { maybeClosing ??= server.release(); };
   for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, stop);
   try {
-    server.listen(0, '127.0.0.1'); await once(server, 'listening');
+    server.listen(profile.port, '127.0.0.1'); await once(server, 'listening');
     const owner = (await processSnapshot()).find(row => row.pid === process.pid); check(owner, 'share_recovery_owner');
     await writeNew(resolve(root, 'server-owner.json'), { owner, port: server.address().port, serialPort: selected.port, physical: selected.physical });
     process.stdout.write(`share_recovery_url=http://127.0.0.1:${server.address().port}/\n`);

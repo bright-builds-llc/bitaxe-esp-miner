@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: disabled (successor owns new-image qualification).
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5147,6 +5147,30 @@ collector sent an invalid null-attempt query and its normal flow never captured
 the required authorization recovery checkpoint. See the
 [startup001 report](docs/parity/evidence/20260928-str005-startup001-partial.md).
 No further Start, flash, clear or self-test is admitted by this consumed trial.
+
+Idle-review panic capture | 2026-10-04 | Owner: "go ahead with the core dump"
+Contract: [idle panic capture amendment](docs/hardware/str005-idle-panic-capture-amendment.md).
+New panic: on the installed `654338d0`/`2641c24f` image, heartbeat005's
+read-only baseline reviews on an idle device (no grant, no mining) ended in a
+reset with `reset_reason=panic`, taking boot 15 to 16; see
+`task-str005-heartbeat-shutdown-probe`. The ledger is unchanged at next 26.
+- [x] Make the Share001 current-recovery collector profile-driven (sealed
+      predecessor, task lines, listener, failed boot). Add the
+      `str005-panic-recovery` profile: heartbeat002 as predecessor,
+      `127.0.0.1:48765`, failed boot 15. Share001 behavior is unchanged.
+- [x] Regressions cover the profile gate, the generic predecessor option, and
+      the failed-boot threshold on the real conclusion fixture. The share
+      recovery and share diagnostic suites still pass.
+- [ ] Phase A recovery001: a complete current recovery writes
+      `current-recovery.json`.
+- [ ] Phase B capture001: one `core-dump-read` inside the 120-second proof
+      window, with guarded return, identity check and release.
+- [ ] Phase C: offline `core-dump inspect`/`analyze` against the retained exact
+      ELF, recording a redacted cause, or the dump's absence, as evidence.
+- [ ] Then implement a regression-backed correction, or record the blocker.
+Idle panic recovery hardware: enabled.
+Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
+read is admitted. Stop conditions are in the amendment.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

@@ -28,6 +28,15 @@ test('closed owner gate needs published enable and exact active seal', () => {
   assert.throws(() => argumentsFor(['preflight', '--private-root', '/r', '--gate-root', '/g', '--share-root', '/s'], false));
   assert.throws(() => argumentsFor(['serve', '--private-root', '/r', '--authority-directory', '/secret'], true));
 });
+test('the post-failure boot must follow the profile\'s failed boot', () => {
+  // Arrange: the fixture observes boot 16.
+  const failedAt = boot => ({ ...context, failed_boot_ordinal: boot });
+  // Act
+  const after15 = conclusion(parts(), failedAt(15), true), after16 = conclusion(parts(), failedAt(16), true);
+  // Assert
+  assert.equal(after15.current_safe_recovery, true);
+  assert.ok(after16.blockers.includes('post_failure_boot_unconfirmed'));
+});
 test('idle current proof measures arbitrary actual ledger and makes no historical claim', () => {
   // Arrange
   const observed = parts(); observed.ledger = { ...ledger, next_ordinal: 42, last_completed_ordinal: 41, total_charged_ms: 6000000 };
