@@ -5543,8 +5543,9 @@ Control review loop hardware: disabled.
         unreachable from runtime paths.
 - [ ] Resume the heartbeat-loss retry on the corrected image (a new restart
       and probe lineage).
-- [ ] Separately track the secondary defect: the USB link stays stuck after a
-      panic reset until a replug.
+- [x] Secondary defect documented, per the owner, without further
+      investigation: [known issues](docs/hardware/known-issues.md). The USB
+      link stays unusable after a panic reset; recover with a USB-only replug.
 - [ ] Report the codegen bug upstream (esp-rs/rust LLVM Xtensa); that is
       external, so only a report draft goes here.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
