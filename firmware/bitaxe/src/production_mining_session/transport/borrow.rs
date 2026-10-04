@@ -1,9 +1,7 @@
 //! Exclusive borrowing of an already idle pool worker; never a new thread.
 use super::PoolTransportCommand;
-use std::sync::{
-    mpsc::{SyncSender, TrySendError},
-    Arc, Mutex,
-};
+use bitaxe_runtime::queue::SyncSender;
+use std::sync::{mpsc::TrySendError, Arc, Mutex};
 
 #[derive(Clone, Copy)]
 struct Callbacks {

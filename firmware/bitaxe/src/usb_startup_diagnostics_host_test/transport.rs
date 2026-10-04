@@ -5,7 +5,7 @@ pub(crate) use crate::usb_write_failure::{WriteFailure, WriteObservation, WriteO
 pub static DELAY_MS: AtomicU32 = AtomicU32::new(0);
 pub static PARTIAL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 pub static SINK: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
-pub static BLOCK_NEXT: Mutex<Option<(mpsc::Sender<()>, Receiver<()>)>> = Mutex::new(None);
+pub static BLOCK_NEXT: Mutex<Option<(mpsc::Sender<()>, mpsc::Receiver<()>)>> = Mutex::new(None);
 pub fn write_if(bytes: &[u8], admitted: impl Fn() -> bool) -> anyhow::Result<()> {
     let maybe_block = BLOCK_NEXT.lock().expect("test block").take();
     if let Some((entered, release)) = maybe_block {

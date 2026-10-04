@@ -171,7 +171,7 @@ fn run_active_session(
     watchdog: &mut crate::production_mining_session::watchdog::ProductionTaskWatchdog,
 ) -> OwnerOutcome {
     let session_config = settings.session.clone();
-    let (event_sender, event_receiver) = mpsc::sync_channel(EVENT_CAPACITY);
+    let (event_sender, event_receiver) = bitaxe_runtime::queue::sync_channel(EVENT_CAPACITY);
     let transport = match TransportHandle::spawn(settings, move |event| {
         if event_sender.send(event).is_err() {
             log::warn!("stratum_v2_transport_event=discarded reason=owner_unavailable");

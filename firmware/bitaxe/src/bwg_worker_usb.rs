@@ -11,6 +11,7 @@ use crate::bwg_worker_nvs::{BwgWorkerNvs, EspDeviceIdentitySeedGenerator};
 use crate::bwg_worker_session::ProductionWorkerSession;
 use crate::production_mining_session::revocation::{self, WorkerGeneration};
 use crate::startup::BootMiningBaselineConfirmed;
+use bitaxe_runtime::queue::{self, Receiver, SyncSender};
 use bitaxe_worker_control::serial::trace::{SerialTraceCorrelation, SerialTraceStage};
 use bitaxe_worker_control::serial::{ReceiveCreditMailbox, SerialKind, SerialSessionBinding};
 use bitaxe_worker_control::{
@@ -18,7 +19,7 @@ use bitaxe_worker_control::{
     WorkerControl,
 };
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::mpsc::{self, Receiver, SyncSender};
+use std::sync::mpsc;
 use std::sync::OnceLock;
 use std::time::Duration;
 use zeroize::Zeroize;
@@ -124,7 +125,7 @@ pub(crate) fn prepare(recovery: BwgWorkerRecovery) -> anyhow::Result<PreparedWor
     .map_err(|error| anyhow::anyhow!("BWG Worker control unavailable: {}", error.category()))?;
     let prepared_link =
         prepared_link::prepare().map_err(|error| anyhow::anyhow!("usb_install: {error}"))?;
-    let (sender, receiver) = mpsc::sync_channel(EVENT_CAPACITY);
+    let (sender, receiver) = queue::sync_channel(EVENT_CAPACITY);
     EVENTS
         .set(sender)
         .map_err(|_| anyhow::anyhow!("BWG USB owner already started"))?;
@@ -150,7 +151,7 @@ pub(crate) fn install_diagnostics() -> anyhow::Result<()> {
 }
 
 fn install_writer() -> anyhow::Result<()> {
-    let (sender, output) = mpsc::sync_channel(EVENT_CAPACITY);
+    let (sender, output) = queue::sync_channel(EVENT_CAPACITY);
     OUTPUT
         .set(sender)
         .map_err(|_| anyhow::anyhow!("serial writer already started"))?;

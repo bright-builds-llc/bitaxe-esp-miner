@@ -1,10 +1,13 @@
 //! One-shot reply slot for per-request replies.
 //!
 //! `std::sync::mpsc` constructors realign the stack to 64 bytes for their cache-padded
-//! state. The pinned Xtensa toolchain emits that realignment as a plain stack-pointer
-//! add rather than `movsp`, so an interrupt in the prologue makes the caller restore
-//! its registers from stale memory. Requests that create a channel per call use this
-//! slot instead: it holds only a mutex, a condition variable and the value.
+//! state. The Xtensa LLVM backend emits that realignment as a plain stack-pointer add
+//! rather than `movsp`, so an interrupt in the prologue makes the caller restore its
+//! registers from stale memory. No esp toolchain release fixes it yet; see
+//! <https://github.com/espressif/llvm-project/issues/140> and
+//! <https://github.com/esp-rs/rust/issues/284>. Requests that create a channel per call
+//! use this slot instead: it holds only a mutex, a condition variable and the value.
+//! Longer-lived queues use [`crate::queue`].
 
 use std::sync::mpsc::{RecvError, RecvTimeoutError, TryRecvError};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};

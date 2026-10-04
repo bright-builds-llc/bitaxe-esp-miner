@@ -34,13 +34,14 @@ pub(crate) use watchdog::supervisor_checkpoint_history;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::{self, Receiver, SyncSender, TryRecvError},
+        mpsc::{self, TryRecvError},
         OnceLock,
     },
     time::Duration,
 };
 
 use anyhow::{anyhow, Result};
+use bitaxe_runtime::queue::{self, Receiver, SyncSender};
 use bitaxe_safety::{power::Ina260RawSample, sensor_acquisition::AcquisitionOutcome};
 
 use request_queue::{enqueue, ActuationEnvelope, EnqueueOutcome};
@@ -168,7 +169,7 @@ pub(crate) enum SafetyActuationOwnerWait {
 
 pub(crate) fn prepare_safety_actuation_owner(
 ) -> (SafetyActuationOwnerRegistration, SafetyActuationOwnerInbox) {
-    let (request_sender, request_receiver) = mpsc::sync_channel(ACTUATION_REQUEST_CAPACITY);
+    let (request_sender, request_receiver) = queue::sync_channel(ACTUATION_REQUEST_CAPACITY);
     (
         SafetyActuationOwnerRegistration { request_sender },
         SafetyActuationOwnerInbox { request_receiver },

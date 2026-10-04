@@ -106,7 +106,7 @@ pub(super) fn diagnostic(line: &str) {
 }
 
 pub(super) fn prepare_diagnostics() -> anyhow::Result<Receiver<String>> {
-    let (sender, diagnostics) = mpsc::sync_channel(8);
+    let (sender, diagnostics) = queue::sync_channel(8);
     DIAGNOSTICS
         .set(sender)
         .map_err(|_| anyhow::anyhow!("diagnostic_writer_already_registered"))?;

@@ -33,6 +33,7 @@ use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWor
 use crate::mining_actuation::SafeShutdownStep;
 use bitaxe_core::runtime_health::TaskWatchdogOwnerSubphase;
 use bitaxe_core::runtime_orchestration::{PeriodicDeadline, PRODUCTION_REREAD_CADENCE_MS};
+use bitaxe_runtime::queue::{self, Receiver, SyncSender};
 use bitaxe_safety::observation::MonotonicMillis;
 use bitaxe_stratum::v1::production_session::{
     AsicPollCompletion, ProductionAsicFailure, ProductionMiningSession, ProductionPool,
@@ -46,7 +47,7 @@ pub(crate) use bwg::{
 pub use notifications::notify;
 pub(crate) use qualification::status_evidence;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
+use std::sync::mpsc::{self, TrySendError};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 const OWNER_STACK_BYTES: usize = 24 * 1024;
@@ -65,7 +66,7 @@ enum OwnerInboxMessage {
 
 /// Starts the single boot-lifetime production mining owner and its bounded I/O workers.
 pub fn start() -> anyhow::Result<()> {
-    let (sender, receiver) = mpsc::sync_channel(NOTIFICATION_CAPACITY);
+    let (sender, receiver) = queue::sync_channel(NOTIFICATION_CAPACITY);
     NOTIFICATIONS
         .set(sender.clone())
         .map_err(|_| anyhow::anyhow!("production mining session already started"))?;

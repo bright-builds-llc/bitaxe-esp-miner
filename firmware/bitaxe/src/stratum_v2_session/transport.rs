@@ -1,6 +1,7 @@
 use std::io::{self, Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
-use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
+use bitaxe_runtime::queue::{self, Receiver, SyncSender};
+use std::sync::mpsc::{TryRecvError, TrySendError};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use bitaxe_stratum::v2::connection_order::{prepare_before_connect, PrepareBeforeConnectError};
@@ -83,7 +84,7 @@ impl TransportHandle {
         settings: V2PoolSettings,
         emit: impl Fn(TransportEvent) + Send + 'static,
     ) -> io::Result<Self> {
-        let (sender, receiver) = mpsc::sync_channel(COMMAND_CAPACITY);
+        let (sender, receiver) = queue::sync_channel(COMMAND_CAPACITY);
         std::thread::Builder::new()
             .name("stratum-v2-transport".to_owned())
             .stack_size(WORKER_STACK_BYTES)

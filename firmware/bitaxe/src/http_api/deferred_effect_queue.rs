@@ -1,6 +1,6 @@
 //! Firmware-owned response-before-effect orchestration.
 
-use std::sync::mpsc::{self, Receiver, SyncSender};
+use bitaxe_runtime::queue::{self, Receiver, SyncSender};
 
 use bitaxe_runtime::reply::{reply, ReplyReceiver, ReplySender};
 
@@ -73,7 +73,7 @@ pub(super) fn spawn_deferred_effect_worker<Effect, SpawnError>(
 where
     Effect: Send + 'static,
 {
-    let (sender, receiver) = mpsc::sync_channel(capacity);
+    let (sender, receiver) = queue::sync_channel(capacity);
     let worker = Box::new(move || run_deferred_effect_worker(receiver, execute));
     spawn(worker)?;
     Ok(DeferredEffectQueue { sender })

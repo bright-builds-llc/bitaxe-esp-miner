@@ -553,7 +553,7 @@ fn reusable_crates_keep_models_while_firmware_owns_concurrency() {
     assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("Mutex<OperatorSnapshotSequence>"));
     assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("thread_local!"));
     assert!(SETTINGS_SNAPSHOT_STORE_SOURCE.contains("Mutex<NvsSnapshot>"));
-    assert!(DEFERRED_EFFECT_QUEUE_SOURCE.contains("mpsc::sync_channel"));
+    assert!(DEFERRED_EFFECT_QUEUE_SOURCE.contains("queue::sync_channel"));
     assert!(DEFERRED_EFFECT_QUEUE_SOURCE.contains("release_after_response"));
     assert!(SETTINGS_SNAPSHOT_STORE_SOURCE.contains("PoisonRecovered"));
 }

@@ -1,7 +1,8 @@
 //! Nonblocking ESP-IDF bridge for the pure reconnect lifecycle policy.
 
+use bitaxe_runtime::queue::Receiver;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, RecvTimeoutError};
+use std::sync::mpsc::RecvTimeoutError;
 use std::time::{Duration, Instant};
 
 use bitaxe_api::project_ipv6_address;

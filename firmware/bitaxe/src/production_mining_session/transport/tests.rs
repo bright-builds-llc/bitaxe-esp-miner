@@ -195,7 +195,7 @@ fn write_debug_never_contains_pool_line() {
 #[test]
 fn queued_or_inflight_ordinary_command_prevents_borrow_reservation() {
     // Arrange: use the real enqueue/dequeue gate with a controlled receiver.
-    let (sender, receiver) = mpsc::sync_channel(8);
+    let (sender, receiver) = queue::sync_channel(8);
     let handle = NoiseBorrowHandle::new(sender);
     let worker = handle.worker();
     worker.ready();

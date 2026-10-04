@@ -226,7 +226,7 @@ impl RuntimeBoardAdapter {
     }
     fn saturated_queue(&mut self) -> Result<(), &'static str> {
         use bitaxe_runtime::request_queue::{enqueue, EnqueueOutcome, ACTUATION_REQUEST_CAPACITY};
-        let (sender, receiver) = std::sync::mpsc::sync_channel(ACTUATION_REQUEST_CAPACITY);
+        let (sender, receiver) = bitaxe_runtime::queue::sync_channel(ACTUATION_REQUEST_CAPACITY);
         for _ in 0..ACTUATION_REQUEST_CAPACITY {
             let (reply_sender, _reply_receiver) = bitaxe_runtime::reply::reply::<u8>();
             if enqueue(

@@ -1,6 +1,7 @@
 //! Single bounded worker around the retained BM1366 production executor.
 
-use std::sync::mpsc::{self, SyncSender, TrySendError};
+use bitaxe_runtime::queue::{self, SyncSender};
+use std::sync::mpsc::TrySendError;
 use std::time::Instant;
 
 use bitaxe_asic::bm1366::{
@@ -147,7 +148,7 @@ pub(super) struct AsicWorker {
 impl AsicWorker {
     pub(super) fn spawn(emit: impl Fn(AsicWorkerEvent) + Send + 'static) -> std::io::Result<Self> {
         let (sender, receiver) =
-            mpsc::sync_channel::<(AsicWorkerCommand, WorkPermit)>(COMMAND_CAPACITY);
+            queue::sync_channel::<(AsicWorkerCommand, WorkPermit)>(COMMAND_CAPACITY);
         std::thread::Builder::new()
             .name("production-asic".to_owned())
             .stack_size(WORKER_STACK_BYTES)

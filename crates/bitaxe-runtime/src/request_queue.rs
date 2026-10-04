@@ -1,6 +1,8 @@
 //! Bounded request-queue mechanics shared by synchronous and observed effects.
 
-use std::sync::mpsc::{SyncSender, TrySendError};
+use std::sync::mpsc::TrySendError;
+
+use crate::queue::SyncSender;
 
 use crate::reply::ReplySender;
 
@@ -43,7 +45,7 @@ pub fn enqueue<C, R>(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::mpsc;
+    use crate::queue;
 
     use super::*;
     use crate::reply::reply;
@@ -51,7 +53,7 @@ mod tests {
     #[test]
     fn deferred_effect_enqueue_does_not_wait_for_its_reply() {
         // Arrange
-        let (sender, receiver) = mpsc::sync_channel(1);
+        let (sender, receiver) = queue::sync_channel(1);
         let (reply_sender, reply_receiver) = reply();
 
         // Act
@@ -73,7 +75,7 @@ mod tests {
     #[test]
     fn synchronous_effect_enqueue_preserves_its_reply_channel() {
         // Arrange
-        let (sender, receiver) = mpsc::sync_channel(1);
+        let (sender, receiver) = queue::sync_channel(1);
         let (reply_sender, reply_receiver) = reply();
 
         // Act
@@ -94,7 +96,7 @@ mod tests {
     #[test]
     fn bounded_queue_reports_backpressure_without_blocking() {
         // Arrange
-        let (sender, _receiver) = mpsc::sync_channel(1);
+        let (sender, _receiver) = queue::sync_channel(1);
         let (first_reply_sender, _first_reply_receiver) = reply::<u8>();
         let (second_reply_sender, _second_reply_receiver) = reply::<u8>();
         let first = enqueue(&sender, 7_u8, first_reply_sender);

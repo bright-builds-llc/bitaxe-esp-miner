@@ -122,13 +122,13 @@ fn runtime_owners_use_bounded_shared_cadence_and_queue_contracts() {
         .contains("PeriodicDeadline::new(0, PRODUCTION_REREAD_CADENCE_MS)"));
     assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("readiness_schedule.is_due(schedule_now_ms)"));
     assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("let now_ms = crate::runtime_uptime::millis()"));
-    assert!(PRODUCTION_SESSION_SOURCE.contains("mpsc::sync_channel(NOTIFICATION_CAPACITY)"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("queue::sync_channel(NOTIFICATION_CAPACITY)"));
     let asic_tokens = PRODUCTION_ASIC_WORKER_SOURCE
         .split_whitespace()
         .collect::<String>();
     assert!(asic_tokens.contains("constCOMMAND_CAPACITY:usize=8;"));
     assert!(asic_tokens
-        .contains("mpsc::sync_channel::<(AsicWorkerCommand,WorkPermit)>(COMMAND_CAPACITY)"));
+        .contains("queue::sync_channel::<(AsicWorkerCommand,WorkPermit)>(COMMAND_CAPACITY)"));
     assert!(
         asic_tokens.contains("executor.try_read_production_result(&valid_jobs,slice_ms.min(50))")
     );

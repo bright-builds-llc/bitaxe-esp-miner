@@ -1,7 +1,11 @@
-// Stack realignment audit: the pinned Xtensa toolchain realigns over-aligned frames with a
-// plain write to a1 instead of `movsp`. An interrupt in that prologue makes the caller restore
-// its registers from stale memory, so such functions must be unreachable at runtime except
-// from an explicit startup allowlist.
+// Stack realignment audit: the Xtensa LLVM backend realigns over-aligned frames with a plain
+// write to a1 instead of `movsp`. An interrupt in that prologue makes the caller restore its
+// registers from stale memory, so no project code may reach such a function except through an
+// explicit, reviewed allowlist. Every esp toolchain from 1.88.0.0 to 1.99.0.0 is affected:
+//   https://github.com/espressif/llvm-project/issues/140 (backend fix)
+//   https://github.com/esp-rs/rust/issues/284 (Rust tracking)
+//   https://github.com/pRizz/xtensa-movsp-realign-repro (reproducer)
+// The firmware uses bitaxe_runtime::reply and bitaxe_runtime::queue instead of std channels.
 
 const FUNCTION = /^([0-9a-f]+) <(.+)>:$/u;
 const INSTRUCTION = /^\s*([0-9a-f]+):\s+(?:[0-9a-f]{2,8}\s+)+([a-z][a-z0-9.]*)\s*(.*)$/u;
@@ -64,7 +68,7 @@ export function realignmentCallers(functions) {
   return { realigning: realigning.map(fn => fn.name).sort(), callers: [...owners].sort() };
 }
 
-/** Passes only when every project-owned caller is an allowlisted startup or per-session site. */
+/** Passes only when every project-owned caller is on the reviewed allowlist (empty for the firmware). */
 export function auditStackRealignment(disassembly, allowlist) {
   const { realigning, callers } = realignmentCallers(parseFunctions(disassembly));
   const allowed = new Set(allowlist.map(entry => entry.symbol));

@@ -2,7 +2,8 @@
 use bitaxe_worker_control::serial::trace::{SerialTraceCorrelation, SerialTraceStage};
 use bitaxe_worker_control::serial::SerialKind;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::mpsc::{self, Receiver, SyncSender};
+use bitaxe_runtime::queue::{self, Receiver, SyncSender};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use zeroize::Zeroize;
@@ -250,14 +251,14 @@ fn blocked_credit_is_discarded_when_a_new_hello_replaces_its_epoch() {
 struct WriterFixture {
     maybe_output: Option<SyncSender<writer::Output>>,
     maybe_thread: Option<std::thread::JoinHandle<()>>,
-    lines: Receiver<String>,
+    lines: mpsc::Receiver<String>,
 }
 impl WriterFixture {
     fn start(progress: Arc<startup_diagnostics::StartupProgress>) -> Self {
         let (sink, lines) = mpsc::channel();
         *usb_runtime::SINK.lock().expect("test sink") = Some(sink);
-        let (output, receiver) = mpsc::sync_channel(4);
-        let (_diagnostic_sender, diagnostics) = mpsc::sync_channel(8);
+        let (output, receiver) = queue::sync_channel(4);
+        let (_diagnostic_sender, diagnostics) = queue::sync_channel(8);
         let thread = std::thread::spawn(move || writer::run(receiver, diagnostics, &progress));
         Self {
             maybe_output: Some(output),

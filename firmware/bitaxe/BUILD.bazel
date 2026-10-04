@@ -830,7 +830,10 @@ rust_test(
     ],
     crate_root = "src/wifi_prepared_reconnect_host_test.rs",
     edition = "2021",
-    deps = ["//crates/bitaxe-core:bitaxe_core"],
+    deps = [
+        "//crates/bitaxe-core:bitaxe_core",
+        "//crates/bitaxe-runtime:bitaxe_runtime",
+    ],
 )
 
 rust_test(

@@ -7,11 +7,12 @@ use borrow::{NoiseBorrowHandle, NoiseBorrowWorker};
 mod v2;
 
 use super::revocation::{self, WorkPermit};
+use bitaxe_runtime::queue::{self, Receiver};
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::net::{Shutdown, TcpStream, ToSocketAddrs};
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::mpsc::{self, Receiver, TrySendError};
+use std::sync::mpsc::{self, TrySendError};
 use std::time::Duration;
 
 use bitaxe_stratum::v1::production_session::{
@@ -253,7 +254,7 @@ fn spawn_worker(
     command_slot
         .try_reserve_exact(1)
         .map_err(|_| io::Error::from(io::ErrorKind::OutOfMemory))?;
-    let (sender, receiver) = mpsc::sync_channel(COMMAND_CAPACITY);
+    let (sender, receiver) = queue::sync_channel(COMMAND_CAPACITY);
     let borrow = std::sync::Arc::new(NoiseBorrowHandle::new(sender));
     let worker_borrow = borrow.worker();
     let requested_close_epoch = std::sync::Arc::new(AtomicU32::new(0));

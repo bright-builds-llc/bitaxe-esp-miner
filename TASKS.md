@@ -5557,6 +5557,21 @@ Control review loop hardware: disabled.
       [pRizz/xtensa-movsp-realign-repro](https://github.com/pRizz/xtensa-movsp-realign-repro).
       A toolchain upgrade does not remove the hazard, so the reply slot and
       `just audit-stack-realignment` stay.
+- [x] Close the startup residual in software, per the owner (2026-10-04):
+      `bitaxe_runtime::queue` gives the `std::sync::mpsc` interface with only a
+      mutex, two condition variables and a `VecDeque`. Its tests cover order,
+      bounds, blocking, disconnection and timeouts. All nine startup queues,
+      the Stratum V2 session and the shared request queue use it. The audit
+      allowlist is now empty, and comments in `queue`, `reply`, the audit and
+      the allowlist link both upstream issues.
+      - Dirty-tree image ELF `804570b2…`: the audit reports
+        `realigning_functions=0` and no callers; the std constructors are no
+        longer linked.
+      - `bazel test //...` passes except
+        `usb_bootstrap_measure_regression_process_test`, which fails under high
+        host load and passes 4/4 when rerun with the change applied.
+- [ ] Hardware: install the queue image and run a bounded review loop. This
+      needs its own install profile and amendment; not started.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.

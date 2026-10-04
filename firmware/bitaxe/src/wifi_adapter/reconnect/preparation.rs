@@ -1,8 +1,8 @@
 //! Reserves one reconnect worker before service allocations; later subscription activation cannot spawn.
 use crate::prepared_thread::{self, Prepared};
 use bitaxe_core::wifi_reconnect::WifiReconnectEvent;
+use bitaxe_runtime::queue::{self, Receiver, Sender};
 use std::io;
-use std::sync::mpsc::{self, Receiver, Sender};
 
 pub(crate) struct PreparedReconnect {
     sender: Sender<WifiReconnectEvent>,
@@ -59,7 +59,7 @@ fn prepare() -> io::Result<PreparedReconnect> {
 fn prepare_with(
     spawn: impl FnOnce(Receiver<WifiReconnectEvent>) -> io::Result<Prepared>,
 ) -> io::Result<PreparedReconnect> {
-    let (sender, receiver) = mpsc::channel();
+    let (sender, receiver) = queue::channel();
     let thread = spawn(receiver)?;
     Ok(PreparedReconnect { sender, thread })
 }
