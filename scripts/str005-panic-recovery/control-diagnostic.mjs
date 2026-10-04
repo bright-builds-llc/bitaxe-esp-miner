@@ -20,6 +20,11 @@ export const INSTALL = Object.freeze({
 // The idle-panic recovery001 on the same board supplies its physical identity and last attempt.
 export const RECOVERY001 = Object.freeze({ path: 'scratch/str005-idle-panic/recovery001',
   seal: '3a84383e127d39785e963b1888f8c65d5e3c8664740c602d310b6494e7cd8644' });
+// The latest sealed Start on this install, when one ran. Its retained record replaces recovery001's
+// attempt, so a status read must name its attempt; null means no Start ran since the install.
+export const LATEST_START = Object.freeze({ path: 'scratch/str005-heartbeat-shutdown/heartbeat007/attempt',
+  result: '565857c2547b6b0af9ebd3bc483ec4997440b27038ed29895cd60d486a3acfae',
+  seal: '68350c6fc7d2521c37255db83d39e88e5c39d789b6d986e8f4a976af834bc11c' });
 
 async function sealed(root, expected) {
   await privateRoot(root);
@@ -37,10 +42,27 @@ export async function loadInstallPredecessor(firmwareRoot, installRoot) {
   const recoveryRoot = resolve(firmwareRoot, RECOVERY001.path);
   await sealed(recoveryRoot, RECOVERY001.seal);
   const recovered = (await proof(recoveryRoot, 'context.json')).value;
+  const maybeLatest = LATEST_START === null ? null : await loadLatestStart(resolve(firmwareRoot, LATEST_START.path));
   const gate = async name => sha256(await readFile(resolve(installRoot, 'qualified-artifacts/gate', name)));
   const context = { ...INSTALL.identity, physical: recovered.physical, original_campaign_id: install.original_campaign_id,
     assetHashes: { page: await gate(PAGE), bundle: await gate(BUNDLE), trust: recovered.assetHashes.trust } };
-  return { context, before: { attempt: { id: recovered.attemptId }, ledger: after.ledger }, seal: INSTALL.seal };
+  return { context, before: retainedAttempt(context, { attemptId: recovered.attemptId, ledger: after.ledger }, maybeLatest),
+    seal: INSTALL.seal };
+}
+async function loadLatestStart(root) {
+  await sealed(root, LATEST_START.seal);
+  check(await fileDigest(resolve(root, 'result.json')) === LATEST_START.result, 'share_recovery_predecessor_seal');
+  const context = (await proof(root, 'context.json')).value, ledger = (await proof(root, 'recovery-1-ledger.json')).value;
+  return { context, ledger };
+}
+/** The attempt a status read must name: the latest sealed Start on this exact install and board, else the install's. */
+export function retainedAttempt(install, fallback, maybeLatest) {
+  if (maybeLatest === null) return { attempt: { id: fallback.attemptId }, ledger: fallback.ledger };
+  const { context, ledger } = maybeLatest;
+  check(context.firmware_commit === install.firmware_commit && context.app_elf_sha256 === install.app_elf_sha256 &&
+    context.physical === install.physical && typeof context.attemptId === 'string', 'share_recovery_predecessor_identity');
+  validateLedger(ledger); check(ledger.pending === false, 'share_recovery_predecessor_identity');
+  return { attempt: { id: context.attemptId }, ledger };
 }
 export const CONTROL_DIAGNOSTIC_RECOVERY = Object.freeze({
   enabled: ENABLED,

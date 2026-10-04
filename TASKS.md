@@ -5583,6 +5583,19 @@ Control review loop hardware: disabled.
          loop007 (5 batches of 100 rounds) and recovery010.
       Each gate is enabled only for its own step. Stop on any panic, ledger
       or identity drift, or unproven cleanup.
+      - recovery009 (2026-10-04): refused at the status read
+        (`command_rejected`); nothing ran. The ledger read 27/26/3,180,000 ms
+        and the device stayed idle, with the lease inactive and the serial
+        port released. Sealed not current: result `a5f49c6103e23c31d3f24bf993e2038f412ce753377959055375ac0bd19c6782`, seal `d022eb761d9ab4b70d6a511f179979688c09427da22feb04a8793004e44aacbd`.
+        - Cause: heartbeat007 left a retained record. The owner's fallback
+          status read named recovery001's attempt, which the firmware
+          rejects.
+        - Fix: the owner pins the latest sealed Start on the install
+          (heartbeat007) and names its attempt. It requires the same image,
+          board and an idle ledger. Regressions cover no later Start, the
+          heartbeat case and a mismatched board.
+        - recovery010 retries with the fix under a fresh ordinal. The steps
+          after it shift: loop007, then recovery011.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
