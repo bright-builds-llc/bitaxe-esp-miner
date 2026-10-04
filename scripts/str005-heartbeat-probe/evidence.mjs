@@ -72,8 +72,10 @@ export function judgeFault(run, record, qualification) {
     const events = record.events.filter(event => event.kind === kind);
     check(events.length === 1 && events[0].atDeviceUs >= native && events[0].atDeviceUs <= record.observedAtUs, 'heartbeat_event_join');
   }
+  // Firmware appends safety events when its poller observes them, which may follow the terminal record;
+  // the qualification atoms (safe_stop_stage, safe_stop_complete) carry the native stop ordering.
   const cooled = record.events.filter(event => event.kind === 'cooled');
-  check(cooled.length === 1 && cooled[0].atDeviceUs >= shutdown && cooled[0].atDeviceUs <= record.terminalAtDeviceUs, 'heartbeat_cooling_event');
+  check(cooled.length === 1 && cooled[0].atDeviceUs >= shutdown && cooled[0].atDeviceUs <= record.observedAtUs, 'heartbeat_cooling_event');
   check(record.secondaryFailures.length === 0, 'heartbeat_secondary_failure');
   if (record.firstFailure !== null) {
     const failure = record.firstFailure;

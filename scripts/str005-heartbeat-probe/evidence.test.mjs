@@ -8,6 +8,15 @@ test('heartbeat proof accepts zero shares and retains rejected cancellation outc
   assert.equal(judgeFault(run, record, q).heartbeatToRevocationMs, 2800);
   assert.equal(record.outcome, 'rejected'); assert.equal(record.shareFacts.length, 0);
 });
+test('heartbeat proof accepts cooling observed after the terminal record', () => {
+  // Arrange: heartbeat002 shape, where the poller saw cooling after worker quiescence made the record terminal.
+  const { run, record, q } = fixture();
+  record.events.find(event => event.kind === 'cooled').atDeviceUs = 19000000;
+  // Act
+  const timing = judgeFault(run, record, q);
+  // Assert
+  assert.equal(timing.heartbeatToShutdownMs, 2801);
+});
 for (const [name, change] of [
   ['early revocation', f => f.q.gate_closed_ms--],
   ['late revocation', f => f.q.gate_closed_ms = 13001],
@@ -27,6 +36,9 @@ for (const [name, change] of [
   ['dispatch after cutoff', f => f.record.events.push({ ...f.record.events[0], kind: 'asic_dispatch', atDeviceUs: 12800001 })],
   ['earlier authority failure', f => f.record.firstFailure.atDeviceUs = 12799000],
   ['unrelated protocol failure', f => f.record.firstFailure.category = 'protocol'],
+  ['cooling before shutdown', f => f.record.events.find(event => event.kind === 'cooled').atDeviceUs = 12800999],
+  ['cooling after observation', f => f.record.events.find(event => event.kind === 'cooled').atDeviceUs = 20000001],
+  ['missing cooling', f => f.record.events = f.record.events.filter(event => event.kind !== 'cooled')],
 ]) test(`heartbeat rejects ${name}`, () => {
   const value = fixture(); change(value);
   assert.throws(() => judgeFault(value.run, value.record, value.q));

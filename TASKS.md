@@ -5233,8 +5233,8 @@ audited `654338d0` image).
   It is pinned, and the probe is `ENABLED=true`.
 - [ ] Phase B heartbeat001, then record the outcome.
 
-Heartbeat restart hardware: disabled.
-Heartbeat shutdown probe hardware: enabled.
+Heartbeat restart hardware: enabled.
+Heartbeat shutdown probe hardware: disabled.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart/restart003 --start-root <repo>/scratch/str005-accepted-share/share001/attempt --gate-root <gate-root>
@@ -5289,6 +5289,52 @@ Remediation proof | 2026-10-03: the owner enabled Local Network access for the
 Claude app. One TCP connect from the agent shell to the device's freshly
 reported telemetry endpoint now succeeds (159 ms), where it previously failed
 with `EHOSTUNREACH`. Heartbeat002 is admitted.
+
+Heartbeat002 | 2026-10-03 | Device behavior met every native bound; sealed unverified on a judge defect
+
+- One `normal` attempt at ordinal 25 on boot 14, generation 6, zero renewals.
+  Heartbeats were suppressed once after `work_ready` and `asic_dispatch`.
+- Native: `revocation_reason=heartbeat_timeout`; the gate closed 2,805 ms and
+  shutdown started 2,823 ms after the last valid heartbeat. The safe stop ended
+  `fan_paused` and complete at about 31 °C. No work followed revocation.
+- Fresh recovery happened on the same boot. The ledger is next 26, last 25,
+  3,000,000 ms (exactly +180,000), not pending. Host, serial, signer and fixture
+  were released.
+- `finish` sealed `complete=false` with the sole blocker
+  `heartbeat_cooling_event`: result
+  `6ffa84ea1113c5bd57c711f1c3fe4192feaf79bc7ad4a71ec87a82ca90647936`, seal
+  `aad964919c38207cd5890011fad2599c9063a5b8f0c551f6523e53c9e361fd83`.
+
+Diagnosis: `poll_safety_facts()` appends `revoked`, `shutdown` and `cooled`
+events when its poller observes them (documented observation-time facts). Worker
+quiescence made the record terminal about 7 s before the poller observed
+cooling. The judge bounded `cooled` by `terminalAtDeviceUs`, while it bounded
+`revoked` and `shutdown` by `observedAtUs`. That contradicts the firmware's
+semantics. Native stop ordering stays proven by `safe_stop_stage=fan_paused` and
+`safe_stop_complete`.
+
+Fix: the cooling event join is now bounded by `observedAtUs`, as the other two
+safety events are. It still requires exactly one `cooled` event at or after the
+native shutdown.
+- Regressions cover cooling observed after the terminal record (heartbeat002's
+  shape) and reject cooling before shutdown, after observation, or missing.
+- An offline re-judgment of heartbeat002's sealed parts with the fixed judge
+  returns `complete=true` (2,805/2,823 ms); without the fix it returns
+  `heartbeat_cooling_event`. The heartbeat002 seal is unchanged and stays
+  unverified; its observer joins never ran because the judge threw first.
+- The restart owner now also takes the parent generation from a heartbeat run's
+  dispatch record (`startGeneration`), with a regression.
+
+Retry, under the progress-gated policy (verified fix, fresh ordinals):
+- **restart004:** parent heartbeat002 (boot 14 to 15, ledger unchanged).
+- **heartbeat003:** pins heartbeat002 as the previous Start and restart004 as
+  the restart. Expected after ledger: next 27, last 26, 3,180,000 ms.
+- Each gate is enabled only for its own phase.
+
+```sh
+just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
+just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat003/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --restart-root <repo>/scratch/str005-heartbeat-restart/restart004
+```
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 

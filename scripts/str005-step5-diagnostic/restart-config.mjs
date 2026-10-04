@@ -3,7 +3,7 @@ export const RESTART = Object.freeze({
   task: 'task-str005-heartbeat-shutdown-probe',
   enabledLine: 'Heartbeat restart hardware: enabled.',
   contract: 'docs/hardware/str005-heartbeat-shutdown-amendment.md',
-  // Share001: complete accepted-share Start whose terminal V2 record must be cleared.
-  startResult: '9e17a8b28e0146f41c9d8d1079b42b86bb1b26c4236b70f157df85cb85d5a402',
-  startSeal: 'abde26a6e92e3a8e0d1edfa18558c68bc24e880a027644cb51f98bfef39aedff',
+  // Heartbeat002: heartbeat-loss Start whose terminal V2 record must be cleared.
+  startResult: '6ffa84ea1113c5bd57c711f1c3fe4192feaf79bc7ad4a71ec87a82ca90647936',
+  startSeal: 'aad964919c38207cd5890011fad2599c9063a5b8f0c551f6523e53c9e361fd83',
 });

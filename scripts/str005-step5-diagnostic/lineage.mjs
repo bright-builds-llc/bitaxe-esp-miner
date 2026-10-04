@@ -40,6 +40,11 @@ export async function installation(root, pins = PINS) {
     retainedManifestSha256: await fileDigest(retainedManifest) };
 }
 
+/** The Start's Worker generation: diagnostic and share runs keep a proof; heartbeat runs keep the dispatch record. */
+export function startGeneration(run) {
+  return run.proof?.generation ?? run.dispatchStatus?.record?.workerGeneration;
+}
+
 /** Current safe facts after a sealed earlier Start on the same install: its fresh recovery
  * (round 1) supplies the ledger and boot ordinal the next baseline must observe unchanged. */
 export async function previousStart(root, installed, pins = PINS) {

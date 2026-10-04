@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { argumentsFor, ENABLED, ENABLED_LINE, PINS, taskEnabled, TASK } from './contract.mjs';
-import { installation, previousStart, restartAfter } from './lineage.mjs';
+import { installation, previousStart, restartAfter, startGeneration } from './lineage.mjs';
 import { cleanDiagnosticClose } from './fixture-close.mjs';
 import { authorizationRestored } from '../str005-v2-serial/recovery-evidence.mjs';
 import { step5Summary } from './summary.mjs';
@@ -125,4 +125,13 @@ test('the restart owner admits exactly one pinned Start root and a stage', async
 test('a rerun after a restart needs that restart pinned', async () => {
   // Arrange / Act / Assert
   await assert.rejects(restartAfter('/nonexistent', {}, { restartResult: null, restartSeal: null }), /step5_restart_unpinned/u);
+});
+
+test('a restart parent takes its generation from a diagnostic proof or a heartbeat dispatch record', () => {
+  // Arrange
+  const diagnostic = { proof: { generation: 3 } }, heartbeat = { dispatchStatus: { record: { workerGeneration: 6 } } };
+  // Act
+  const generations = [startGeneration(diagnostic), startGeneration(heartbeat), startGeneration({})];
+  // Assert
+  assert.deepEqual(generations, [3, 6, undefined]);
 });

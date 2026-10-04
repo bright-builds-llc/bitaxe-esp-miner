@@ -101,6 +101,9 @@ voltage and ASIC power.
 
 Retries need a targeted, regression-backed fix, a fresh ordinal and a new
 restart before any further Start.
+A retry's restart names the last sealed heartbeat Start as its parent. The
+next heartbeat Start pins that Start as its previous Start and the new restart
+as its restart; the expected ledger advances by one attempt and 180,000 ms.
 
 Stop on:
 - a detector result other than exactly one Ultra 205;
