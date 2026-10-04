@@ -5410,10 +5410,26 @@ Wedge observation | 2026-10-04 | Owner: "yes, go ahead with 1, 2, then 3"
      barrel off, USB off, wait 10 s, then barrel on, then USB on. There is no
      deadline on this wait. Afterwards: detector, then a fresh current
      recovery proving Gate service and the unchanged ledger.
+   - Owner observation: the display's uptime kept counting. The firmware
+     was not frozen and never reset.
+   - Host-holder investigation found nothing holding the device:
+     - `lsof` showed no open handle on the cu or tty nodes;
+     - none of the agent's processes remained (OpenOCD, espflash, owners,
+       drivers, FIFO holders);
+     - Chrome's granted port was not readable or writable, with the tab on
+       `about:blank`;
+     - the IORegistry showed only Apple's ACM driver on the CDC interface and
+       no user client on the JTAG interface.
+   - USB-only replug (owner, barrel power kept on): uptime kept counting, so
+     the firmware's state was preserved. Afterwards the detector admits the
+     device, and OpenOCD `init` now finds both TAPs and examines both CPUs.
+     The earlier EP0 failure was therefore a stuck USB link (device
+     USB-Serial/JTAG peripheral or host USB state), not a frozen CPU.
+   - Next: recovery006 checks whether the firmware answers the Gate's hello.
+Control diagnostic recovery hardware: enabled.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
-Control diagnostic recovery hardware: disabled.
 Control review loop hardware: disabled.
 Development core-dump clearing: disabled (clear001 completed).
 Idle panic recovery hardware: disabled.
