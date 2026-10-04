@@ -5233,8 +5233,8 @@ audited `654338d0` image).
   It is pinned, and the probe is `ENABLED=true`.
 - [ ] Phase B heartbeat001, then record the outcome.
 
-Heartbeat restart hardware: enabled.
-Heartbeat shutdown probe hardware: disabled.
+Heartbeat restart hardware: disabled.
+Heartbeat shutdown probe hardware: enabled.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart/restart003 --start-root <repo>/scratch/str005-accepted-share/share001/attempt --gate-root <gate-root>
@@ -5332,6 +5332,16 @@ Retry, under the progress-gated policy (verified fix, fresh ordinals):
 - Each gate is enabled only for its own phase.
 - Restart004 uses its own protected parent, so restart003's parent-level
   stage logs are never overwritten.
+
+Restart004 | 2026-10-03 | Complete
+- The recovery stage read heartbeat002's retained record freshly and released.
+- One software `qualificationRestart` took boot 14 to 15. The ledger stayed
+  next 26, last 25, 3,000,000 ms, the budget was unchanged and no mining ran.
+- Result `9b393edb80167eff732bdbc6c9158c319e9afc3beb99d0acc2f038f683ddf010`,
+  seal `05905a53b31841cadecfd2c1217576c49648cba7b53db65d729f77c1de594f3e`.
+- Both are pinned in `scripts/str005-heartbeat-shutdown/contract.mjs` with
+  heartbeat002 as the previous Start. The restart gate is disabled again, and
+  heartbeat003 is admitted.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart-004/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
