@@ -20,17 +20,21 @@ import { ADMISSION, PINS, SCHEMA, argumentsFor, source } from './contract.mjs';
 export const PORT = 48765;
 const PROFILE = Object.freeze({ pins: PINS, schema: SCHEMA, admission: ADMISSION, bundleMarkers: ['suppressHeartbeats'] });
 
-/** Re-verifies the frozen install -> previous Start -> restart chain and the frozen tools. */
+/** Re-verifies the frozen install (and any anchored previous Start and restart) and the frozen tools. */
 async function verifyLineage(root, context, live) {
   check(context.schema === SCHEMA && context.admission === ADMISSION &&
     context.source_commit === live.commit && context.contractSha256 === live.contractSha256, 'share_source_changed');
-  const installed = await installation(context.anchors.installation.root, PINS);
-  const previous = await previousStart(context.anchors.previousStart.root, installed, PINS);
-  const restarted = await restartAfter(context.anchors.restart.root, previous, PINS);
-  check(installed.seal === context.anchors.installation.seal && previous.seal === context.anchors.previousStart.seal &&
-    restarted.seal === context.anchors.restart.seal && installed.identity.firmware_commit === context.firmware_commit &&
+  const anchors = context.anchors;
+  const installed = await installation(anchors.installation.root, PINS);
+  check(Boolean(anchors.previousStart) === Boolean(PINS.previousStartResult) &&
+    Boolean(anchors.restart) === Boolean(PINS.restartResult), 'share_lineage_changed');
+  const maybePrevious = anchors.previousStart ? await previousStart(anchors.previousStart.root, installed, PINS) : null;
+  const maybeRestarted = anchors.restart ? await restartAfter(anchors.restart.root, maybePrevious, PINS) : null;
+  const current = maybeRestarted ?? maybePrevious ?? installed;
+  check(installed.seal === anchors.installation.seal && maybePrevious?.seal === anchors.previousStart?.seal &&
+    maybeRestarted?.seal === anchors.restart?.seal && installed.identity.firmware_commit === context.firmware_commit &&
     installed.identity.app_elf_sha256 === context.app_elf_sha256 && installed.physical === context.physical &&
-    restarted.expectedBootOrdinal === context.expectedBootOrdinal, 'share_lineage_changed');
+    current.expectedBootOrdinal === context.expectedBootOrdinal, 'share_lineage_changed');
   cleanPushed(context.gate_root, context.gate_commit);
   check(await fileDigest(context.fixture_binary) === context.fixture_sha256 &&
     await fileDigest(context.fixture_receipt_path) === context.fixture_receipt_sha256 &&

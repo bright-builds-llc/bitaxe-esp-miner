@@ -31,6 +31,7 @@ unless the separate integration review promotes it.
 `restart-config.mjs` names share001 as the parent and this task's line
 `Heartbeat restart hardware: enabled.` Everything else follows the
 accepted-share amendment's restart rules:
+
 - one fresh recovery stage that reads the retained record by ID;
 - exactly one software `qualificationRestart`, with boot N+1 proven, the ledger
   and budget unchanged, the pre-reset completed-attempt marker admitted, and
@@ -39,9 +40,12 @@ accepted-share amendment's restart rules:
 ## Phase B: one heartbeat-loss Start (`just str005-heartbeat-shutdown`)
 
 Admission requires:
+
 - the compiled `ENABLED` flag, the exact active task line
   `Heartbeat shutdown probe hardware: enabled.`, and clean pushed source;
-- the pinned chain of reinstall, then share001, then the sealed restart003;
+- the pinned lineage: the install, plus the previous Start and its restart
+  when a Start already ran on that install (see the corrected-image retry
+  below);
 - the four native audits on the installed ELF, Gate `86fc62d7` (whose bundle
   must include `suppressHeartbeats`) with zero-renewal compatibility, the
   canonical fixture, and the passive `cadence_observer` built from this clean
@@ -49,6 +53,7 @@ Admission requires:
 - a detector at most 60 s old with no holder.
 
 Effects follow the heartbeat-probe contract:
+
 - One fresh `normal` attempt at the measured next ordinal (25): a
   180,000-ms reservation, a 60,000-ms grant and zero renewals, on the
   conservative profile (400 MHz / 1,100 mV, fan 100%), against one local V2
@@ -67,6 +72,7 @@ Effects follow the heartbeat-probe contract:
 The expected after ledger is next 26, last 25, 3,000,000 ms.
 
 A pass requires every heartbeat judge and inspector criterion. The core ones:
+
 - **Revocation.** Native `revocation_reason=heartbeat_timeout`, with the gate
   closing between 2,800 and 3,000 ms after the last valid heartbeat.
 - **Shutdown.** Initiated after closure and within 3,000 ms of the last
@@ -81,9 +87,30 @@ A pass requires every heartbeat judge and inspector criterion. The core ones:
 
 Any shortfall seals `unverified`.
 
+## Corrected-image retry
+
+Heartbeat005's baseline reviews hit the idle-review panic, which was traced to
+a toolchain stack-realignment hazard
+([evidence](../parity/evidence/20261004-str005-idle-panic-capture.md)). The
+retry runs on the corrected image and replaces only the lineage:
+
+- **Install.** Realignment-fix attempt-001 (profile `realignment-fix-install`,
+  result `13296cfb…`, seal `d3ec8ccb…`), image `7ca3e29c`/`227bc380`, boot 5,
+  ledger next 26, last 25, 3,000,000 ms.
+- **No previous Start or restart.** No Start has run on this image, so no
+  retained record needs a restart first. Preflight takes no
+  `--previous-start-root` or `--restart-root`, and the owner refuses them
+  while they are unpinned.
+- **Expected after ledger.** Next 27, last 26, 3,180,000 ms, at attempt
+  ordinal 26.
+
+Everything else in Phase B applies unchanged: the four native audits run on
+the corrected ELF, the Gate stays `86fc62d7`, and pass criteria are the same.
+
 ## Operator sequence
 
 Use the persistent Gate tab and click Connect Worker before each step:
+
 1. Run the detector into `<parent>/detector.stdout.log`, then preflight and
    serve.
 2. Click "Record baseline and configure candidate".
@@ -123,6 +150,7 @@ next heartbeat Start pins that Start as its previous Start and the new restart
 as its restart; the expected ledger advances by one attempt and 180,000 ms.
 
 Stop on:
+
 - a detector result other than exactly one Ultra 205;
 - identity, ledger or baseline drift;
 - a lost or ambiguous Start (never resend);

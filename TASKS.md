@@ -5541,8 +5541,8 @@ Control review loop hardware: disabled.
       - Interpretation: strong evidence. The previous image failed under the
         same load, and the deterministic audit proves the hazard is
         unreachable from runtime paths.
-- [ ] Resume the heartbeat-loss retry on the corrected image (a new restart
-      and probe lineage).
+- [ ] Resume the heartbeat-loss retry on the corrected image: heartbeat007
+      on an install-only lineage (no Start has run, so no restart is needed).
 - [x] Secondary defect documented, per the owner, without further
       investigation: [known issues](docs/hardware/known-issues.md). The USB
       link stays unusable after a panic reset; recover with a USB-only replug.
@@ -5642,7 +5642,7 @@ audited `654338d0` image).
 - [ ] Phase B heartbeat001, then record the outcome.
 
 Heartbeat restart hardware: disabled.
-Heartbeat shutdown probe hardware: disabled.
+Heartbeat shutdown probe hardware: enabled.
 
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart/restart003 --start-root <repo>/scratch/str005-accepted-share/share001/attempt --gate-root <gate-root>
@@ -5848,6 +5848,30 @@ condition. The heartbeat gate is disabled again.
   heartbeat002; only its seal is unverified.
 - A sealed pass needs the idle-review panic diagnosed and corrected first,
   then a new restart (boot 16 to 17) and a fresh attempt.
+
+Corrected-image retry | 2026-10-04 | Heartbeat007 on `7ca3e29c`
+- The idle-review panic is diagnosed and corrected
+  (`task-str005-start-panic-diagnosis`): a stack-realignment toolchain hazard,
+  fixed in `24af10be`, installed by realignment-fix attempt-001, and verified by
+  500 review rounds with no failure.
+- The install is a new lineage root. No Start has run on this image, so there
+  is no retained record and no restart is needed. The owner now admits an
+  install-only lineage: the previous Start and restart pins are null, and
+  preflight takes neither root. A pinned Start still requires a pinned
+  restart, with regressions.
+- Pins: install result `13296cfb…`, seal `d3ec8ccb…`; boot 5; ledger next 26,
+  last 25, 3,000,000 ms. Expected after ledger: next 27, last 26,
+  3,180,000 ms, at ordinal 26.
+- Heartbeat007 is a fresh ordinal backed by verified progress (the correction).
+  It follows the amendment's operator sequence unchanged, with the commands
+  below and no `--previous-start-root` or `--restart-root`.
+- [ ] Heartbeat007, then record the outcome and disable the gate.
+
+```bash
+just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat007/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-realignment-fix/attempt-001
+just str005-heartbeat-shutdown serve --private-root <same> --authority-directory <protected-authority>   # detached
+just str005-heartbeat-shutdown finish --private-root <same>
+```
 - Next step: acquire and decode the development core dump of the boot-15 panic
   under `task-str005-start-panic-diagnosis` (ADR-0030/0031, the staged panic
   probe contract). Its acquisition gate is disabled and needs a contract for

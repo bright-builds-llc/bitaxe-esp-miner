@@ -18,11 +18,12 @@ export async function main(argv) {
   const context = (await proof(root, 'context.json')).value;
   check(['str005-heartbeat-context-v1', 'str005-heartbeat-shutdown-context-v1'].includes(context.schema) && context.scope === 'share',
     'heartbeat_context');
-  // The successor owner re-verifies its install -> Start -> restart lineage before finishing.
+  // The successor owner re-verifies its install lineage before finishing; a Start anchor needs its restart.
   if (context.schema === 'str005-heartbeat-context-v1')
     check(await sealed(context.startupRoot) === STARTUP_SEAL && (await proof(context.startupRoot, 'result.json')).value.complete === true,
       'heartbeat_startup_prerequisite');
-  else check(context.anchors?.installation && context.anchors.previousStart && context.anchors.restart, 'heartbeat_startup_prerequisite');
+  else check(context.anchors?.installation && Boolean(context.anchors.previousStart) === Boolean(context.anchors.restart),
+    'heartbeat_startup_prerequisite');
   const owner = (await proof(root, 'server-owner.json')).value, fixture = (await proof(root, 'fixture-owner.json')).value;
   await requireGone([owner.owner, fixture.owner]);
   requireLsofAbsent(['-nP', `-iTCP:${owner.port}`, '-sTCP:LISTEN', '-t']);
