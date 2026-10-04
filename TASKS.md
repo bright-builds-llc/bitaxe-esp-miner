@@ -5507,6 +5507,12 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
         callers.
 - [ ] Build, run native audits, and install the corrected image
       state-preservingly through a new noise-serial profile.
+      - Contract: [realignment-fix amendment](docs/hardware/str005-realignment-fix-amendment.md),
+        profile `realignment-fix-install`, namespace
+        `scratch/str005-realignment-fix`, predecessor recovery007 (pinned
+        result/seal, identity `c634cc20`/`d986b2ea`), ledger 26/25/3,000,000 ms.
+      - The candidate's exact ELF must also pass `just audit-stack-realignment`.
+Realignment fix install hardware: enabled.
 - [ ] Verify on hardware: five batched loops (500 rounds); loop005 had
       panicked at round 20. Then resume the heartbeat-loss retry.
 - [ ] Separately track the secondary defect: the USB link stays stuck after a

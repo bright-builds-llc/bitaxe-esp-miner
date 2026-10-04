@@ -4,7 +4,7 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLE, PAGE, admitTrust, canonicalDirectory, cleanPushed, fileDigest, git, ignored,
   missing, nonce, packageSnapshot } from "../fixed-usb-qualification/contract.mjs";
-import { inspectControlStackPassPredecessor, inspectHelperPassPredecessor, inspectIdlePanicRecoveryPredecessor, inspectPredecessor, inspectRecoveryPredecessor, inspectStep5InstallPassPredecessor } from "./predecessor.mjs";
+import { inspectControlStackPassPredecessor, inspectHelperPassPredecessor, inspectControlDiagnosticRecoveryPredecessor, inspectIdlePanicRecoveryPredecessor, inspectPredecessor, inspectRecoveryPredecessor, inspectStep5InstallPassPredecessor } from "./predecessor.mjs";
 import { verifyArtifactSnapshot } from "../fixed-usb-qualification/snapshot.mjs";
 import { BASE_CONTRACT_SHA256 } from "./contract-v2.mjs";
 import { canonical, check, digest, inventory, privateRoot, proof, protectedPath, readJson, retain, verifyInventory, writeNew } from "./files.mjs";
@@ -20,6 +20,8 @@ export const CONTROL_SUCCESSOR_SHA256 = "2730e27edb7f547aa467634386919da79d3a57d
 export const STEP5_SUCCESSOR_PATH = "docs/hardware/str005-step5-diagnostic-amendment.md";
 export const STEP5_SUCCESSOR_SHA256 = "eb90f2856cc9455c6c8f04ec47fd4231dde425758589ada631d56055173b96d1";
 export const CONTROL_DIAGNOSTIC_SUCCESSOR_PATH = "docs/hardware/str005-control-stack-diagnostic-amendment.md";
+export const REALIGNMENT_FIX_SUCCESSOR_PATH = "docs/hardware/str005-realignment-fix-amendment.md";
+export const REALIGNMENT_FIX_SUCCESSOR_SHA256 = "7be0fa4018982c3641bc60de0ab5e8277134d2f4e74245d687e7f65e018844d8";
 export const CONTROL_DIAGNOSTIC_SUCCESSOR_SHA256 = "dcf6e1c30f64fb487eb1a519c9f94648e422e100145f3f8474f6f6d3a660bdde";
 const PUBLICATION = "docs/parity/evidence/str005-noise-serial";
 /** Each profile owns one namespace, task gate, predecessor basis and expected ledger. */
@@ -89,6 +91,13 @@ export const PROFILES = Object.freeze({
     inspect: inspectIdlePanicRecoveryPredecessor, ledger: { next_ordinal: 26, last_ordinal: 25, total_charged_ms: 3000000 },
     admits: (previous) => previous.basis === "idle_panic_current_recovery" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 25 },
+  "realignment-fix-install": { namespace: "scratch/str005-realignment-fix", task: "task-str005-start-panic-diagnosis",
+    enabledLine: "Realignment fix install hardware: enabled.",
+    successor: { path: REALIGNMENT_FIX_SUCCESSOR_PATH, sha256: REALIGNMENT_FIX_SUCCESSOR_SHA256 },
+    publication: "docs/parity/evidence/str005-realignment-fix",
+    inspect: inspectControlDiagnosticRecoveryPredecessor, ledger: { next_ordinal: 26, last_ordinal: 25, total_charged_ms: 3000000 },
+    admits: (previous) => previous.basis === "control_diagnostic_current_recovery" && previous.cleanup_confirmed === true &&
+      previous.last_ordinal === 25 },
 });
 /** Public projection path; ordinals restart per profile, so each profile owns its directory. */
 export function publicationPath(context) {
@@ -134,7 +143,7 @@ export function profileOf(context) {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SOURCE_DIRS = ["scripts/str005-noise-serial", "scripts/fixed-usb-qualification", "tools/stratum-v2-fixture",
   "crates/bitaxe-stratum", "crates/bitaxe-worker-control", "scripts/host-stalls"];
-const SOURCE_FILES = [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, CONTROL_SUCCESSOR_PATH, STEP5_SUCCESSOR_PATH, CONTROL_DIAGNOSTIC_SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel",
+const SOURCE_FILES = [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, CONTROL_SUCCESSOR_PATH, STEP5_SUCCESSOR_PATH, CONTROL_DIAGNOSTIC_SUCCESSOR_PATH, REALIGNMENT_FIX_SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel",
   "firmware/bitaxe/bwg/deployment-trust.json", ...NATIVE_AUDITOR_SOURCES,
   "firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/src/noise_completion_stack.rs", "firmware/bitaxe/src/production_mining_session.rs", "firmware/bitaxe/src/production_mining_session/transport.rs",
   "firmware/bitaxe/src/production_mining_session/transport/borrow.rs", "tools/automation/src/redaction.ts", "tools/automation/src/noise-serial-redaction.ts"];

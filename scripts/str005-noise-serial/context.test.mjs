@@ -234,3 +234,20 @@ test("control-stack diagnostic profile refuses a predecessor at the older ledger
     const value = await inspect(path); return { ...value, previous: { ...value.previous, next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 } };
   } }), { code: "noise_predecessor" });
 });
+test("realignment-fix profile binds the control-diagnostic recovery and its own publication", async (t) => {
+  // Arrange / Act
+  const f = await fixture(t, { profile: "realignment-fix-install" });
+  // Assert
+  assert.equal(f.context.profile, "realignment-fix-install");
+  assert.deepEqual(f.context.expected_ledger, { next_ordinal: 26, last_ordinal: 25, total_charged_ms: 3000000 });
+  assert.equal(publicationPath(f.context), resolve(f.options.firmwareRoot, "docs/parity/evidence/str005-realignment-fix/attempt-001.json"));
+});
+test("realignment-fix profile refuses the idle-panic recovery basis", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "realignment-fix-install" });
+  const inspect = f.operations.inspectPredecessor;
+  // Act / Assert
+  await assert.rejects(preflight(f.options, { ...f.operations, inspectPredecessor: async (path) => {
+    const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "idle_panic_current_recovery" } };
+  } }), { code: "noise_predecessor" });
+});
