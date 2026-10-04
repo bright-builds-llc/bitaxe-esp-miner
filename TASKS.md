@@ -5547,8 +5547,16 @@ Control review loop hardware: disabled.
 - [x] Secondary defect documented, per the owner, without further
       investigation: [known issues](docs/hardware/known-issues.md). The USB
       link stays unusable after a panic reset; recover with a USB-only replug.
-- [ ] Report the codegen bug upstream (esp-rs/rust LLVM Xtensa); that is
-      external, so only a report draft goes here.
+- [x] Report the codegen bug upstream, per the owner: the LLVM Xtensa backend
+      (`XtensaFrameLowering::emitPrologue`), present in every esp toolchain
+      from 1.88.0.0 to 1.99.0.0 (LLVM 19.1.2 to 22.1.4). Filed as
+      [espressif/llvm-project#140](https://github.com/espressif/llvm-project/issues/140)
+      with Rust tracking
+      [esp-rs/rust#284](https://github.com/esp-rs/rust/issues/284). The public
+      reproducer is
+      [pRizz/xtensa-movsp-realign-repro](https://github.com/pRizz/xtensa-movsp-realign-repro).
+      A toolchain upgrade does not remove the hazard, so the reply slot and
+      `just audit-stack-realignment` stay.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.

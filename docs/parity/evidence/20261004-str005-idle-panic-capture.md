@@ -7,19 +7,19 @@ Offline analysis binds the dump to the installed image and identifies the
 faulting thread and instruction. The underlying corruption source is not yet
 proven.
 
-| Boundary            | Direct evidence                                                                                                              |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Image               | Source `654338d0`, ELF `2641c24fc3f4fc3a80a4bcb8bfd389b2d70d3e048d9e18a5771b14309b588193`; exact debug ELF retained            |
-| Recovery001         | Current safe recovery: idle V2, ledger next 26 / last 25 / 3,000,000 ms (unchanged), restoration and release proven, fresh proof written |
-| Capture001          | One `core-dump-read` inside the proof window; ROM admitted, partition read only, application identity restored, cleanup complete; no erase or write |
-| Dump binding        | Checksum verified; the single ELF identity note equals the installed ELF; the native allocation history is bound to boot 15  |
-| Allocation failures | None on either core                                                                                                          |
-| Abort message       | No ESP panic-details note: not `abort()`, an assert, the stack-overflow hook or a Rust panic                                 |
-| Original exception  | From the firmware's captured panic-frame record: CPU exception `StoreProhibited` (cause 29) to a near-null address           |
-| Faulting code       | `std::sync::mpsc::sync_channel` (store through the caller's return-slot pointer), called from `bwg_worker_usb::writer::send_control` |
-| Faulting thread     | The Worker control owner (`bwg-worker-control`, 16 KiB internal stack, core 1); `send_control` runs only there, while replying to a command |
+| Boundary            | Direct evidence                                                                                                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Image               | Source `654338d0`, ELF `2641c24fc3f4fc3a80a4bcb8bfd389b2d70d3e048d9e18a5771b14309b588193`; exact debug ELF retained                                                                                   |
+| Recovery001         | Current safe recovery: idle V2, ledger next 26 / last 25 / 3,000,000 ms (unchanged), restoration and release proven, fresh proof written                                                              |
+| Capture001          | One `core-dump-read` inside the proof window; ROM admitted, partition read only, application identity restored, cleanup complete; no erase or write                                                   |
+| Dump binding        | Checksum verified; the single ELF identity note equals the installed ELF; the native allocation history is bound to boot 15                                                                           |
+| Allocation failures | None on either core                                                                                                                                                                                   |
+| Abort message       | No ESP panic-details note: not `abort()`, an assert, the stack-overflow hook or a Rust panic                                                                                                          |
+| Original exception  | From the firmware's captured panic-frame record: CPU exception `StoreProhibited` (cause 29) to a near-null address                                                                                    |
+| Faulting code       | `std::sync::mpsc::sync_channel` (store through the caller's return-slot pointer), called from `bwg_worker_usb::writer::send_control`                                                                  |
+| Faulting thread     | The Worker control owner (`bwg-worker-control`, 16 KiB internal stack, core 1); `send_control` runs only there, while replying to a command                                                           |
 | Register state      | The return-slot pointer, return address and stack pointer were all restored as non-stack values after the inner allocation call. The stack pointer points into the general heap, not the task's stack |
-| SDK dump view       | Its rewritten view (`exccause` 0xffff, fake frame) only reflects that it rejected the foreign stack pointer; the firmware record preserves the original frame |
+| SDK dump view       | Its rewritten view (`exccause` 0xffff, fake frame) only reflects that it rejected the foreign stack pointer; the firmware record preserves the original frame                                         |
 
 ## Interpretation
 
@@ -50,6 +50,7 @@ symbol names.
 ## Reproduction, root cause and correction
 
 A diagnostic image (`c634cc20`) added three things:
+
 - an end-of-stack watchpoint;
 - per-command internal-heap integrity checks;
 - a captured control-stack trace.
@@ -58,17 +59,18 @@ A bounded read-only review loop then reproduced the panic: loop005 failed at
 round 20, and the device rebooted with `reset_reason=panic`. The archive-bound
 clear had emptied the core partition, so that dump was stored and read.
 
-| Finding                    | Direct evidence                                                                                      |
-| -------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Same fault                 | `StoreProhibited` at `std::sync::mpsc::sync_channel<bool>+22` in `writer::send_control`, control owner |
-| Not a stack overflow       | At least 6,100 of 16,384 bytes always free across 106 commands; end-of-stack watchpoint never fired  |
-| Not heap corruption        | No panic-details note: heap integrity checks passed; no allocation failures                          |
-| Mechanism                  | `std::sync::mpmc` channel constructors realign their frame to 64 bytes with `add.n a1, a1, a8` instead of `movsp`. An interrupt in that prologue saves the caller's registers below the old stack pointer, and the return reloads them from below the new one. |
-| Reconstructed frames       | The callee returned correctly. Only the caller's restored return address and return-slot pointer were stale, giving the near-null store. |
+| Finding              | Direct evidence                                                                                                                                                                                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Same fault           | `StoreProhibited` at `std::sync::mpsc::sync_channel<bool>+22` in `writer::send_control`, control owner                                                                                                                                                         |
+| Not a stack overflow | At least 6,100 of 16,384 bytes always free across 106 commands; end-of-stack watchpoint never fired                                                                                                                                                            |
+| Not heap corruption  | No panic-details note: heap integrity checks passed; no allocation failures                                                                                                                                                                                    |
+| Mechanism            | `std::sync::mpmc` channel constructors realign their frame to 64 bytes with `add.n a1, a1, a8` instead of `movsp`. An interrupt in that prologue saves the caller's registers below the old stack pointer, and the return reloads them from below the new one. |
+| Reconstructed frames | The callee returned correctly. Only the caller's restored return address and return-slot pointer were stale, giving the near-null store.                                                                                                                       |
 
 The correction (`24af10be`) gives per-request replies a one-shot slot that
 holds only a mutex and a condition variable (`bitaxe_runtime::reply`). It is
 used for:
+
 - control replies;
 - Worker Start, Renew, SafeStop and cooling;
 - safety actuation requests;
@@ -79,14 +81,20 @@ function. It blocks the previous image (17 callers, including
 `send_control`) and passes the corrected one (9 startup-only callers).
 
 Verification on the corrected image (`7ca3e29c`, ELF `227bc380…`):
+
 - a state-preserving install with all native audits passing;
 - 500 read-only review rounds in five fresh sessions with no failure;
 - a current recovery shows no reboot during the loop and the ledger unchanged
   at next 26.
 
 Residual risk:
+
 - The toolchain hazard remains for the nine startup-time channel creations.
   Each is one call per boot, and a panic there resets safely.
+  The hazard is in LLVM's Xtensa backend and is present in every esp
+  toolchain tested, from 1.88.0.0 to 1.99.0.0. It is reported as
+  [espressif/llvm-project#140](https://github.com/espressif/llvm-project/issues/140)
+  and [esp-rs/rust#284](https://github.com/esp-rs/rust/issues/284).
 - A separate defect: after a panic reset, the USB link stayed unusable until
   a physical USB replug.
 - Parity stays 90/95.
