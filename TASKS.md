@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
+Development core-dump acquisition: disabled (control repro capture-003 completed).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5436,10 +5436,32 @@ Wedge observation | 2026-10-04 | Owner: "yes, go ahead with 1, 2, then 3"
       - The cleared core partition should now hold this panic's dump.
       Result `473546a8…`, seal
       `00c9f5eb07293d3ca6068155bbfaa95b77e4274977e80bb5ecff98f021af4ffe`.
-   - Next: recovery007 and one core-dump read inside its proof window, then
-     offline analysis of the panic frame, the control-stack trace and any
-     panic-details note.
-Control diagnostic recovery hardware: enabled.
+   - recovery007 proved current safe recovery. One read inside its proof
+     window captured the reproduced panic's dump (90,666 non-erased bytes),
+     with application identity restored and cleanup complete. The dump binds
+     to ELF `d986b2ea…` (checksum and full identity verified; no fake task
+     frames). Dump SHA-256 `b42a2b7d…`.
+   - Analysis (private, redacted here):
+     - Same signature: CPU `StoreProhibited` at
+       `std::sync::mpsc::sync_channel<bool>+22` (store to `0x1e`) on the Worker
+       control owner, inside `writer::send_control`. The reloaded return
+       address and return-slot pointer are garbage, and one register holds an
+       RTC-fast-heap pointer. The SP is valid this time, about 3.6 KiB deep.
+     - Stack overflow refuted: `BITAXE_CONTROL_STACK_TRACE` recorded 106
+       commands with at least 6,100 of 16,384 bytes free, and the end-of-stack
+       watchpoint never fired.
+     - No panic-details note, so the internal-heap integrity checks (212
+       checks) passed through the last completed command. There were no
+       allocation failures.
+     - Conclusion: the control owner's register-spill area is overwritten
+       during the reply channel's allocation. A writer outside this thread's
+       own frames is corrupting live stack memory: for example heap metadata
+       for a block overlapping the stack, a dangling pointer from another
+       thread or callback, or DMA. That writer is the remaining unknown.
+   - Secondary defect: after the panic's software reset, the USB link
+     (device USB-Serial/JTAG or host state) stayed unusable until a physical
+     USB replug. Hello, JTAG EP0 and the control-line reset all failed.
+Control diagnostic recovery hardware: disabled.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
