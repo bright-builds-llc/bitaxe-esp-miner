@@ -31,12 +31,25 @@ export function createPage(gate, post, notice, options = {}) {
     async baseline() {
       if (candidate) throw Error('startup_candidate_consumed');
       const challenge = await post('/startup/baseline-begin', {});
-      const context = await post('/startup/context', {});
-      const ledger = await gate.reviewQualificationAttempts(), original_budget = await gate.reviewBudget(context.originalCampaignId);
-      const status = await gate.stratumV2Status('share', null, await gate.stratumV2Possession());
-      await gate.exportDiagnostics();
-      const receipt = await post('/startup/baseline', { nonce: challenge.nonce, state: state(), ledger, original_budget, status }); attemptId = receipt.attemptId;
-      await gate.close(); await gate.configure(await post('/startup/candidate', { state: state() })); candidate = true;
+      let operation = 'context';
+      const step = (name, action) => { operation = name; return action(); };
+      try {
+        const context = await step('context', () => post('/startup/context', {}));
+        const ledger = await step('ledger', () => gate.reviewQualificationAttempts());
+        const original_budget = await step('original_budget', () => gate.reviewBudget(context.originalCampaignId));
+        const possession = await step('possession', () => gate.stratumV2Possession());
+        const status = await step('status', () => gate.stratumV2Status('share', null, possession));
+        await step('diagnostics', () => gate.exportDiagnostics());
+        const receipt = await step('baseline', () => post('/startup/baseline', { nonce: challenge.nonce, state: state(), ledger, original_budget, status }));
+        attemptId = receipt.attemptId;
+        await step('close', () => gate.close());
+        await step('configure', async () => gate.configure(await post('/startup/candidate', { state: state() })));
+      } catch (error) {
+        // The record is diagnostic only; the original failure propagates whether or not it persists.
+        const failure = { schema: 'str005-baseline-failure-v1', operation, category: state().serialFailureCategory ?? 'operation_failed' };
+        await post('/startup/baseline-failure', failure).then(() => { throw error; }, () => { throw error; });
+      }
+      candidate = true;
       notice('Use native Connect Worker for a fresh candidate session.');
     },
     async run() {

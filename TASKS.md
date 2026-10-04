@@ -5392,6 +5392,31 @@ lists the full operator sequence, including the startup detector.
 Heartbeat005 reruns the unchanged contract with that sequence. The lineage is
 unchanged, and no restart is needed because no Start ran.
 
+Heartbeat005 | 2026-10-04 | Baseline review hit a Gate serial timeout; no Start
+- Preflight and the detector passed: boot 15, ledger 26.
+- "Record baseline and configure candidate" posted `baseline-begin` and
+  `context`. A Gate read-only review then failed with Gate
+  `serialFailureCategory=timeout` before `/diagnostic-export`. The failing
+  review is one of the attempt ledger, budget, possession or V2 status; which
+  one is unknown.
+- The device stayed responsive and idle on the same boot 15. Uptime was
+  consistent with restart004 at 30 °C, `mine_on_boot=false`. The detector
+  re-admitted one Ultra 205.
+- Nothing was recorded server-side and nothing ran: no baseline, observer,
+  signer use, Start or charge. Heartbeat004 had passed the same baseline step
+  about 10 minutes earlier on the same boot.
+- Sealed `complete=false` (`heartbeat_evidence_unverified`): result
+  `d505f096c62c15dbda28d08e846a2c3b59f3398839c8a745041d4348d31cdbfd`, seal
+  `5fd844681a97ac876927af297238525e1dff4bcfbe6ba14a1c14c4677e2dfff2`.
+
+Progress (discriminating instrumentation, not a fix): a failed baseline now
+persists `baseline-failure.json` with the failed operation and the Gate
+serial category, both from closed vocabularies. Regressions cover the page
+attribution and validator folding.
+
+Heartbeat006 reruns the unchanged contract. If the timeout recurs, the named
+operation is the new signature to diagnose before any further attempt.
+
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart-004/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
 just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat003/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --restart-root <repo>/scratch/str005-heartbeat-restart-004/restart004

@@ -1,4 +1,4 @@
-import { validateRecoveryErrors, validateClientFailure } from './recovery-errors.mjs';
+import { validateRecoveryErrors, validateClientFailure, validateBaselineFailure } from './recovery-errors.mjs';
 import { failureRecord } from './failure.mjs';
 import { nonce } from '../fixed-usb-qualification/contract.mjs';
 import { validateLedger, requireExhaustedOriginal, validateCooling } from '../fixed-usb-qualification/iterative-contract.mjs';
@@ -37,6 +37,7 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
     if (path === '/startup/context') { object(input, []); return { originalCampaignId: context.original_campaign_id, attemptId: before?.attempt.id ?? null, startState }; }
     if (path === '/startup/release') { object(input, []); await release(); return { released: true }; }
     if (path === '/startup/client-failure') { await save('client-failure.json', validateClientFailure(input)); return { recorded: true }; }
+    if (path === '/startup/baseline-failure') { await save('baseline-failure.json', validateBaselineFailure(input)); return { recorded: true }; }
     if (path === '/startup/result') { const value = validateResult(input, context); if (value.firstFailure) failed = true; await save('run.json', value); startState = value.observedStart ? 'confirmed' : value.startInvokedAt === null ? 'not_invoked' : 'unknown'; return { recorded: true }; }
     if (path === '/startup/recovery-challenge') {
       object(input, []); check(before && recoveryRound < 4 && (!recoveryChallenge || recoveryChallenge.finished), 'startup_recovery_bound');

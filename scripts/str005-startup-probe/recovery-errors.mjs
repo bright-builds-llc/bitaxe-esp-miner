@@ -21,3 +21,12 @@ export function validateClientFailure(value) {
     (!v2 || value.rejection === null || CONTROL_REJECTIONS.includes(value.rejection)), 'startup_client_failure');
   return structuredClone(value);
 }
+
+const BASELINE_OPERATIONS = ['context', 'ledger', 'original_budget', 'possession', 'status', 'diagnostics', 'baseline', 'close', 'configure'];
+/** Which read-only baseline operation failed, in the closed serial vocabulary; unknown Gate categories become operation_failed. */
+export function validateBaselineFailure(value) {
+  object(value, ['schema', 'operation', 'category']);
+  check(value.schema === 'str005-baseline-failure-v1' && BASELINE_OPERATIONS.includes(value.operation) && typeof value.category === 'string',
+    'startup_baseline_failure');
+  return { ...value, category: categories.includes(value.category) ? value.category : 'operation_failed' };
+}
