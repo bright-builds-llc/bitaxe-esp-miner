@@ -5384,10 +5384,24 @@ Wedge observation | 2026-10-04 | Owner: "yes, go ahead with 1, 2, then 3"
      (`0x3fc88000`–`0x3fd00000`).
    - Evidence goes to mode-0600 files under a mode-0700 ignored root. No flash
      write, erase or register write, and no pins.
-3. Recover: `monitor reset run` in the same session (one JTAG system reset),
-   then OpenOCD exits. A fresh current recovery must prove Gate service and
-   the unchanged ledger. Stop on any failure to resume; the owner can then
-   power-cycle.
+   - Result: blocked. OpenOCD bound VID/PID `303a:1001` and opened the
+     device, but every `init` failed reading the USB string descriptor
+     (`libusb_get_string_descriptor_ascii() failed with -1`, `LIBUSB_ERROR_IO`)
+     on three attempts. No halt happened and nothing was captured.
+   - macOS still lists the enumerated device. So the USB-Serial/JTAG
+     peripheral itself fails a standard control request: the wedge reaches
+     the USB function, not only the firmware's control thread.
+3. Recover. With JTAG unavailable, use the standard pre-write admission
+   check as the reset:
+   - Command: `espflash board-info --chip esp32s3 --port <fresh detector
+     port> --non-interactive`, with the pinned espflash 4.5.0 whose hash
+     matches the detector. It enters ROM through the serial control lines,
+     reads board info, and hard-resets into the application (default
+     `--after`). No write.
+   - Make one attempt. If control lines fail too, stop and ask the owner to
+     power-cycle: barrel off, then USB, then restore barrel then USB.
+   - Then a fresh current recovery must prove Gate service and the unchanged
+     ledger.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
