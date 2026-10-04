@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
+Development core-dump acquisition: disabled (control repro capture001 completed).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5290,12 +5290,29 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
         the same signature as heartbeat005's panic. Sealed: result
         `be86fa6fff942ad272e6e41c11c227f7e016473d4022f1bf17fcbe1bb56c570e`,
         seal `86ddf3c52e3103f9a4168b080654485339de100b025f73ba6529aa0e2adecfb2`.
-- [ ] Phase D: recovery003 and one core-dump read inside its proof window,
-      then offline analysis.
+- [x] Phase D: no panic.
+      - recovery003 proved current safe recovery on boot 6, with
+        `reset_reason=other` (the clear's return reset) and about 13.5 min of
+        uptime. The device therefore did not reset during loop004.
+      - The read in its proof window found the core partition fully erased
+        (974,848 bytes of `0xFF`), with application identity restored and
+        cleanup complete. Seal `7664d19c33253f7081547f52163ec78a92885df4003b0614ab22439be6cbc807`.
+      Outcome:
+      - Loop004 did not reproduce the panic. It surfaced a different,
+        non-resetting boundary: after 127 clean rounds, a Gate serial timeout
+        on the possession review, the Worker lease-authorization context for
+        Start.
+      - Heartbeat005's panic was on one of the same four reviews, but which one
+        is unknown.
+      - The captured high-water record needs a dump, so none exists without a
+        panic.
+- [ ] Next: diagnose the possession timeout (device-side latency or stall in
+      the start-authorization context path on the control owner). Then decide
+      whether longer or varied loops are needed to reproduce the panic.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
-Control diagnostic recovery hardware: enabled.
-Control review loop hardware: enabled.
+Control diagnostic recovery hardware: disabled.
+Control review loop hardware: disabled.
 Development core-dump clearing: disabled (clear001 completed).
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
