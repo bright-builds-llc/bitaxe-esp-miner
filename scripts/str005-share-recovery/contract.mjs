@@ -38,7 +38,10 @@ export async function currentSource(root, effect = true, profile = SHARE001) {
   if (effect) requireEnabled(tasks, profile.enabled, profile);
   return { source_commit, contractSha256: sha256(await readFile(resolve(root, profile.contract))) };
 }
-export async function predecessor(root, oldRoot, profile = SHARE001) { await privateRoot(oldRoot);
+/** A profile may bind a different sealed predecessor shape through its own loader. */
+export async function predecessor(root, oldRoot, profile = SHARE001) {
+  if (profile.loadPredecessor) return profile.loadPredecessor(root, oldRoot);
+  await privateRoot(oldRoot);
   const seal = await proof(oldRoot, 'sealed-inventory.json'); check(seal.sha256 === profile.seal, 'share_recovery_predecessor_seal');
   await verifyInventory(oldRoot, seal.value.files, new Set(['sealed-inventory.json']));
   const context = (await proof(oldRoot, 'context.json')).value, before = (await proof(oldRoot, 'before.json')).value;

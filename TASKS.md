@@ -5231,6 +5231,22 @@ the noise-serial successor profile `control-stack-diagnostic-install`.
       ([projection](docs/parity/evidence/str005-control-stack-diagnostic/attempt-001.json))
 - [ ] Read-only review reproduction on this image under its own contract.
 Control stack diagnostic install hardware: disabled.
+
+Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](docs/hardware/str005-control-stack-reproduction-amendment.md)
+- [x] Owners and tests:
+      - `str005-control-diagnostic-recovery`: the recovery collector bound to
+        install attempt-001 through a predecessor-loader hook, plus recovery001
+        for the board identity;
+      - `str005-review-loop`: a bounded read-only review loop. A pure runner
+        and closed rows, with 7 tests.
+- [ ] Phase A: recovery proof. Phase B: archive-bound clear of the boot-15
+      dump (capture001 archive `71b18ec3…`).
+- [ ] Phase C: loop001 (≤300 rounds of ledger, budget, possession and status).
+- [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
+      record that it did not reproduce.
+Control diagnostic recovery hardware: enabled.
+Control review loop hardware: enabled.
+Development core-dump clearing: enabled (private archive verified).
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.

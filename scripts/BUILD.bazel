@@ -1396,6 +1396,38 @@ js_test(
     entry_point = "str005-panic-recovery/profile.test.mjs",
 )
 
+js_binary(
+    name = "str005_control_diagnostic_recovery",
+    chdir = "..",
+    data = [":str005_panic_recovery_sources"],
+    entry_point = "str005-panic-recovery/control-diagnostic.mjs",
+)
+
+js_library(
+    name = "str005_review_loop_sources",
+    srcs = glob(["str005-review-loop/*.mjs"]),
+    deps = [":str005_panic_recovery_sources"],
+)
+
+js_binary(
+    name = "str005_review_loop",
+    chdir = "..",
+    data = [":str005_review_loop_sources"],
+    entry_point = "str005-review-loop/main.mjs",
+)
+
+js_test(
+    name = "str005_review_loop_test",
+    data = [":str005_review_loop_sources"],
+    entry_point = "str005-review-loop/owner.test.mjs",
+)
+
+js_test(
+    name = "str005_review_loop_runner_test",
+    data = [":str005_review_loop_sources"],
+    entry_point = "str005-review-loop/loop.test.mjs",
+)
+
 js_library(
     name = "str005_share_crash_sources",
     srcs = glob(["str005-share-crash/*.mjs"]),

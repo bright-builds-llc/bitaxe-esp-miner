@@ -21,6 +21,12 @@ str005-share-recovery action *args:
 str005-panic-recovery action *args:
     bazel run //scripts:str005_panic_recovery -- {{ action }} {{ args }}
 
+str005-control-diagnostic-recovery action *args:
+    bazel run //scripts:str005_control_diagnostic_recovery -- {{ action }} {{ args }}
+
+str005-review-loop action *args:
+    bazel run //scripts:str005_review_loop -- {{ action }} {{ args }}
+
 str005-share-crash action *args:
     bazel run //scripts:str005_share_crash -- {{ action }} {{ args }}
 
