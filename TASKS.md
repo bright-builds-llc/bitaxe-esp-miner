@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
+Development core-dump acquisition: disabled (no current proof; device wedged).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5333,11 +5333,31 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
         `0a7459d30f8408cc2f3f44b0edc331db43ec1cbe55e7f3149f1105d4d067a331`,
         seal `4dae00bd7b0c8562c6cee2c54821a3c66ea70c5b85eef567bc47fda8e2a8cf1e`.
         A recovery and read follow.
+      - recovery004: refused before any device exchange (admission stage
+        `scope`), so ambiguous. Result
+        `1adcdcee27dd6d2a857bb665d95135547363239927cac5748bc6ed2db75b5bfb`,
+        seal `bd1928f7e38c06f9a51ab84d414806b80b37b319d032bc2e44db4fc3ccf63f7f`.
+      - recovery005 (recovery-only retry): `/activate` succeeded, port opened,
+        then the firmware never answered the Gate's hello (stage `hello`,
+        serial `timeout`). Result
+        `eb97e028c909c0e26d7b9417a28057bebfb195a44adcd5ff18800d64e1de4bb0`,
+        seal `5702d8eb9623264ae68152d8c72fd3f569cfe384eff38d77ce5c608b9c6cc8dd`.
+      - The device is wedged on its control channel: USB still enumerates in
+        native serial runtime and the detector admits it, but it gave no hello
+        after loop005's budget-review timeout and did not reboot. A panic
+        would have rebooted it and answered hello. No proof exists, so no core
+        read is admitted.
+      - The device was idle with no lease, grant or mining, so its last
+        reported state was the safe baseline.
+      - The hang's RAM state is the best evidence; a reset would lose it.
+        Next effect, pending the owner's choice: a passive receive-only
+        serial observation, a JTAG halt-and-dump over the built-in USB-JTAG,
+        or a reset or power cycle to recover.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
-Control diagnostic recovery hardware: enabled.
-Control review loop hardware: enabled.
+Control diagnostic recovery hardware: disabled.
+Control review loop hardware: disabled.
 Development core-dump clearing: disabled (clear001 completed).
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
