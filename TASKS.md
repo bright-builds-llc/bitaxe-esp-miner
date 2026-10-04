@@ -5250,12 +5250,27 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
         because the sealed install proves every boot of this image is
         post-failure. Regressions cover the boot-5 conclusion and both
         profiles' thresholds. Retry as recovery002 with a fresh root.
+- [x] Phase A/B:
+      - recovery002 proved current safe recovery on boot 5 of `c634cc20`.
+      - clear001 inside its proof window: a fresh read matched the capture001
+        archive byte-for-byte (`71b18ec3…`); only the core partition was
+        erased and read back fully erased (974,848 bytes of `0xFF`); the
+        application was restored and cleanup completed.
 - [ ] Phase C: loop001 (≤300 rounds of ledger, budget, possession and status).
+      - loop001: the Gate refused Connect locally (`connect_failed`, no host
+        request) because the loop context had no V2 scope, so the
+        configuration omitted `stratumV2Scope`. No review ran. Sealed with zero
+        rows: result
+        `5b6177aecd334f4814d2bd936695ec0080e3ad7647fa38b200b4b4643a7d51b7`,
+        seal `933eea82ac57d4645581717facd98acb7abf16a3922d7b044e1e5fae5f5488ee`.
+      - Fix: the loop context names `scope: 'share'`, and the `/context`
+        configuration goes through `gateConfiguration`, which refuses a
+        missing scope. Regression added. Retry as loop002.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
 Control diagnostic recovery hardware: enabled.
 Control review loop hardware: enabled.
-Development core-dump clearing: enabled (private archive verified).
+Development core-dump clearing: disabled (clear001 completed).
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.

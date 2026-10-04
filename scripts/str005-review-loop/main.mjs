@@ -51,7 +51,7 @@ export async function main(argv) {
       trust: await readFile(resolve(firmwareRoot, 'firmware/bitaxe/bwg/deployment-trust.json')) };
     for (const [key, bytes] of Object.entries(assets)) check(sha256(bytes) === prior.assetHashes[key], 'review_loop_asset');
     const context = { schema: 'str005-review-loop-context-v1', ...current, firmware_root: firmwareRoot, gate_root: gateRoot,
-      installRoot: options['--predecessor-root'], ...prior };
+      installRoot: options['--predecessor-root'], scope: 'share', ...prior };
     await mkdir(root, { mode: 0o700 }); await writeNew(resolve(root, 'context.json'), context);
     for (const [key, bytes] of Object.entries(assets)) await retain(resolve(root, `gate-${key}`), bytes);
     return { preflight: 'passed', device_effects: false };

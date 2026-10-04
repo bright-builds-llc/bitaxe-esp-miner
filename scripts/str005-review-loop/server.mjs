@@ -19,6 +19,12 @@ export function validateRow(value, iterations = LIMITS.iterations) {
   return value;
 }
 
+/** The Gate refuses Connect without a V2 scope, so the loop context must name the share scope. */
+export function gateConfiguration(context, trust) {
+  check(context.scope === 'share', 'review_loop_scope');
+  return configuration({ ...context, before_source: context }, 'before', trust);
+}
+
 /** One loop per served root; begin is one-use and every row is persisted in order. */
 export function createLoopServer({ root, context, assets, verify }, operations = {}) {
   const now = operations.now ?? Date.now;
@@ -29,7 +35,7 @@ export function createLoopServer({ root, context, assets, verify }, operations =
     check(request.headers.host === host, 'review_loop_host'); const path = new URL(request.url, origin).pathname;
     if (request.method === 'GET') {
       if (path === '/') return send(response, 200, Buffer.from(`${assets.page}\n<script type="module" src="/loop-page.mjs"></script>`), 'text/html');
-      if (path === '/context') return send(response, 200, configuration({ ...context, before_source: context }, 'before', assets.trust));
+      if (path === '/context') return send(response, 200, gateConfiguration(context, assets.trust));
       const asset = path === `/${BUNDLE}` ? assets.bundle : assets.modules?.[path];
       if (asset) return send(response, 200, asset, 'text/javascript');
       return send(response, 404, { error: 'review_loop_route' });
