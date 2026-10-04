@@ -39,7 +39,11 @@ export function createPage(gate, post, notice, options = {}) {
       await gate.close(); await gate.configure(await post('/startup/candidate', { state: state() })); candidate = true;
       notice('Use native Connect Worker for a fresh candidate session.');
     },
-    async run() { const result = await run(); notice(JSON.stringify(result)); return result; },
+    async run() {
+      // The coordinator is one-shot; invoking it before the baseline would seal an attempt that never reached Start.
+      if (!candidate) throw Error('startup_candidate_required');
+      const result = await run(); notice(JSON.stringify(result)); return result;
+    },
     async recoverFresh() {
       let challenge, recoveryBinding;
       const collect = createRecoveryCollection({ gate,
@@ -78,7 +82,10 @@ export function installPage(options = {}) {
   for (const [label, name] of [['Record baseline and configure candidate', 'baseline'], [options.runLabel ?? 'Run one startup probe', 'run'], ['Collect fresh recovery and close', 'recoverFresh']]) {
     const button = document.createElement('button'); button.textContent = label;
     button.addEventListener('click', async () => { button.disabled = true; try { await page[name](); }
-      catch { output.textContent = 'Operation incomplete; retain evidence. Stop and Close remain available.'; } }); document.body.append(button);
+      catch (error) {
+        if (error.message === 'startup_candidate_required') { button.disabled = false; output.textContent = 'Record baseline and configure candidate first.'; return; }
+        output.textContent = 'Operation incomplete; retain evidence. Stop and Close remain available.';
+      } }); document.body.append(button);
   }
 }
 

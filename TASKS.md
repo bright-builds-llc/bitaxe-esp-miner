@@ -5343,6 +5343,31 @@ Restart004 | 2026-10-03 | Complete
   heartbeat002 as the previous Start. The restart gate is disabled again, and
   heartbeat003 is admitted.
 
+Heartbeat003 | 2026-10-03 | Refused in prepare by an operator-sequence error; no Start
+- Preflight and the detector passed: boot 15, ledger 26.
+- The agent clicked "Run one heartbeat-loss probe" without first running
+  "Record baseline and configure candidate". The one-shot coordinator's
+  `prepare` correctly failed closed (`startup_candidate_required`): no
+  baseline, observer, signer use, Start, charge, fault or retained record. The
+  device stayed idle and restored on boot 15.
+- Sealed `complete=false` (`heartbeat_evidence_unverified`,
+  `startup_owner_failed`): result
+  `f16ecdc2e7fee327671ff829b129d7bf2030ff42264f5a514fb040bc6aba7e32`, seal
+  `02f9a7d682efaa2e190be661997bb75efd351c9aca20185e92b48faff9c89a0c`.
+
+Fix: the shared startup page now refuses Run before the baseline without
+invoking the one-shot coordinator, and re-enables the button. The regression
+`str005-startup-probe/page.test.mjs` fails without the guard and passes with it.
+
+Heartbeat004 reruns the unchanged contract with the documented operator
+sequence. Each step needs Connect Worker first:
+1. Record baseline and configure candidate.
+2. Run one heartbeat-loss probe.
+3. Collect fresh recovery and close.
+
+The lineage is unchanged (heartbeat002, then restart004, boot 15, ledger 26).
+No restart is needed, because no Start ran.
+
 ```sh
 just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart-004/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
 just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat003/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --restart-root <repo>/scratch/str005-heartbeat-restart-004/restart004
