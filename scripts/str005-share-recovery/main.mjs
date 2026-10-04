@@ -17,6 +17,10 @@ async function detect(root, physical, final = false) {
   return parseDetector(await readFile(path, 'utf8'), physical, Date.now() - (await stat(path)).mtimeMs);
 }
 /** Runs one current-recovery collection bound to the profile's sealed predecessor; Share001 is the default. */
+/** A known Start's retained record is read by its attempt id; otherwise the current state is discovered. */
+export function statusModeFor(attempt) {
+  return attempt.confirmed === true ? 'confirmed' : 'discover_current';
+}
 export async function main(argv, profile = SHARE001) {
   const { action, options } = argumentsFor(argv, profile.enabled, profile);
   const firmwareRoot = process.env.BUILD_WORKSPACE_DIRECTORY ?? git(process.cwd(), ['rev-parse', '--show-toplevel']);
@@ -35,7 +39,8 @@ export async function main(argv, profile = SHARE001) {
     const context = { schema: 'str005-share-failure-recovery-context-v1', ...source, firmware_root: firmwareRoot, gate_root: gateRoot,
       shareRoot: options[profile.rootOption], shareSeal: profile.seal, failed_boot_ordinal: profile.failedBootOrdinal, firmware_commit: before.firmware_commit, app_elf_sha256: before.app_elf_sha256,
       gate_commit: before.gate_commit, physical: before.physical, before_source: { firmware_commit: before.firmware_commit, app_elf_sha256: before.app_elf_sha256 },
-      scope: 'share', attemptId: prior.before.attempt.id, original_campaign_id: before.original_campaign_id,
+      scope: 'share', attemptId: prior.before.attempt.id, statusMode: statusModeFor(prior.before.attempt),
+      original_campaign_id: before.original_campaign_id,
       historical_before_ledger: prior.before.ledger, assetHashes: before.assetHashes };
     await mkdir(root, { mode: 0o700 }); await writeNew(resolve(root, 'context.json'), context);
     for (const [key, bytes] of Object.entries(assets)) await retain(resolve(root, `gate-${key}`), bytes);
@@ -47,7 +52,8 @@ export async function main(argv, profile = SHARE001) {
     context.contractSha256 === source.contractSha256 && context.shareSeal === profile.seal, 'share_recovery_source_changed');
   const prior = await predecessor(firmwareRoot, context.shareRoot, profile);
   check(context.firmware_commit === prior.context.firmware_commit && context.app_elf_sha256 === prior.context.app_elf_sha256 &&
-    context.gate_commit === prior.context.gate_commit && context.attemptId === prior.before.attempt.id && context.physical === prior.context.physical,
+    context.gate_commit === prior.context.gate_commit && context.attemptId === prior.before.attempt.id && context.physical === prior.context.physical &&
+    context.statusMode === statusModeFor(prior.before.attempt),
   'share_recovery_context_changed');
   if (action === 'finish') return finish(root, context);
   const verify = async () => { const current = await currentSource(firmwareRoot, true, profile); check(current.source_commit === context.source_commit && current.contractSha256 === context.contractSha256,

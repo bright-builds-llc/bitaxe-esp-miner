@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { collectRecovery } from './client.mjs';
 import { discoverCurrentStatus } from './retained-status.mjs';
+import { createRecoveryCollection } from './recovery-collection.mjs';
 import { createPage } from './page.mjs';
 const gateRoot = process.argv[2];
 const load = relative => import(pathToFileURL(resolve(gateRoot, relative)).href);
@@ -72,4 +73,15 @@ assert.deepEqual(reset.ids, [v2Input.attemptId]);
 const current = fixture(true);
 assert.equal((await discoverCurrentStatus(current.gate, v2Input.attemptId, await current.gate.stratumV2Possession())).state, 'idle');
 assert.deepEqual(current.ids, [null]);
+// The owner-level collector: discovery fails closed on a retained record, a confirmed attempt reads it.
+const collection = (target, statusMode) => createRecoveryCollection({ gate: target.gate,
+  begin: async () => ({ binding: 'fixture', attemptId: v2Input.attemptId, campaignId: 'fixture', statusMode }),
+  save: async (stage, value) => target.saved.set(stage, value) })();
+const discovering = fixture();
+const discovered = await collection(discovering, 'discover_current');
+assert.deepEqual([discovered.firstFailure, discovering.ids], [{ phase: 'status', category: 'command_rejected' }, [null]]);
+const confirming = fixture();
+const confirmed = await collection(confirming, 'confirmed');
+assert.equal(confirmed.firstFailure, null); assert.deepEqual(confirming.ids, [v2Input.attemptId]);
+assert.equal(confirming.saved.get('status').record.attemptId, v2Input.attemptId);
 process.stdout.write('retained_recovery_boundary_passed\n');

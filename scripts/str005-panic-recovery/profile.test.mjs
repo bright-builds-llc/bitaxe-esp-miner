@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { argumentsFor, requireEnabled } from '../str005-share-recovery/contract.mjs';
 import { ENABLED, PANIC_RECOVERY } from './profile.mjs';
 import { CONTROL_DIAGNOSTIC_RECOVERY, retainedAttempt } from './control-diagnostic.mjs';
+import { statusModeFor } from '../str005-share-recovery/main.mjs';
 
 const tasks = line => `## Active\n### ${PANIC_RECOVERY.task} | fixture\n${line}\n`;
 
@@ -48,7 +49,7 @@ test('without a later Start, status names the install lineage attempt', () => {
   // Act
   const before = retainedAttempt(install, fallback, null);
   // Assert
-  assert.equal(before.attempt.id, 'install-attempt');
+  assert.deepEqual([before.attempt.id, before.attempt.confirmed], ['install-attempt', false]);
 });
 
 test('a later sealed Start on the same install and board supplies the retained attempt', () => {
@@ -57,7 +58,7 @@ test('a later sealed Start on the same install and board supplies the retained a
   // Act
   const before = retainedAttempt(install, { attemptId: 'install-attempt', ledger: ledger(26) }, latest);
   // Assert
-  assert.deepEqual([before.attempt.id, before.ledger.next_ordinal], ['heartbeat-attempt', 27]);
+  assert.deepEqual([before.attempt.id, before.attempt.confirmed, before.ledger.next_ordinal], ['heartbeat-attempt', true, 27]);
 });
 
 test('a later Start on another image or board is refused', () => {
@@ -66,4 +67,11 @@ test('a later Start on another image or board is refused', () => {
   // Act / Assert
   assert.throws(() => retainedAttempt(install, { attemptId: 'install-attempt', ledger: ledger(26) }, latest),
     /share_recovery_predecessor_identity/u);
+});
+
+test('a known Start is read by its attempt; otherwise the current state is discovered', () => {
+  // Arrange / Act / Assert
+  assert.equal(statusModeFor({ id: 'heartbeat-attempt', confirmed: true }), 'confirmed');
+  assert.equal(statusModeFor({ id: 'install-attempt', confirmed: false }), 'discover_current');
+  assert.equal(statusModeFor({ id: 'share-attempt' }), 'discover_current');
 });

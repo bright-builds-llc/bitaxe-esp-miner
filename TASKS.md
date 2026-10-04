@@ -5527,7 +5527,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: enabled.
+Control diagnostic recovery hardware: disabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
@@ -5596,6 +5596,32 @@ Control review loop hardware: disabled.
           heartbeat case and a mismatched board.
         - recovery010 retries with the fix under a fresh ordinal. The steps
           after it shift: loop007, then recovery011.
+      - recovery010 (2026-10-04): the same signature (`status`,
+        `command_rejected`), although it named heartbeat007's attempt.
+        Nothing ran, and the device stayed idle with the serial port
+        released. Sealed not current: result
+        `62f821eb5d226a4bbccf6790c890f5b64d22fcadf964e520abd89e9c1d2eb83a`,
+        seal `1b1ae1d370303bd79f46534f756323e369e68d7386f6aeb593cc304d6d5fdbba`.
+        Outcome: `stop_repeated_boundary`. The recovery gate is disabled
+        again, and further attempts wait for the owner.
+        - Root cause, from code (no device effect):
+          - `discover_current` always sends a null status query first.
+            Firmware rejects a null query while a record is retained
+            (`controller/v2.rs`: only `(None, None)` idle or a matching id
+            succeeds) and revokes the session.
+          - The Gate reports that as `command_rejected`, not
+            `v2_idle_correlation`, so the id fallback never ran. The first
+            fix changed an id that was never sent.
+        - Fix (software only): a pinned latest Start marks its attempt
+          `confirmed`. The share-recovery owner then stores
+          `statusMode: confirmed` and the server returns it, so the
+          collector queries the record by id, as heartbeat007's own recovery
+          did. Without a known Start, discovery is unchanged.
+        - Regressions:
+          - the retained-recovery fixture, against the real Gate decoder:
+            the collector's `discover_current` fails closed on a retained
+            record and `confirmed` reads it;
+          - unit tests for `statusModeFor` and the `confirmed` marking.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.

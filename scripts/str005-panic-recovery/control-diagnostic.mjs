@@ -7,7 +7,7 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { validateLedger } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { main as collect } from '../str005-share-recovery/main.mjs';
 
-export const ENABLED = true;
+export const ENABLED = false;
 // The currently installed qualified image: realignment-fix install attempt-001, sealed and
 // complete with the ledger unchanged. Retarget these pins whenever a later install replaces it.
 export const INSTALL = Object.freeze({
@@ -55,14 +55,17 @@ async function loadLatestStart(root) {
   const context = (await proof(root, 'context.json')).value, ledger = (await proof(root, 'recovery-1-ledger.json')).value;
   return { context, ledger };
 }
-/** The attempt a status read must name: the latest sealed Start on this exact install and board, else the install's. */
+/** The attempt a status read must name: the latest sealed Start on this exact install and board, else the install's.
+ * `confirmed` marks a Start whose retained record this boot still holds. */
 export function retainedAttempt(install, fallback, maybeLatest) {
-  if (maybeLatest === null) return { attempt: { id: fallback.attemptId }, ledger: fallback.ledger };
+  if (maybeLatest === null) return { attempt: { id: fallback.attemptId, confirmed: false }, ledger: fallback.ledger };
   const { context, ledger } = maybeLatest;
   check(context.firmware_commit === install.firmware_commit && context.app_elf_sha256 === install.app_elf_sha256 &&
     context.physical === install.physical && typeof context.attemptId === 'string', 'share_recovery_predecessor_identity');
   validateLedger(ledger); check(ledger.pending === false, 'share_recovery_predecessor_identity');
-  return { attempt: { id: context.attemptId }, ledger };
+  // Firmware rejects a null status query while a record is retained, then revokes the session,
+  // so a known Start must be queried by its attempt id.
+  return { attempt: { id: context.attemptId, confirmed: true }, ledger };
 }
 export const CONTROL_DIAGNOSTIC_RECOVERY = Object.freeze({
   enabled: ENABLED,

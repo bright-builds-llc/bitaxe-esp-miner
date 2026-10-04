@@ -7,7 +7,9 @@ export async function readRecoveryStatus(gate, attemptId, statusMode) {
   return gate.stratumV2Status('share', statusMode === 'confirmed' ? attemptId : null, binding);
 }
 
-/** New current-session discovery never retries a rejected wire command. */
+/** New current-session discovery never retries a rejected wire command. Use it only when no Start is known on
+ * this boot: firmware rejects a null query while a record is retained (`command_rejected`) and revokes the session,
+ * so the attempt-id fallback below runs only after a local idle-correlation failure. */
 export async function discoverCurrentStatus(gate, attemptId, binding) {
   try { return await gate.stratumV2Status('share', null, binding); }
   catch (error) {
