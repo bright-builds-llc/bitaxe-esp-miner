@@ -5175,10 +5175,31 @@ reset with `reset_reason=panic`, taking boot 15 to 16; see
       as a heap address and a small integer. That signature is heap/stack
       memory corruption, not an overflow or OOM. See the
       [evidence](docs/parity/evidence/20261004-str005-idle-panic-capture.md).
-- [ ] Find the corrupting writer with instrumented firmware (heap integrity
-      checks or poisoning around the control path, then a bounded no-mining
-      reproduction). This needs its own installation contract. Then make a
-      regression-backed correction.
+- [x] Static unsafe/FFI audit of the Worker USB path, NVS reviews, thread
+      lifecycles, websocket raw pointers and fault-provenance C: no
+      dangling-pointer or double-free writer found. USB Serial/JTAG reads and
+      writes copy synchronously into the driver's ring buffers.
+      - Leading hypothesis (medium confidence): an earlier silent overflow of
+        the 16 KiB control-owner stack corrupted the free-block header below
+        it, and later allocator list updates wrote into the live stack.
+      - Why it escapes the current guards: the canary checks only 16 bytes at
+        context switches; the control-stack audit is a lower bound that skips
+        indirect NVS C++ calls and logging and has no interrupt-frame
+        allowance; there is no end-of-stack watchpoint and no heap poisoning.
+- [ ] Next plan, a diagnostic image (needs its own published install
+      contract):
+      - enable `CONFIG_FREERTOS_WATCHPOINT_END_OF_STACK` for an exact fault
+        PC on any overflow;
+      - report the control owner's stack high-water mark after each command;
+      - optionally check heap integrity around each command.
+      Then:
+      - Build, audit and state-preservingly install it.
+      - Loop only read-only reviews (no Start) under a bounded owner, to
+        reproduce.
+      - Fix the overflowing path, by reducing its frames or moving the work
+        off the owner, rather than spending scarce internal RAM. Add a
+        regression and an interrupt-frame allowance in
+        `scripts/control-stack-audit.mjs`.
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.
