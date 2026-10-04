@@ -5564,7 +5564,7 @@ Control review loop hardware: disabled.
       the Stratum V2 session and the shared request queue use it. The audit
       allowlist is now empty, and comments in `queue`, `reply`, the audit and
       the allowlist link both upstream issues.
-      - Dirty-tree image ELF `804570b2…`: the audit reports
+      - Clean image from `00f84eae`, ELF `b82a8e9f…`: the audit reports
         `realigning_functions=0` and no callers; the std constructors are no
         longer linked.
       - `bazel test //...` passes except
