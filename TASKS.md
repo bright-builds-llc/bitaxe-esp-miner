@@ -5512,18 +5512,32 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
         `scratch/str005-realignment-fix`, predecessor recovery007 (pinned
         result/seal, identity `c634cc20`/`d986b2ea`), ledger 26/25/3,000,000 ms.
       - The candidate's exact ELF must also pass `just audit-stack-realignment`.
-Realignment fix install hardware: enabled.
+      - [x] Attempt-001 installed clean pushed `7ca3e29c` (ELF
+            `227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0`):
+            - every exact-ELF audit passed: stack realignment (9 startup-only
+              callers), native panic, core store, signed-Start stack, fault
+              provenance and control stack;
+            - five reviewed installs, four cycles and the Noise diagnostic;
+              ledger unchanged, cleanup proven;
+            - finalize and review `complete`: result
+              `13296cfb30ec0721b290141deb658d94fa7eb724c8d7a3a39f3acff478e79293`,
+              seal `d3ec8ccb73cde4b655120781c45ba5a8ba6b463cdd151d3ff14600006d9551f0`.
+            The one-time `cycle_baseline` refusal of install 1 came before
+            any claim or flash; a candidate Connect supplies the journal row.
+            ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
+      - The recovery and review-loop owners now pin this install.
+Realignment fix install hardware: disabled.
+Control diagnostic recovery hardware: enabled.
+Control review loop hardware: enabled.
 - [ ] Verify on hardware: five batched loops (500 rounds); loop005 had
       panicked at round 20. Then resume the heartbeat-loss retry.
 - [ ] Separately track the secondary defect: the USB link stays stuck after a
       panic reset until a replug.
 - [ ] Report the codegen bug upstream (esp-rs/rust LLVM Xtensa); that is
       external, so only a report draft goes here.
-Control diagnostic recovery hardware: disabled.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
-Control review loop hardware: disabled.
 Development core-dump clearing: disabled (clear001 completed).
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second

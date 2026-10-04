@@ -7,13 +7,15 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { validateLedger } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { main as collect } from '../str005-share-recovery/main.mjs';
 
-export const ENABLED = false;
-// Control-stack diagnostic install attempt-001: sealed, complete, ledger unchanged.
+export const ENABLED = true;
+// The currently installed qualified image: realignment-fix install attempt-001, sealed and
+// complete with the ledger unchanged. Retarget these pins whenever a later install replaces it.
 export const INSTALL = Object.freeze({
-  result: '923b9c6a6a0d36140ebb4db83c763830acf6a65026013202e83711fff8388ad4',
-  seal: '91144bd89061d83104e9def3ba44db381bcbc83d3709cb0e9229d8fd69b005e6',
-  identity: { firmware_commit: 'c634cc206979fd4179eb32478d20feab1825e31c',
-    app_elf_sha256: 'd986b2ead04672f42dbab9eb8c17e52f63cf1877881cf4c7ddcdb276cf8b5770', gate_commit: '86fc62d7a9d75da1affa2d51bc3b9eab41d86031' },
+  profile: 'realignment-fix-install',
+  result: '13296cfb30ec0721b290141deb658d94fa7eb724c8d7a3a39f3acff478e79293',
+  seal: 'd3ec8ccb73cde4b655120781c45ba5a8ba6b463cdd151d3ff14600006d9551f0',
+  identity: { firmware_commit: '7ca3e29ce1870396c801f9d8d74ff02aac2ef112',
+    app_elf_sha256: '227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0', gate_commit: '86fc62d7a9d75da1affa2d51bc3b9eab41d86031' },
 });
 // The idle-panic recovery001 on the same board supplies its physical identity and last attempt.
 export const RECOVERY001 = Object.freeze({ path: 'scratch/str005-idle-panic/recovery001',
@@ -29,7 +31,7 @@ export async function loadInstallPredecessor(firmwareRoot, installRoot) {
   await sealed(installRoot, INSTALL.seal);
   check(await fileDigest(resolve(installRoot, 'final-result.json')) === INSTALL.result, 'share_recovery_predecessor_seal');
   const install = (await proof(installRoot, 'context.json')).value.context, after = (await proof(installRoot, 'accounting-after.json')).value;
-  check(install.profile === 'control-stack-diagnostic-install' &&
+  check(install.profile === INSTALL.profile &&
     Object.entries(INSTALL.identity).every(([key, value]) => install[key] === value), 'share_recovery_predecessor_identity');
   validateLedger(after.ledger); check(after.ledger.pending === false, 'share_recovery_predecessor_identity');
   const recoveryRoot = resolve(firmwareRoot, RECOVERY001.path);
