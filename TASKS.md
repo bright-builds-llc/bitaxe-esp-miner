@@ -5306,13 +5306,32 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
         is unknown.
       - The captured high-water record needs a dump, so none exists without a
         panic.
-- [ ] Next: diagnose the possession timeout (device-side latency or stall in
-      the start-authorization context path on the control owner). Then decide
-      whether longer or varied loops are needed to reproduce the panic.
+- [x] Step 1 (code reading), possession timeout diagnosed as a harness budget
+      overrun, not a device stall:
+      - The Gate's `reviewQualificationAttempts()` itself calls
+        `prepareWorkerLeaseAuthorizationContext("start")`, a possession proof.
+        Each loop round therefore cost two proofs, and Connect's admission
+        adds one.
+      - After 127 rounds, 255 nonces were consumed. Round 128's ledger proof
+        consumed the 256th. Its possession proof then hit the device's
+        fail-closed per-session nonce cap (`MAXIMUM_SEEN_NONCES = 256`,
+        `crates/bitaxe-worker-control/src/controller.rs`, pinned by
+        `possession_nonce_capacity_fails_closed_without_eviction`). The device
+        refused the proof and revoked the session.
+      - The panicked heartbeat005 baseline used only a handful of proofs, so
+        this cap does not explain its panic.
+- [ ] Step 2: batched loops with reconnects. Each session stays under the
+      proof budget (100 rounds = 201 proofs), and every batch starts from a
+      fresh Connect, like the panicked baseline.
+      - Implemented: up to 5 sequential batches of 100 rounds, one per fresh
+        Connect. Batch admission and rows carry the batch number. Regressions
+        cover batch ordering and stopping, and assert the proof budget stays
+        under the cap.
+- [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
-Control diagnostic recovery hardware: disabled.
-Control review loop hardware: disabled.
+Control diagnostic recovery hardware: enabled.
+Control review loop hardware: enabled.
 Development core-dump clearing: disabled (clear001 completed).
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second

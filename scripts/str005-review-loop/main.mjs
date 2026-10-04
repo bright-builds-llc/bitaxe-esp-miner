@@ -12,7 +12,7 @@ import { requireEnabled } from '../str005-share-recovery/contract.mjs';
 import { CONTROL_DIAGNOSTIC_RECOVERY, loadInstallPredecessor } from '../str005-panic-recovery/control-diagnostic.mjs';
 import { createLoopServer } from './server.mjs';
 
-export const ENABLED = false;
+export const ENABLED = true;
 export const PROFILE = Object.freeze({ ...CONTROL_DIAGNOSTIC_RECOVERY, enabled: ENABLED, lines: ['Control review loop hardware: enabled.'] });
 // The origin that holds the Ultra 205 Web Serial grant; another port would show the chooser.
 export const PORT = 48765;
@@ -92,9 +92,11 @@ export async function finish(root, context) {
   for (const port of new Set([owner.serialPort, selected.port])) requireNoHolders(port);
   const names = (await readdir(root)).filter(name => /^loop-row-\d{3}\.json$/u.test(name)).sort();
   const rows = []; for (const name of names) rows.push((await proof(root, name)).value);
-  const last = rows.at(-1) ?? null;
-  const result = { schema: 'str005-review-loop-result-v1', rows: rows.length, completed: last?.completed ?? 0,
-    terminal: last?.kind ?? 'none', failure: last?.kind === 'failure' ? { iteration: last.iteration, operation: last.operation, category: last.category } : null,
+  const last = rows.at(-1) ?? null, complete = rows.filter(row => row.kind === 'complete');
+  const result = { schema: 'str005-review-loop-result-v2', rows: rows.length, batches_completed: complete.length,
+    rounds_completed: complete.reduce((sum, row) => sum + row.completed, 0) + (last?.kind === 'failure' ? last.completed : 0),
+    terminal: last?.kind ?? 'none',
+    failure: last?.kind === 'failure' ? { batch: last.batch, iteration: last.iteration, operation: last.operation, category: last.category } : null,
     host_released: true, device_panic_judged_by_recovery: true };
   await writeNew(resolve(root, 'result.json'), result);
   await writeNew(resolve(root, 'sealed-inventory.json'), { files: await inventory(root) });

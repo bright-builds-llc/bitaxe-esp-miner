@@ -71,11 +71,17 @@ In the persistent Gate tab:
    candidate session". The page requires an idle, ready, baseline-confirmed
    session with the lease inactive. It stops and closes that session and
    configures the `candidate` phase, which the Gate requires for V2 reads.
-2. Click Connect Worker again, then "Run bounded read-only review loop".
-3. It runs up to 300 rounds of the reviews the panicked baseline issued: the
-   ledger, budget, V2 possession and V2 status. Each review is bounded at 5 s,
-   and the loop stops at the first failure.
-4. Rows carry only counts, the operation and a closed Gate category.
+2. Click Connect Worker again, then "Run next review batch".
+3. Each batch runs up to 100 rounds of the reviews the panicked baseline
+   issued: the ledger, budget, V2 possession and V2 status. Each review is
+   bounded at 5 s, and a batch stops at the first failure.
+   - The Gate's ledger review also proves possession, so a round costs two
+     possession proofs. A batch therefore uses 201 of the device's 256-nonce
+     per-session budget.
+   - The page closes after each batch. For each further batch, up to five,
+     click Connect Worker, then the batch button.
+4. Rows carry only the batch, counts, the operation and a closed Gate
+   category. Any failure ends the loop.
 5. Close, then send the tab to `about:blank`.
 
 No Start, grant, signer, fixture, mining, suppression or write command is

@@ -2,7 +2,10 @@
 export const OPERATIONS = Object.freeze(['ledger', 'original_budget', 'possession', 'status']);
 export const CATEGORIES = Object.freeze(['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed',
   'read_failed', 'v2_idle_correlation', 'v2_attempt_correlation', 'v2_possession', 'not_ready', 'operation_active', 'operation_failed']);
-export const LIMITS = Object.freeze({ iterations: 300, operationMs: 5000, progressEvery: 25 });
+// Each round costs two possession proofs (the Gate's ledger review proves possession too) and
+// Connect's admission one more; a session must stay below the device's 256-proof nonce cap.
+export const SESSION_PROOFS = 256, PROOFS_PER_ROUND = 2;
+export const LIMITS = Object.freeze({ batches: 5, iterations: 100, operationMs: 5000, progressEvery: 25 });
 
 function bounded(operation, milliseconds) {
   let timer;

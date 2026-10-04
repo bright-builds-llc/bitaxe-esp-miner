@@ -7,7 +7,7 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { validateLedger } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { main as collect } from '../str005-share-recovery/main.mjs';
 
-export const ENABLED = false;
+export const ENABLED = true;
 // Control-stack diagnostic install attempt-001: sealed, complete, ledger unchanged.
 export const INSTALL = Object.freeze({
   result: '923b9c6a6a0d36140ebb4db83c763830acf6a65026013202e83711fff8388ad4',
