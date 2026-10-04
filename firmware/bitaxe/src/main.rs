@@ -11,6 +11,7 @@ mod boot_validation_plan;
 mod bwg_worker_nvs;
 mod bwg_worker_session;
 mod bwg_worker_usb;
+mod control_stack_trace;
 mod core_dump_evidence;
 mod crypto_entropy;
 mod display_adapter;

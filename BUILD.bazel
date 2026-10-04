@@ -328,6 +328,7 @@ js_library(
         "docs/hardware/device-noise-helper-amendment.md",
         "docs/hardware/control-stack-port-reuse-amendment.md",
         "docs/hardware/str005-step5-diagnostic-amendment.md",
+        "docs/hardware/str005-control-stack-diagnostic-amendment.md",
     ],
 )
 

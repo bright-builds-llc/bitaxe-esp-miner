@@ -476,7 +476,8 @@ js_test(
 js_binary(
     name = "native_panic_audit",
     chdir = "..",
-    data = [":core_dump_sources"],
+    # The fault-provenance join imports the native call parsers.
+    data = [":core_dump_sources", "noise-native-calls.mjs", "noise-native-disassembly.mjs"],
     entry_point = "core-dump/native-audit.mjs",
 )
 

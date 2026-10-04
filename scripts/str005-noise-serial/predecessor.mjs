@@ -103,3 +103,28 @@ export const inspectStep5InstallPassPredecessor = passPredecessor({
   resultSha256: "ed497f6142a4a6574fe4b80e7ed2944ac6a9781e25778a22b41e483c956c1ee5",
   sealSha256: "b5ccca60868dfee957bfef87f63a51da4f116a36f0bd95cf7793d5139b16259b",
   profile: "step5-diagnostic-install", basis: "step5_install_pass" });
+
+export const IDLE_PANIC_RECOVERY_RESULT = "473546a8714067aa3c2af3c1772ce48050cf1c2aca8dc584886b6393a9b8f11b";
+export const IDLE_PANIC_RECOVERY_SEAL = "3a84383e127d39785e963b1888f8c65d5e3c8664740c602d310b6494e7cd8644";
+/** The sealed idle-panic current recovery: safe, idle and released on the installed image. */
+export async function inspectIdlePanicRecoveryPredecessor(path) {
+  check(await realpath(path) === resolve(path), "noise_predecessor_alias");
+  await protectedPath(path); const root = dirname(path); await protectedPath(root, true);
+  check(await fileDigest(path) === IDLE_PANIC_RECOVERY_RESULT, "noise_predecessor_anchor");
+  const sealed = await proof(root, "sealed-inventory.json");
+  check(sealed.sha256 === IDLE_PANIC_RECOVERY_SEAL && Array.isArray(sealed.value.files), "noise_predecessor_seal");
+  await verifyInventory(root, sealed.value.files, new Set(["sealed-inventory.json"]));
+  const result = (await proof(root, "result.json")).value, context = (await proof(root, "context.json")).value;
+  const ledger = (await proof(root, "ledger.json")).value, original = (await proof(root, "original_budget.json")).value;
+  check(result.schema === "str005-share-current-recovery-v1" && result.current_safe_recovery === true &&
+    result.host_resources_released === true && result.first_failure === null && result.current_v2_idle === true &&
+    context.schema === "str005-share-failure-recovery-context-v1", "noise_predecessor_recovery");
+  check(ledger.schema === "worker-qualification-ledger-v1" && ledger.pending === false &&
+    original.schema === "worker-budget-review-v1" && original.campaign_match === true && original.pending === false &&
+    original.reserved_mask === original.completed_mask, "noise_predecessor_ledger");
+  const previous = { basis: "idle_panic_current_recovery", cleanup_confirmed: true, next_ordinal: ledger.next_ordinal,
+    last_ordinal: ledger.last_completed_ordinal, total_charged_ms: ledger.total_charged_ms,
+    context: { firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256 },
+    original_campaign_id: context.original_campaign_id };
+  return { previous, resultSha256: IDLE_PANIC_RECOVERY_RESULT, inventorySha256: IDLE_PANIC_RECOVERY_SEAL };
+}

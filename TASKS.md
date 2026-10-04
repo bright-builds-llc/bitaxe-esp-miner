@@ -5200,6 +5200,27 @@ reset with `reset_reason=panic`, taking boot 15 to 16; see
         off the owner, rather than spending scarce internal RAM. Add a
         regression and an interrupt-frame allowance in
         `scripts/control-stack-audit.mjs`.
+
+Control-stack diagnostic install | 2026-10-04 | Owner: "yes, go ahead with the diagnostic image"
+Contract: [control-stack diagnostic amendment](docs/hardware/str005-control-stack-diagnostic-amendment.md),
+the noise-serial successor profile `control-stack-diagnostic-install`.
+- [x] Firmware: end-of-stack watchpoint (required by `build.rs`). Internal-heap
+      integrity is checked before and after each control command, with named
+      aborts. `BITAXE_CONTROL_STACK_TRACE` in the captured core-dump region
+      holds the per-command stack high-water mark. The pure record model has 4
+      unit tests.
+- [x] Harness:
+      - The profile, with recovery001 as predecessor, ledger 26/25/3,000,000
+        ms and its own namespace.
+      - Tests for the profile binding and for refusing the older ledger.
+      - `native_panic_audit` runfiles fixed: the `just` wrapper failed on every
+        ELF because it lacked two parser modules.
+- [x] Pre-commit audits on the build: control-stack headroom 4,080 bytes;
+      signed-start, core-store, fault-provenance and native-panic audits pass.
+      The signed-Start path already uses 13,296 of 16,384 stack bytes.
+- [ ] Install attempt-001 from the clean pushed package, then a read-only review
+      reproduction under its own contract.
+Control stack diagnostic install hardware: enabled.
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.

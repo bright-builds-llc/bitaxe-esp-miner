@@ -251,6 +251,7 @@ fn run_owner<V>(
                 ) {
                     continue;
                 }
+                let _trace = crate::control_stack_trace::command(OWNER_STACK_BYTES);
                 process_frame(worker, correlation, &bytes.0, now);
             }
         }

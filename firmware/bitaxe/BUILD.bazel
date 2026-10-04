@@ -1561,6 +1561,14 @@ rust_test(
     edition = "2021",
 )
 
+# Control owner stack record: first command, deeper and shallower commands, torn records.
+rust_test(
+    name = "control_stack_model_tests",
+    srcs = ["src/control_stack_model.rs"],
+    crate_root = "src/control_stack_model.rs",
+    edition = "2021",
+)
+
 js_library(
     name = "fault_provenance_model_sources",
     srcs = glob(["components/bitaxe_fault_provenance/**"]),

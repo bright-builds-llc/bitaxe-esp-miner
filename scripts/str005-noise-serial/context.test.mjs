@@ -217,3 +217,20 @@ test("step-5 reinstall profile binds the step-5 install pass and its own publica
   assert.equal(f.context.profile, "step5-diagnostic-reinstall");
   assert.equal(publicationPath(f.context), resolve(f.options.firmwareRoot, "docs/parity/evidence/str005-step5-reinstall/attempt-001.json"));
 });
+test("control-stack diagnostic profile binds the idle-panic recovery and the measured ledger", async (t) => {
+  // Arrange / Act
+  const f = await fixture(t, { profile: "control-stack-diagnostic-install" });
+  // Assert
+  assert.equal(f.context.profile, "control-stack-diagnostic-install");
+  assert.deepEqual(f.context.expected_ledger, { next_ordinal: 26, last_ordinal: 25, total_charged_ms: 3000000 });
+  assert.equal(publicationPath(f.context), resolve(f.options.firmwareRoot, "docs/parity/evidence/str005-control-stack-diagnostic/attempt-001.json"));
+});
+test("control-stack diagnostic profile refuses a predecessor at the older ledger", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "control-stack-diagnostic-install" });
+  const inspect = f.operations.inspectPredecessor;
+  // Act / Assert
+  await assert.rejects(preflight(f.options, { ...f.operations, inspectPredecessor: async (path) => {
+    const value = await inspect(path); return { ...value, previous: { ...value.previous, next_ordinal: 22, last_ordinal: 21, total_charged_ms: 2280000 } };
+  } }), { code: "noise_predecessor" });
+});
