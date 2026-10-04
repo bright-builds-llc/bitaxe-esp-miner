@@ -5330,10 +5330,12 @@ Retry, under the progress-gated policy (verified fix, fresh ordinals):
 - **heartbeat003:** pins heartbeat002 as the previous Start and restart004 as
   the restart. Expected after ledger: next 27, last 26, 3,180,000 ms.
 - Each gate is enabled only for its own phase.
+- Restart004 uses its own protected parent, so restart003's parent-level
+  stage logs are never overwritten.
 
 ```sh
-just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
-just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat003/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --restart-root <repo>/scratch/str005-heartbeat-restart/restart004
+just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart-004/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
+just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat003/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --restart-root <repo>/scratch/str005-heartbeat-restart-004/restart004
 ```
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
