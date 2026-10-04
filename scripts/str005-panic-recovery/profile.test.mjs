@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { argumentsFor, requireEnabled } from '../str005-share-recovery/contract.mjs';
 import { ENABLED, PANIC_RECOVERY } from './profile.mjs';
+import { CONTROL_DIAGNOSTIC_RECOVERY } from './control-diagnostic.mjs';
 
 const tasks = line => `## Active\n### ${PANIC_RECOVERY.task} | fixture\n${line}\n`;
 
@@ -29,4 +30,10 @@ test('the profile serves on the granted origin and binds the installed image', (
   assert.equal(PANIC_RECOVERY.port, 48765);
   assert.equal(PANIC_RECOVERY.enabled, ENABLED);
   assert.equal(PANIC_RECOVERY.identity.firmware_commit, '654338d0101521490d90330c5a4a10e5ec32e5c2');
+});
+
+test('after a new image, any boot is post-failure because the RTC ordinal restarts', () => {
+  // Arrange / Act / Assert
+  assert.equal(CONTROL_DIAGNOSTIC_RECOVERY.failedBootOrdinal, 0);
+  assert.equal(PANIC_RECOVERY.failedBootOrdinal, 15);
 });

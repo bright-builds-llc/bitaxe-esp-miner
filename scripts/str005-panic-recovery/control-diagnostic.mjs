@@ -49,8 +49,9 @@ export const CONTROL_DIAGNOSTIC_RECOVERY = Object.freeze({
   rootOption: '--predecessor-root',
   // The origin that holds the Ultra 205 Web Serial grant; another port would show the chooser.
   port: 48765,
-  // The idle-review panic took boot 15 to 16; every later boot is admissible here.
-  failedBootOrdinal: 15,
+  // The panic happened under the previous image. The RTC boot ordinal restarts with
+  // the installed image, so the sealed install itself proves every boot is post-failure.
+  failedBootOrdinal: 0,
   loadPredecessor: loadInstallPredecessor,
 });
 export const main = argv => collect(argv, CONTROL_DIAGNOSTIC_RECOVERY);

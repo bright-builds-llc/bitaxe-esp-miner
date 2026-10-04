@@ -5241,6 +5241,15 @@ Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](doc
         and closed rows, with 7 tests.
 - [ ] Phase A: recovery proof. Phase B: archive-bound clear of the boot-15
       dump (capture001 archive `71b18ec3…`).
+      - recovery001: the collection was complete and safe (idle V2, ledger
+        unchanged, host released). It sealed without a proof only on
+        `post_failure_boot_unconfirmed`: the RTC boot ordinal restarted on the
+        new image (boot 5), but the profile kept the old image's threshold of
+        15. No clear ran.
+      - Fix: the control-diagnostic profile's failed-boot threshold is 0,
+        because the sealed install proves every boot of this image is
+        post-failure. Regressions cover the boot-5 conclusion and both
+        profiles' thresholds. Retry as recovery002 with a fresh root.
 - [ ] Phase C: loop001 (≤300 rounds of ledger, budget, possession and status).
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.

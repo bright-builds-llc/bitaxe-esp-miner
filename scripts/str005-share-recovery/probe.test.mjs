@@ -37,6 +37,16 @@ test('the post-failure boot must follow the profile\'s failed boot', () => {
   assert.equal(after15.current_safe_recovery, true);
   assert.ok(after16.blockers.includes('post_failure_boot_unconfirmed'));
 });
+test('a restarted boot ordinal on a new image is post-failure when the profile threshold is zero', () => {
+  // Arrange: boot 5 on the installed diagnostic image.
+  const observed = parts(); observed.status.observation.bootOrdinal = 5;
+  observed.diagnostics.observations[0].boot_ordinal = 5;
+  // Act
+  const result = conclusion(observed, { ...context, failed_boot_ordinal: 0 }, true);
+  // Assert
+  assert.equal(result.current_safe_recovery, true);
+  assert.ok(conclusion(observed, { ...context, failed_boot_ordinal: 15 }, true).blockers.includes('post_failure_boot_unconfirmed'));
+});
 test('idle current proof measures arbitrary actual ledger and makes no historical claim', () => {
   // Arrange
   const observed = parts(); observed.ledger = { ...ledger, next_ordinal: 42, last_completed_ordinal: 41, total_charged_ms: 6000000 };
