@@ -20423,3 +20423,373 @@ Residual risks:
 - status001's step-5 revocation stays unreproduced;
 - parity promotion is deferred to `task-str005-piecewise-integration-review`,
   and parity stays 90/95.
+
+### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
+
+Status: Complete 2026-10-04 (heartbeat007 sealed `complete=true`); archived.
+Objective: prove device-local heartbeat revocation/shutdown and bounded cooling,
+followed by authenticated restoration/accounting and complete cleanup.
+Depends on: `task-str005-mining-startup-probe`; recovery readiness is inherited.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
+
+- [x] Publish a focused bounded shutdown probe using the existing qualified
+  heartbeat-suppression mechanism and observer; do not require an accepted share.
+- [x] Verify fresh accounting, conservative work admission and remaining authority
+  before fault injection; retain the 2800-ms expiry and \<=3000-ms actual
+  revocation/shutdown-initiation requirements, ordered stop and qualified cooling.
+- [x] Test timing boundaries, stale observations, inadequate headroom, observer
+  loss, failure collection and cleanup; run relevant production/native checks.
+- [x] Perform an independently admitted measurement with device-local timing,
+  fresh recovery, authorization checkpoint, charged ledgers and actual release.
+
+Evidence: startup/recovery successor results and
+[Share002 non-claims](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md).
+No Share002 heartbeat test passed. Tested probe identities/results/limitations pending.
+Invalidation: heartbeat enforcement, clock, worker generation, shutdown/cooling,
+observer or relevant scheduling/resource changes require affected checks again.
+Authorization: software now; hardware only through the published bounded successor
+contract after dependencies. No deadline relaxation, refund or implicit retry.
+Verification: heartbeat007 (see the end of this record). Completion review: see the end of this record.
+
+Approved staged continuation | 2026-09-28:
+
+- [x] Reuse the qualified passive observer and suppression/checkpoint seam, replacing
+  the old accepted-share prerequisite with fresh same-generation work evidence.
+- [x] Test expiry/revocation/shutdown timing, remaining authority, observer loss,
+  post-revocation work exclusion and unconditional cleanup independently.
+- [x] After startup qualifies, publish/test the exact bounded fault/recovery contract,
+  execute with fresh accounting, seal the result, and archive only on pass.
+
+No accepted share is required for this separate safety claim. Do not weaken
+2800-ms expiry or \<=3000-ms actual revocation/shutdown-initiation requirements.
+Hardware stays disabled until the new implementation and contract are published.
+
+Heartbeat software preparation | 2026-09-28:
+
+The disabled focused owner and separate no-mining preparation are implemented in
+`scripts/str005-heartbeat-probe/`. `just str005-heartbeat-probe` exposes the probe;
+`just str005-heartbeat-preparation` owns fresh known-attempt recovery and one
+software restart after independently rejudged, sealed accepted-share evidence.
+They do not reactivate consumed startup commands. The private passive observer
+is armed before Start, and the actual Gate suppression/checkpoint is exercised
+through a one-shot coordinator with independent Stop/Close/recovery/owner cleanup.
+
+Software tests cover exact native timing/headroom, post-cutoff work exclusion,
+retained first failures, actual recovery parsers, accounting/cooling/resource
+requirements, late Start, failed observations and cleanup. These tests do not
+claim hardware behavior. Both source gates remain disabled until the new image,
+share prerequisite and exact preparation seal are qualified and published.
+The implementation contract is `scripts/str005-heartbeat-probe/README.md`.
+No hardware, task archival or parity promotion is implied by software completion.
+
+Heartbeat-loss probe contract | 2026-10-03 | Restart003 then heartbeat001
+
+Contract: [heartbeat-shutdown amendment](docs/hardware/str005-heartbeat-shutdown-amendment.md).
+Owner authorization | 2026-10-03: the owner approved this probe and authorized
+autonomous, iterative fixes and fresh attempts.
+Basis: archived `task-str005-v2-accepted-share-probe` (share001 complete on the
+audited `654338d0` image).
+
+- [x] Software:
+  - a `str005-heartbeat-shutdown` owner re-bases the qualified heartbeat probe
+    (coordinator, page, suppression and checkpoint seam, passive cadence
+    observer, judge, inspector) onto the install, previous Start and restart
+    lineage, on the granted origin, with zero renewals and no share
+    requirement;
+  - previous-Start lineage now reads `run.json`, so share results qualify;
+  - the step-5 preflight adds per-profile bundle markers and an
+    observer-provenance hook;
+  - the restart owner now follows share001;
+  - regressions cover all of it.
+- [x] Phase A restart003, then pin it in `scripts/str005-heartbeat-shutdown/contract.mjs`.
+  Complete: the recovery stage read share001's record by ID, then one software
+  restart took boot 13 to 14 with the ledger (25/24/2,820,000 ms) and budget
+  unchanged. Result `c8893b66f34c25aeb0d678209df4c864d5014608cdbd4ebfa74d14426202e9ec`,
+  seal `67d50e3a57b56df061b321aedde3312ca4cb9bdda8a3c973f31df03b8169965a`.
+  It is pinned, and the probe is `ENABLED=true`.
+- [ ] Phase B heartbeat001, then record the outcome.
+
+Heartbeat restart hardware: disabled.
+Heartbeat shutdown probe hardware: disabled.
+
+```sh
+just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart/restart003 --start-root <repo>/scratch/str005-accepted-share/share001/attempt --gate-root <gate-root>
+# recovery stage then restart stage, exactly as restart002
+bazel build //tools/http-transport:cadence_observer //tools/http-transport:v2_observer_build_identity //tools/stratum-v2-fixture:stratum_v2_fixture //tools/stratum-v2-fixture:v2_serial_build_identity
+just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat001/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-accepted-share/share001/attempt --restart-root <repo>/scratch/str005-heartbeat-restart/restart003
+just str005-heartbeat-shutdown serve --private-root <same> --authority-directory <protected-authority>   # detached
+just str005-heartbeat-shutdown finish --private-root <same>
+```
+
+The page runs in the persistent tab, as for share001, with "Run one
+heartbeat-loss probe". It then waits for the coordinator's suppression, 8-s tail, Stop and
+recovery before running the fresh-recovery collection.
+
+Retry: restart003 and heartbeat001 are ordinal 1 of each. A further attempt
+needs a targeted, regression-backed fix and a new restart before any further
+Start.
+
+Heartbeat001 | 2026-10-03 | Refused in prepare; no Start
+
+- Preflight, baseline and the startup detector passed.
+- The coordinator's prearmed passive cadence observer failed its WebSocket
+  connect to the device's freshly reported telemetry endpoint within 38 ms
+  (`connect_failed`, zero bytes). `prepare` then failed closed before Start:
+  there was no signer use, Start, ledger charge or fault, the device stayed
+  idle on boot 14, and no retained record was created.
+- `finish` sealed `complete=false` (`heartbeat_evidence_unverified`,
+  `startup_owner_failed`): result
+  `dd0eb75d07ad756dfa68f3336bd891661e6a0f4bcdd5c941114c8ba2b63e171c`, seal
+  `9ebc63cedb4b314c20c212ad9fd5c8657265b15a973add6085c89b8b5d62d38a`.
+
+Diagnosis: a read-only check of the same self-reported endpoint succeeded from
+Chrome (HTTP reachable in 575 ms). From the agent's shell, Node and `nc` both
+failed instantly with `EHOSTUNREACH`. Host processes launched under the Claude
+desktop app (via its bundled Claude Code `claude.app` and a `disclaimer`
+helper) lack macOS Local Network permission. This is a host privacy-setting
+blocker, not a firmware or harness defect. The agent may not change OS privacy
+settings.
+
+Remediation and heartbeat002:
+- The owner grants Local Network access to the Claude app in System Settings,
+  under Privacy & Security, then Local Network.
+- The agent proves the boundary changed: one TCP connect from its shell to the
+  device's freshly reported endpoint succeeds.
+- Heartbeat002 then reruns the same contract with `heartbeat002`. The lineage
+  is unchanged: restart003, boot 14, ledger 25, with no new retained record
+  because no Start ran.
+- No restart is needed, and an unchanged retry without that proof is not
+  allowed.
+
+Remediation proof | 2026-10-03: the owner enabled Local Network access for the
+Claude app. One TCP connect from the agent shell to the device's freshly
+reported telemetry endpoint now succeeds (159 ms), where it previously failed
+with `EHOSTUNREACH`. Heartbeat002 is admitted.
+
+Heartbeat002 | 2026-10-03 | Device behavior met every native bound; sealed unverified on a judge defect
+
+- One `normal` attempt at ordinal 25 on boot 14, generation 6, zero renewals.
+  Heartbeats were suppressed once after `work_ready` and `asic_dispatch`.
+- Native: `revocation_reason=heartbeat_timeout`; the gate closed 2,805 ms and
+  shutdown started 2,823 ms after the last valid heartbeat. The safe stop ended
+  `fan_paused` and complete at about 31 °C. No work followed revocation.
+- Fresh recovery happened on the same boot. The ledger is next 26, last 25,
+  3,000,000 ms (exactly +180,000), not pending. Host, serial, signer and fixture
+  were released.
+- `finish` sealed `complete=false` with the sole blocker
+  `heartbeat_cooling_event`: result
+  `6ffa84ea1113c5bd57c711f1c3fe4192feaf79bc7ad4a71ec87a82ca90647936`, seal
+  `aad964919c38207cd5890011fad2599c9063a5b8f0c551f6523e53c9e361fd83`.
+
+Diagnosis: `poll_safety_facts()` appends `revoked`, `shutdown` and `cooled`
+events when its poller observes them (documented observation-time facts). Worker
+quiescence made the record terminal about 7 s before the poller observed
+cooling. The judge bounded `cooled` by `terminalAtDeviceUs`, while it bounded
+`revoked` and `shutdown` by `observedAtUs`. That contradicts the firmware's
+semantics. Native stop ordering stays proven by `safe_stop_stage=fan_paused` and
+`safe_stop_complete`.
+
+Fix: the cooling event join is now bounded by `observedAtUs`, as the other two
+safety events are. It still requires exactly one `cooled` event at or after the
+native shutdown.
+- Regressions cover cooling observed after the terminal record (heartbeat002's
+  shape) and reject cooling before shutdown, after observation, or missing.
+- An offline re-judgment of heartbeat002's sealed parts with the fixed judge
+  returns `complete=true` (2,805/2,823 ms); without the fix it returns
+  `heartbeat_cooling_event`. The heartbeat002 seal is unchanged and stays
+  unverified; its observer joins never ran because the judge threw first.
+- The restart owner now also takes the parent generation from a heartbeat run's
+  dispatch record (`startGeneration`), with a regression.
+
+Retry, under the progress-gated policy (verified fix, fresh ordinals):
+- **restart004:** parent heartbeat002 (boot 14 to 15, ledger unchanged).
+- **heartbeat003:** pins heartbeat002 as the previous Start and restart004 as
+  the restart. Expected after ledger: next 27, last 26, 3,180,000 ms.
+- Each gate is enabled only for its own phase.
+- Restart004 uses its own protected parent, so restart003's parent-level
+  stage logs are never overwritten.
+
+Restart004 | 2026-10-03 | Complete
+- The recovery stage read heartbeat002's retained record freshly and released.
+- One software `qualificationRestart` took boot 14 to 15. The ledger stayed
+  next 26, last 25, 3,000,000 ms, the budget was unchanged and no mining ran.
+- Result `9b393edb80167eff732bdbc6c9158c319e9afc3beb99d0acc2f038f683ddf010`,
+  seal `05905a53b31841cadecfd2c1217576c49648cba7b53db65d729f77c1de594f3e`.
+- Both are pinned in `scripts/str005-heartbeat-shutdown/contract.mjs` with
+  heartbeat002 as the previous Start. The restart gate is disabled again, and
+  heartbeat003 is admitted.
+
+Heartbeat003 | 2026-10-03 | Refused in prepare by an operator-sequence error; no Start
+- Preflight and the detector passed: boot 15, ledger 26.
+- The agent clicked "Run one heartbeat-loss probe" without first running
+  "Record baseline and configure candidate". The one-shot coordinator's
+  `prepare` correctly failed closed (`startup_candidate_required`): no
+  baseline, observer, signer use, Start, charge, fault or retained record. The
+  device stayed idle and restored on boot 15.
+- Sealed `complete=false` (`heartbeat_evidence_unverified`,
+  `startup_owner_failed`): result
+  `f16ecdc2e7fee327671ff829b129d7bf2030ff42264f5a514fb040bc6aba7e32`, seal
+  `02f9a7d682efaa2e190be661997bb75efd351c9aca20185e92b48faff9c89a0c`.
+
+Fix: the shared startup page now refuses Run before the baseline without
+invoking the one-shot coordinator, and re-enables the button. The regression
+`str005-startup-probe/page.test.mjs` fails without the guard and passes with it.
+
+Heartbeat004 reruns the unchanged contract with the documented operator
+sequence. Each step needs Connect Worker first:
+1. Record baseline and configure candidate.
+2. Run one heartbeat-loss probe.
+3. Collect fresh recovery and close.
+
+The lineage is unchanged (heartbeat002, then restart004, boot 15, ledger 26).
+No restart is needed, because no Start ran.
+
+Heartbeat004 | 2026-10-04 | Refused at the cooling review by a missing startup detector; no Start
+- The baseline was recorded and the candidate configured. The agent then
+  clicked Run without first writing the fresh pre-Start detector
+  (`startup-detector.stdout.log` beside the attempt root).
+- `verifyEffect` hit ENOENT on the first effect route, the cooling review.
+  That error had no named category, so the owner recorded only
+  `startup_operation_rejected` (phase `cooling`). `prepare` failed closed: no
+  signer use, Start, charge, fault or retained record. The ledger stayed at
+  next 26, 3,000,000 ms, on boot 15.
+- Sealed `complete=false` (`heartbeat_evidence_unverified`,
+  `startup_owner_failed`): result
+  `f435bba2b24d102e991310668d09bd6f4eea0788240ecdbae03ea5c2a59632a9`, seal
+  `38fb5de3a1cb5c1cf2b15a14e8138d6dde1e18e1dd873bf2e94b6ce62cd4c2ca`.
+- The first `finish` was refused (`heartbeat_failed`) because the fix was still
+  uncommitted in the tree. It was re-run on clean pinned source; the refused
+  logs are kept beside the root.
+
+Fix: `readStartupDetector` now reports a missing file as the recorded
+category `startup_detector_missing`, with a regression. The amendment now
+lists the full operator sequence, including the startup detector.
+
+Heartbeat005 reruns the unchanged contract with that sequence. The lineage is
+unchanged, and no restart is needed because no Start ran.
+
+Heartbeat005 | 2026-10-04 | Baseline review hit a Gate serial timeout; no Start
+- Preflight and the detector passed: boot 15, ledger 26.
+- "Record baseline and configure candidate" posted `baseline-begin` and
+  `context`. A Gate read-only review then failed with Gate
+  `serialFailureCategory=timeout` before `/diagnostic-export`. The failing
+  review is one of the attempt ledger, budget, possession or V2 status; which
+  one is unknown.
+- The device stayed responsive and idle on the same boot 15. Uptime was
+  consistent with restart004 at 30 °C, `mine_on_boot=false`. The detector
+  re-admitted one Ultra 205.
+- Nothing was recorded server-side and nothing ran: no baseline, observer,
+  signer use, Start or charge. Heartbeat004 had passed the same baseline step
+  about 10 minutes earlier on the same boot.
+- Sealed `complete=false` (`heartbeat_evidence_unverified`): result
+  `d505f096c62c15dbda28d08e846a2c3b59f3398839c8a745041d4348d31cdbfd`, seal
+  `5fd844681a97ac876927af297238525e1dff4bcfbe6ba14a1c14c4677e2dfff2`.
+
+Progress (discriminating instrumentation, not a fix): a failed baseline now
+persists `baseline-failure.json` with the failed operation and the Gate
+serial category, both from closed vocabularies. Regressions cover the page
+attribution and validator folding.
+
+Heartbeat006 reruns the unchanged contract. If the timeout recurs, the named
+operation is the new signature to diagnose before any further attempt.
+
+Heartbeat006 | 2026-10-04 | Refused at baseline on boot drift; the device had panicked; STOP
+- The new attribution named the failure on its first use: operation
+  `baseline`, owner category `startup_prepared_baseline`. Every serial review
+  succeeded, but the device reported boot 16 where the pinned lineage expects
+  15. Nothing ran: no candidate, observer, signer use, Start or charge; the
+  ledger stayed at next 26.
+- The pre-baseline diagnostics show boot 16, `reset_reason=panic`, uptime
+  about 458 s. The boot time therefore matches heartbeat005's baseline step.
+- Correction to heartbeat005: its Gate serial `timeout` was the firmware
+  panicking and rebooting during a read-only baseline review. The device was
+  idle, not mining, and had no grant. Heartbeat004 had passed the same reviews
+  on the same boot about 10 minutes earlier.
+- Sealed `complete=false` (`heartbeat_evidence_unverified`,
+  `startup_owner_failed`): result
+  `9ee3e0237ec211c5fcf7894617eb378aa99914b48f75c1e36796e2779e4ce976`, seal
+  `47b11ee8d7c8483d16a7352a4759e82d79a974b8c3965ce118740e2d0986a694`.
+
+Outcome: `stop_hardware_blocker` under the contract's "new panic" stop
+condition. The heartbeat gate is disabled again.
+- Device behavior under heartbeat loss already met every native bound in
+  heartbeat002; only its seal is unverified.
+- A sealed pass needs the idle-review panic diagnosed and corrected first,
+  then a new restart (boot 16 to 17) and a fresh attempt.
+
+Corrected-image retry | 2026-10-04 | Heartbeat007 on `7ca3e29c`
+- The idle-review panic is diagnosed and corrected
+  (`task-str005-start-panic-diagnosis`): a stack-realignment toolchain hazard,
+  fixed in `24af10be`, installed by realignment-fix attempt-001, and verified by
+  500 review rounds with no failure.
+- The install is a new lineage root. No Start has run on this image, so there
+  is no retained record and no restart is needed. The owner now admits an
+  install-only lineage: the previous Start and restart pins are null, and
+  preflight takes neither root. A pinned Start still requires a pinned
+  restart, with regressions.
+- Pins: install result `13296cfb…`, seal `d3ec8ccb…`; boot 5; ledger next 26,
+  last 25, 3,000,000 ms. Expected after ledger: next 27, last 26,
+  3,180,000 ms, at ordinal 26.
+- Heartbeat007 is a fresh ordinal backed by verified progress (the correction).
+  It follows the amendment's operator sequence unchanged, with the commands
+  below and no `--previous-start-root` or `--restart-root`.
+- [x] Heartbeat007, then record the outcome and disable the gate.
+
+```bash
+just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat007/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-realignment-fix/attempt-001
+just str005-heartbeat-shutdown serve --private-root <same> --authority-directory <protected-authority>   # detached
+just str005-heartbeat-shutdown finish --private-root <same>
+```
+- Next step: acquire and decode the development core dump of the boot-15 panic
+  under `task-str005-start-panic-diagnosis` (ADR-0030/0031, the staged panic
+  probe contract). Its acquisition gate is disabled and needs a contract for
+  the installed `654338d0` image first.
+
+Panic capture | 2026-10-04: captured and decoded under
+`task-str005-start-panic-diagnosis`. The cause is a `StoreProhibited` on the
+Worker control owner in `writer::send_control` → `sync_channel`, after memory
+corruption of its register spill area
+([evidence](docs/parity/evidence/20261004-str005-idle-panic-capture.md)). The
+heartbeat probe stays stopped until a corrected image exists. The device is
+now on boot 17 after the read's return reset.
+
+```sh
+just str005-step5-restart preflight --private-root <repo>/scratch/str005-heartbeat-restart-004/restart004 --start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --gate-root <gate-root>
+just str005-heartbeat-shutdown preflight --private-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat003/attempt --gate-root <gate-root> --fixture-binary <repo>/bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture --installation-root <repo>/scratch/str005-step5-reinstall/attempt-001 --previous-start-root <repo>/scratch/str005-heartbeat-shutdown/heartbeat002/attempt --restart-root <repo>/scratch/str005-heartbeat-restart-004/restart004
+```
+
+Heartbeat007 | 2026-10-04 | Complete
+- Preflight passed on the install-only lineage (boot 5, ledger 26) with the
+  four native audits on ELF `227bc380…`. The operator sequence ran as
+  documented: baseline and candidate, startup detector, Run, then fresh
+  recovery.
+- One `normal` attempt at ordinal 26, generation 12, zero renewals.
+  Heartbeats were suppressed once after `work_ready` and `asic_dispatch`, with
+  49,011 ms lease and 163,711 ms work-gate headroom.
+- Native: `revocation_reason=heartbeat_timeout`; the gate closed 2,802 ms and
+  shutdown started 2,823 ms after the last valid heartbeat. The safe stop
+  completed `fan_paused` at 32 °C with no work after revocation.
+- Fresh recovery happened on the same boot 5 with no failures. The ledger is
+  next 27, last 26, 3,180,000 ms (exactly +180,000), not pending. Server,
+  fixture, signer and serial were released, and the final detector admitted
+  one Ultra 205.
+- `finish`: `str005-heartbeat-result-v1`, `complete=true`, no blockers,
+  observer 38 messages with an 8,328-ms tail. Result
+  `565857c2547b6b0af9ebd3bc483ec4997440b27038ed29895cd60d486a3acfae`, seal
+  `68350c6fc7d2521c37255db83d39e88e5c39d789b6d986e8f4a976af834bc11c`.
+- Evidence: [heartbeat-loss shutdown](docs/parity/evidence/20261004-str005-heartbeat-loss-shutdown.md).
+
+Completion review: the objective is met. Heartbeat007 proves device-local
+heartbeat revocation and shutdown inside the 2,800–3,000 ms bounds, ordered
+stop and qualified cooling, then authenticated restoration, exact charged
+accounting and complete cleanup, all judged by the published heartbeat
+contract. The timing, stale-observation, headroom, observer-loss and cleanup
+cases are covered by the heartbeat-probe regressions recorded above. Both
+heartbeat gates are disabled, and the owner's `ENABLED` flag is false.
+
+Residual risks:
+- one generation on a local fixture, with no sustained or pool mining;
+- parity promotion is deferred to `task-str005-piecewise-integration-review`,
+  and parity stays 90/95;
+- the startup-time channel creations keep the toolchain hazard (see
+  `task-str005-start-panic-diagnosis`).
