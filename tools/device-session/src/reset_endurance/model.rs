@@ -9,9 +9,9 @@ use serde::Serialize;
 use crate::{UsbCommandTermination, UsbRuntimeIdentity};
 
 /// Redacted projection schema shared outside the private evidence root.
-pub const RESET_ENDURANCE_PROJECTION_SCHEMA: &str = "usb-reset-endurance-v1";
+pub const RESET_ENDURANCE_PROJECTION_SCHEMA: &str = "usb-reset-endurance-v2";
 /// Private result schema stored beneath the mode-0700 evidence root.
-pub const RESET_ENDURANCE_PRIVATE_SCHEMA: &str = "usb-reset-endurance-private-v1";
+pub const RESET_ENDURANCE_PRIVATE_SCHEMA: &str = "usb-reset-endurance-private-v2";
 
 const TASK: &str = "task-usb-stuck-link-after-reset";
 const ENABLE_LINE: &str = "USB reset endurance hardware: enabled.";
@@ -51,6 +51,7 @@ pub struct ResetEnduranceConfig {
     expected_identity: UsbRuntimeIdentity,
     cycles: u16,
     observe_timeout: Duration,
+    count_power_on: bool,
 }
 
 impl ResetEnduranceConfig {
@@ -78,7 +79,21 @@ impl ResetEnduranceConfig {
             expected_identity,
             cycles: u16::try_from(cycles)?,
             observe_timeout: Duration::from_secs(observe_timeout_seconds),
+            count_power_on: false,
         })
+    }
+
+    /// Opts in to recording a fresh power-on boot (`power_on`, ordinal 1) as an
+    /// event instead of a stop; the ordinal sequence then restarts from 1.
+    #[must_use]
+    pub const fn with_count_power_on(mut self, count_power_on: bool) -> Self {
+        self.count_power_on = count_power_on;
+        self
+    }
+
+    #[must_use]
+    pub const fn count_power_on(&self) -> bool {
+        self.count_power_on
     }
 
     #[must_use]
@@ -155,6 +170,7 @@ pub struct CycleRow {
     #[serde(rename = "identity_latency_ms")]
     pub maybe_identity_latency_ms: Option<u64>,
     pub elapsed_ms: u64,
+    pub power_on: bool,
     #[serde(rename = "stop")]
     pub maybe_stop: Option<ResetEnduranceStop>,
 }
@@ -171,6 +187,7 @@ impl CycleRow {
             maybe_boot_ordinal: None,
             maybe_identity_latency_ms: None,
             elapsed_ms: 0,
+            power_on: false,
             maybe_stop: None,
         }
     }
@@ -204,6 +221,14 @@ impl CycleRun {
             }),
             maybe_failure_detail: Some(detail),
         }
+    }
+
+    fn power_on_cycles(&self) -> Vec<u16> {
+        self.rows
+            .iter()
+            .filter(|row| row.power_on)
+            .map(|row| row.cycle)
+            .collect()
     }
 
     fn cycles_completed(&self) -> u16 {
@@ -245,6 +270,9 @@ pub struct ResetEnduranceProjection {
     pub cycles_completed: u16,
     pub first_failure: Option<FirstFailure>,
     pub final_cleanup_proven: bool,
+    pub count_power_on: bool,
+    pub power_on_cycles: Vec<u16>,
+    pub power_on_count: u16,
     pub counts: ProjectionCounts,
     pub durations: ProjectionDurations,
 }
@@ -258,6 +286,7 @@ impl ResetEnduranceProjection {
         total_elapsed_ms: u64,
     ) -> Self {
         let passed = run.maybe_first_failure.is_none() && cleanup.proven;
+        let power_on_cycles = run.power_on_cycles();
         Self {
             schema: RESET_ENDURANCE_PROJECTION_SCHEMA,
             status: if passed { "passed" } else { "failed" },
@@ -267,6 +296,9 @@ impl ResetEnduranceProjection {
             cycles_completed: run.cycles_completed(),
             first_failure: run.maybe_first_failure,
             final_cleanup_proven: cleanup.proven,
+            count_power_on: config.count_power_on,
+            power_on_count: u16::try_from(power_on_cycles.len()).unwrap_or(u16::MAX),
+            power_on_cycles,
             counts: counts(&run.rows),
             durations: ProjectionDurations {
                 total_elapsed_ms,
@@ -300,8 +332,12 @@ impl ResetEnduranceProjection {
             },
         );
         format!(
-            "usb_reset_endurance status={} cycles_completed={} cycles_requested={} {failure} final_cleanup_proven={}",
-            self.status, self.cycles_completed, self.cycles_requested, self.final_cleanup_proven
+            "usb_reset_endurance status={} cycles_completed={} cycles_requested={} power_on_count={} {failure} final_cleanup_proven={}",
+            self.status,
+            self.cycles_completed,
+            self.cycles_requested,
+            self.power_on_count,
+            self.final_cleanup_proven
         )
     }
 }
@@ -319,6 +355,9 @@ pub struct ResetEndurancePrivateResult {
     #[serde(rename = "first_failure_detail")]
     pub maybe_first_failure_detail: Option<String>,
     pub final_cleanup_proven: bool,
+    pub count_power_on: bool,
+    pub power_on_cycles: Vec<u16>,
+    pub power_on_count: u16,
     #[serde(rename = "final_cleanup_detail")]
     pub maybe_final_cleanup_detail: Option<String>,
     pub total_elapsed_ms: u64,
@@ -342,6 +381,9 @@ impl ResetEndurancePrivateResult {
             first_failure: run.maybe_first_failure,
             maybe_first_failure_detail: run.maybe_failure_detail.clone(),
             final_cleanup_proven: cleanup.proven,
+            count_power_on: config.count_power_on,
+            power_on_count: u16::try_from(run.power_on_cycles().len()).unwrap_or(u16::MAX),
+            power_on_cycles: run.power_on_cycles(),
             maybe_final_cleanup_detail: cleanup.maybe_detail.clone(),
             total_elapsed_ms,
         }

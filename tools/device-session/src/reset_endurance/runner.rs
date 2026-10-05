@@ -3,6 +3,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
+use bitaxe_api::boot_identity::{ResetReasonCategory, WorkerUsbBootMarker};
 
 use super::identity::{IdentityScanner, IdentityVerdict};
 use super::model::{CycleRow, CycleRun, FirstFailure, ResetEnduranceConfig, ResetEnduranceStop};
@@ -149,7 +150,8 @@ fn drive_cycle(
         .map_err(|error| CycleStop::from_error(drift_or(&error, Stop::ObserverFailed), &error))?;
     row.maybe_identity_latency_ms = facts.maybe_identity_latency_ms;
     *serial = facts.serial;
-    observation_stop(&scanner, maybe_previous_ordinal, facts.interrupted)?;
+    let boot = observation_stop(&scanner, facts.interrupted)?;
+    row.power_on = reboot_proof(boot, maybe_previous_ordinal, config.count_power_on())?;
 
     effects
         .prove_released()
@@ -202,52 +204,65 @@ fn reacquire_stop_category(error: &UsbSessionError) -> Stop {
     drift_or(error, Stop::TransportNotReacquired)
 }
 
-/// A cycle passes only on the exact identity plus a boot ordinal newer than the last cycle's.
+/// Requires the exact identity plus one consistent boot discriminator in the window.
 fn observation_stop(
     scanner: &IdentityScanner,
-    maybe_previous_ordinal: Option<u64>,
     interrupted: bool,
-) -> Result<(), CycleStop> {
-    match scanner.verdict() {
-        IdentityVerdict::Complete => ordinal_stop(scanner, maybe_previous_ordinal),
-        IdentityVerdict::Mismatch => Err(CycleStop::new(
+) -> Result<WorkerUsbBootMarker, CycleStop> {
+    match (scanner.verdict(), scanner.maybe_boot()) {
+        (IdentityVerdict::Complete, Some(boot)) => Ok(boot),
+        (IdentityVerdict::Complete, None) => Err(CycleStop::new(
+            Stop::RebootNotProven,
+            "complete observation lacked a boot discriminator",
+        )),
+        (IdentityVerdict::Mismatch, _) => Err(CycleStop::new(
             Stop::IdentityMismatch,
             "a different application identity was observed",
         )),
-        IdentityVerdict::OrdinalAmbiguous => Err(CycleStop::new(
+        (IdentityVerdict::OrdinalAmbiguous, _) => Err(CycleStop::new(
             Stop::BootOrdinalAmbiguous,
             "more than one boot ordinal was observed in one window",
         )),
-        IdentityVerdict::Pending if interrupted => {
+        (IdentityVerdict::Pending, _) if interrupted => {
             Err(CycleStop::new(Stop::Interrupted, "observation interrupted"))
         }
-        IdentityVerdict::Pending if scanner.identity_observed() => Err(CycleStop::new(
+        (IdentityVerdict::Pending, _) if scanner.identity_observed() => Err(CycleStop::new(
             Stop::RebootNotProven,
             "identity was observed without a boot discriminator",
         )),
-        IdentityVerdict::Pending => Err(CycleStop::new(
+        (IdentityVerdict::Pending, _) => Err(CycleStop::new(
             Stop::ApplicationNotObserved,
             "expected identity was not observed within the bound",
         )),
     }
 }
 
-fn ordinal_stop(
-    scanner: &IdentityScanner,
+/// Proves a reboot from the ordinal; returns whether the cycle is a counted power-on event.
+///
+/// Without the opt-in, the ordinal must exceed the previous cycle's. With it, a
+/// fresh power-on (`power_on`, ordinal 1) is recorded instead of stopping, any
+/// other `power_on` ordinal stops, and the next cycle must observe more than 1.
+fn reboot_proof(
+    boot: WorkerUsbBootMarker,
     maybe_previous_ordinal: Option<u64>,
-) -> Result<(), CycleStop> {
-    let Some(boot) = scanner.maybe_boot() else {
+    count_power_on: bool,
+) -> Result<bool, CycleStop> {
+    let power_on = boot.reset_reason() == ResetReasonCategory::PowerOn;
+    if count_power_on && power_on {
+        if boot.boot_ordinal() == 1 {
+            return Ok(true);
+        }
         return Err(CycleStop::new(
             Stop::RebootNotProven,
-            "complete observation lacked a boot discriminator",
+            "power-on reset reported an ordinal other than 1",
         ));
-    };
+    }
     match maybe_previous_ordinal {
         Some(previous) if boot.boot_ordinal() <= previous => Err(CycleStop::new(
             Stop::RebootNotProven,
             "boot ordinal did not advance past the previous cycle",
         )),
-        _ => Ok(()),
+        _ => Ok(false),
     }
 }
 

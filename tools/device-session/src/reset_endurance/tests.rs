@@ -9,6 +9,7 @@ use crate::{
 };
 
 mod contract;
+mod power_on;
 #[cfg(unix)]
 mod private_root;
 
@@ -35,8 +36,12 @@ fn identity_line(commit: &str) -> String {
 }
 
 fn discriminator(ordinal: u16) -> String {
+    discriminator_with(ordinal, "other")
+}
+
+fn discriminator_with(ordinal: u16, reason: &str) -> String {
     format!(
-        "usb_reboot_discriminator schema=v1 boot_ordinal={ordinal} reset_reason=other uptime_ms=900 redacted=true\n"
+        "usb_reboot_discriminator schema=v1 boot_ordinal={ordinal} reset_reason={reason} uptime_ms=900 redacted=true\n"
     )
 }
 
@@ -62,29 +67,46 @@ enum Fault {
     StaleIdentity,
     RepeatedOrdinal,
     AmbiguousOrdinal,
+    PowerOnFresh,
+    PowerOnOrdinalFive,
+    OrdinalOneOther,
 }
 
 struct Fake {
     cycle: u16,
     clock: u64,
-    maybe_fault: Option<(u16, Fault)>,
+    faults: Vec<(u16, Fault)>,
     calls: Vec<&'static str>,
     recorded: Vec<CycleRow>,
 }
 
 impl Fake {
-    fn new(maybe_fault: Option<(u16, Fault)>) -> Self {
+    fn new(faults: Vec<(u16, Fault)>) -> Self {
         Self {
             cycle: 0,
             clock: 0,
-            maybe_fault,
+            faults,
             calls: Vec::new(),
             recorded: Vec::new(),
         }
     }
 
     fn fault(&self, fault: Fault) -> bool {
-        self.maybe_fault == Some((self.cycle, fault))
+        self.faults.contains(&(self.cycle, fault))
+    }
+}
+
+impl Fake {
+    fn power_on_line(&self) -> Option<String> {
+        if self.fault(Fault::PowerOnFresh) {
+            Some(discriminator_with(1, "power_on"))
+        } else if self.fault(Fault::PowerOnOrdinalFive) {
+            Some(discriminator_with(5, "power_on"))
+        } else if self.fault(Fault::OrdinalOneOther) {
+            Some(discriminator(1))
+        } else {
+            None
+        }
     }
 }
 
@@ -170,6 +192,8 @@ impl CycleEffects for Fake {
                 discriminator(self.cycle + 2),
                 identity_line(COMMIT),
             ]
+        } else if let Some(line) = self.power_on_line() {
+            vec![format!("{line}{}", identity_line(COMMIT))]
         } else {
             // Cycle N normally reports ordinal N + 1; a repeat reuses cycle N - 1's ordinal.
             let ordinal = if self.fault(Fault::RepeatedOrdinal) {
@@ -208,8 +232,12 @@ impl CycleEffects for Fake {
 }
 
 fn run_with(cycles: u32, maybe_fault: Option<(u16, Fault)>) -> (CycleRun, Fake) {
-    let mut fake = Fake::new(maybe_fault);
-    let run = run_cycles(&config(cycles), &mut fake).expect("fake run");
+    run_faults(config(cycles), maybe_fault.into_iter().collect())
+}
+
+fn run_faults(config: ResetEnduranceConfig, faults: Vec<(u16, Fault)>) -> (CycleRun, Fake) {
+    let mut fake = Fake::new(faults);
+    let run = run_cycles(&config, &mut fake).expect("fake run");
     (run, fake)
 }
 

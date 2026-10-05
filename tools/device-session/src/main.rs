@@ -227,6 +227,10 @@ struct UsbResetEnduranceArgs {
     #[arg(long = "observe-timeout-seconds", default_value_t = 20)]
     observe_timeout_seconds: u64,
 
+    /// Record a fresh power-on boot (ordinal 1) as an event instead of stopping.
+    #[arg(long = "count-power-on")]
+    count_power_on: bool,
+
     #[arg(long = "private-root")]
     private_root: Utf8PathBuf,
 
@@ -275,7 +279,8 @@ fn run_reset_endurance(args: UsbResetEnduranceArgs) -> Result<TerminalCategory> 
         args.cycles,
         args.observe_timeout_seconds,
     )
-    .inspect_err(|error| eprintln!("{error}"))?;
+    .inspect_err(|error| eprintln!("{error}"))?
+    .with_count_power_on(args.count_power_on);
     let request = ResetEnduranceRequest {
         config,
         port: args.port,

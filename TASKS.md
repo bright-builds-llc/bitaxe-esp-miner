@@ -4611,7 +4611,27 @@ change; the owner's replug is the only remediation for a stuck link.
     or a supply event coinciding with the reset. Waiting for the owner to
     say whether the board's power was touched; the endurance gate is
     disabled until then.
-USB reset endurance hardware: disabled (fixed-001 stopped on an unexplained power-on).
+- The owner confirmed (2026-10-05) that nobody touched the power, so the
+  power-on is investigated.
+  - On ESP32-S3, raw reset cause 0x01 covers chip power-on, chip
+    brown-out and the super watchdog; ESP-IDF reports all of them as
+    `ESP_RST_POWERON`.
+  - `brownout_hal_config` notes that the analog hardware brown-out reset is
+    active until IDF installs its handler. So a supply dip in the
+    ROM, bootloader or early-startup window resets the whole chip and reads
+    as `power_on`; after startup the same dip would read `brownout`.
+  - An EN-pin glitch reads the same way.
+  - No `reset_reason=brownout` appears anywhere in the retained evidence.
+  - The firmware's brown-out level is 7, the same default upstream uses.
+  - Confirming a rail dip or EN glitch needs electrical probing, which
+    stays prohibited without explicit owner authorization.
+- Measurement contract, fixed-002:
+  - The same command with `--count-power-on` and `--cycles 300`.
+  - A power-on cycle (exact identity, `reset_reason=power_on`, ordinal 1) is
+    recorded and counted, and the ordinal check restarts.
+  - Every other failure, including a stuck link, still stops at once.
+  - Expected identity `60e344e2` / `3f01a5f4…`.
+USB reset endurance hardware: enabled.
 USB BBPLL install hardware: disabled (attempt-001 complete).
 
 Risk: devices whose bootloader came from an OTA-only update keep an older

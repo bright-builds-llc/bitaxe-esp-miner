@@ -89,6 +89,7 @@ rust_library(
         "src/reset_endurance/session.rs",
         "src/reset_endurance/tests.rs",
         "src/reset_endurance/tests/contract.rs",
+        "src/reset_endurance/tests/power_on.rs",
         "src/reset_endurance/tests/private_root.rs",
         "src/transaction.rs",
         "src/usb.rs",
