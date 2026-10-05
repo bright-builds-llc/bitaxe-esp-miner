@@ -7,16 +7,17 @@ import { writeNew } from '../str005-noise-serial/files.mjs';
 import { configuration } from '../str005-v2-serial/server-assets.mjs';
 import { check, object } from '../str005-v2-serial/values.mjs';
 import { CATEGORIES, LIMITS, OPERATIONS } from './loop.mjs';
+import { WORKER_REJECTIONS } from '../str005-startup-probe/recovery-error-row.mjs';
 
 /** Validates one closed row from the page; device payloads never reach the owner. */
 export function validateRow(value, iterations = LIMITS.iterations, batches = LIMITS.batches) {
   check(value && typeof value === 'object' && ['progress', 'complete', 'failure'].includes(value.kind), 'review_loop_row');
-  object(value, value.kind === 'failure' ? ['batch', 'kind', 'completed', 'iteration', 'operation', 'category'] : ['batch', 'kind', 'completed']);
+  object(value, value.kind === 'failure' ? ['batch', 'kind', 'completed', 'iteration', 'operation', 'category', 'rejection'] : ['batch', 'kind', 'completed']);
   check(Number.isSafeInteger(value.batch) && value.batch >= 1 && value.batch <= batches, 'review_loop_row');
   check(Number.isSafeInteger(value.completed) && value.completed >= 0 && value.completed <= iterations, 'review_loop_row');
   if (value.kind === 'complete') check(value.completed === iterations, 'review_loop_row');
   if (value.kind === 'failure') check(value.iteration === value.completed + 1 && OPERATIONS.includes(value.operation) &&
-    CATEGORIES.includes(value.category), 'review_loop_row');
+    CATEGORIES.includes(value.category) && (value.rejection === null || WORKER_REJECTIONS.includes(value.rejection)), 'review_loop_row');
   return value;
 }
 
@@ -70,7 +71,8 @@ export function createLoopServer({ root, context, assets, verify }, operations =
       batches.begin(input.batch);
       await writeNew(resolve(root, `loop-begin-${input.batch}.json`), { schema: 'str005-review-loop-begin-v2', batch: input.batch,
         startedAtUnixMs: now(), iterations: LIMITS.iterations, batches: LIMITS.batches, operations: OPERATIONS });
-      return send(response, 200, { campaignId: context.original_campaign_id, iterations: LIMITS.iterations, batch: input.batch });
+      return send(response, 200, { campaignId: context.original_campaign_id, iterations: LIMITS.iterations, batch: input.batch,
+        status: { statusMode: context.statusMode, attemptId: context.attemptId } });
     }
     if (path === '/loop/row') {
       const row = validateRow(input); batches.row(row); rows += 1;

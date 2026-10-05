@@ -1,3 +1,4 @@
+import { CONTROL_REJECTIONS } from '../str005-v2-serial/safety-diagnostics.mjs';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
@@ -12,8 +13,10 @@ export const RECOVERY_STAGES = ['ledger', 'original_budget', 'diagnostics', 'sta
 export function validateFinished(value) {
   object(value, ['failures']); check(Array.isArray(value.failures) && value.failures.length <= RECOVERY_STAGES.length + 1, 'recovery_failure_bound');
   const seen = new Set();
-  for (const row of value.failures) { object(row, ['stage', 'category']);
-    check([...RECOVERY_STAGES, 'begin'].includes(row.stage) && !seen.has(row.stage) && ['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed', 'operation_failed'].includes(row.category), 'recovery_failure_shape'); seen.add(row.stage); }
+  // Rows may carry the Worker's closed rejection; earlier rows have none.
+  for (const row of value.failures) { object(row, 'rejection' in row ? ['stage', 'category', 'rejection'] : ['stage', 'category']);
+    check([...RECOVERY_STAGES, 'begin'].includes(row.stage) && !seen.has(row.stage) && ['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed', 'operation_failed'].includes(row.category) &&
+      (row.rejection === undefined || row.rejection === null || CONTROL_REJECTIONS.includes(row.rejection)), 'recovery_failure_shape'); seen.add(row.stage); }
   return value;
 }
 /** No signer, fixture, clear adapter or funded Start route exists in this owner. */

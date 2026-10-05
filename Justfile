@@ -21,6 +21,11 @@ str005-share-recovery action *args:
 str005-panic-recovery action *args:
     bazel run //scripts:str005_panic_recovery -- {{ action }} {{ args }}
 
+# Verify the lineage head (`show`), or rewrite it from a sealed root: `advance-install --root <abs>`
+# after an install (clears the latest Start), `record-start --root <abs>` after a sealed Start.
+str005-lineage *args:
+    bazel run //scripts:str005_lineage -- {{ args }}
+
 str005-control-diagnostic-recovery action *args:
     bazel run //scripts:str005_control_diagnostic_recovery -- {{ action }} {{ args }}
 

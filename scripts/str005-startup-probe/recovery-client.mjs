@@ -1,4 +1,5 @@
 import { readRecoveryStatus } from './retained-status.mjs';
+import { WORKER_REJECTIONS } from './recovery-error-row.mjs';
 const categories = new Set(['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed']);
 /** Independent current-state observations; no operation can issue new work authority. */
 export function createCurrentRecovery({ gate, attemptId, campaignId, save, begin = async () => {}, readMs = 30000, cleanupMs = 150000 }) {
@@ -10,7 +11,8 @@ export function createCurrentRecovery({ gate, attemptId, campaignId, save, begin
       let timer, active = true;
       try { await Promise.race([Promise.resolve().then(operation).then(value => active && persist ? save(stage, value) : undefined),
         new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(Error('timeout'), { category: 'timeout' })), limit); })]); }
-      catch (error) { failures.push({ stage, category: categories.has(error?.category) ? error.category : 'operation_failed' }); }
+      catch (error) { failures.push({ stage, category: categories.has(error?.category) ? error.category : 'operation_failed',
+        rejection: WORKER_REJECTIONS.includes(error?.rejection) ? error.rejection : null }); }
       finally { active = false; clearTimeout(timer); }
     }
     try {

@@ -1,3 +1,5 @@
+import { readStatusFor } from '../str005-startup-probe/retained-status.mjs';
+import { WORKER_REJECTIONS } from '../str005-startup-probe/recovery-error-row.mjs';
 /** Bounded read-only review loop: the same Gate reviews the panicked baseline issued. */
 export const OPERATIONS = Object.freeze(['ledger', 'original_budget', 'possession', 'status']);
 export const CATEGORIES = Object.freeze(['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed',
@@ -22,20 +24,21 @@ export function failureCategory(error, state) {
  * Runs up to `iterations` rounds and stops at the first failed operation.
  * Progress rows carry only counts and closed categories, never device payloads.
  */
-export async function runLoop({ gate, campaignId, record, iterations = LIMITS.iterations, operationMs = LIMITS.operationMs,
+export async function runLoop({ gate, campaignId, status, record, iterations = LIMITS.iterations, operationMs = LIMITS.operationMs,
   progressEvery = LIMITS.progressEvery }) {
   const calls = {
     ledger: () => gate.reviewQualificationAttempts(),
     original_budget: () => gate.reviewBudget(campaignId),
     possession: async () => { binding = await gate.stratumV2Possession(); },
-    status: () => gate.stratumV2Status('share', null, binding),
+    status: () => readStatusFor(gate, status, binding),
   };
   let binding = null;
   for (let iteration = 1; iteration <= iterations; iteration++) {
     for (const operation of OPERATIONS) {
       try { await bounded(calls[operation], operationMs); }
       catch (error) {
-        const failure = { iteration, operation, category: failureCategory(error, gate.state()) };
+        const failure = { iteration, operation, category: failureCategory(error, gate.state()),
+          rejection: WORKER_REJECTIONS.includes(error?.rejection) ? error.rejection : null };
         await record({ kind: 'failure', completed: iteration - 1, ...failure });
         return { completed: iteration - 1, failure };
       }

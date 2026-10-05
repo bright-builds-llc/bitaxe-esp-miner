@@ -26,7 +26,7 @@ button.addEventListener('click', async () => {
   button.disabled = true;
   try {
     const setup = await post('/loop/begin', { state: gate.state(), batch });
-    const result = await runLoop({ gate, campaignId: setup.campaignId, iterations: setup.iterations,
+    const result = await runLoop({ gate, campaignId: setup.campaignId, status: setup.status, iterations: setup.iterations,
       record: row => post('/loop/row', { batch, ...row }) });
     output.textContent = JSON.stringify({ batch, ...result });
     if (!result.failure) { batch += 1; button.disabled = false; }

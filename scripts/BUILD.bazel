@@ -1378,9 +1378,28 @@ js_test(
 )
 
 js_library(
+    name = "str005_lineage_sources",
+    srcs = glob(["str005-lineage/*.mjs"]) + ["str005-lineage/head.json"],
+    deps = [":str005_share_recovery_sources"],
+)
+
+js_binary(
+    name = "str005_lineage",
+    chdir = "..",
+    data = [":str005_lineage_sources"],
+    entry_point = "str005-lineage/main.mjs",
+)
+
+js_test(
+    name = "str005_lineage_test",
+    data = [":str005_lineage_sources"],
+    entry_point = "str005-lineage/head.test.mjs",
+)
+
+js_library(
     name = "str005_panic_recovery_sources",
     srcs = glob(["str005-panic-recovery/*.mjs"]),
-    deps = [":str005_share_recovery_sources"],
+    deps = [":str005_share_recovery_sources", ":str005_lineage_sources"],
 )
 
 js_binary(

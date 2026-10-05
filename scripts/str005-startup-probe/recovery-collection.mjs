@@ -1,4 +1,4 @@
-import { discoverCurrentStatus } from './retained-status.mjs';
+import { readStatusFor } from './retained-status.mjs';
 import { RECOVERY_ERRORS_V2, recoveryErrorRow } from './recovery-error-row.mjs';
 const categories = new Set(['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed',
   'v2_idle_correlation', 'v2_attempt_correlation', 'v2_possession', 'not_ready', 'operation_active']);
@@ -47,10 +47,7 @@ export function createRecoveryCollection({ gate, begin, save, beforeStage, after
           // Stop invalidates the controller's prepared context; collection admission is not status authority.
           const binding = await gate.stratumV2Possession();
           if (!active()) return;
-          if (admission.statusMode === 'discover_current') return discoverCurrentStatus(gate, admission.attemptId, binding);
-          if (admission.statusMode === 'confirmed' && typeof admission.attemptId === 'string') return gate.stratumV2Status('share', admission.attemptId, binding);
-          if (admission.statusMode === 'not_invoked') return gate.stratumV2Status('share', null, binding);
-          throw Error('recovery_unknown_start');
+          return readStatusFor(gate, admission, binding);
         });
       }
     } finally {

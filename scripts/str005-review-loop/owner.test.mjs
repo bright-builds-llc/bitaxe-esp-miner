@@ -21,13 +21,15 @@ test('the loop owner has its own task line and never accepts authority or pool i
   assert.throws(() => argumentsFor(['preflight', '--private-root', '/p/a', '--predecessor-root', '/p/i', '--gate-root', '/g', '--pool-credentials', '/x'], true));
 });
 
-test('rows carry only the batch, counts and closed categories', () => {
+test('rows carry only the batch, counts, closed categories and closed rejections', () => {
   // Arrange
-  const failure = { batch: 2, kind: 'failure', completed: 4, iteration: 5, operation: 'status', category: 'timeout' };
+  const failure = { batch: 2, kind: 'failure', completed: 4, iteration: 5, operation: 'status', category: 'command_rejected',
+    rejection: 'invalid_transition' };
   // Act / Assert
   assert.deepEqual(validateRow(failure), failure);
   assert.deepEqual(validateRow({ batch: 1, kind: 'complete', completed: 100 }), { batch: 1, kind: 'complete', completed: 100 });
   assert.throws(() => validateRow({ ...failure, category: 'raw device text' }), /review_loop_row/u);
+  assert.throws(() => validateRow({ ...failure, rejection: 'raw device text' }), /review_loop_row/u);
   assert.throws(() => validateRow({ ...failure, iteration: 9 }), /review_loop_row/u);
   assert.throws(() => validateRow({ ...failure, batch: 6 }), /review_loop_row/u);
   assert.throws(() => validateRow({ batch: 1, kind: 'complete', completed: 12 }), /review_loop_row/u);

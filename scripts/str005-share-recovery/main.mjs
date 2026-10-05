@@ -12,16 +12,13 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { currentSource, predecessor, argumentsFor, SHARE001 } from './contract.mjs';
 import { STAGES, conclusion, recoveryProof } from './model.mjs';
 import { createRecoveryServer } from './server.mjs';
+import { statusModeFor } from '../str005-startup-probe/retained-status.mjs';
 async function detect(root, physical, final = false) {
   const path = resolve(dirname(root), `${final ? 'final-' : ''}detector.stdout.log`); await protectedPath(path);
   return parseDetector(await readFile(path, 'utf8'), physical, Date.now() - (await stat(path)).mtimeMs);
 }
 /** Runs one current-recovery collection bound to the profile's sealed predecessor; Share001 is the default. */
-/** A retained record is read by its device record attempt: firmware rejects a null status query while it
- * holds one and revokes the session. Without a retained record the current state is discovered. */
-export function statusModeFor(attempt) {
-  return attempt.recordRetained === true ? 'confirmed' : 'discover_current';
-}
+export { statusModeFor } from '../str005-startup-probe/retained-status.mjs';
 export async function main(argv, profile = SHARE001) {
   const { action, options } = argumentsFor(argv, profile.enabled, profile);
   const firmwareRoot = process.env.BUILD_WORKSPACE_DIRECTORY ?? git(process.cwd(), ['rev-parse', '--show-toplevel']);

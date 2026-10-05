@@ -20864,3 +20864,70 @@ Residual risks:
   and mostly drop rejections; that is `task-str005-recovery-consolidation`.
 - `discover_current` remains for no-Start lineages, where firmware holds no
   record.
+
+### task-str005-recovery-consolidation | 2026-10-04 | Consolidate recovery collectors and lineage pins
+
+Status: Complete 2026-10-04 (first slice, scoped below); archived. Owner-requested.
+Objective: one recovery collector and one status reader shared by every
+owner, and lineage pins derived from sealed records instead of edited by
+hand. Software only; owners keep their evidence contracts.
+
+- [x] Inventory and plan. Five collectors exist:
+      - `startup-probe/client.mjs` `collectRecovery`;
+      - `startup-probe/recovery-client.mjs` `createCurrentRecovery`;
+      - `startup-probe/recovery-collection.mjs`;
+      - `v2-serial/recovery-client.mjs`;
+      - the review loop's failure mapping.
+      Their status reads and failure mappings differ. Choose one shared
+      collector and status reader, and record which callers move in which
+      order.
+- [x] Move callers onto the shared reader and failure mapping first, with
+      tests unchanged in meaning. Leave `str005-v2-serial` sources alone,
+      because the v2-serial context hashes them.
+- [x] A lineage-head record: the latest sealed install and latest sealed
+      Start per board, derived and verified from sealed roots, so recovery
+      and loop owners stop hand-editing `INSTALL` and `LATEST_START`.
+- [x] Verification as for the hardening task, plus the affected owner
+      tests.
+
+Verification: `bazel test //scripts:all` 182/182; the Gate-root startup
+fixtures pass locally; `just str005-lineage show` verifies the committed
+head; `just verify-redaction` and the Bright Builds checks pass.
+
+Implementation:
+- One status reader: `retained-status.mjs` `readStatusFor` and
+  `statusModeFor`. They are used by:
+  - the shared collector;
+  - `readRecoveryStatus`, and through it the current-recovery client;
+  - the share-recovery owner;
+  - the review loop.
+  The loop learns from its predecessor whether a record is retained. It
+  no longer always sends a null query, which would fail on any boot after
+  a Start. Its server serves the two shared browser modules.
+- Failure rows keep the closed Worker rejection:
+  - collector errors (v2);
+  - current-recovery `failures` (optional key, still accepted without);
+  - review-loop rows (result v3).
+- The lineage head `scripts/str005-lineage/head.json`:
+  - `just str005-lineage show` verifies it;
+  - `advance-install --root` and `record-start --root` rewrite it from
+    sealed roots;
+  - advancing the install clears the latest Start;
+  - the control-diagnostic recovery and the review loop take `INSTALL` and
+    `LATEST_START` from it and refuse any other install root.
+
+Scope decision: Start owners read status during their own run with the
+attempt they admitted (`before.attempt.id`), which is correct by
+construction. Their collectors stay as they are:
+- `panic-probe`, `step5-diagnostic` and `status-repro`;
+- `share-probe`'s client;
+- `str005-v2-serial`, whose context hashes its sources.
+
+Completion review: every recovery and loop owner in current use reads
+status through one rule and gets its pins from a verified record. The
+three recovery mistakes and a loop after a Start are covered by tests.
+
+Residual risks:
+- the historical Start owners above keep their own failure mappings;
+- the noise-serial install profiles keep their hand-written ledgers,
+  which are checked against the predecessor at preflight.

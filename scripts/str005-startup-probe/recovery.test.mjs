@@ -23,7 +23,7 @@ test('recovery collects all other stages and releases after typed status rejecti
   };
   const result = await createCurrentRecovery({ gate, attemptId: 'known', campaignId: 'fixture', save: async (stage, value) => { parts[stage] = value; } })();
   assert.deepEqual(calls, ['ledger', 'budget', 'diagnostics', 'status', 'stop', 'state', 'close']);
-  assert.deepEqual(result.failures, [{ stage: 'status', category: 'command_rejected' }]); assert.ok(parts.closed); assert.ok(parts.ledger);
+  assert.deepEqual(result.failures, [{ stage: 'status', category: 'command_rejected', rejection: null }]); assert.ok(parts.closed); assert.ok(parts.ledger);
   assert.equal(result.qualification_complete, false); assert.equal(JSON.stringify(result).includes('private'), false);
 });
 test('an unconfirmed Start defaults to unknown and never probes either attempt mode', async () => {

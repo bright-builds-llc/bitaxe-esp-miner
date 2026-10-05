@@ -11,6 +11,7 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { requireEnabled } from '../str005-share-recovery/contract.mjs';
 import { CONTROL_DIAGNOSTIC_RECOVERY, loadInstallPredecessor } from '../str005-panic-recovery/control-diagnostic.mjs';
 import { createLoopServer } from './server.mjs';
+import { statusModeFor } from '../str005-startup-probe/retained-status.mjs';
 
 export const ENABLED = false;
 export const PROFILE = Object.freeze({ ...CONTROL_DIAGNOSTIC_RECOVERY, enabled: ENABLED, lines: ['Control review loop hardware: enabled.'] });
@@ -45,13 +46,15 @@ export async function main(argv) {
   const current = await source(firmwareRoot, action !== 'finish');
   if (action === 'preflight') {
     await missing(root); await privateRoot(dirname(root)); ignored(firmwareRoot, options['--predecessor-root']);
-    const prior = (await loadInstallPredecessor(firmwareRoot, options['--predecessor-root'])).context;
+    const predecessor = await loadInstallPredecessor(firmwareRoot, options['--predecessor-root']), prior = predecessor.context;
     const gateRoot = options['--gate-root']; cleanPushed(gateRoot, prior.gate_commit);
     const assets = { page: await readFile(resolve(gateRoot, PAGE)), bundle: await readFile(resolve(gateRoot, BUNDLE)),
       trust: await readFile(resolve(firmwareRoot, 'firmware/bitaxe/bwg/deployment-trust.json')) };
     for (const [key, bytes] of Object.entries(assets)) check(sha256(bytes) === prior.assetHashes[key], 'review_loop_asset');
     const context = { schema: 'str005-review-loop-context-v1', ...current, firmware_root: firmwareRoot, gate_root: gateRoot,
-      installRoot: options['--predecessor-root'], scope: 'share', ...prior };
+      installRoot: options['--predecessor-root'], scope: 'share', ...prior,
+      // A Start since the install leaves a record that only its device record attempt can read.
+      attemptId: predecessor.before.attempt.id, statusMode: statusModeFor(predecessor.before.attempt) };
     await mkdir(root, { mode: 0o700 }); await writeNew(resolve(root, 'context.json'), context);
     for (const [key, bytes] of Object.entries(assets)) await retain(resolve(root, `gate-${key}`), bytes);
     return { preflight: 'passed', device_effects: false };
@@ -70,6 +73,9 @@ export async function main(argv) {
   for (const [key, hash] of Object.entries(context.assetHashes)) { const bytes = await readFile(resolve(root, `gate-${key}`)); check(sha256(bytes) === hash, 'review_loop_asset'); assets[key] = bytes; }
   assets.trust = JSON.parse(assets.trust);
   for (const name of ['loop-page.mjs', 'loop.mjs']) assets.modules[`/${name}`] = await readFile(resolve(firmwareRoot, 'scripts/str005-review-loop', name === 'loop-page.mjs' ? 'page.mjs' : name));
+  // loop.mjs imports the shared status reader and error rows by their repository-relative paths.
+  for (const name of ['retained-status.mjs', 'recovery-error-row.mjs'])
+    assets.modules[`/str005-startup-probe/${name}`] = await readFile(resolve(firmwareRoot, 'scripts/str005-startup-probe', name));
   const server = createLoopServer({ root, context, assets, verify }); let maybeClosing;
   const stop = () => { maybeClosing ??= server.release(); };
   for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, stop);
@@ -93,10 +99,11 @@ export async function finish(root, context) {
   const names = (await readdir(root)).filter(name => /^loop-row-\d{3}\.json$/u.test(name)).sort();
   const rows = []; for (const name of names) rows.push((await proof(root, name)).value);
   const last = rows.at(-1) ?? null, complete = rows.filter(row => row.kind === 'complete');
-  const result = { schema: 'str005-review-loop-result-v2', rows: rows.length, batches_completed: complete.length,
+  const result = { schema: 'str005-review-loop-result-v3', rows: rows.length, batches_completed: complete.length,
     rounds_completed: complete.reduce((sum, row) => sum + row.completed, 0) + (last?.kind === 'failure' ? last.completed : 0),
     terminal: last?.kind ?? 'none',
-    failure: last?.kind === 'failure' ? { batch: last.batch, iteration: last.iteration, operation: last.operation, category: last.category } : null,
+    failure: last?.kind === 'failure' ? { batch: last.batch, iteration: last.iteration, operation: last.operation, category: last.category,
+      rejection: last.rejection } : null,
     host_released: true, device_panic_judged_by_recovery: true };
   await writeNew(resolve(root, 'result.json'), result);
   await writeNew(resolve(root, 'sealed-inventory.json'), { files: await inventory(root) });

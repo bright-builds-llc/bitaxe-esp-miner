@@ -7,25 +7,19 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { validateLedger } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { main as collect } from '../str005-share-recovery/main.mjs';
 import { loadSealedStartRecord } from '../str005-startup-probe/start-record.mjs';
+import { HEAD } from '../str005-lineage/head.mjs';
 
 export const ENABLED = false;
-// The currently installed qualified image: realignment-fix install attempt-001, sealed and
-// complete with the ledger unchanged. Retarget these pins whenever a later install replaces it.
-export const INSTALL = Object.freeze({
-  profile: 'realignment-fix-install',
-  result: '13296cfb30ec0721b290141deb658d94fa7eb724c8d7a3a39f3acff478e79293',
-  seal: 'd3ec8ccb73cde4b655120781c45ba5a8ba6b463cdd151d3ff14600006d9551f0',
-  identity: { firmware_commit: '7ca3e29ce1870396c801f9d8d74ff02aac2ef112',
-    app_elf_sha256: '227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0', gate_commit: '86fc62d7a9d75da1affa2d51bc3b9eab41d86031' },
-});
+// The installed image and its latest Start come from the verified lineage head
+// (`just str005-lineage show`), never from hand-edited constants.
+export const INSTALL = Object.freeze({ profile: HEAD.install.profile, path: HEAD.install.path, result: HEAD.install.result,
+  seal: HEAD.install.seal, identity: HEAD.install.identity });
 // The idle-panic recovery001 on the same board supplies its physical identity and last attempt.
 export const RECOVERY001 = Object.freeze({ path: 'scratch/str005-idle-panic/recovery001',
   seal: '3a84383e127d39785e963b1888f8c65d5e3c8664740c602d310b6494e7cd8644' });
-// The latest sealed Start on this install, when one ran. Its retained record replaces recovery001's
-// attempt, so a status read must name its device record attempt; null means no Start ran since the install.
-export const LATEST_START = Object.freeze({ path: 'scratch/str005-heartbeat-shutdown/heartbeat007/attempt',
-  result: '565857c2547b6b0af9ebd3bc483ec4997440b27038ed29895cd60d486a3acfae',
-  seal: '68350c6fc7d2521c37255db83d39e88e5c39d789b6d986e8f4a976af834bc11c' });
+// The latest sealed Start on this install, when one ran: its retained record replaces recovery001's
+// attempt. A new install resets it to null, because installing reboots the board.
+export const LATEST_START = HEAD.latestStart;
 
 async function sealed(root, expected) {
   await privateRoot(root);
@@ -34,6 +28,7 @@ async function sealed(root, expected) {
 }
 /** Binds the sealed install (identity, ledger, Gate assets) and recovery001 (board, attempt). */
 export async function loadInstallPredecessor(firmwareRoot, installRoot) {
+  check(resolve(firmwareRoot, INSTALL.path) === resolve(installRoot), 'share_recovery_predecessor_identity');
   await sealed(installRoot, INSTALL.seal);
   check(await fileDigest(resolve(installRoot, 'final-result.json')) === INSTALL.result, 'share_recovery_predecessor_seal');
   const install = (await proof(installRoot, 'context.json')).value.context, after = (await proof(installRoot, 'accounting-after.json')).value;
