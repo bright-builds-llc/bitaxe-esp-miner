@@ -5691,9 +5691,40 @@ Control review loop hardware: disabled (loop007 complete).
         - The device is still boot-looping on the candidate. Recovery
           (restore the last good image, then capture the core dump) needs
           its own contract; it waits for the owner.
-- [ ] Step 3: Gate-visible control stack and heap telemetry.
-- [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
-      record that it did not reproduce.
+- [x] Step 3, Gate-visible control stack and heap telemetry: dropped
+      (2026-10-05) as superseded. The fault was attributed without it. The
+      core-dump records (panic frame, control stack trace, allocation
+      history) plus `just audit-stack-realignment` and
+      `just audit-startup-frames` cover the need.
+- [x] Phase D: no reproduction on corrected images. loop006 (`7ca3e29c`)
+      and loop007 (`6f268518`) each ran 500 rounds with no panic,
+      recovery008 and recovery016 showed no reboot, and heartbeat007 ran a
+      normal Start on `7ca3e29c` without a panic.
+Closure review (2026-10-05):
+- Demonstrated cause, corrected and verified: the Xtensa LLVM stack
+  realignment without `movsp` in std channel constructors
+  (espressif/llvm-project#140, esp-rs/rust#284). All std channels were
+  removed (`24af10be`, `00f84eae`), the boot-loop regression was fixed
+  (`9386999d`), and both audits are in place. Hardware: loop006, loop007
+  and heartbeat007 (see above).
+- Original Share001 and Share002 Start panics: consistent with the same
+  hazard, but not proven.
+  - `just audit-stack-realignment` on their retained ELFs blocks both:
+    - Share002 `cf7a3f03`/`66a77d2c…`: 14 realigning functions, 17 project
+      callers including `writer::send_control`;
+    - Share001 `f000872f`/`a3e25741…`: 18 callers including
+      `ProductionWorkerSession::start`, `renew` and `safe_stop` on the Start
+      path itself.
+  - Share001's decoded dump showed the SDK's synthetic frame (the stack
+    pointer restored as a non-stack value), the same signature as the
+    decoded idle panic.
+  - Share002 has no dump.
+  - Neither panic may be replayed, so exact attribution is unreachable.
+- Archive status: not archived. The objective's literal criterion (proving
+  the original Start panic's cause) cannot be met. Archiving needs the
+  owner to explicitly accept the Share001/Share002 attribution as a
+  documented non-claim.
+
 Development core-dump clearing: disabled (clear001 completed).
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
