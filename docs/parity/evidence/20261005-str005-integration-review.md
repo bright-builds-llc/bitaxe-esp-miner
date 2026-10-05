@@ -2,7 +2,7 @@
 
 Status: blocked. The obligation map and change-impact review are complete.
 The candidate's restart before the share check found a new panic: idle
-internal heap drains after a heartbeat-loss shutdown (see open item 1). Parity stays 90/95; any transition
+internal heap is lost after a heartbeat-loss shutdown (see open item 1). Parity stays 90/95; any transition
 belongs to `task-str005-evidence-promotion`.
 
 Policy: [ADR-0029](../../adr/0029-piecewise-str005-qualification.md), with
@@ -72,14 +72,17 @@ removing them would be a new candidate and would reopen this review.
 
 ## Open items
 
-1. **Idle heap drain after a heartbeat-loss shutdown (candidate defect).**
-   Free internal heap was 9,687 bytes (largest block 1,920) right after
-   heartbeat008's shutdown and 607 bytes (largest 168) about 44 minutes
-   later, while idle. The next Worker connection hit an 8,192-byte
-   internal allocation failure and a panic reboot (restart006, boot 301 to
-   302). On `7ca3e29c` the same state lost about 1 KB in four hours and
-   the next connection worked. The fix will be a new candidate, which
-   reopens heartbeat008 and this review.
+1. **Heap loss after a heartbeat-loss shutdown (candidate defect).**
+   Free internal heap sampled during heartbeat008's recovery connection
+   was 9,687 bytes (largest block 1,920). Sampled during the next
+   connection, about 44 minutes later, it was 607 bytes (largest 168).
+   That connection hit an 8,192-byte internal allocation failure and a
+   panic reboot (restart006, boot 301 to 302). Whether the loss accrued
+   while idle or inside the connection is unresolved. On `7ca3e29c`, two
+   connections four hours apart after heartbeat007 showed about 1 KB lost,
+   and the later connection worked. A code audit of the queue change found
+   no growth path. A fix will be a new candidate, which reopens heartbeat008
+   and this review.
 2. **Accepted share, renewal and normal Stop on the candidate.** One
    bounded check, after the fix: a restart after the latest Start, then
    share-current-001

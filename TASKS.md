@@ -4518,14 +4518,18 @@ Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendme
       the ledger and budget reads timed out and the board rebooted with
       `reset_reason=panic` (boot 301 to 302). The retained diagnostics show
       an 8,192-byte internal allocation failure (caps `0x804`). Internal
-      heap was 9,687 bytes free (largest 1,920) right after heartbeat008's
-      shutdown and 607 bytes (largest 168) at the Connect. Stopped,
+      heap sampled during heartbeat008's recovery connection was 9,687
+      bytes free (largest 1,920); sampled during this Connect it was 607
+      bytes (largest 168). Whether the loss happened while idle or inside
+      this connection is not yet resolved. Stopped,
       released; the final detector admitted one Ultra 205; sealed failed
       with `preparation_boot_changed`. Stop condition: a new panic.
       Comparison: on `7ca3e29c` the heap after heartbeat007 went from
-      5,859 to 4,819 bytes over about four hours idle, and the next Connect
-      worked. The idle drain is new on the candidate.
-- [ ] Diagnose the idle internal-heap drain after a heartbeat-loss shutdown
+      5,859 to 4,819 bytes between connections four hours apart, and the
+      next Connect worked. The loss is new on the candidate. A code audit
+      of the queue change (`00f84eae`) found no growth path: every queue is
+      created once at boot and bounded or drained.
+- [ ] Diagnose the internal-heap loss after a heartbeat-loss shutdown
       on `60e344e2`; fix it with a regression. A fix is a new candidate:
       it needs its own install and reopens heartbeat008 and this review.
 - [ ] share-current-001: detector, preflight, serve, baseline and candidate,
