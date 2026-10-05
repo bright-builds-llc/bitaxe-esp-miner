@@ -1,13 +1,13 @@
 {
   "schema": "str005-lineage-head-v1",
   "install": {
-    "profile": "realignment-fix-install",
-    "path": "scratch/str005-realignment-fix/attempt-001",
-    "result": "13296cfb30ec0721b290141deb658d94fa7eb724c8d7a3a39f3acff478e79293",
-    "seal": "d3ec8ccb73cde4b655120781c45ba5a8ba6b463cdd151d3ff14600006d9551f0",
+    "profile": "queue-workaround-reinstall",
+    "path": "scratch/str005-queue-workaround-reinstall/attempt-002",
+    "result": "1a5019a019cf427afbb77b71f8398c1ad925521d5fede71baae0960ca672a30e",
+    "seal": "8cde5c3ca32d309da3f04fb8269c97a543def20989098d4d40eb63627c727aee",
     "identity": {
-      "firmware_commit": "7ca3e29ce1870396c801f9d8d74ff02aac2ef112",
-      "app_elf_sha256": "227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0",
+      "firmware_commit": "6f268518b86ee264911e033acad769fac176f375",
+      "app_elf_sha256": "b6908f6dda85b5e4d133401dcf3dc84f940d4f41121216c40e93f2ff4f6cbe3b",
       "gate_commit": "86fc62d7a9d75da1affa2d51bc3b9eab41d86031"
     }
   },

@@ -13,7 +13,7 @@ import { CONTROL_DIAGNOSTIC_RECOVERY, loadInstallPredecessor } from '../str005-p
 import { createLoopServer } from './server.mjs';
 import { statusModeFor } from '../str005-startup-probe/retained-status.mjs';
 
-export const ENABLED = false;
+export const ENABLED = true;
 export const PROFILE = Object.freeze({ ...CONTROL_DIAGNOSTIC_RECOVERY, enabled: ENABLED, lines: ['Control review loop hardware: enabled.'] });
 // The origin that holds the Ultra 205 Web Serial grant; another port would show the chooser.
 export const PORT = 48765;

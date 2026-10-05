@@ -5529,8 +5529,8 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
 Realignment fix install hardware: disabled.
 Control diagnostic recovery hardware: disabled.
 Queue workaround install hardware: disabled.
-Queue workaround reinstall hardware: enabled.
-Control review loop hardware: disabled.
+Queue workaround reinstall hardware: disabled (attempt-002 complete).
+Control review loop hardware: enabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
         five fresh Connects) with no failure. On the previous image, loop004
@@ -5904,6 +5904,21 @@ reproduction):
   - Attempt-002 binds attempt-001 with that identity as its before image.
     Its first Connect is configured with that identity, so the Gate refuses
     unless the device runs it.
+- Reinstall attempt-002 (2026-10-05): PASS, `complete`,
+  `hardware_qualified=true`; the independent review agrees.
+  - The first Connect observed `e823c851` with the baseline confirmed,
+    proving the owner-confirmed install.
+  - The candidate `6f268518` (ELF `b6908f6d…`) passed both audits.
+  - Five installs, each with a qualified monitor (startup complete, exact
+    package), and four verified cycles.
+  - Noise diagnostic exchange recorded; restoration and after-accounting
+    recorded on boot 6. Ledger 27/26/3,180,000 ms, unchanged, not pending.
+  - Cleanup recorded. Result
+    `1a5019a019cf427afbb77b71f8398c1ad925521d5fede71baae0960ca672a30e`,
+    seal `8cde5c3ca32d309da3f04fb8269c97a543def20989098d4d40eb63627c727aee`
+    ([projection](docs/parity/evidence/str005-queue-workaround-reinstall/attempt-002.json)).
+  - The lineage head advanced to this install (`latestStart` is null).
+    Next: loop007 (5 batches of 100 rounds), then recovery016.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
