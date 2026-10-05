@@ -5527,10 +5527,10 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: disabled.
+Control diagnostic recovery hardware: enabled.
 Queue workaround install hardware: disabled.
 Queue workaround reinstall hardware: disabled (attempt-002 complete).
-Control review loop hardware: enabled.
+Control review loop hardware: disabled (loop007 complete).
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
         five fresh Connects) with no failure. On the previous image, loop004
@@ -5919,6 +5919,11 @@ reproduction):
     ([projection](docs/parity/evidence/str005-queue-workaround-reinstall/attempt-002.json)).
   - The lineage head advanced to this install (`latestStart` is null).
     Next: loop007 (5 batches of 100 rounds), then recovery016.
+- loop007 (2026-10-05): 5 of 5 batches, 500 rounds (2,000 read-only
+  reviews, five fresh Connects), no failure; host released. Result
+  `0304d422c8d6ac3a35f3c5846a5b548e45a4c53285db4381cf4ac1aec117000f`, seal
+  `c5455b3550d83266825599805bd6aaf9cdbbded2aa241482cf4cffcb8a9a914d`.
+  Next: recovery016.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
