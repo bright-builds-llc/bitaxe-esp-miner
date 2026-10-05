@@ -94,7 +94,7 @@ test('typed-only current status fallback and independent failures preserve clean
     campaignId: context.original_campaign_id, statusMode: 'discover_current' }), save: async (stage, value) => saved.push({ stage, value }) })();
   // Assert
   assert.deepEqual(ids, [null]); assert.equal(closed, true); assert.equal(result.complete, false);
-  assert.deepEqual(result.firstFailure, { phase: 'ledger', category: 'io' }); assert.ok(saved.some(row => row.stage === 'closed'));
+  assert.deepEqual(result.firstFailure, { phase: 'ledger', category: 'io', rejection: null }); assert.ok(saved.some(row => row.stage === 'closed'));
 });
 test('actual server uses challenge and stage ticket; late writes reject but cleanup survives', async t => {
   // Arrange

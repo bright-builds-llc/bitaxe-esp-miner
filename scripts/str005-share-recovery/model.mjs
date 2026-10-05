@@ -1,5 +1,6 @@
 import { check, object, sha256 } from '../str005-v2-serial/values.mjs';
 import { canonical } from '../str005-noise-serial/files.mjs';
+import { validateRecoveryErrors } from '../str005-startup-probe/recovery-errors.mjs';
 import { validateRecoveryParts, recoveryConclusion } from '../str005-v2-serial/recovery-evidence.mjs';
 import { baselineConclusion, currentProof } from '../str005-panic-probe/model.mjs';
 export const STAGES = ['state', 'ledger', 'original_budget', 'diagnostics', 'status', 'closed', 'finished', 'errors'];
@@ -8,15 +9,9 @@ export function finished(value) {
     value.failures.every(stage => ['begin', 'state', 'ledger', 'original_budget', 'diagnostics', 'status', 'stop', 'closed'].includes(stage)), 'share_recovery_failure_shape');
   return value;
 }
+/** The shared collector's error rows (v1, or v2 with the Worker's closed rejection). */
 export function validateErrors(value) {
-  object(value, ['schema', 'firstFailure', 'errors']);
-  check(value.schema === 'str005-recovery-errors-v1' && Array.isArray(value.errors) && value.errors.length <= 24, 'share_recovery_errors');
-  for (const row of value.errors) {
-    object(row, ['phase', 'category']);
-    check(['begin', 'state', 'ledger', 'original_budget', 'diagnostics', 'status', 'stop', 'closed', 'errors', 'finished'].includes(row.phase) &&
-      ['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed', 'v2_idle_correlation', 'v2_attempt_correlation', 'v2_possession', 'not_ready', 'operation_active', 'operation_failed'].includes(row.category), 'share_recovery_errors');
-  }
-  check(canonical(value.firstFailure) === canonical(value.errors[0] ?? null), 'share_recovery_first_failure'); return value;
+  return validateRecoveryErrors(value, 'share_recovery');
 }
 export function conclusion(parts, context, hostReleased) {
   if (parts.errors) validateErrors(parts.errors);

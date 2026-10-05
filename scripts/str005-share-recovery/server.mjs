@@ -11,6 +11,10 @@ import { validateDiagnosticExport } from '../fixed-usb-qualification/diagnostic-
 import { validateState } from '../fixed-usb-qualification/judge.mjs';
 import { check, object, bytes, sha256 } from '../str005-v2-serial/values.mjs';
 import { STAGES, finished as validateFinished, validateErrors } from './model.mjs';
+/** The collection admission the page receives: the record key and how status must be read. */
+export function beginReply(begun, context) {
+  return { ...begun, attemptId: context.attemptId, campaignId: context.original_campaign_id, statusMode: context.statusMode ?? 'discover_current' };
+}
 export function createRecoveryServer({ root, context, assets, verify }, operations = {}) {
   const now = operations.now ?? Date.now, saved = new Set(); let begun, preparation, recoveryChallenge, complete = false, queue = Promise.resolve();
   const stages = new Map(); let activeStage;
@@ -56,7 +60,7 @@ export function createRecoveryServer({ root, context, assets, verify }, operatio
       check(input.state.status === 'ready' && input.state.connected && !input.state.running && input.state.deviceLeaseInactive && input.state.deviceBaselineConfirmed && input.state.preservation?.baseline_id === preparation.baselineId, 'share_recovery_baseline');
       begun = { schema: 'str005-share-recovery-begin-v1', startedAtUnixMs: now(), collectionId: nonce(), bindingSha256: sha256(input.binding), preservationBaselineId: preparation.baselineId };
       await persist('collection-begin', begun);
-      return send(response, 200, { ...begun, attemptId: context.attemptId, campaignId: context.original_campaign_id, statusMode: context.statusMode ?? 'discover_current' });
+      return send(response, 200, beginReply(begun, context));
     }
     if (path === '/stage-begin') {
       object(input, ['collectionId', 'phase']); await verify();

@@ -1392,7 +1392,9 @@ js_binary(
 
 js_test(
     name = "str005_panic_recovery_test",
-    data = [":str005_panic_recovery_sources"],
+    env_inherit = ["PATH"],
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
+    data = [":str005_panic_recovery_sources", "@bwg_gate_contract//:package_json_js", "@bwg_gate_contract//:share_authority_sources_js", "@bwg_gate_contract//:worker_deployment_trust_js"],
     entry_point = "str005-panic-recovery/profile.test.mjs",
 )
 

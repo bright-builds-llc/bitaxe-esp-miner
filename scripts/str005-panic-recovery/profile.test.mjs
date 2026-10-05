@@ -42,47 +42,46 @@ test('after a new image, any boot is post-failure because the RTC ordinal restar
 const install = { firmware_commit: 'c'.repeat(40), app_elf_sha256: 'e'.repeat(64), physical: 'p'.repeat(64) };
 const ledger = next => ({ schema: 'worker-qualification-ledger-v1', next_ordinal: next, last_completed_ordinal: next - 1,
   total_charged_ms: 3000000, pending: false });
+const fallback = { attemptId: 'install-attempt', ledger: ledger(26) };
 
-test('without a later Start, status names the install lineage attempt', () => {
-  // Arrange
-  const fallback = { attemptId: 'install-attempt', ledger: ledger(26) };
-  // Act
+test('without a later Start, nothing is retained and the install lineage attempt is named', () => {
+  // Arrange / Act
   const before = retainedAttempt(install, fallback, null);
   // Assert
-  assert.deepEqual([before.attempt.id, before.attempt.confirmed], ['install-attempt', false]);
+  assert.deepEqual(before.attempt, { id: 'install-attempt', recordRetained: false });
 });
 
-test('a later sealed Start on the same install and board supplies the retained attempt', () => {
+test('a later sealed Start on the same install and board names its device record attempt', () => {
   // Arrange
-  const record = { attemptId: 'device-attempt', scope: 'share' };
-  const latest = { context: { ...install, attemptId: 'owner-nonce' }, ledger: ledger(27), dispatched: record, retained: record };
+  const latest = { context: { ...install, attemptId: 'owner-nonce' }, ledger: ledger(27), deviceRecordAttemptId: 'device-attempt' };
   // Act
-  const before = retainedAttempt(install, { attemptId: 'install-attempt', ledger: ledger(26) }, latest);
+  const before = retainedAttempt(install, fallback, latest);
   // Assert
-  assert.deepEqual([before.attempt.id, before.attempt.confirmed, before.ledger.next_ordinal], ['device-attempt', true, 27]);
+  assert.deepEqual([before.attempt, before.ledger.next_ordinal], [{ id: 'device-attempt', recordRetained: true }, 27]);
 });
 
-test('a later Start on another image or board is refused', () => {
+test('a later Start on another board is refused', () => {
   // Arrange
-  const record = { attemptId: 'device-attempt', scope: 'share' };
-  const latest = { context: { ...install, physical: 'q'.repeat(64) }, ledger: ledger(27), dispatched: record, retained: record };
+  const latest = { context: { ...install, physical: 'q'.repeat(64) }, ledger: ledger(27), deviceRecordAttemptId: 'device-attempt' };
   // Act / Assert
-  assert.throws(() => retainedAttempt(install, { attemptId: 'install-attempt', ledger: ledger(26) }, latest),
-    /share_recovery_predecessor_identity/u);
+  assert.throws(() => retainedAttempt(install, fallback, latest), /share_recovery_predecessor_identity/u);
 });
 
-test('a known Start is read by its attempt; otherwise the current state is discovered', () => {
+test('a retained record is read by its attempt; otherwise the current state is discovered', () => {
   // Arrange / Act / Assert
-  assert.equal(statusModeFor({ id: 'heartbeat-attempt', confirmed: true }), 'confirmed');
-  assert.equal(statusModeFor({ id: 'install-attempt', confirmed: false }), 'discover_current');
+  assert.equal(statusModeFor({ id: 'device-attempt', recordRetained: true }), 'confirmed');
+  assert.equal(statusModeFor({ id: 'install-attempt', recordRetained: false }), 'discover_current');
   assert.equal(statusModeFor({ id: 'share-attempt' }), 'discover_current');
 });
 
-test('a retained record that disagrees with the dispatched attempt is refused', () => {
+test('the recovery owner reads a sealed Start\'s retained record through the production Gate decoder', async () => {
   // Arrange
-  const latest = { context: { ...install }, ledger: ledger(27), dispatched: { attemptId: 'dispatched', scope: 'share' },
-    retained: { attemptId: 'other', scope: 'share' } };
-  // Act / Assert
-  assert.throws(() => retainedAttempt(install, { attemptId: 'install-attempt', ledger: ledger(26) }, latest),
-    /share_recovery_predecessor_identity/u);
+  const { execFile } = await import('node:child_process'), { promisify } = await import('node:util');
+  const { dirname, resolve } = await import('node:path'), { fileURLToPath } = await import('node:url');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const gateRoot = process.argv[2] ? dirname(resolve(process.argv[2])) : resolve(here, '../../../bitaxe-turnstile-system');
+  // Act
+  const result = await promisify(execFile)('bun', [resolve(here, 'retained-start.fixture.mjs'), gateRoot], { timeout: 30000 });
+  // Assert
+  assert.equal(result.stdout.trim(), 'retained_start_recovery_passed'); assert.equal(result.stderr, '');
 });

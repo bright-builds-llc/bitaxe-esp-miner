@@ -3,12 +3,18 @@ import { CONTROL_REJECTIONS } from '../str005-v2-serial/safety-diagnostics.mjs';
 const phases = ['begin', 'state', 'ledger', 'original_budget', 'diagnostics', 'status', 'stop', 'closed', 'errors', 'finished'];
 const categories = ['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed',
   'v2_idle_correlation', 'v2_attempt_correlation', 'v2_possession', 'not_ready', 'operation_active', 'operation_failed'];
-/** Closed diagnostic vocabulary only; never persist Error.message or device payloads. */
-export function validateRecoveryErrors(value) {
+export { RECOVERY_ERRORS_V2, recoveryErrorRow } from './recovery-error-row.mjs';
+/** Closed diagnostic vocabulary only; never persist Error.message or device payloads. v1 rows have no rejection. */
+export function validateRecoveryErrors(value, prefix = 'startup_recovery') {
   object(value, ['schema', 'firstFailure', 'errors']);
-  check(value.schema === 'str005-recovery-errors-v1' && Array.isArray(value.errors) && value.errors.length <= 24, 'startup_recovery_errors');
-  for (const row of value.errors) { object(row, ['phase', 'category']); check(phases.includes(row.phase) && categories.includes(row.category), 'startup_recovery_errors'); }
-  check(JSON.stringify(value.firstFailure) === JSON.stringify(value.errors[0] ?? null), 'startup_recovery_first_failure');
+  const v2 = value.schema === 'str005-recovery-errors-v2';
+  check((v2 || value.schema === 'str005-recovery-errors-v1') && Array.isArray(value.errors) && value.errors.length <= 24, `${prefix}_errors`);
+  for (const row of value.errors) {
+    object(row, ['phase', 'category', ...(v2 ? ['rejection'] : [])]);
+    check(phases.includes(row.phase) && categories.includes(row.category) &&
+      (!v2 || row.rejection === null || CONTROL_REJECTIONS.includes(row.rejection)), `${prefix}_errors`);
+  }
+  check(JSON.stringify(value.firstFailure) === JSON.stringify(value.errors[0] ?? null), `${prefix}_first_failure`);
   return structuredClone(value);
 }
 

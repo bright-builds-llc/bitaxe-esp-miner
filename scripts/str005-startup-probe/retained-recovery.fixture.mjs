@@ -79,7 +79,7 @@ const collection = (target, statusMode) => createRecoveryCollection({ gate: targ
   save: async (stage, value) => target.saved.set(stage, value) })();
 const discovering = fixture();
 const discovered = await collection(discovering, 'discover_current');
-assert.deepEqual([discovered.firstFailure, discovering.ids], [{ phase: 'status', category: 'command_rejected' }, [null]]);
+assert.deepEqual([discovered.firstFailure, discovering.ids], [{ phase: 'status', category: 'command_rejected', rejection: 'invalid_transition' }, [null]]);
 const confirming = fixture();
 const confirmed = await collection(confirming, 'confirmed');
 assert.equal(confirmed.firstFailure, null); assert.deepEqual(confirming.ids, [v2Input.attemptId]);

@@ -6,6 +6,7 @@ import { proof, privateRoot, verifyInventory } from '../str005-noise-serial/file
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { validateLedger } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { main as collect } from '../str005-share-recovery/main.mjs';
+import { loadSealedStartRecord } from '../str005-startup-probe/start-record.mjs';
 
 export const ENABLED = false;
 // The currently installed qualified image: realignment-fix install attempt-001, sealed and
@@ -21,7 +22,7 @@ export const INSTALL = Object.freeze({
 export const RECOVERY001 = Object.freeze({ path: 'scratch/str005-idle-panic/recovery001',
   seal: '3a84383e127d39785e963b1888f8c65d5e3c8664740c602d310b6494e7cd8644' });
 // The latest sealed Start on this install, when one ran. Its retained record replaces recovery001's
-// attempt, so a status read must name its attempt; null means no Start ran since the install.
+// attempt, so a status read must name its device record attempt; null means no Start ran since the install.
 export const LATEST_START = Object.freeze({ path: 'scratch/str005-heartbeat-shutdown/heartbeat007/attempt',
   result: '565857c2547b6b0af9ebd3bc483ec4997440b27038ed29895cd60d486a3acfae',
   seal: '68350c6fc7d2521c37255db83d39e88e5c39d789b6d986e8f4a976af834bc11c' });
@@ -42,34 +43,23 @@ export async function loadInstallPredecessor(firmwareRoot, installRoot) {
   const recoveryRoot = resolve(firmwareRoot, RECOVERY001.path);
   await sealed(recoveryRoot, RECOVERY001.seal);
   const recovered = (await proof(recoveryRoot, 'context.json')).value;
-  const maybeLatest = LATEST_START === null ? null : await loadLatestStart(resolve(firmwareRoot, LATEST_START.path));
+  const maybeLatest = LATEST_START === null ? null : await loadSealedStartRecord(resolve(firmwareRoot, LATEST_START.path), LATEST_START);
   const gate = async name => sha256(await readFile(resolve(installRoot, 'qualified-artifacts/gate', name)));
   const context = { ...INSTALL.identity, physical: recovered.physical, original_campaign_id: install.original_campaign_id,
     assetHashes: { page: await gate(PAGE), bundle: await gate(BUNDLE), trust: recovered.assetHashes.trust } };
   return { context, before: retainedAttempt(context, { attemptId: recovered.attemptId, ledger: after.ledger }, maybeLatest),
     seal: INSTALL.seal };
 }
-async function loadLatestStart(root) {
-  await sealed(root, LATEST_START.seal);
-  check(await fileDigest(resolve(root, 'result.json')) === LATEST_START.result, 'share_recovery_predecessor_seal');
-  const context = (await proof(root, 'context.json')).value, ledger = (await proof(root, 'recovery-1-ledger.json')).value;
-  const run = (await proof(root, 'run.json')).value, status = (await proof(root, 'recovery-1-status.json')).value;
-  return { context, ledger, dispatched: run.dispatchStatus?.record, retained: status.record };
-}
-/** The attempt a status read must name: the latest sealed Start on this exact install and board, else the install's.
- * `confirmed` marks a Start whose retained record this boot still holds. */
+/** The attempt a status read must name. After a sealed Start on this exact install and board, the
+ * firmware still retains its record this boot and keys it by the device record attempt; otherwise the
+ * install lineage's attempt is named and nothing is retained. */
 export function retainedAttempt(install, fallback, maybeLatest) {
-  if (maybeLatest === null) return { attempt: { id: fallback.attemptId, confirmed: false }, ledger: fallback.ledger };
-  const { context, ledger, dispatched, retained } = maybeLatest;
-  // The firmware keys the record by the device-issued qualification attempt, which the Start's
-  // dispatch and its fresh recovery both reported; the owner context's attempt nonce is not it.
+  if (maybeLatest === null) return { attempt: { id: fallback.attemptId, recordRetained: false }, ledger: fallback.ledger };
+  const { context, ledger, deviceRecordAttemptId } = maybeLatest;
   check(context.firmware_commit === install.firmware_commit && context.app_elf_sha256 === install.app_elf_sha256 &&
-    context.physical === install.physical && typeof retained?.attemptId === 'string' && retained.scope === 'share' &&
-    dispatched?.attemptId === retained.attemptId, 'share_recovery_predecessor_identity');
+    context.physical === install.physical && typeof deviceRecordAttemptId === 'string', 'share_recovery_predecessor_identity');
   validateLedger(ledger); check(ledger.pending === false, 'share_recovery_predecessor_identity');
-  // Firmware rejects a null status query while a record is retained, then revokes the session,
-  // so a known Start must be queried by its attempt id.
-  return { attempt: { id: retained.attemptId, confirmed: true }, ledger };
+  return { attempt: { id: deviceRecordAttemptId, recordRetained: true }, ledger };
 }
 export const CONTROL_DIAGNOSTIC_RECOVERY = Object.freeze({
   enabled: ENABLED,

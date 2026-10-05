@@ -5648,6 +5648,33 @@ Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.
 
+### task-str005-recovery-consolidation | 2026-10-04 | Consolidate recovery collectors and lineage pins
+
+Status: Active, after `task-str005-recovery-hardening`. Owner-requested.
+Objective: one recovery collector and one status reader shared by every
+owner, and lineage pins derived from sealed records instead of edited by
+hand. Software only; owners keep their evidence contracts.
+
+- [ ] Inventory and plan. Five collectors exist:
+      - `startup-probe/client.mjs` `collectRecovery`;
+      - `startup-probe/recovery-client.mjs` `createCurrentRecovery`;
+      - `startup-probe/recovery-collection.mjs`;
+      - `v2-serial/recovery-client.mjs`;
+      - the review loop's failure mapping.
+      Their status reads and failure mappings differ. Choose one shared
+      collector and status reader, and record which callers move in which
+      order.
+- [ ] Move callers onto the shared reader and failure mapping first, with
+      tests unchanged in meaning. Leave `str005-v2-serial` sources alone,
+      because the v2-serial context hashes them.
+- [ ] A lineage-head record: the latest sealed install and latest sealed
+      Start per board, derived and verified from sealed roots, so recovery
+      and loop owners stop hand-editing `INSTALL` and `LATEST_START`.
+- [ ] Verification as for the hardening task, plus the affected owner
+      tests.
+
+Verification: pending. Completion review: pending.
+
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
 Status: Blocked on independent checkpoint results; no campaign is pre-authorized.

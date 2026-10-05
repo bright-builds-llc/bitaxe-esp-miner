@@ -20793,3 +20793,74 @@ Residual risks:
   and parity stays 90/95;
 - the startup-time channel creations keep the toolchain hazard (see
   `task-str005-start-panic-diagnosis`).
+
+### task-str005-recovery-hardening | 2026-10-04 | Make retained-record status reads hard to get wrong
+
+Status: Complete 2026-10-04; archived. Owner-requested 2026-10-04 after recoveries 009 to 011 each
+failed at the status read because of host procedure mistakes.
+Objective: a recovery or loop owner cannot send the wrong attempt id or
+guess the status mode, and a rejected read records the firmware's reason.
+Software only: no device effect is admitted by this task.
+
+- [x] Separate the two ids:
+      - one helper reads a sealed Start's device record attempt from its
+        dispatch record and its fresh recovery status, and requires both to
+        agree;
+      - the field is named `deviceRecordAttemptId` and is never derived
+        from the owner context nonce.
+- [x] Explicit status knowledge: the share-recovery owner states either "a
+      record from Start X" (`confirmed`) or "no Start since the last boot".
+      The misleading null-then-id fallback is documented as such and is not
+      used for a known Start.
+- [x] Keep the firmware's rejection reason: an optional, closed-vocabulary
+      `rejection` on recovery error rows, accepted by the recovery
+      validators.
+- [x] End-to-end regression through the owner path:
+      - heartbeat-shaped sealed Start evidence and the predecessor helper;
+      - the server's begin reply and the shared collector;
+      - the real Gate decoder against firmware keyed by the device
+        attempt.
+      The owner nonce must fail, the device attempt must pass, and the
+      failure row must carry `invalid_transition`.
+- [x] Verification: `bazel test //scripts:all`, the Gate-root fixtures run
+      locally, `just verify-redaction` and the Bright Builds checks.
+
+Verification: `bazel test //scripts:all` 181/181; the Gate-root startup
+fixtures pass locally (9/9, none skipped); `just verify-redaction` and the
+Bright Builds checks pass. Completion review below.
+
+Implementation:
+- `str005-startup-probe/start-record.mjs`:
+  - `deviceRecordAttemptId` requires the issued attempt (`before.json`), the
+    dispatch record and the fresh recovery's terminal `share` record to
+    agree;
+  - `loadSealedStartRecord` reads a pinned sealed Start.
+  - The control-diagnostic owner uses it, and its predecessor names
+    `recordRetained` instead of `confirmed`.
+- `statusModeFor` returns `confirmed` only for a retained record. The
+  server's begin reply is exported as `beginReply` and returns the
+  context's mode.
+- `recovery-error-row.mjs` is browser-safe and served next to the
+  collector by both servers. The collector writes
+  `str005-recovery-errors-v2` rows with a closed `rejection`. A test pins
+  the list to `CONTROL_REJECTIONS`. A shared validator accepts v1 and v2
+  for both owners, and v1 client failures are unchanged.
+- `str005-panic-recovery/retained-start.fixture.mjs` runs in
+  `str005_panic_recovery_test` (the Gate contract was added). It goes
+  from heartbeat-shaped Start evidence through the predecessor, status
+  mode, begin reply and collector to the production Gate decoder, against
+  firmware keyed by the device attempt:
+  - the owner path passes;
+  - the owner nonce fails with `invalid_transition` recorded;
+  - discovery fails with a null query.
+  Reintroducing either mistake makes it fail.
+
+Completion review: the three recovery mistakes are now caught before any
+device contact. The real lineage resolves to exactly the retained record's
+key.
+
+Residual risks:
+- The other collectors and status readers still use their own mappings
+  and mostly drop rejections; that is `task-str005-recovery-consolidation`.
+- `discover_current` remains for no-Start lineages, where firmware holds no
+  record.

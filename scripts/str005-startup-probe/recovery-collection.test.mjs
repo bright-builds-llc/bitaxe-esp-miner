@@ -23,7 +23,7 @@ test('begin and persistence failure still execute Stop and Close and preserve ea
   const f = fixture(); f.options.begin = async () => { throw Object.assign(Error('secret'), { category: 'command_rejected' }); };
   f.options.save = async () => { throw Error('disk failed'); };
   const result = await createRecoveryCollection(f.options)();
-  assert.deepEqual(f.calls, ['stop', 'close']); assert.deepEqual(result.firstFailure, { phase: 'begin', category: 'command_rejected' });
+  assert.deepEqual(f.calls, ['stop', 'close']); assert.deepEqual(result.firstFailure, { phase: 'begin', category: 'command_rejected', rejection: null });
 });
 test('late read result cannot write after its bounded stage ends', async () => {
   const f = fixture(); let resolveLedger;
@@ -68,7 +68,7 @@ test('all operation and stage-close errors retain an admissible earliest receipt
   const result = await createRecoveryCollection({ ...f.options, beforeStage: async phase => phase, afterStage: reject })();
   // Assert
   const errors = f.saved.get('errors'); validateRecoveryErrors(errors);
-  assert.ok(errors.errors.length > 10); assert.deepEqual(errors.firstFailure, { phase: 'ledger', category: 'timeout' });
+  assert.ok(errors.errors.length > 10); assert.deepEqual(errors.firstFailure, { phase: 'ledger', category: 'timeout', rejection: null });
   assert.deepEqual(result.firstFailure, errors.firstFailure); assert.ok(f.saved.has('finished'));
 });
 
@@ -76,7 +76,7 @@ test('post-Stop possession failure stays in status phase and cannot skip Close',
   const f = fixture();
   f.gate.stratumV2Possession = async () => { throw Object.assign(Error('private'), { category: 'timeout' }); };
   const result = await createRecoveryCollection(f.options)();
-  assert.deepEqual(result.firstFailure, { phase: 'status', category: 'timeout' });
+  assert.deepEqual(result.firstFailure, { phase: 'status', category: 'timeout', rejection: null });
   assert.ok(f.calls.includes('stop')); assert.ok(f.calls.includes('close')); assert.equal(f.calls.includes('known'), false);
   assert.ok(f.saved.has('ledger')); assert.ok(f.saved.has('closed'));
 });

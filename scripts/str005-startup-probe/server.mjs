@@ -62,6 +62,7 @@ export async function createServerOwner({ root, context, assets, authorityDirect
         if (path === '/client.mjs') return send(response, 200, assets.coordinator, 'text/javascript');
         if (path === '/recovery-collection.mjs') return send(response, 200, await readFile(resolve(context.firmware_root, 'scripts/str005-startup-probe/recovery-collection.mjs')), 'text/javascript');
         if (path === '/retained-status.mjs') return send(response, 200, await readFile(resolve(context.firmware_root, 'scripts/str005-startup-probe/retained-status.mjs')), 'text/javascript');
+        if (path === '/recovery-error-row.mjs') return send(response, 200, await readFile(resolve(context.firmware_root, 'scripts/str005-startup-probe/recovery-error-row.mjs')), 'text/javascript');
         if (path === '/window-artifacts') return send(response, 200, await routes.handle(path, undefined, 'GET'));
         return send(response, 404, { error: 'startup_route_unavailable' });
       }

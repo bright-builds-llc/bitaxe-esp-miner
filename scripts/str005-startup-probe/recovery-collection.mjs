@@ -1,4 +1,5 @@
 import { discoverCurrentStatus } from './retained-status.mjs';
+import { RECOVERY_ERRORS_V2, recoveryErrorRow } from './recovery-error-row.mjs';
 const categories = new Set(['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed',
   'v2_idle_correlation', 'v2_attempt_correlation', 'v2_possession', 'not_ready', 'operation_active']);
 export function recoveryFailure(phase, error) {
@@ -23,13 +24,13 @@ export function createRecoveryCollection({ gate, begin, save, beforeStage, after
           if (persist) await save(phase, value, ticket);
           return value;
         }), new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(Error('timeout'), { category: 'timeout' })), limit); })]);
-      } catch (error) { errors.push(recoveryFailure(phase, error)); }
+      } catch (error) { errors.push(recoveryErrorRow(phase, error)); }
       finally {
         active = false; clearTimeout(timer);
         if (ticket !== undefined && afterStage) {
           let closingTimer;
           try { await Promise.race([afterStage(phase, ticket), new Promise((_, reject) => { closingTimer = setTimeout(() => reject(Object.assign(Error('timeout'), { category: 'timeout' })), readMs); })]); }
-          catch (error) { errors.push(recoveryFailure(phase, error)); }
+          catch (error) { errors.push(recoveryErrorRow(phase, error)); }
           finally { clearTimeout(closingTimer); }
         }
       }
@@ -59,7 +60,7 @@ export function createRecoveryCollection({ gate, begin, save, beforeStage, after
     }
     // Preserve the earliest bounded category independently of legacy evidence formats.
     const firstFailure = errors[0] ?? null;
-    await collect('errors', () => save('errors', { schema: 'str005-recovery-errors-v1', firstFailure, errors: [...errors] }), false);
+    await collect('errors', () => save('errors', { schema: RECOVERY_ERRORS_V2, firstFailure, errors: [...errors] }), false);
     const failures = [...new Set(errors.map(row => ['begin', 'stop', 'errors', 'finished'].includes(row.phase) ? 'state' : row.phase))];
     await collect('finished', () => save('finished', { failures }), false);
     return { complete: errors.length === 0, firstFailure: errors[0] ?? null, errors, currentOnly: admission?.statusMode === 'discover_current', qualificationComplete: false };

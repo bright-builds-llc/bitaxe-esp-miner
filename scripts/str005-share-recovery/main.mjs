@@ -17,9 +17,10 @@ async function detect(root, physical, final = false) {
   return parseDetector(await readFile(path, 'utf8'), physical, Date.now() - (await stat(path)).mtimeMs);
 }
 /** Runs one current-recovery collection bound to the profile's sealed predecessor; Share001 is the default. */
-/** A known Start's retained record is read by its attempt id; otherwise the current state is discovered. */
+/** A retained record is read by its device record attempt: firmware rejects a null status query while it
+ * holds one and revokes the session. Without a retained record the current state is discovered. */
 export function statusModeFor(attempt) {
-  return attempt.confirmed === true ? 'confirmed' : 'discover_current';
+  return attempt.recordRetained === true ? 'confirmed' : 'discover_current';
 }
 export async function main(argv, profile = SHARE001) {
   const { action, options } = argumentsFor(argv, profile.enabled, profile);
@@ -65,7 +66,7 @@ export async function main(argv, profile = SHARE001) {
   const assets = { modules: {} };
   for (const [key, hash] of Object.entries(context.assetHashes)) { const bytes = await readFile(resolve(root, `gate-${key}`)); check(sha256(bytes) === hash, 'share_recovery_asset_changed'); assets[key] = bytes; }
   assets.trust = JSON.parse(assets.trust);
-  for (const [url, relative] of [['/bootstrap.mjs', 'str005-share-recovery/bootstrap.mjs'], ['/recovery-page.mjs', 'str005-share-recovery/page.mjs'], ['/recovery-collection.mjs', 'str005-startup-probe/recovery-collection.mjs'], ['/retained-status.mjs', 'str005-startup-probe/retained-status.mjs']])
+  for (const [url, relative] of [['/bootstrap.mjs', 'str005-share-recovery/bootstrap.mjs'], ['/recovery-page.mjs', 'str005-share-recovery/page.mjs'], ['/recovery-collection.mjs', 'str005-startup-probe/recovery-collection.mjs'], ['/retained-status.mjs', 'str005-startup-probe/retained-status.mjs'], ['/recovery-error-row.mjs', 'str005-startup-probe/recovery-error-row.mjs']])
     assets.modules[url] = await readFile(resolve(firmwareRoot, 'scripts', relative));
   const server = createRecoveryServer({ root, context, assets, verify }); let maybeClosing;
   const stop = () => { maybeClosing ??= server.release(); };

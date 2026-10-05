@@ -11,5 +11,6 @@ import './compatibility.test.mjs';
 
 import './server-release.test.mjs';
 import './recovery-collection.test.mjs';
+import './start-record.test.mjs';
 import './page.test.mjs';
 import './startup-detector.test.mjs';
