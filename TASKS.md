@@ -5714,6 +5714,11 @@ mode-0600 logs:
    `just flash-monitor --board 205 --port <port> --expected-physical-sha256 <physical> --manifest <repo>/scratch/str005-realignment-fix/attempt-001/qualified-artifacts/firmware/bitaxe-ultra205-package.json --evidence-dir <parent>/restore --capture-timeout-seconds 360`.
    The exact sealed realignment-fix package is used. No `--factory-reset`
    and no Wi-Fi credentials.
+   The flash tool admits a package only from its own clean source commit
+   (`package_workspace_identity_mismatch` on HEAD). So the restore runs
+   from a temporary clean detached git worktree at `7ca3e29c`, using that
+   commit's own flash tool, with `.embuild` linked read-only from the main
+   checkout. The worktree is removed afterwards.
 3. `just str005-lineage advance-install --root <repo>/scratch/str005-realignment-fix/attempt-001`:
    the reflash rebooted the board, so heartbeat007's retained record is
    gone. Commit and push it.
