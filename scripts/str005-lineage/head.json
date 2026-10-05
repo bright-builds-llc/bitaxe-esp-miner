@@ -1,19 +1,15 @@
 {
   "schema": "str005-lineage-head-v1",
   "install": {
-    "profile": "usb-bbpll-install",
-    "path": "scratch/usb-bbpll-install/attempt-001",
-    "result": "c8fe31cf349b588571feacfbc22a056d652a8d5e090becab6918e5b93c3bb127",
-    "seal": "b3232e1af991f9ceaeb32066b29f71ae454d2f9b436e375d33a0b6090d4a7f38",
+    "profile": "internal-heap-diagnostic-install",
+    "path": "scratch/internal-heap-diagnostic-install/attempt-001",
+    "result": "cad353200577164d25339b89e0e5f648ede256198d5f06698d28d91dfbe41368",
+    "seal": "a0f3312efe68088c7473215341584db1a3e229cd2ff794e7e22054f54c197396",
     "identity": {
-      "firmware_commit": "60e344e21a89acab13c108311d315417c0704eba",
-      "app_elf_sha256": "3f01a5f4dea1676b505ea686a58d16f1bd2122138556b7ac1a1bbb4c43f4ac3d",
+      "firmware_commit": "31fa72385660075ab699759a5df7dae73c75b34e",
+      "app_elf_sha256": "15c4c14067d1435c5d1f9e175660cd429dd4dbadb4e766876220edb5e9404e55",
       "gate_commit": "86fc62d7a9d75da1affa2d51bc3b9eab41d86031"
     }
   },
-  "latestStart": {
-    "path": "scratch/str005-heartbeat-shutdown/heartbeat008/attempt",
-    "result": "fcbb3ce7767778183584a36dc23a1efcd31874b11ded3e518d562b015a0cbdae",
-    "seal": "68621dc4406ec506e4b067b0c1cdd5447439e206db331b50c7ce4cc215005b92"
-  }
+  "latestStart": null
 }

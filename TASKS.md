@@ -4511,7 +4511,11 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       `473546a8…`, seal
       `e12fa393833fca0472fe31a3b368a0038980021a171aa1f511e0dcfaba3cbaa7`;
       pinned as the `internal-heap-diagnostic-install` predecessor.
-- [ ] Phase 1 internal-heap-diagnostic install; advance the lineage.
+- [x] Phase 1 internal-heap-diagnostic install attempt-001 on
+      `31fa7238` (ELF `15c4c140…`; realignment and startup-frame audits
+      passed): five installs, four verified cycles, Noise exchange,
+      restoration and cleanup; passed, `hardware_qualified`. Result
+      `cad35320…`, seal `a0f3312e…`. The lineage head now names it.
 - [ ] Phase 2 idle baseline capture (1,200 s).
 - [ ] Phase 3 heartbeat009 (ordinal 28, after ledger 29/28/3,540,000 ms).
 - [ ] Phase 4 post-shutdown idle captures (at least 60 minutes).
@@ -4523,8 +4527,8 @@ ambiguous Start, a panic other than the Phase 5 reproduction, or unproven
 cleanup. No pool, no Wi-Fi provisioning, no NVS or factory reset, no
 core-dump clearing, at most five installs.
 Control diagnostic recovery hardware: disabled.
-Internal heap diagnostic install hardware: enabled.
-Heartbeat heap diagnosis hardware: disabled.
+Internal heap diagnostic install hardware: disabled.
+Heartbeat heap diagnosis hardware: enabled.
 
 Verification: pending. Completion review: pending.
 

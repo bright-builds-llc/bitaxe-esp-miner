@@ -3,9 +3,9 @@ import { resolve } from 'node:path';
 import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { HEAD } from '../str005-lineage/head.mjs';
-export const TASK = 'task-str005-heartbeat-current-image';
-export const ENABLED_LINE = 'Heartbeat current image hardware: enabled.';
-export const ENABLED = false;
+export const TASK = 'task-str005-heap-loss-diagnosis';
+export const ENABLED_LINE = 'Heartbeat heap diagnosis hardware: enabled.';
+export const ENABLED = true;
 export const CONTRACT = 'docs/hardware/str005-heartbeat-shutdown-amendment.md';
 export const SCHEMA = 'str005-heartbeat-shutdown-context-v1';
 export const ADMISSION = 'heartbeat-shutdown-v1';
@@ -18,9 +18,9 @@ export const PINS = Object.freeze({ installationProfile: HEAD.install.profile,
   previousStartSeal: null,
   restartResult: null,
   restartSeal: null,
-  // Recovery017: current safe recovery on 60e344e2 after the endurance loops (boot 301, ledger 27/26/3,180,000 ms).
-  currentRecoveryResult: '473546a8714067aa3c2af3c1772ce48050cf1c2aca8dc584886b6393a9b8f11b',
-  currentRecoverySeal: '7aacb820d2ccfcb939e32f25cbafe8a6bb473ac8723debe3bc62af1e23680efc',
+  // The diagnostic install's own restoration supplies the boot; nothing rebooted the board since.
+  currentRecoveryResult: null,
+  currentRecoverySeal: null,
   gate: HEAD.install.identity.gate_commit });
 /** The exact active task line and the compiled flag both admit effects; a pinned Start needs a pinned restart. */
 export function taskEnabled(tasks, compiled = ENABLED, pins = PINS) {
