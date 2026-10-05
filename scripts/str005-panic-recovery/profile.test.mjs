@@ -54,16 +54,18 @@ test('without a later Start, status names the install lineage attempt', () => {
 
 test('a later sealed Start on the same install and board supplies the retained attempt', () => {
   // Arrange
-  const latest = { context: { ...install, attemptId: 'heartbeat-attempt' }, ledger: ledger(27) };
+  const record = { attemptId: 'device-attempt', scope: 'share' };
+  const latest = { context: { ...install, attemptId: 'owner-nonce' }, ledger: ledger(27), dispatched: record, retained: record };
   // Act
   const before = retainedAttempt(install, { attemptId: 'install-attempt', ledger: ledger(26) }, latest);
   // Assert
-  assert.deepEqual([before.attempt.id, before.attempt.confirmed, before.ledger.next_ordinal], ['heartbeat-attempt', true, 27]);
+  assert.deepEqual([before.attempt.id, before.attempt.confirmed, before.ledger.next_ordinal], ['device-attempt', true, 27]);
 });
 
 test('a later Start on another image or board is refused', () => {
   // Arrange
-  const latest = { context: { ...install, physical: 'q'.repeat(64), attemptId: 'heartbeat-attempt' }, ledger: ledger(27) };
+  const record = { attemptId: 'device-attempt', scope: 'share' };
+  const latest = { context: { ...install, physical: 'q'.repeat(64) }, ledger: ledger(27), dispatched: record, retained: record };
   // Act / Assert
   assert.throws(() => retainedAttempt(install, { attemptId: 'install-attempt', ledger: ledger(26) }, latest),
     /share_recovery_predecessor_identity/u);
@@ -74,4 +76,13 @@ test('a known Start is read by its attempt; otherwise the current state is disco
   assert.equal(statusModeFor({ id: 'heartbeat-attempt', confirmed: true }), 'confirmed');
   assert.equal(statusModeFor({ id: 'install-attempt', confirmed: false }), 'discover_current');
   assert.equal(statusModeFor({ id: 'share-attempt' }), 'discover_current');
+});
+
+test('a retained record that disagrees with the dispatched attempt is refused', () => {
+  // Arrange
+  const latest = { context: { ...install }, ledger: ledger(27), dispatched: { attemptId: 'dispatched', scope: 'share' },
+    retained: { attemptId: 'other', scope: 'share' } };
+  // Act / Assert
+  assert.throws(() => retainedAttempt(install, { attemptId: 'install-attempt', ledger: ledger(26) }, latest),
+    /share_recovery_predecessor_identity/u);
 });

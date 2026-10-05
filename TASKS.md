@@ -5527,7 +5527,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: enabled.
+Control diagnostic recovery hardware: disabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
@@ -5625,6 +5625,21 @@ Control review loop hardware: disabled.
       - The owner approved continuing (2026-10-04): recovery011 under a fresh
         ordinal with the confirmed-status fix, then the install, loop007 and
         recovery012.
+      - recovery011 (2026-10-04): confirmed mode ran, querying by id, and was
+        still rejected (`status`, `command_rejected`). Nothing ran, and the
+        device stayed idle with the serial port released. Sealed not
+        current: result `a5f49c6103e23c31d3f24bf993e2038f412ce753377959055375ac0bd19c6782`, seal `d3a222bfd5e2cad640a3c100989346b6b762d818aafd205d63f25ec7d621eff7`. Outcome:
+        `stop_repeated_boundary`; the gate is disabled again.
+        - Cause, from sealed evidence: the id sent was heartbeat007's
+          owner-context nonce (`context.attemptId`). The firmware keys the
+          record by the device-issued qualification attempt, which
+          heartbeat007's dispatch record and fresh recovery status both
+          report. The two differ.
+        - Fix: the owner takes the id from heartbeat007's recovery status
+          record. It must be `share` scope and equal to the dispatched
+          attempt. Regressions cover this, a disagreeing record and the
+          owner nonce never being used. An offline load resolves exactly
+          the retained record's id.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
