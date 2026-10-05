@@ -4508,8 +4508,10 @@ Contract: [heartbeat-shutdown amendment](docs/hardware/str005-heartbeat-shutdown
       must be the same image and board, with idle V2 and a settled ledger.
       This task re-owns the control-diagnostic recovery gate. Regressions
       cover the anchor's admission and refusals.
-- [ ] recovery017: `just str005-control-diagnostic-recovery` on `60e344e2`.
-      Then pin its result and seal in the heartbeat contract.
+- [x] recovery017: current safe recovery on `60e344e2`, idle V2, boot 301,
+      ledger 27/26/3,180,000 ms, no errors. Seal
+      `7aacb820d2ccfcb939e32f25cbafe8a6bb473ac8723debe3bc62af1e23680efc`,
+      pinned as the heartbeat contract's current recovery.
 - [ ] heartbeat008: detector, preflight with `--current-recovery-root`,
       serve, baseline and candidate, startup detector, Run, fresh
       recovery, release, final detector, finish. Expected after ledger:
@@ -4521,8 +4523,8 @@ Stop on any detector failure, an identity, boot or ledger drift, a panic,
 a missed native deadline (never relaxed) or unproven cleanup. Effects and
 prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
 firmware write.
-Control diagnostic recovery hardware: enabled.
-Heartbeat current image hardware: disabled.
+Control diagnostic recovery hardware: disabled.
+Heartbeat current image hardware: enabled.
 
 Verification: pending. Completion review: pending.
 
