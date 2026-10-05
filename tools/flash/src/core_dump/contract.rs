@@ -27,11 +27,19 @@ pub(super) fn admit_mode(tasks: &str, clear: bool) -> Result<()> {
                 "Renew-image core-dump acquisition: enabled (fresh recovery required)."
             },
         ),
+        (
+            "task-str005-heap-loss-diagnosis",
+            if clear {
+                "Heap-loss core-dump clearing: enabled (private archive verified)."
+            } else {
+                "Heap-loss core-dump acquisition: enabled (fresh recovery required)."
+            },
+        ),
     ];
     let mut active = false;
     let mut maybe_selected = None;
-    let mut counts = [0; 2];
-    let mut enabled = [false; 2];
+    let mut counts = [0; 3];
+    let mut enabled = [false; 3];
     for line in tasks.lines() {
         if line.starts_with("## ") {
             active = line.trim() == "## Active";

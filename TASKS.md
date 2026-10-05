@@ -4529,6 +4529,16 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       lineage's latest Start.
 - [ ] Phase 4 post-shutdown idle captures (at least 60 minutes).
 - [ ] Phase 5 recovery019 (and recovery020 after a reproduced panic).
+- [ ] Phase 5b: within recovery019's (or recovery020's) proof window, one
+      read-only `just core-dump-read --board 205 --port <port>
+      --expected-physical-sha256 <physical> --expected-installed-source
+      31fa72385660075ab699759a5df7dae73c75b34e --expected-installed-elf
+      15c4c14067d1435c5d1f9e175660cd429dd4dbadb4e766876220edb5e9404e55
+      --recovery-proof <recovery>/current-recovery.json --private-root
+      scratch/str005-heap-observation/core-001`. It names the panic site if
+      the restart006 panic left a dump. ADR-0030 handling: private mode-0600
+      root; decode only against the ELF that matches the dump's identity; no
+      clearing. A missing or older dump is recorded, not retried.
 - [ ] Analyse the series, identify the allocator, fix with a regression.
 
 Stop on any detector failure, identity, ledger or baseline drift, a lost or
@@ -4538,6 +4548,7 @@ core-dump clearing, at most five installs.
 Control diagnostic recovery hardware: disabled.
 Internal heap diagnostic install hardware: disabled.
 Heartbeat heap diagnosis hardware: disabled.
+Heap-loss core-dump acquisition: disabled.
 
 Verification: pending. Completion review: pending.
 

@@ -159,3 +159,14 @@ fn successor_core_clear_is_separately_scoped() {
     assert!(contract::admit_mode(successor, true).is_ok());
     assert!(contract::admit_task(successor).is_err());
 }
+
+#[test]
+fn heap_loss_read_is_admitted_without_clearing() {
+    // Arrange
+    let heap = "## Active\n### task-str005-heap-loss-diagnosis | fixture\nHeap-loss core-dump acquisition: enabled (fresh recovery required).\n";
+    // Act / Assert
+    assert!(contract::admit_task(heap).is_ok());
+    assert!(contract::admit_mode(heap, true).is_err());
+    assert!(contract::admit_task(&heap.replace("Active", "Future")).is_err());
+    assert!(contract::admit_task(&(heap.to_owned() + &enabled_task("Active"))).is_err());
+}
