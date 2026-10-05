@@ -21190,3 +21190,1240 @@ Residual risks:
 - The two temporary worktrees were removed; their evidence was copied into
   `scratch/str005-queue-bootloop`.
 
+### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
+
+Status: Complete 2026-10-05; archived. Demonstrated cause corrected and verified; the original Share001/Share002 attribution is accepted by the owner as "likely the same compiler bug, not proven".
+Objective: identify the actual Start panic cause and verify a targeted correction.
+Depends on: fresh prospective recovery admission under ADR-0031 for new effects;
+`task-str005-failure-recovery-accounting` remains unresolved for historical proof.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
+
+- [x] Inspect existing panic/preparation evidence against the installed ELF;
+      distinguish Rust panic, native exception, stack failure and allocation failure.
+- [ ] If evidence is insufficient, publish a narrowly bounded diagnostic contract
+      and collector before any new device action; preserve earliest-cause provenance.
+- [ ] Implement the demonstrated correction with a production-boundary regression
+      and applicable Gate/canonical/native resource checks; review change impact.
+- [ ] Verify the correction with the smallest necessary admitted reproduction;
+      retain unresolved diagnosis if evidence cannot distinguish causes.
+
+Evidence: [Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md);
+private Share002 and installed ELF identity therein. Prior pair: `cf7a3f03` / `e20c0fd5`;
+correction identity/result pending. Startup heap values and a corrupt retained
+preparation receipt do not establish OOM or a failed preparation step.
+Invalidation: Start, preparation, memory layout, stacks or implicated dependencies
+require renewed correction/resource review. No accepted-share or shutdown claim here.
+Authorization: static/software work now; any reproduction needs published bounded
+admission and fresh accounting, never replay of Share002.
+Plan (2026-09-27):
+- [x] Inventory existing sanitized crash evidence and exact installed ELF/config;
+      identify whether a panic PC, backtrace or valid retained location exists.
+- [ ] Build an agent-runnable software feedback loop for any demonstrated
+      observability defect; do not label a nearby defect as the Start panic cause.
+- [x] Research primary Espressif, esp-rs and Bitaxe guidance; compare bounded
+      panic capture options against fixed USB ownership, retention and privacy.
+- [x] Apply only demonstrated corrections with production-boundary tests, or
+      record insufficient evidence. Specify prospective diagnostics and blockers;
+      verify source/artifact integrity, relevant checks and no parity change.
+
+Scope: no new device access, Start, grants, mining, flashing, reset or replay.
+Recovery measured current accounting and release, but historical retained
+resource proof remains absent. A reproducing hardware loop is not admitted.
+Findings: exact sealed ELF/config and all Share002 inventory entries verified
+unchanged. Native panic output is UART0, secondary USB console and core dump are
+disabled, and the ELF has symbols but no debug-line sections or sealed map.
+Existing runtime evidence supplies no native PC/backtrace/abort location. The
+Rust hook covers Rust panics only; startup heap and corrupt preparation receipt
+still cannot establish a cause. Source ordering places durable reservation before
+owner preparation; the measured unchanged ledger is not an instruction trace.
+
+Reports: [static diagnosis](docs/research/str005-start-panic-diagnosis.md) and
+[primary-source capture research](docs/research/str005-esp32-panic-capture.md).
+Recommended prospective work: matching debug ELF/map; bounded reset-retained
+native-fatal/Start-stage records; dedicated closed diagnostic export and offline
+symbolization. Blanket USB console logging, raw core dumps and debugger halts
+are not adopted. No execution contract or runtime instrumentation is claimed.
+
+Verification: existing API/receipt and preparation-writer Bazel tests passed;
+Gate diagnostic parsing/export: 33 passed. No red-capable loop reproduces the
+actual hardware panic; these passing tests are not a correction or causal proof.
+Ordered Cargo format/Clippy/build/tests passed (2,366 passed, three existing
+ignores), as did Bright Builds, redaction, Markdown, diff and parity checks.
+Independent review confirmed artifact identity, source ordering and non-claims.
+Completion review: `stop_hardware_blocker`; missing native panic-location
+information plus unresolved recovery dependency prevent a supported correction
+and new device reproduction. Task remains unarchived. No device access or
+runtime change; prior seals/accounting preserved and parity remains 90/95.
+
+Development capture implementation (owner authorization 2026-09-27):
+- [x] Persist standing permission for full private development core dumps and
+      inspection; update conflicting repo-local policy prospectively.
+- [x] Enable official ESP-IDF flash ELF dumps with supported internal DRAM,
+      full ELF hash, first-dump preservation and adequate reserved storage.
+- [x] Retain optimized debug ELF/link map and verify their identity/configuration
+      through canonical build outputs.
+- [x] Implement protected offline inspect/analyze commands using managed vendor
+      tooling; reject wrong/missing/truncated ELF identity and preserve failure
+      outputs privately. Test real parser/process/privacy boundaries.
+- [x] Implement bounded, task-gated acquisition through the existing physical
+      lease/ROM/read/return/cleanup owner; software-test without device effects.
+- [x] Build native diagnostic candidate, run affected/required checks, review
+      artifacts/diffs and publish truthful implementation and remaining blockers.
+
+Prior implementation gate: acquisition was disabled pending a prospective contract.
+[ADR-0030](docs/adr/0030-development-core-dumps.md) authorizes raw development
+capture, persistence and inspection now and for future tasks; it does not erase
+the missing historical resource proof or authorize a Start/flash/reproduction.
+Prior research's privacy objections are superseded for protected development
+dumps; historical installed-image observations and sealed evidence remain valid.
+
+Implementation review: official ESP-IDF flash ELF capture now retains supported
+internal DRAM, full 64-character ELF identity and the first dump, with 952 KiB in the existing
+reserved flash tail. NVS/application/OTA offsets remain unchanged. Canonical
+optimized ELF has real source-line DWARF, map and digest sidecar. A targeted
+bitaxe-api optz policy preserves the 4 MiB image bound. Full private development
+capture/inspection is standing-authorized in AGENTS/policy/ADR-0030.
+
+`just core-dump inspect|analyze` snapshots private inputs and checks native dump
+checksum plus the exact 72-byte IDF 5.5.4 identity descriptor before GDB. Vendor
+stdout/stderr/temp memory remain private; GDB is pinned and process groups are
+bounded. `just core-dump-tools` installed official managed GDB 16.3_20250913.
+`just core-dump-read` uses the existing physical/ROM/read/return/release owner;
+its disabled contract was verified to reject before environment discovery.
+No actual device dump was captured, no device opened/reset/flashed, no Start
+issued, and no change to Share002/current recovery proofs or parity 90/95.
+
+Checks: 25 offline real-parser/process/ABI tests; 10 capture tests including
+production failure/return/release and identity-mismatch paths; automation/xtask/
+flash Bazel suites and TypeScript compilation; ordered Cargo format/Clippy/build/
+tests (2,377 passed, 3 existing ignores); native package plus USB ownership/symbol
+checks; reference, redaction, standards and diff checks. Native image fit verified
+at 4,148,480 bytes with 45,824-byte headroom; source line decoding verified. Exact
+clean post-publication package identity and final review will be recorded below.
+
+Contract/usage: [development core dumps](docs/hardware/development-core-dumps.md).
+This completes capture implementation, not panic diagnosis or hardware capture
+qualification. Recovery prerequisites and fatal-handler safety/timing validation
+still govern installation/reproduction. Do not enable acquisition by rewriting
+its sentinel merely to bypass the missing historical-resource proof.
+
+Clean published candidate verified at `8f69978b`: ELF
+`f44a3927696fb1fb5870bed460e3cc1f915834218dd10a6b5587810603f751a1`, package
+manifest `c5061b5ef8c57eb603d32d7b0db2b9bdc638b71e51e374d4e2d916e68cb0264a`.
+Clean image size is 4,148,416 bytes (45,888 bytes of slot headroom), distinct
+from the earlier dirty compile above. Debug sidecar/package identities and
+source-line symbolization passed; protected artifact snapshot retained. Clean
+native USB ownership/symbol checks passed. Share002/recovery004 inventories
+remain unchanged. No device effects were attempted.
+
+Final software result: [implementation verification](docs/research/development-core-dump-implementation.md).
+Capture tooling and persistent authorization are complete. The overarching
+panic diagnosis remains unresolved/unarchived pending separately admitted real
+capture and the recovery prerequisite; no existing failure is reclassified.
+
+Owner-approved hardware continuation (2026-09-27):
+[ADR-0031](docs/adr/0031-prospective-panic-diagnostics.md) supersedes the
+historical-resource prerequisite for NEW diagnostics with fresh current-state
+proof. Earlier software-only scope and disabled-gate statements above describe
+completed work; they are not the prospective authority. Share002 remains
+unverified and the recovery task's historical criterion remains unresolved.
+
+- [x] Publish and test a dedicated staged command contract and current-recovery
+      proof gate; retain both ledgers and full validated diagnostics before reset.
+- [ ] Preserve any existing core region through same-device ROM read/return,
+      then obtain fresh baseline proof and state-preservingly flash the candidate.
+- [ ] Verify exact candidate identity/settings/accounting and no-mining baseline;
+      perform one authenticated off-only core self-test; recover and inspect dump.
+- [ ] Prove native panic cutoff routing/IRAM/no-lock behavior and retained cutoff
+      state before admitting live Start. Preserve then separately clear test dump.
+- [ ] Issue one fresh ledger-derived normal V2 allowance (180,000 ms reservation,
+      one 60,000-ms grant, zero renewals); bound host startup observation and Stop.
+- [ ] On failure collect/decode the matching core, record exact cause or blocker,
+      recover/release, verify changes and commit/push the truthful outcome.
+
+No device effect begins before the new implementation/contract is verified and
+published. No old grant, ordinal assumption, factory reset, NVS erasure, external
+pool, direct pins or parity promotion. New evidence remains separate and sealed.
+
+Prospective execution contract: [staged panic probe](docs/hardware/str005-panic-probe.md).
+The following gates authorize only its verified staged effects after publication:
+
+Development panic probe: stage A enabled.
+Development panic probe: store diagnostics required.
+Development panic probe: task-stack capture required.
+Development panic probe: installation disabled (installation007 completed).
+Development panic probe: self-test disabled (installation007 completed).
+Development core-dump acquisition: disabled (queue boot-loop capture002 completed).
+Development core-dump clearing: disabled (queue boot-loop clear002 completed).
+
+Every acquisition/clear still checks a fresh current-recovery proof; clearing also
+compares the archived full region before its exact erase. These declarations do
+not assert a completed hardware observation. Start/grant issuance remains absent
+from the published probe until actual capture/cutoff evidence admits that stage.
+
+Pre-effect software verification (2026-09-27): ordered workspace Cargo format,
+Clippy, build and tests passed (2,403 passed, three existing ignores). Protected
+real decoder/cutoff suite: 40 passed; staged probe: 18 passed; native audit: six
+passed. Affected firmware/controller/flash and probe Bazel tests, native package
+and fixed-USB checks, reference, redaction, Markdown and Bright Builds passed.
+Native cutoff audit checks the real optimized image (48 instructions) and proves
+static placement/routing only. Review tightened complete self-test evidence to
+require matched acknowledgement, fresh boot/readiness/identity and lifecycle
+correlation. Physical admission follows the held session's current node after
+re-enumeration. No device effect or capture success is claimed by these checks.
+Simplification review: reuse existing restart, physical lease and partition
+validation owners; keep the new panic boundary straight-line and independent of
+ordinary tasks. Start modules remain unpublished drafts until capture evidence.
+
+First prospective device observations (published source `5244d445`, Gate
+`14d0e5b3`): protected baseline001 collected fresh authenticated next ordinal 18,
+last completed 17, no pending reservation, both ledgers, idle current status and
+validated diagnostics; restoration and native/host release passed. The existing
+64 KiB core region was entirely erased, privately preserved (SHA-256
+`71189f7fb6aed638640078fba3a35fda6c39c8962e74dcc75935aac948da9063`),
+and read/application-return/cleanup all passed. Baseline seal:
+`900f7a685ca623706d4dd32ccb1ad280a4beebded642a45d664276c611f338e7`.
+
+Installation001 collected a second fresh baseline, but its child CLI rejected
+`--evidence-mode dual` combined with mutually exclusive `--redact-evidence`.
+Exit 1 occurred during argument parsing, before USB admission or any flash.
+No holders remained; page/server cleanup passed and the attempt was sealed at
+`5dd7073440013da381a4cb8d54ef6ac2ad54264cc8ecc96ab239b1c538d3f5cc`.
+Its sealed result is a baseline-only conclusion; it does not establish a
+successful installation. Fix the exact argv boundary and validate the generated
+command through the real CLI dry-run before publishing a fresh-root continuation.
+No self-test, Start, grant or mining occurred; at that boundary installed firmware
+remained the original `cf7a3f03` tuple. Historical evidence and parity remain unchanged.
+
+Verified continuation fix: generated installation argv now uses only
+`--evidence-mode dual`. Preflight executes that exact argv plus `--dry-run`
+through the pinned CLI/canonical package, validates the no-effect receipt and
+binds its digest; serve/install recheck it. A real CLI regression rejects the
+old flag combination and accepts the corrected command against a nonexistent
+node. Finish now distinguishes baseline success from attempted installation
+failure. A new protected root and fresh proof are required; no prior attempt
+record is edited or replayed.
+
+Command-check verification ordering: the real CLI check passed against the
+retained clean package. Rebuilding its prerequisite while source was dirty
+correctly triggered `package_source_dirty`, before USB; retain this negative
+observation instead of relaxing admission. The explicit local integration
+command runs after the new clean publication/package, before any effect;
+pre-commit unit checks remain independent of this clean-package requirement.
+
+Installation002 outcome (`663d5314`, Gate `14d0e5b3`): clean-package CLI
+integration/preflight passed. State-preserving write and application return
+completed; observed source matched `663d5314`. The 360-second capture ended
+`timed_out_without_trusted_output`: stable boot and safe baseline were observed,
+but startup failed at `storage_http`, specifically `http_server` / `http_task`;
+SPIFFS was available and HTTP was not ready. Process exit 1 and all host/native
+resource release were retained. The failed attempt remains sealed at
+`a1702ab4f5dedb598384236ab83c24a6a9d8824112329b2e886269d24a2e2606`.
+Exact candidate ELF authentication/current accounting after this flash remain
+pending independent recovery. No self-test, Start, grant or mining occurred.
+
+New startup diagnosis: pinned non-SMP IDF source maps HTTP task failure to
+failed task-storage allocation (TCB or internal stack; the exact request was not
+recorded). Debug information unintentionally selected IDF `-Og`, differing from
+original `PERF` code generation. Explicit PERF restores 5,376 bytes of internal
+address budget while keeping DWARF, but leaves 7,072 bytes of added static
+pressure versus the old image; the old post-HTTP checkpoint had only 6,115
+DMA/internal free bytes. These are resource constraints, not Share002 cause proof.
+
+Continuation plan after sealing the failure:
+- [ ] Publish a distinct recovery-only predecessor mode, validate the actual
+      sealed failure/package and collect fresh authenticated current-state proof.
+      Its fresh page cannot establish lost before/after installation preservation.
+- [x] Pin intended IDF PERF and a 2 KiB ordinary-malloc internal preference
+      threshold; retain 98,304-byte reserve, 16 KiB internal HTTP stack and
+      4 KiB core stack. Verify effective config, native footprint and tests.
+- [ ] Preserve the installed core region and perform one fresh-root no-mining
+      state-preserving correction trial only after new current recovery proof.
+- [ ] Require successful startup and exact identity before the off-only core
+      self-test. If startup still fails, retain the blocker and require a new
+      allocation discriminator; no blind repeats or arbitrary stack reduction.
+
+The new allocator policy is a supported, bounded hypothesis: ordinary allocations
+over 2 KiB prefer PSRAM; explicit internal/DMA requirements remain unchanged.
+Hardware recovery and capture are not claimed by the software change.
+
+Pre-publication source review narrowed the allocator trial from 4 KiB to 2 KiB:
+the identified ordinary HTTP allocation is 2,328 bytes, so 4 KiB would not move
+it. The explicit internal HTTP/task stacks remain unchanged. No device trial
+was made with the intermediate 4 KiB policy; validate driver capability rules
+before admitting the 2 KiB candidate.
+
+Pre-effect correction checks passed: ordered Cargo format/Clippy/build/tests;
+30 probe tests plus the real sealed-predecessor/package read-only validation;
+affected Bazel and automation suites; canonical native package with effective
+PERF/2048/98304 and unchanged main/HTTP/core stack requirements; DWARF and
+48-instruction cutoff audit; standards, redaction and diff checks. Static internal
+size matches PERF-only, with 74,080-byte image headroom. Startup recovery is
+still unverified. The fresh recovery mode retains failed-installation and
+current-session-only continuity facts instead of manufacturing old preservation.
+
+Published correction `9be53f69`: clean package, native USB checks and real CLI
+dry-run passed. Independent current-recovery001 authenticated the installed
+`663d5314` / `58d657fa…` tuple despite failed HTTP startup, measured next 18 /
+last 17 / no pending reservation, restored and closed. Its full 952 KiB core
+region was erased and preserved (SHA-256
+`94a21164829c644f15d62317c52d9f42a0ef66bd084d5ffdeb007b375e210951`);
+read, application return and cleanup passed. Recovery seal:
+`1808ce8890ba3386a7c2fb82ad34e404206068dc11a4383a24fb802984bed66d`.
+
+Correction trial installation003 wrote and reported application return, but the
+480-second outer supervisor expired before a final capture receipt was saved.
+The 360-second observation plus write/bootstrap/cleanup exceeded that outer
+budget. The process group was killed/reaped and no serial holder remained.
+Startup success and exact installed identity remain unverified; do not infer
+them from the application-return marker. The attempt is sealed at
+`8276419ce8f111e819222c65089bcc6a81fd34ec2e276cb0977f25f0c29aa0f2`.
+No self-test or Start occurred. Preserve this timeout as an independent failure.
+
+Next boundary correction is host-only: admit read-only recovery from that exact
+sealed timeout/command/package lineage, obtain fresh signed current identity and
+accounting, and qualify the already-installed image for capture only if new
+current-boot diagnostics prove healthy startup. No repeated flash is needed or
+authorized by a missing final receipt. Fresh same-image before/candidate phases
+may then admit the one off-only self-test; original flash preservation and
+installation success remain unverified. Extend the future install supervisor
+to cover the actual composed operation bounds without retiming old evidence.
+
+Host-only continuation verification: 43 probe tests and actual read-only
+validation of both failed-installation forms and the sealed core-preservation
+format passed. New capture admission binds an empty preserved region and the
+expected boot following managed return, fresh healthy diagnostics and a
+120-second age measured from first observation. `other` remains a lossy reset
+category, explicitly unresolved; it is not relabeled. Panic/watchdog/brownout,
+extra boots and missing/nonempty core evidence block this off-only admission.
+Future install supervisors bind a 1,200-second outer cap; no new flash is
+planned. Original 480-second evidence remains unchanged.
+
+Current-recovery002 authenticated installed `9be53f69` /
+`075be768fc0c3789f8577917e2aadbbb28ef62d8ee1388f5cd46a54079135fde`.
+Current diagnostics show runtime-ready complete and first failure none: the
+HTTP startup allocation regression is resolved in this observed boot. The
+post-statistics DMA/internal checkpoint is 7,575 free bytes, largest block
+4,352 bytes. Ledger remains next 18 / last 17 / no pending; restoration and
+release passed. Full 952 KiB core preservation, application return and cleanup
+passed; the region is erased. Recovery seal:
+`30c7998908272a9a953297f2ac5010cf2b6943ce9c207d0ac19d2700d3cae326`.
+This is new current-state evidence, not a rewrite of installation003's timeout.
+
+A pre-effect production-interface review found Gate's diagnostic history keeps
+only the latest value per category/stage and preserves insertion order. One
+export cannot supply two chronological ready samples. Correct capture admission
+to collect two independently retained exports with advancing uptime, rather
+than synthesize history or weaken the discriminator. No self-test was attempted
+under the impossible single-export predicate.
+
+Two-export correction verified: 45 Node probe tests plus the actual pinned Gate
+history-producer integration passed; affected Bazel, ordered Cargo, standards,
+redaction, Markdown and diff checks passed. Two real snapshot files and a fresh
+same-session status confirmation are digest-bound; no export-array chronology
+is inferred. The existing native panic-observer journal is unchanged.
+
+Final staged outcome (2026-09-27): controlled ASIC-off self-test was actually
+executed once on installed `9be53f69` / `075be768…`, using host `dae7fefb`
+and Gate `14d0e5b3`. Matched acknowledgement, panic reset 9→10, exact identity
+and healthy runtime were observed in 8,420 ms with uninterrupted native USB.
+Both independent recovery rounds passed. Final accounting: next ordinal 18,
+last completed 17, total charged 1,560,000 ms, pending false. Restoration,
+native Close, serial/process/listener cleanup all passed.
+
+Capture verification FAILED: the full 974,848-byte core region is all `0xff`,
+SHA-256 `94a21164829c644f15d62317c52d9f42a0ef66bd084d5ffdeb007b375e210951`.
+The vendor inspector rejected it; no valid core, backtrace, full dump identity
+or captured native cutoff receipt exists. No analysis/cutoff success, no Start,
+no grant, no mining, no dump clearing, and no Share002 replay is claimed.
+Capture seal: `d7074817eb7ab790b053674d6729d85b293ee98fd239e290b3566feef108d7d9`.
+The sealed baseline/reset result's scoped `complete` flag is not capture success;
+its `core_capture_verified` remains false.
+
+[Outcome and precise blocker](docs/parity/evidence/20260927-str005-core-self-test-no-dump.md).
+Exact-ELF review found the initializer, writer and panic route linked; wrapper
+ABI is consistent and abort does not bypass the writer. A normal 10-second
+panic watchdog expiry poorly matches the complete 8.42-second observation.
+None of this identifies the writer's actual early-return reason.
+
+Correction to the earlier memory-scope assumption: pinned IDF 5.5.4 walks used
+blocks across all 8-bit heaps, including PSRAM. The 512 KiB retained log and
+roughly 90 KiB statistics history alone make capacity a concrete concern.
+Capacity rejection precedes flash erasure, but required size/store status were
+not retained: capacity is a hypothesis, not a diagnosed cause.
+
+- [ ] Add panic-safe fixed numeric initialization/store result and required-length/
+      capacity evidence; verify native linkage and decoding before another fault.
+- [ ] Use that measured discriminator to select a supported capture policy or
+      correction, then publish a new bounded effect contract. No unchanged retry.
+
+Completion review: criteria do not pass. Task remains active/unarchived with
+precise blocker `core_partition_erased_after_controlled_panic`; Share002's cause
+and historical retained-resource gap remain unresolved. Reset/flash/self-test/
+clear gates are disabled pending new verified work; read-only baseline tooling
+remains available. Sealed evidence is unchanged and parity remains 90/95.
+
+Final verification: ordered Cargo checks passed again; reference, redaction,
+standards, Markdown and parity checks passed. All nine selected private
+inventories—including Share002 and recovery004—match their original seals.
+The disabled reset-capable acquisition gate was exercised with a nonexistent
+synthetic port and rejected before environment/device discovery or output-root
+creation. All effectful stages remain disabled; no finalization test opened USB.
+
+Offline analytic review requested (2026-09-27), before further instrumentation:
+
+- [x] Separate original mining Start panic, subsequent HTTP startup regression,
+  and host timeout using existing evidence and exact source chronology.
+- [x] Compare recent additions and trace allocation/stack/lock dependencies in
+  the compiled Start path; rank falsifiable candidates with counterevidence.
+- [x] Record findings and the smallest discriminating checks; no device effects,
+  runtime edits, ordinal assumptions or hardware completion claims.
+
+The user explicitly requested static analysis, so analytical hypotheses may be
+reported without a new hardware reproduction. They remain unproven unless an
+existing trace or deterministic software boundary establishes the cause.
+Lesson startup loading was bounded: combined active inputs are 37,860 bytes
+(12,621 conservative estimated tokens); priority safety/evidence and relevant
+blocks plus the global file were read. Remaining unrelated blocks were omitted;
+the full inventory and budget notice were surfaced during this review. Existing
+audit baseline is retained; no new audit trigger or lesson append applies.
+
+Analytic completion review: [source and native-stack analysis](docs/research/str005-startup-code-analysis.md)
+separates the original Start panic from the corrected diagnostic HTTP boot
+regression and host timeout. The pre-V2 to Share002 compiled controller/owner/frame
+subtotal increased by 1,088 bytes; signed Start stack pressure is the leading
+static candidate. The resolved shim-through-Ed25519 frame sum is 16,320 bytes
+on a 16,384-byte control stack; two ABI-supported platform frames bring the
+consistent chain to 16,384 before RTOS/TLS overhead. This is not a captured
+backtrace or complete global bound. No confirmed self-deadlock was found. No hardware access or
+runtime change occurred. Cause remains unproven without a fault location; capture
+qualification remains blocked, all effectful gates remain disabled, and this task
+is not archived. Next: measure a narrowly outlined Start path offline before
+considering additional internal stack allocation or hardware instrumentation.
+
+Verification: ordered Cargo fmt, clippy, build and tests passed (2,403 passed,
+three existing ignores); standards, redaction, reference, parity, changed-block Markdown and
+diff checks passed. Whole-file TASKS formatting already fails at HEAD; unrelated
+historical blocks were preserved. Parity remains 90/95. This review supplies analytical evidence,
+not a hardware correction or new ordinal consumption measurement.
+
+Owner-approved stack correction and no-mining installation (2026-09-27):
+
+- [x] Separate signed Start from the large dispatch frame without changing
+  validation, signed authority, reservation ordering or response behavior.
+- [x] Add a native selected-call-chain regression that rejects the historical
+  stack budget and measures the candidate; run host and canonical checks.
+- [x] Publish a narrow state-preserving installation/recovery continuation,
+  keeping capture self-test, clearing, Start and mining disabled.
+- [ ] Package exact clean pushed source, preserve the current core region,
+  obtain fresh authenticated baseline, install once and verify preservation,
+  healthy startup, current accounting, restoration and actual cleanup.
+- [x] Record measured software/hardware outcomes and any remaining blocker;
+  retain sealed evidence, task non-completion and parity 90/95 unless all
+  original diagnosis criteria are independently established.
+
+This continuation follows the user's explicit request to implement the frame
+separation and proceed through testing/flashing. Static budget improvement and
+healthy installation do not alone prove Share002's cause or qualify live Start.
+The failed core-capture prerequisite continues to block Start; installation is a
+separate no-mining effect with prospective current-state admission under ADR-0031.
+The prospective [contract continuation](docs/hardware/str005-panic-probe.md#no-mining-stack-correction-installation-continuation)
+limits the enabled sentinels to current-recovery-003 core preservation and
+installation004, followed by authenticated candidate recovery and unconditional
+cleanup. Earlier disabled-gate statements remain historical. Exact commands,
+private roots, 120-second fresh proof, 360-second capture, 1,200-second outer
+installer bound, preservation policy and stop conditions are in that contract.
+Self-test and clearing remain disabled; there is no Start/grant/mining command.
+Publish and verify the correction and native stack guard before any device use.
+
+Software measurement before publication: original exact Share002 chain rejects
+at 16,384 bytes. The initial outline exposed general-dispatch inlining into
+prepare_frame and rejected at 17,808 bytes. Keeping both dispatch paths out of
+line gives 13,264 bytes and 3,120 bytes unclaimed selected-path margin, without
+increasing stack allocation. The audit retains explicit platform-edge inference,
+partial-callgraph and non-hardware labels. Native compilation/package passed;
+clean published package measurements and hardware outcome are still pending.
+
+Pre-effect verification: ordered Cargo fmt/clippy/build/test passed (2,405
+passed, three existing ignores); all six affected Bazel targets and 54 JS tests
+passed. Native package and native USB ownership/symbol checks passed, as did
+standards, redaction, reference, parity and changed Markdown/diff checks.
+The explicit simplification review retains only the two required non-inlining
+boundaries and the early Start branch; no extra stack/heap allocation is added.
+
+Installation004 outcome: the flash child exited zero with trusted healthy stable
+startup, no issues and actual serial release. The wrapper rejected
+`panic_install_receipt` because `observed_reference_commit` is `Unavailable`.
+The fixed-serial producer in tools/flash/src/monitor.rs intentionally emits that
+value; the wrapper's equality requirement was incompatible with its producer.
+Seal installation004 as failed/unverified with `installation_review_missing`;
+never repeat the write or rewrite its receipt. Same-page post-install preservation
+was not completed. Core preservation and recovery003 passed independently.
+
+Read-only continuation plan:
+
+- [x] Reproduce the real sealed receipt rejection; test a narrow adapter correction
+  admitting the producer's exact unavailable marker but rejecting mismatches.
+- [x] Admit only this sealed healthy/zero-exit/fully-released predecessor for fresh
+  read-only recovery; retain installation_complete=false and current-session-only.
+- [x] Publish the correction and run current-recovery-004 against retained exact
+  build-2d81a9cd, using preflight/one detector/serve/Connect/baseline/Close/finish.
+- [x] Record actual installed identity, current ledger, healthy startup and cleanup;
+  preserve the failed installation and original panic/capture blockers.
+
+All effectful sentinels are disabled for this continuation. The new
+[read-only contract](docs/hardware/str005-panic-probe.md#recovery-after-reference-observation-rejection)
+allows fresh authenticated reads and Stop/Close only. No flash, reset, self-test,
+core clearing/acquisition, grant, Start or mining. Native stack measurements
+remain bound to installed 2d81a9cd; the new source is host-only recovery tooling.
+
+Stack-correction completion review: [exact result](docs/parity/evidence/20260927-str005-start-stack-correction.md).
+Clean installed firmware 2d81a9cd has a 13,264-byte selected signed-Start frame
+chain with 3,120 bytes unclaimed; image fits with 74,592-byte slot margin.
+Current-recovery-004 on host f4d6ee39 authenticates that exact ELF at boot13,
+healthy startup/HTTP, idle authority, both unchanged ledgers, restoration and
+actual resource release. Next18/last17/1,560,000 ms/pending=false are fresh
+measurements. Original budget remains exhausted at 240,000 ms.
+
+The installation child passed; its wrapper result remains sealed failed because
+of the now-corrected unavailable-reference adapter defect. The combined
+installation/preservation checklist remains unchecked: its same-page post-update
+comparison did not complete. No reflash or mining attempt followed. Original
+panic cause and empty-core/cutoff proof remain unresolved; no archive or parity
+promotion. All effectful sentinels remain disabled, and all owned hardware/UI/
+server resources are released. Parity stays 90/95.
+
+Owner-requested receipt-corrected reflash (2026-09-27):
+
+- [x] Publish/verify this continuation and build exact clean pushed package.
+- [x] Use current-recovery-005 to authenticate installed 2d81a9cd, measure both
+  ledgers, preserve the core region via managed read/return, and seal cleanup.
+- [x] Use installation005 with a new live same-page baseline; flash once through
+  the corrected receipt validator, authenticate the exact candidate, compare
+  preserved settings/Device Identity/replay marks and accounting, and close.
+- [x] Seal/report independent outcomes, disable effects and retain diagnosis
+  blockers unless independently resolved. No mining Start is admitted.
+
+Verified progress: f4d6ee39 corrects the demonstrated producer/validator mismatch
+and has real sealed-receipt plus negative regression coverage. This is one fresh
+`continue_after_verified_fix` attempt, not a replay of installation004. The
+[receipt-corrected contract](docs/hardware/str005-panic-probe.md#receipt-corrected-preservation-trial)
+owns exact commands, privacy, recovery, cleanup and stop conditions. No stack,
+allocation, partition, authority or runtime behavior change is intended beyond
+build identity. Self-test, clearing, grants, mining and Share002 replay remain
+disabled. Retain all previous seals, outcomes and parity 90/95.
+
+Receipt-corrected trial completion review: [verified result](docs/parity/evidence/20260927-str005-reflash-preservation.md).
+Installation005 complete=true, installation_complete=true, candidate recovery
+complete, blockers empty and actual host/serial release verified. The exact
+02197010 source/ELF is authenticated at boot15 with complete healthy startup.
+Same-page settings/Device Identity/replay high-water comparison passed; both
+ledgers are unchanged (next18, last17, 1,560,000 ms, pending=false; original
+campaign exhausted at 240,000 ms). No allowance was consumed.
+
+This new trial closes its own receipt/preservation boundary; installation004
+remains sealed failed. The selected signature stack chain remains 13,264 bytes
+on the unchanged 16 KiB stack. No Start, mining, self-test or dump clearing
+occurred. Effectful gates are disabled again. Original panic cause, core capture/
+cutoff qualification and live Start remain unverified, so the overarching task
+is not archived and parity remains 90/95. All owned resources are released.
+
+Owner-approved capture diagnostics and conditional Start (2026-09-27):
+
+- [x] Add bounded source/boot-bound reset-retained capture stage, initialization
+  status, required size/capacity and write result at verified pinned SDK seams.
+- [x] Test retained-record integrity/decoding and real native wrapper routing,
+  stack/IRAM behavior and image/resource limits; retain an actionable red/green
+  discriminator for the empty-core outcome before any new controlled fault.
+- [x] Extend typed diagnostic export and the staged probe for the installed
+  successful-update lineage; publish verified command/cleanup/privacy bounds.
+- [ ] Preserve existing core and fresh accounting, install diagnostic candidate,
+  run one new ASIC-off capture self-test after verified progress, recover and
+  inspect exact-ELF dump and actual captured cutoff state.
+- [ ] If capture/cutoff passes, publish and test one fresh bounded V2 Start probe,
+  select allowance from live accounting, stop promptly and independently
+  prove restoration/charged accounting/resource release. No replay or renewals.
+- [ ] Commit/push measured outcomes; archive only independently satisfied task
+  criteria and retain every precise blocker/non-claim with parity at 90/95.
+
+All current effectful gates remain disabled during software preparation.
+Standing development dump authorization and ADR-0031 govern private capture and
+conditional hardware admission. Historical erased capture001 is the red
+hardware signal; newly instrumented boundary evidence must select any correction.
+Do not resize stacks/partitions or suppress heap capture based on conjecture.
+
+Prospective effect contract: [numeric store-diagnostic continuation](docs/hardware/str005-panic-probe.md#numeric-store-diagnostic-self-test-continuation).
+The enabled sentinels apply only after clean publication and passing native/host
+checks to current-recovery-006 preservation and installation006's one ASIC-off
+self-test plus independent recovery/acquisition. New Gate d3ac3743 parses and
+retains the bounded typed receipt. Candidate preflight requires the native store
+audit; old installed-image recovery remains read-only. Fresh readiness receipt
+is mandatory before fault. Clearing and all mining/Start effects remain disabled.
+Historical disabled statements describe prior terminal outcomes, not this new
+progress-backed contract. The initial native audit rejected a DROM lookup table;
+its table-free correction now passes with 240 added bytes under the 256-byte gate.
+
+Pre-effect verification: ordered Cargo format/clippy/build/tests passed (2,412
+passed, three existing ignores). Affected native-store/receipt/USB/host-probe
+Bazel tests pass. Gate d3ac3743 passed full Rust, 824 web tests, browser/package
+and standards checks. The actual corrected native store audit passed all five
+routes, pointer/result forwarding, bounded RTC/DRAM access and 240-byte added
+stack. Source-linked boot initialization is static evidence only. The probe
+requires a fresh source/boot-bound ready receipt before fault and retains the
+immediate post-panic store observation before any managed ROM reset. Later
+recovery is explicitly outside the panic boot. Missing diagnostics never count
+as capture success. Simplification retained five SDK seams and the existing
+collector; no SDK edits, partition resize, heap suppression or stack increase.
+
+Measured capture boundary (installation006, source bfc2cbb0): controlled fault
+acknowledged and explicit panic boot1→2 returned in 8,355 ms with uninterrupted
+USB. Valid source/boot-bound receipt: init_result=0, requested=prepared=1,195,632,
+prepare_result=store_result=257 (NO_MEM), capacity=974,848, start/end unavailable.
+Pinned SDK alignment/checksum requires 1,195,680 bytes, exceeding capacity by
+220,832. Managed read preserved all 974,848 bytes: erased. Final boot3 recovery,
+unchanged ledgers, restoration and resource release passed. The outcome is
+confirmed capacity rejection before writing, not capture success. Sealed
+installation006 inventory: b1034a75f3927844fd98960b691064618a1850da866b3f91c5b0b045bc07c25f.
+
+Measured-cause correction and fresh trial:
+
+- [x] Use the official task-stack/register profile (bulk heap/DRAM capture off),
+  explicitly include the 28-byte cutoff receipt via the SDK user region,
+  and test resolved config plus native section containment and decoder rules.
+- [ ] Publish the exact profile/command contract and clean package; preserve
+  current state/core under current-recovery-007 from successful installation006.
+- [ ] Run installation007's one new ASIC-off self-test after verified progress;
+  collect immediate diagnostics, preserve/decode the actual dump and verify
+  captured cutoff, then independently recover and release all resources.
+- [ ] Admit no Start or clearing until checksum/full-ELF/cutoff criteria pass;
+  otherwise retain the exact new blocker without an unchanged retry.
+
+This changes capture content, not partition layout, stack sizes or safety limits.
+Task registers, TCBs and eligible stacks remain; bulk heap/PSRAM buffers are
+excluded explicitly. Full private capture remains authorized for development;
+this finite diagnostic profile does not claim complete physical memory. The
+new native cutoff audit v2 must prove receipt inclusion in the selected region;
+v1 historical records remain readable but cannot admit the new capture stage.
+
+Prospective correction contract: [measured-capacity trial](docs/hardware/str005-panic-probe.md#measured-capacity-correction-trial)
+uses current-recovery-007 and installation007. The one new fault follows measured
+capacity rejection plus the verified official profile correction. SDK selected-
+region native audit v2 passes on the dirty candidate, as do captured-byte decoder
+regressions; clean published audits and hardware capture remain pending.
+
+Verified capture continuation | 2026-09-28:
+
+- [x] Published source `361425b9` and clean native audits; installed exact ELF
+  `7f3ea3ce75bf3eb8eb4c9a23a5eb7de5110114e124c22341f5cd2a867f97ebf2`.
+- [x] Installation007's one ASIC-off self-test acknowledged and returned explicit
+  panic boot5→6 in 9,112 ms, with uninterrupted USB and zero port reopens.
+- [x] Immediate retained diagnostics measured requested=88,668, prepared=88,704,
+  capacity=974,848 bytes; init/prepare/start/end/store results all zero.
+- [x] Preserved the full partition and verified the actual dump checksum, complete
+  ELF identity and cutoff receipt from captured memory: ASIC outputs disabled,
+  generation revoked and self-test marked. No program-image substitution.
+- [x] Independent post-ROM boot7 recovery confirmed healthy readiness, unchanged
+  ledgers (next18/last17/1,560,000 ms/pending=false; old campaign exhausted at
+  240,000 ms), restoration and released browser/server/device resources.
+
+Evidence: [verified capture](docs/parity/evidence/20260928-str005-core-capture-verified.md).
+Installation007 inventory SHA-256:
+`7131552c725c17c070b52b4238b2a92a742ccf34691ebadb5df2885ac3d5f925`.
+The generic observer result retains `core_capture_verified=false`; actual capture
+qualification comes from the separately produced checksum/ELF/captured-cutoff
+inspection artifacts. The sealed result is not rewritten. Capture failure is
+resolved for this profile; original Start cause remains unproved. No Start,
+grant, mining or clearing occurred. No parity promotion; 90/95 unchanged.
+The consumed installation/self-test gates are disabled. A separate published
+startup contract must admit clearing and one fresh ledger-derived Start.
+
+Bounded Start continuation | 2026-09-28: startup001 observed a completed Start
+and increasing dispatch on the corrected image without a new panic. Normal
+safe stop and the full ordinal18 charge were measured. This is evidence that
+the startup path now executes; it does not retrospectively prove Share002's
+original cause. The separate startup task remains partial because its recovery
+collector sent an invalid null-attempt query and its normal flow never captured
+the required authorization recovery checkpoint. See the
+[startup001 report](docs/parity/evidence/20260928-str005-startup001-partial.md).
+No further Start, flash, clear or self-test is admitted by this consumed trial.
+
+Idle-review panic capture | 2026-10-04 | Owner: "go ahead with the core dump"
+Contract: [idle panic capture amendment](docs/hardware/str005-idle-panic-capture-amendment.md).
+New panic: on the installed `654338d0`/`2641c24f` image, heartbeat005's
+read-only baseline reviews on an idle device (no grant, no mining) ended in a
+reset with `reset_reason=panic`, taking boot 15 to 16; see
+`task-str005-heartbeat-shutdown-probe`. The ledger is unchanged at next 26.
+- [x] Make the Share001 current-recovery collector profile-driven (sealed
+      predecessor, task lines, listener, failed boot). Add the
+      `str005-panic-recovery` profile: heartbeat002 as predecessor,
+      `127.0.0.1:48765`, failed boot 15. Share001 behavior is unchanged.
+- [x] Regressions cover the profile gate, the generic predecessor option, and
+      the failed-boot threshold on the real conclusion fixture. The share
+      recovery and share diagnostic suites still pass.
+- [x] Phase A recovery001: `current_safe_recovery=true` (idle V2, ledger 26/25/3,000,000 ms
+      unchanged, restoration and release proven); fresh proof written.
+- [x] Phase B capture001: one read inside the proof window; ROM admitted,
+      partition read only, application identity restored, cleanup complete,
+      no erase or write. The return reset the device (boot 17).
+- [x] Phase C: dump checksum and full ELF identity verified (`2641c24f…`),
+      allocation history bound to boot 15 with zero allocation failures, and no
+      abort-message note. The firmware's captured panic-frame record shows a
+      CPU `StoreProhibited` in `std::sync::mpsc::sync_channel`, called from
+      `bwg_worker_usb::writer::send_control` on the Worker control owner. The
+      SP and return-slot pointer were restored from an overwritten spill area
+      as a heap address and a small integer. That signature is heap/stack
+      memory corruption, not an overflow or OOM. See the
+      [evidence](docs/parity/evidence/20261004-str005-idle-panic-capture.md).
+- [x] Static unsafe/FFI audit of the Worker USB path, NVS reviews, thread
+      lifecycles, websocket raw pointers and fault-provenance C: no
+      dangling-pointer or double-free writer found. USB Serial/JTAG reads and
+      writes copy synchronously into the driver's ring buffers.
+      - Leading hypothesis (medium confidence): an earlier silent overflow of
+        the 16 KiB control-owner stack corrupted the free-block header below
+        it, and later allocator list updates wrote into the live stack.
+      - Why it escapes the current guards: the canary checks only 16 bytes at
+        context switches; the control-stack audit is a lower bound that skips
+        indirect NVS C++ calls and logging and has no interrupt-frame
+        allowance; there is no end-of-stack watchpoint and no heap poisoning.
+- [ ] Next plan, a diagnostic image (needs its own published install
+      contract):
+      - enable `CONFIG_FREERTOS_WATCHPOINT_END_OF_STACK` for an exact fault
+        PC on any overflow;
+      - report the control owner's stack high-water mark after each command;
+      - optionally check heap integrity around each command.
+      Then:
+      - Build, audit and state-preservingly install it.
+      - Loop only read-only reviews (no Start) under a bounded owner, to
+        reproduce.
+      - Fix the overflowing path, by reducing its frames or moving the work
+        off the owner, rather than spending scarce internal RAM. Add a
+        regression and an interrupt-frame allowance in
+        `scripts/control-stack-audit.mjs`.
+
+Control-stack diagnostic install | 2026-10-04 | Owner: "yes, go ahead with the diagnostic image"
+Contract: [control-stack diagnostic amendment](docs/hardware/str005-control-stack-diagnostic-amendment.md),
+the noise-serial successor profile `control-stack-diagnostic-install`.
+- [x] Firmware: end-of-stack watchpoint (required by `build.rs`). Internal-heap
+      integrity is checked before and after each control command, with named
+      aborts. `BITAXE_CONTROL_STACK_TRACE` in the captured core-dump region
+      holds the per-command stack high-water mark. The pure record model has 4
+      unit tests.
+- [x] Harness:
+      - The profile, with recovery001 as predecessor, ledger 26/25/3,000,000
+        ms and its own namespace.
+      - Tests for the profile binding and for refusing the older ledger.
+      - `native_panic_audit` runfiles fixed: the `just` wrapper failed on every
+        ELF because it lacked two parser modules.
+- [x] Pre-commit audits on the build: control-stack headroom 4,080 bytes;
+      signed-start, core-store, fault-provenance and native-panic audits pass.
+      The signed-Start path already uses 13,296 of 16,384 stack bytes.
+- [x] Attempt-001 installed the clean pushed package `c634cc20` (ELF
+      `d986b2ead04672f42dbab9eb8c17e52f63cf1877881cf4c7ddcdb276cf8b5770`)
+      state-preservingly:
+      - five reviewed installs and four continuity cycles;
+      - the network-only Noise diagnostic exchange recorded;
+      - baseline restored, ledger 26/25/3,000,000 ms unchanged, cleanup proven.
+      Finalize and review both passed (`complete`): result
+      `923b9c6a6a0d36140ebb4db83c763830acf6a65026013202e83711fff8388ad4`, seal
+      `91144bd89061d83104e9def3ba44db381bcbc83d3709cb0e9229d8fd69b005e6`. No
+      panic occurred during the install.
+      ([projection](docs/parity/evidence/str005-control-stack-diagnostic/attempt-001.json))
+- [ ] Read-only review reproduction on this image under its own contract.
+Control stack diagnostic install hardware: disabled.
+
+Control-stack reproduction | 2026-10-04 | Contract: [reproduction amendment](docs/hardware/str005-control-stack-reproduction-amendment.md)
+- [x] Owners and tests:
+      - `str005-control-diagnostic-recovery`: the recovery collector bound to
+        install attempt-001 through a predecessor-loader hook, plus recovery001
+        for the board identity;
+      - `str005-review-loop`: a bounded read-only review loop. A pure runner
+        and closed rows, with 7 tests.
+- [ ] Phase A: recovery proof. Phase B: archive-bound clear of the boot-15
+      dump (capture001 archive `71b18ec3…`).
+      - recovery001: the collection was complete and safe (idle V2, ledger
+        unchanged, host released). It sealed without a proof only on
+        `post_failure_boot_unconfirmed`: the RTC boot ordinal restarted on the
+        new image (boot 5), but the profile kept the old image's threshold of
+        15. No clear ran.
+      - Fix: the control-diagnostic profile's failed-boot threshold is 0,
+        because the sealed install proves every boot of this image is
+        post-failure. Regressions cover the boot-5 conclusion and both
+        profiles' thresholds. Retry as recovery002 with a fresh root.
+- [x] Phase A/B:
+      - recovery002 proved current safe recovery on boot 5 of `c634cc20`.
+      - clear001 inside its proof window: a fresh read matched the capture001
+        archive byte-for-byte (`71b18ec3…`); only the core partition was
+        erased and read back fully erased (974,848 bytes of `0xFF`); the
+        application was restored and cleanup completed.
+- [ ] Phase C: loop001 (≤300 rounds of ledger, budget, possession and status).
+      - loop001: the Gate refused Connect locally (`connect_failed`, no host
+        request) because the loop context had no V2 scope, so the
+        configuration omitted `stratumV2Scope`. No review ran. Sealed with zero
+        rows: result
+        `5b6177aecd334f4814d2bd936695ec0080e3ad7647fa38b200b4b4643a7d51b7`,
+        seal `933eea82ac57d4645581717facd98acb7abf16a3922d7b044e1e5fae5f5488ee`.
+      - Fix: the loop context names `scope: 'share'`, and the `/context`
+        configuration goes through `gateConfiguration`, which refuses a
+        missing scope. Regression added. Retry as loop002.
+      - loop002: Connect succeeded and round 1's ledger and budget reviews
+        passed. The page's Gate then refused possession before any device
+        exchange (`v2_page_admission`): in the `before` phase it admits
+        possession and V2 status only with core-dump self-test qualification.
+        Sealed with one failure row: result
+        `994ec7a78503ba0b23a68b289b214566985565e35b0f6d1c04f50973eefbf0e0`,
+        seal `0b8a28f8f9f925dde44958274a74dd8c80dfbebe882a76421d484e4e06b55d9d`.
+      - Fix: `/context` serves the installed image as the share-scoped
+        `candidate` phase, as the recovery collector does after its prepare
+        step. Regression updated. Retry as loop003.
+      - loop003: Connect was refused locally with the `candidate`
+        configuration served directly. The Gate arms candidate V2 reads only on
+        a `before` to `candidate` transition after a before-phase baseline in
+        the same page. Nothing ran. Sealed with zero rows: seal
+        `94a11851a7105b1c07d9dc337675a372d4952c6ff2127940377c40bae149f7a2`.
+      - Fix: `/context` serves `before`. A "Prepare candidate session" step
+        checks the idle baseline, stops and closes, and configures `candidate`
+        from `/loop/candidate`, as the recovery collector does. Regression and
+        amendment updated. Retry as loop004.
+      - loop004: 127 complete rounds (508 reviews in about 72 s). Round 128's
+        possession review then failed, and the Gate recorded serial `timeout`,
+        the same signature as heartbeat005's panic. Sealed: result
+        `be86fa6fff942ad272e6e41c11c227f7e016473d4022f1bf17fcbe1bb56c570e`,
+        seal `86ddf3c52e3103f9a4168b080654485339de100b025f73ba6529aa0e2adecfb2`.
+- [x] Phase D: no panic.
+      - recovery003 proved current safe recovery on boot 6, with
+        `reset_reason=other` (the clear's return reset) and about 13.5 min of
+        uptime. The device therefore did not reset during loop004.
+      - The read in its proof window found the core partition fully erased
+        (974,848 bytes of `0xFF`), with application identity restored and
+        cleanup complete. Seal `7664d19c33253f7081547f52163ec78a92885df4003b0614ab22439be6cbc807`.
+      Outcome:
+      - Loop004 did not reproduce the panic. It surfaced a different,
+        non-resetting boundary: after 127 clean rounds, a Gate serial timeout
+        on the possession review, the Worker lease-authorization context for
+        Start.
+      - Heartbeat005's panic was on one of the same four reviews, but which one
+        is unknown.
+      - The captured high-water record needs a dump, so none exists without a
+        panic.
+- [x] Step 1 (code reading), possession timeout diagnosed as a harness budget
+      overrun, not a device stall:
+      - The Gate's `reviewQualificationAttempts()` itself calls
+        `prepareWorkerLeaseAuthorizationContext("start")`, a possession proof.
+        Each loop round therefore cost two proofs, and Connect's admission
+        adds one.
+      - After 127 rounds, 255 nonces were consumed. Round 128's ledger proof
+        consumed the 256th. Its possession proof then hit the device's
+        fail-closed per-session nonce cap (`MAXIMUM_SEEN_NONCES = 256`,
+        `crates/bitaxe-worker-control/src/controller.rs`, pinned by
+        `possession_nonce_capacity_fails_closed_without_eviction`). The device
+        refused the proof and revoked the session.
+      - The panicked heartbeat005 baseline used only a handful of proofs, so
+        this cap does not explain its panic.
+- [ ] Step 2: batched loops with reconnects. Each session stays under the
+      proof budget (100 rounds = 201 proofs), and every batch starts from a
+      fresh Connect, like the panicked baseline.
+      - Implemented: up to 5 sequential batches of 100 rounds, one per fresh
+        Connect. Batch admission and rows carry the batch number. Regressions
+        cover batch ordering and stopping, and assert the proof budget stays
+        under the cap.
+      - loop005, batch 1: 19 clean rounds (about 13 s). Round 20's budget review
+        then failed with a Gate serial `timeout`, after only about 41 proofs,
+        so the nonce cap cannot explain it. Sealed: result
+        `0a7459d30f8408cc2f3f44b0edc331db43ec1cbe55e7f3149f1105d4d067a331`,
+        seal `4dae00bd7b0c8562c6cee2c54821a3c66ea70c5b85eef567bc47fda8e2a8cf1e`.
+        A recovery and read follow.
+      - recovery004: refused before any device exchange (admission stage
+        `scope`), so ambiguous. Result
+        `1adcdcee27dd6d2a857bb665d95135547363239927cac5748bc6ed2db75b5bfb`,
+        seal `bd1928f7e38c06f9a51ab84d414806b80b37b319d032bc2e44db4fc3ccf63f7f`.
+      - recovery005 (recovery-only retry): `/activate` succeeded, port opened,
+        then the firmware never answered the Gate's hello (stage `hello`,
+        serial `timeout`). Result
+        `eb97e028c909c0e26d7b9417a28057bebfb195a44adcd5ff18800d64e1de4bb0`,
+        seal `5702d8eb9623264ae68152d8c72fd3f569cfe384eff38d77ce5c608b9c6cc8dd`.
+      - The device is wedged on its control channel: USB still enumerates in
+        native serial runtime and the detector admits it, but it gave no hello
+        after loop005's budget-review timeout and did not reboot. A panic
+        would have rebooted it and answered hello. No proof exists, so no core
+        read is admitted.
+      - The device was idle with no lease, grant or mining, so its last
+        reported state was the safe baseline.
+      - The hang's RAM state is the best evidence; a reset would lose it.
+        Next effect, pending the owner's choice: a passive receive-only
+        serial observation, a JTAG halt-and-dump over the built-in USB-JTAG,
+        or a reset or power cycle to recover.
+
+Wedge observation | 2026-10-04 | Owner: "yes, go ahead with 1, 2, then 3"
+1. Passive listen:
+   - Command: `just drain-worker-serial --board 205 --port <fresh detector
+     port> --evidence-dir <0700 parent>/drainN`.
+   - At most three drains, at least 15 s apart, each after a fresh
+     `just detect-ultra205`.
+   - Receive-only metadata: discarded byte count and elapsed time, at most
+     2 s and 65 KiB per drain. No write, reset, bootloader entry or Gate
+     session.
+   - Interpretation: nonzero bytes on repeated drains mean the firmware's
+     always-on output is alive and only the control path is stuck; zero
+     bytes on every drain is consistent with a frozen CPU or USB stack.
+   - Result: three drains, 15 s apart, each read 0 bytes in 2,000 ms, with
+     cleanup complete. This fits a frozen device, but an idle device with no
+     session may also be silent, so it is not proof.
+2. Debugger snapshot. The owner approved the download of the pinned
+   `openocd-esp32` v0.12.0-esp32-20251215, installed through `idf_tools.py`
+   into `.embuild` with SHA-256 `e6414c8d…7e2e823` verified.
+   - Commands: `openocd -c "set ESP_FLASH_SIZE 0" -c "set ESP_RTOS FreeRTOS"
+     -f board/esp32s3-builtin.cfg` over the built-in USB-JTAG on the normal
+     USB cable, then one bounded batch `xtensa-esp32s3-elf-gdb` against the
+     exact installed ELF (`d986b2ea…`, from the install's snapshot).
+   - `ESP_FLASH_SIZE 0` disables the gdb-attach `reset halt`, so attaching
+     only halts and the frozen state survives.
+   - Capture: threads, backtraces and registers;
+     `BITAXE_CONTROL_STACK_TRACE`, `BITAXE_PANIC_FRAME_RECORD` and the
+     allocation history header; one private binary dump of internal DRAM
+     (`0x3fc88000`–`0x3fd00000`).
+   - Evidence goes to mode-0600 files under a mode-0700 ignored root. No flash
+     write, erase or register write, and no pins.
+   - Result: blocked. OpenOCD bound VID/PID `303a:1001` and opened the
+     device, but every `init` failed reading the USB string descriptor
+     (`libusb_get_string_descriptor_ascii() failed with -1`, `LIBUSB_ERROR_IO`)
+     on three attempts. No halt happened and nothing was captured.
+   - macOS still lists the enumerated device. So the USB-Serial/JTAG
+     peripheral itself fails a standard control request: the wedge reaches
+     the USB function, not only the firmware's control thread.
+3. Recover. With JTAG unavailable, use the standard pre-write admission
+   check as the reset:
+   - Command: `espflash board-info --chip esp32s3 --port <fresh detector
+     port> --non-interactive`, with the pinned espflash 4.5.0 whose hash
+     matches the detector. It enters ROM through the serial control lines,
+     reads board info, and hard-resets into the application (default
+     `--after`). No write.
+   - Make one attempt. If control lines fail too, stop and ask the owner to
+     power-cycle: barrel off, then USB, then restore barrel then USB.
+   - Then a fresh current recovery must prove Gate service and the unchanged
+     ledger.
+   - Result: one `board-info` attempt with the pinned espflash failed
+     ("Failed to connect to the device"). ROM entry through the serial
+     control lines also failed. There was no write. Afterwards the detector
+     still admits one device in native serial runtime.
+   - Software recovery is exhausted. Waiting for the owner to power-cycle:
+     barrel off, USB off, wait 10 s, then barrel on, then USB on. There is no
+     deadline on this wait. Afterwards: detector, then a fresh current
+     recovery proving Gate service and the unchanged ledger.
+   - Owner observation: the display's uptime kept counting. The firmware
+     was not frozen and never reset.
+   - Host-holder investigation found nothing holding the device:
+     - `lsof` showed no open handle on the cu or tty nodes;
+     - none of the agent's processes remained (OpenOCD, espflash, owners,
+       drivers, FIFO holders);
+     - Chrome's granted port was not readable or writable, with the tab on
+       `about:blank`;
+     - the IORegistry showed only Apple's ACM driver on the CDC interface and
+       no user client on the JTAG interface.
+   - USB-only replug (owner, barrel power kept on): uptime kept counting, so
+     the firmware's state was preserved. Afterwards the detector admits the
+     device, and OpenOCD `init` now finds both TAPs and examines both CPUs.
+     The earlier EP0 failure was therefore a stuck USB link (device
+     USB-Serial/JTAG peripheral or host USB state), not a frozen CPU.
+   - recovery006: Gate hello answered and current safe recovery was proven
+        (ledger 26/25/3,000,000 ms, not pending). Diagnostics show boot 8 with
+        `reset_reason=panic`, 3,043,786 ms of uptime.
+      - Boot 8 began at 13:23:54, the same second loop005's round-20
+        budget-review failure was recorded. So loop005 reproduced the panic
+        and the device rebooted.
+      - The "wedge" was a stuck USB link after that panic reboot, cleared only
+        by a USB replug. That is a secondary defect to track.
+      - The cleared core partition should now hold this panic's dump.
+      Result `473546a8…`, seal
+      `00c9f5eb07293d3ca6068155bbfaa95b77e4274977e80bb5ecff98f021af4ffe`.
+   - recovery007 proved current safe recovery. One read inside its proof
+     window captured the reproduced panic's dump (90,666 non-erased bytes),
+     with application identity restored and cleanup complete. The dump binds
+     to ELF `d986b2ea…` (checksum and full identity verified; no fake task
+     frames). Dump SHA-256 `b42a2b7d…`.
+   - Analysis (private, redacted here):
+     - Same signature: CPU `StoreProhibited` at
+       `std::sync::mpsc::sync_channel<bool>+22` (store to `0x1e`) on the Worker
+       control owner, inside `writer::send_control`. The reloaded return
+       address and return-slot pointer are garbage, and one register holds an
+       RTC-fast-heap pointer. The SP is valid this time, about 3.6 KiB deep.
+     - Stack overflow refuted: `BITAXE_CONTROL_STACK_TRACE` recorded 106
+       commands with at least 6,100 of 16,384 bytes free, and the end-of-stack
+       watchpoint never fired.
+     - No panic-details note, so the internal-heap integrity checks (212
+       checks) passed through the last completed command. There were no
+       allocation failures.
+     - Conclusion: the control owner's register-spill area is overwritten
+       during the reply channel's allocation. A writer outside this thread's
+       own frames is corrupting live stack memory: for example heap metadata
+       for a block overlapping the stack, a dangling pointer from another
+       thread or callback, or DMA. That writer is the remaining unknown.
+   - Secondary defect: after the panic's software reset, the USB link
+     (device USB-Serial/JTAG or host state) stayed unusable until a physical
+     USB replug. Hello, JTAG EP0 and the control-line reset all failed.
+
+Root cause (offline forensics, 2026-10-04; confirmed in the disassembly):
+- `std::sync::mpmc::sync_channel` (13 monomorphized copies) and `mpmc::channel`
+  open with `entry a1, 0x1a0`, then realign the stack pointer to 64 bytes for
+  `CachePadded` with a plain `add.n a1, a1, a8`. Under the Xtensa windowed ABI
+  that needs `movsp`. This is from the esp rustc 1.88-nightly LLVM fork.
+- ESP-IDF spills every register window on interrupt entry. An interrupt
+  between `entry` and the `add` saves the caller's a0–a3 below the old SP;
+  `retw` then reloads them from below the new SP, which holds stale data.
+- The reconstructed frames prove the callee returned correctly and only the
+  caller's restore was wrong: garbage return address, garbage return-slot
+  pointer, then `StoreProhibited`.
+- Both dumps fault at `sync_channel+22` right after this callee, on different
+  stacks.
+- `writer::send_control` creates `sync_channel(1)` for every control reply,
+  which explains crashes after minutes of command traffic. The allocator
+  metadata shape does not match, and nothing else points into the stack.
+
+Plan (`task-str005-start-panic-diagnosis`, correction):
+- [x] `bitaxe_runtime::reply`: a one-shot slot (`Arc` of `Mutex` plus `Condvar`).
+      Send, `try_recv`, `recv` and `recv_timeout` keep std's disconnect
+      semantics. 7 host tests.
+- [x] Every per-request reply site uses it:
+      - `writer::send_control`;
+      - `bwg::cooling`, `safe_stop` and `request` (Worker Start, Renew,
+        SafeStop);
+      - `request_safety_actuation` and `queue_safety_actuation` via
+        `request_queue::ActuationEnvelope`;
+      - the deferred-effect acquire/release handshake.
+      Host tests and the simulation fixture are updated. Bazel: 75 firmware
+      and runtime tests pass. Cargo default members: fmt and clippy clean,
+      2,608 tests pass.
+- [x] ELF regression, `just audit-stack-realignment <elf> <output>`
+      (`scripts/stack-realignment-audit.mjs`, allowlist
+      `scripts/stack-realignment-allowlist.json`, 5 fixture tests):
+      - It flags windowed functions whose prologue writes `a1, a1, aX`. These
+        are exactly the 14 `std::sync::mpmc` constructors on `d986b2ea`.
+      - It walks callers through `call*` and `l32r` literals and the std
+        wrappers.
+      - It blocks `d986b2ea`, whose unexpected callers include
+        `send_control`, Worker Start/Renew/SafeStop, `bwg::cooling`,
+        deferred-effect `acquire` and the safety requests.
+      - The corrected dirty build `de1cc19d…` passes with 9 startup-only
+        callers.
+- [ ] Build, run native audits, and install the corrected image
+      state-preservingly through a new noise-serial profile.
+      - Contract: [realignment-fix amendment](docs/hardware/str005-realignment-fix-amendment.md),
+        profile `realignment-fix-install`, namespace
+        `scratch/str005-realignment-fix`, predecessor recovery007 (pinned
+        result/seal, identity `c634cc20`/`d986b2ea`), ledger 26/25/3,000,000 ms.
+      - The candidate's exact ELF must also pass `just audit-stack-realignment`.
+      - [x] Attempt-001 installed clean pushed `7ca3e29c` (ELF
+            `227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0`):
+            - every exact-ELF audit passed: stack realignment (9 startup-only
+              callers), native panic, core store, signed-Start stack, fault
+              provenance and control stack;
+            - five reviewed installs, four cycles and the Noise diagnostic;
+              ledger unchanged, cleanup proven;
+            - finalize and review `complete`: result
+              `13296cfb30ec0721b290141deb658d94fa7eb724c8d7a3a39f3acff478e79293`,
+              seal `d3ec8ccb73cde4b655120781c45ba5a8ba6b463cdd151d3ff14600006d9551f0`.
+            The one-time `cycle_baseline` refusal of install 1 came before
+            any claim or flash; a candidate Connect supplies the journal row.
+            ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
+      - The recovery and review-loop owners now pin this install.
+Realignment fix install hardware: disabled.
+Control diagnostic recovery hardware: disabled.
+Queue workaround install hardware: disabled.
+Queue workaround reinstall hardware: disabled (attempt-002 complete).
+Control review loop hardware: disabled (loop007 complete).
+- [x] Hardware verification on `7ca3e29c`:
+      - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
+        five fresh Connects) with no failure. On the previous image, loop004
+        ended at round 128 (the nonce cap) and loop005 panicked at round 20.
+        Seal `39c4e5e614ce9458abd02ea63662b0759fe710f5941cf17bf8b6f43da8809fb4`.
+      - recovery008: current safe recovery, boot 5 with `reset_reason=other`,
+        booted at the install's last reset before the loop began, so no
+        reboot during it. Ledger 26/25/3,000,000 ms unchanged. Seal
+        `ae846b78784c5c2ec3321f2e62515745e9936292f33bccade16782d7f14224c4`.
+      - Interpretation: strong evidence. The previous image failed under the
+        same load, and the deterministic audit proves the hazard is
+        unreachable from runtime paths.
+- [x] Resume the heartbeat-loss retry on the corrected image: heartbeat007
+      on an install-only lineage passed (`complete=true`, 2,802/2,823 ms);
+      `task-str005-heartbeat-shutdown-probe` is archived.
+- [x] Secondary defect documented, per the owner, without further
+      investigation: [known issues](docs/hardware/known-issues.md). The USB
+      link stays unusable after a panic reset; recover with a USB-only replug.
+- [x] Report the codegen bug upstream, per the owner: the LLVM Xtensa backend
+      (`XtensaFrameLowering::emitPrologue`), present in every esp toolchain
+      from 1.88.0.0 to 1.99.0.0 (LLVM 19.1.2 to 22.1.4). Filed as
+      [espressif/llvm-project#140](https://github.com/espressif/llvm-project/issues/140)
+      with Rust tracking
+      [esp-rs/rust#284](https://github.com/esp-rs/rust/issues/284). The public
+      reproducer is
+      [pRizz/xtensa-movsp-realign-repro](https://github.com/pRizz/xtensa-movsp-realign-repro).
+      A toolchain upgrade does not remove the hazard, so the reply slot and
+      `just audit-stack-realignment` stay.
+- [x] Close the startup residual in software, per the owner (2026-10-04):
+      `bitaxe_runtime::queue` gives the `std::sync::mpsc` interface with only a
+      mutex, two condition variables and a `VecDeque`. Its tests cover order,
+      bounds, blocking, disconnection and timeouts. All nine startup queues,
+      the Stratum V2 session and the shared request queue use it. The audit
+      allowlist is now empty, and comments in `queue`, `reply`, the audit and
+      the allowlist link both upstream issues.
+      - Clean image from `00f84eae`, ELF `b82a8e9f…`: the audit reports
+        `realigning_functions=0` and no callers; the std constructors are no
+        longer linked.
+      - `bazel test //...` passes except
+        `usb_bootstrap_measure_regression_process_test`, which fails under high
+        host load and passes 4/4 when rerun with the change applied.
+- [x] Hardware, per the owner (2026-10-04): install the queue image and run
+      a bounded review loop. Done 2026-10-05: reinstall attempt-002 plus
+      loop007 and recovery016 (see below). Order:
+      1. recovery009: a current recovery on `7ca3e29c` after heartbeat007
+         (`just str005-control-diagnostic-recovery`, unchanged contract; the
+         expected ledger is next 27, last 26, 3,180,000 ms);
+      2. a `queue-workaround-install` successor profile pinned to recovery009,
+         with its own amendment. The candidate is the clean pushed HEAD
+         package, and `just audit-stack-realignment` on its exact ELF must
+         report no callers;
+      3. retarget the recovery and review-loop owners to that install, then
+         loop007 (5 batches of 100 rounds) and recovery010.
+      Each gate is enabled only for its own step. Stop on any panic, ledger
+      or identity drift, or unproven cleanup.
+      - recovery009 (2026-10-04): refused at the status read
+        (`command_rejected`); nothing ran. The ledger read 27/26/3,180,000 ms
+        and the device stayed idle, with the lease inactive and the serial
+        port released. Sealed not current: result `a5f49c6103e23c31d3f24bf993e2038f412ce753377959055375ac0bd19c6782`, seal `d022eb761d9ab4b70d6a511f179979688c09427da22feb04a8793004e44aacbd`.
+        - Cause: heartbeat007 left a retained record. The owner's fallback
+          status read named recovery001's attempt, which the firmware
+          rejects.
+        - Fix: the owner pins the latest sealed Start on the install
+          (heartbeat007) and names its attempt. It requires the same image,
+          board and an idle ledger. Regressions cover no later Start, the
+          heartbeat case and a mismatched board.
+        - recovery010 retries with the fix under a fresh ordinal. The steps
+          after it shift: loop007, then recovery011.
+      - recovery010 (2026-10-04): the same signature (`status`,
+        `command_rejected`), although it named heartbeat007's attempt.
+        Nothing ran, and the device stayed idle with the serial port
+        released. Sealed not current: result
+        `62f821eb5d226a4bbccf6790c890f5b64d22fcadf964e520abd89e9c1d2eb83a`,
+        seal `1b1ae1d370303bd79f46534f756323e369e68d7386f6aeb593cc304d6d5fdbba`.
+        Outcome: `stop_repeated_boundary`. The recovery gate is disabled
+        again, and further attempts wait for the owner.
+        - Root cause, from code (no device effect):
+          - `discover_current` always sends a null status query first.
+            Firmware rejects a null query while a record is retained
+            (`controller/v2.rs`: only `(None, None)` idle or a matching id
+            succeeds) and revokes the session.
+          - The Gate reports that as `command_rejected`, not
+            `v2_idle_correlation`, so the id fallback never ran. The first
+            fix changed an id that was never sent.
+        - Fix (software only): a pinned latest Start marks its attempt
+          `confirmed`. The share-recovery owner then stores
+          `statusMode: confirmed` and the server returns it, so the
+          collector queries the record by id, as heartbeat007's own recovery
+          did. Without a known Start, discovery is unchanged.
+        - Regressions:
+          - the retained-recovery fixture, against the real Gate decoder:
+            the collector's `discover_current` fails closed on a retained
+            record and `confirmed` reads it;
+          - unit tests for `statusModeFor` and the `confirmed` marking.
+      - The owner approved continuing (2026-10-04): recovery011 under a fresh
+        ordinal with the confirmed-status fix, then the install, loop007 and
+        recovery012.
+      - recovery011 (2026-10-04): confirmed mode ran, querying by id, and was
+        still rejected (`status`, `command_rejected`). Nothing ran, and the
+        device stayed idle with the serial port released. Sealed not
+        current: result `a5f49c6103e23c31d3f24bf993e2038f412ce753377959055375ac0bd19c6782`, seal `d3a222bfd5e2cad640a3c100989346b6b762d818aafd205d63f25ec7d621eff7`. Outcome:
+        `stop_repeated_boundary`; the gate is disabled again.
+        - Cause, from sealed evidence: the id sent was heartbeat007's
+          owner-context nonce (`context.attemptId`). The firmware keys the
+          record by the device-issued qualification attempt, which
+          heartbeat007's dispatch record and fresh recovery status both
+          report. The two differ.
+        - Fix: the owner takes the id from heartbeat007's recovery status
+          record. It must be `share` scope and equal to the dispatched
+          attempt. Regressions cover this, a disagreeing record and the
+          owner nonce never being used. An offline load resolves exactly
+          the retained record's id.
+      - The owner approved continuing (2026-10-04) after the hardening and
+        consolidation tasks (both archived): recovery012 with the device
+        record attempt from the lineage head, then the install, loop and
+        closing recovery.
+      - recovery012 (2026-10-04): current safe recovery. It read
+        heartbeat007's terminal record by its device record attempt
+        (confirmed mode) with resources released, on boot 5, with the
+        ledger at next 27, last 26, 3,180,000 ms, not pending. No errors.
+        Result `61de415cd13b20503d1f27bffc45c00498d83dbf0f80ec2352458960ad58f2c8`,
+        seal `6b3cef1acedf71caa13499424217a45c7143b50f751ae06077d07fcc21cecc4d`.
+      - Install contract:
+        [queue-workaround amendment](docs/hardware/str005-queue-workaround-amendment.md).
+        - Profile `queue-workaround-install`, namespace
+          `scratch/str005-queue-workaround`.
+        - Predecessor recovery012: a retained terminal record is admitted
+          only with proven resource release.
+        - Ledger 27/26/3,180,000 ms. The candidate's exact ELF must pass
+          `just audit-stack-realignment` with no callers.
+        - After a pass, run `just str005-lineage advance-install`, then
+          loop007 and recovery013.
+      - Queue-workaround attempt-001 (2026-10-04): STOP, panic boot loop.
+        - Detector, preflight (recovery012 predecessor), and the
+          before-install accounting on boot 5 passed.
+        - Candidate `a2052ab0`, ELF `84d1cd51…`, had a clean
+          `audit-stack-realignment` (0 realigning functions).
+        - Install 0 wrote the exact package. The monitor then saw the new
+          image panic every boot about 266 ms in, after the
+          `worker_owner_prepare` checkpoint and the runtime identity line.
+          The boot ordinal reached 14 or more, each with
+          `reset_reason=panic`. Neither a Rust-panic marker nor an
+          allocation-failure marker was printed, which points to a CPU
+          exception or the end-of-stack watchpoint.
+        - The saved PC is `esp_restart_noos`, which is not the fault.
+          Correction: `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y` kept the
+          older loop005 dump, which was never cleared, so none of these
+          panics were stored (see `task-str005-queue-bootloop-recovery`).
+        - Leading hypothesis (unconfirmed): a 4 KiB thread, such as the
+          Wi-Fi reconnect thread, overflows its stack. The new queue's
+          timed wait goes through ESP-IDF's pthread condition variable,
+          where std's channel parked the thread.
+        - Operator stopped: browser closed, supervisor exited 0, no
+          listener. `recordCleanup` cannot run for a pre-cycle failure
+          (`ENOENT`). `finalize` sealed `unverified`, labelled
+          `stop_impossible_contract` because the cleanup receipt was
+          missing. Result `375ca57f631df74dd9008116eceb926f0ea681ce1960259cb738c94dda17ff4f`, seal `66f693ccdf398507ab7a8d17713dfa88cc990268d66318b0dbdba5b20456dbcd`.
+        - The device is still boot-looping on the candidate. Recovery
+          (restore the last good image, then capture the core dump) needs
+          its own contract; it waits for the owner.
+- [x] Step 3, Gate-visible control stack and heap telemetry: dropped
+      (2026-10-05) as superseded. The fault was attributed without it. The
+      core-dump records (panic frame, control stack trace, allocation
+      history) plus `just audit-stack-realignment` and
+      `just audit-startup-frames` cover the need.
+- [x] Phase D: no reproduction on corrected images. loop006 (`7ca3e29c`)
+      and loop007 (`6f268518`) each ran 500 rounds with no panic,
+      recovery008 and recovery016 showed no reboot, and heartbeat007 ran a
+      normal Start on `7ca3e29c` without a panic.
+Closure review (2026-10-05):
+- Demonstrated cause, corrected and verified: the Xtensa LLVM stack
+  realignment without `movsp` in std channel constructors
+  (espressif/llvm-project#140, esp-rs/rust#284). All std channels were
+  removed (`24af10be`, `00f84eae`), the boot-loop regression was fixed
+  (`9386999d`), and both audits are in place. Hardware: loop006, loop007
+  and heartbeat007 (see above).
+- Original Share001 and Share002 Start panics: consistent with the same
+  hazard, but not proven.
+  - `just audit-stack-realignment` on their retained ELFs blocks both:
+    - Share002 `cf7a3f03`/`66a77d2c…`: 14 realigning functions, 17 project
+      callers including `writer::send_control`;
+    - Share001 `f000872f`/`a3e25741…`: 18 callers including
+      `ProductionWorkerSession::start`, `renew` and `safe_stop` on the Start
+      path itself.
+  - Share001's decoded dump showed the SDK's synthetic frame (the stack
+    pointer restored as a non-stack value), the same signature as the
+    decoded idle panic.
+  - Share002 has no dump.
+  - Neither panic may be replayed, so exact attribution is unreachable.
+- Archive status: archived 2026-10-05. The owner explicitly accepted the
+  Share001/Share002 attribution as "likely the same compiler bug, not
+  proven". It stays a documented non-claim; parity is unaffected.
+
+Development core-dump clearing: disabled (clear001 completed).
+Idle panic recovery hardware: disabled.
+Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
+read is admitted. Stop conditions are in the amendment.
