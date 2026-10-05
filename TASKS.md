@@ -4655,7 +4655,7 @@ Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
 Development core-dump acquisition: disabled (queue boot-loop capture001 completed).
-Development core-dump clearing: disabled (startup001 archived clear completed).
+Development core-dump clearing: enabled (private archive verified).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
 compares the archived full region before its exact erase. These declarations do
@@ -5527,7 +5527,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: disabled.
+Control diagnostic recovery hardware: enabled.
 Queue workaround install hardware: disabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
@@ -5755,7 +5755,7 @@ Retry and stop:
 - If the read fails, keep the dump; never clear it here.
 
 Gates:
-Queue boot-loop restore hardware: disabled (restore and capture completed).
+Queue boot-loop restore hardware: enabled.
 
 - [x] Restore and verify the exact identity at boot (2026-10-04).
       - The detector admitted one Ultra 205 and `board-info` passed.
@@ -5784,12 +5784,37 @@ Queue boot-loop restore hardware: disabled (restore and capture completed).
       - Offline decoding against the candidate ELF is refused, as it
         should be (the dump's identity is `d986b2ea`). The boot-loop fault
         is therefore still unknown.
-- [ ] Next, owner decision: clear the archived dump, then reproduce the
-      boot loop once with the candidate to store its dump, restore again
-      and capture; or diagnose without a dump. A static direct-call
+- [x] Owner decision (2026-10-04): option 1, a one-time reproduction to store
+      the boot-loop dump. A static direct-call
       depth comparison of the logging path shows no change (2,464 bytes on
       both images; register-indirect calls are not covered).
 Gates: acquisition, recovery and restore are disabled again.
+
+Reproduction contract (owner-approved 2026-10-04; deliberate fault
+reproduction):
+1. recovery014, then clear002 inside its proof window:
+   `just core-dump-clear` with installed `7ca3e29c`/`227bc380`. The
+   preserved dump is `scratch/str005-queue-bootloop/capture001/core-dump.private.bin`
+   (SHA-256 `b42a2b7d16b7a0f425dad075944499d1cfff8f74b252e5d4d39f10fb03eb9d07`,
+   identical to capture-003), so nothing unarchived is erased.
+2. Install the failing candidate exactly once, to store its panic:
+   - detector, then `board-info`;
+   - `just flash-monitor --board 205 --port <port> --expected-physical-sha256 <physical> --manifest <repo>/scratch/str005-queue-workaround/attempt-001/qualified-artifacts/firmware/bitaxe-ultra205-package.json --evidence-dir <worktree>/scratch/repro --capture-timeout-seconds 120`;
+   - run from a clean detached worktree at `a2052ab0` (the same setup as
+     the restore).
+   A bounded 120-s capture is enough: the first panic stores the dump.
+   An unqualified monitor result is expected.
+3. Restore `7ca3e29c` exactly as before, from a clean worktree at
+   `7ca3e29c`, and verify the exact identity at boot.
+4. recovery015, then capture002 inside its proof window; decode offline
+   against the candidate ELF `84d1cd51…`.
+- Effects: one clear, one candidate install, one restore, one read.
+- Stop on any detector or `board-info` failure, an identity change, a
+  restore that does not boot to its exact identity, or ledger drift.
+- If the candidate does not panic within the capture, keep the evidence,
+  restore anyway, and record it.
+- No Start, mining, NVS or factory reset, direct UART, or second candidate
+  install.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
