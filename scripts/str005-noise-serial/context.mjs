@@ -114,6 +114,19 @@ export const PROFILES = Object.freeze({
     successor: { path: QUEUE_REINSTALL_SUCCESSOR_PATH, sha256: QUEUE_REINSTALL_SUCCESSOR_SHA256 },
     publication: "docs/parity/evidence/str005-queue-workaround-reinstall",
     inspect: inspectRestoredRealignmentRecoveryPredecessor, ledger: { next_ordinal: 27, last_ordinal: 26, total_charged_ms: 3180000 },
+    // Attempt-001 wrote the exact candidate, then its USB monitor stream stopped mid-bootloader. The owner saw
+    // the display running and replugged USB; attempt-002's first Connect must observe this identity.
+    continuations: Object.freeze({
+      2: { attempt: "attempt-001", resultSha256: "b2911c4be5c438cab86cf9774c3e147ccb62a9ac7bd788ba5e79e2055ccbe05f",
+        inventorySha256: "a3ba83786ca74b248ae753ee8cb0a8e25d8bda5d9e19bda8285a3e8778626018",
+        remediation: "owner_display_confirmed_usb_replug_after_monitor_loss",
+        installed: { firmware_commit: "e823c8513400205186bf8882f16d4d0aa6371ac4",
+          app_elf_sha256: "7cebd55beff13638b096df09f04e1214cff06f17f2e261872c5b784b86fd15f2",
+          observation: "unobserved_owner_confirmed",
+          evidence: { "install-0.claim.json": "a87ade70681981e48e8b5da581ace849c198b14aca8b3e85a2a7537e4bc2432e",
+            "install-0.exit.json": "8f075ac5813e39c05eb6c6e62a34019a9b8ac8e1fb40867199da176680f45dac",
+            "install-0/flash-command-evidence.json": "eb26b0a93ea6b103519b136c82be4785e7df66dabe987ab5f90798c33b9c7866" } } },
+    }),
     admits: (previous) => previous.basis === "restored_realignment_current_recovery" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 26 },
 });
@@ -146,12 +159,26 @@ export async function inspectContinuation(parent, ordinal, continuation) {
     check(digest(item) === sha256, "noise_continuation_install_evidence");
     values[name] = JSON.parse(item.toString("utf8"));
   }
-  const flash = values["install-0/flash-command-evidence.json"], context = (await proof(prior, "context.json")).value.context;
-  check(values["install-0.exit.json"].code === 0 && flash.flash_status === "completed" && flash.trusted_output === true &&
+  const context = (await proof(prior, "context.json")).value.context;
+  check(installEvidenceAdmits(values, installed, context), "noise_continuation_install_evidence");
+  return { ...binding, ...(installed.observation ? { install_observation: installed.observation } : {}),
+    before_source: { firmware_commit: installed.firmware_commit, app_elf_sha256: installed.app_elf_sha256 } };
+}
+/** Whether a prior attempt's install-0 evidence proves its candidate is the installed image.
+ * - Observed: a clean exit with trusted startup and a confirmed safe baseline.
+ * - `unobserved_owner_confirmed`: the exact package was written, then the USB monitor stream was lost
+ *   (exit 1, untrusted output). The owner saw the display running and replugged USB. The next attempt's
+ *   first Connect is configured with this identity, so the Gate refuses unless the device runs it. */
+export function installEvidenceAdmits(values, installed, context) {
+  const flash = values["install-0/flash-command-evidence.json"], exit = values["install-0.exit.json"];
+  const identity = context.firmware_commit === installed.firmware_commit && context.app_elf_sha256 === installed.app_elf_sha256;
+  if (installed.observation === "unobserved_owner_confirmed")
+    return identity && exit.code === 1 && flash.command_kind === "flash-monitor" && flash.flash_status === "completed" &&
+      flash.firmware_commit === installed.firmware_commit && flash.trusted_output === false;
+  check(installed.observation === undefined, "noise_continuation_install_evidence");
+  return identity && exit.code === 0 && flash.flash_status === "completed" && flash.trusted_output === true &&
     flash.observed_firmware_commit === installed.firmware_commit && flash.fixed_serial_assessment?.startup_complete === true &&
-    flash.fixed_serial_assessment?.safe_baseline_confirmed === true && context.firmware_commit === installed.firmware_commit &&
-    context.app_elf_sha256 === installed.app_elf_sha256, "noise_continuation_install_evidence");
-  return { ...binding, before_source: { firmware_commit: installed.firmware_commit, app_elf_sha256: installed.app_elf_sha256 } };
+    flash.fixed_serial_assessment?.safe_baseline_confirmed === true;
 }
 export function profileOf(context) {
   const name = context.profile ?? "historical";

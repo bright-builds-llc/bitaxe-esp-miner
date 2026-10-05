@@ -5529,7 +5529,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
 Realignment fix install hardware: disabled.
 Control diagnostic recovery hardware: disabled.
 Queue workaround install hardware: disabled.
-Queue workaround reinstall hardware: disabled (attempt-001 stopped).
+Queue workaround reinstall hardware: enabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
@@ -5894,6 +5894,16 @@ reproduction):
   - Next: the owner checks the display and does a USB-only replug. Then a
     continuation attempt binds install-0's installed image and confirms it
     with a fresh Connect. A boot loop instead takes the restore path.
+- The owner replugged USB only (2026-10-05); the display showed uptime
+  counting normally. The installed `e823c851` image runs, and only the
+  monitor stream was lost.
+  - Continuation: a new `unobserved_owner_confirmed` kind admits an
+    install-0 whose write completed for the exact candidate but whose
+    monitor was lost (exit 1, untrusted). Regressions cover it and the
+    refusals.
+  - Attempt-002 binds attempt-001 with that identity as its before image.
+    Its first Connect is configured with that identity, so the Gate refuses
+    unless the device runs it.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 

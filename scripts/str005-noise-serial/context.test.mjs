@@ -285,3 +285,32 @@ test("queue-workaround reinstall refuses the pre-reproduction recovery basis", a
     const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "realignment_fix_current_recovery" } };
   } }), { code: "noise_predecessor" });
 });
+test("install evidence admits an observed install or an owner-confirmed install whose monitor was lost", async () => {
+  // Arrange
+  const { installEvidenceAdmits } = await import("./context.mjs");
+  const commit = "e".repeat(40), elf = "f".repeat(64), context = { firmware_commit: commit, app_elf_sha256: elf };
+  const observed = { "install-0.exit.json": { code: 0 }, "install-0/flash-command-evidence.json": { command_kind: "flash-monitor",
+    flash_status: "completed", trusted_output: true, observed_firmware_commit: commit, firmware_commit: commit,
+    fixed_serial_assessment: { startup_complete: true, safe_baseline_confirmed: true } } };
+  const lost = { "install-0.exit.json": { code: 1 }, "install-0/flash-command-evidence.json": { command_kind: "flash-monitor",
+    flash_status: "completed", trusted_output: false, observed_firmware_commit: "Unavailable", firmware_commit: commit } };
+  const installed = { firmware_commit: commit, app_elf_sha256: elf };
+  const unobserved = { ...installed, observation: "unobserved_owner_confirmed" };
+  // Act / Assert
+  assert.equal(installEvidenceAdmits(observed, installed, context), true);
+  assert.equal(installEvidenceAdmits(lost, unobserved, context), true);
+  assert.equal(installEvidenceAdmits(lost, installed, context), false);
+});
+test("an owner-confirmed install still needs a completed write of the exact candidate", async () => {
+  // Arrange
+  const { installEvidenceAdmits } = await import("./context.mjs");
+  const commit = "e".repeat(40), elf = "f".repeat(64), context = { firmware_commit: commit, app_elf_sha256: elf };
+  const unobserved = { firmware_commit: commit, app_elf_sha256: elf, observation: "unobserved_owner_confirmed" };
+  const lost = (flash) => ({ "install-0.exit.json": { code: 1 }, "install-0/flash-command-evidence.json": { command_kind: "flash-monitor",
+    flash_status: "completed", trusted_output: false, firmware_commit: commit, ...flash } });
+  // Act / Assert
+  assert.equal(installEvidenceAdmits(lost({ flash_status: "failed" }), unobserved, context), false);
+  assert.equal(installEvidenceAdmits(lost({ firmware_commit: "a".repeat(40) }), unobserved, context), false);
+  assert.equal(installEvidenceAdmits(lost({}), { ...unobserved, app_elf_sha256: "0".repeat(64) }, context), false);
+  assert.throws(() => installEvidenceAdmits(lost({}), { ...unobserved, observation: "guessed" }, context), { code: "noise_continuation_install_evidence" });
+});
