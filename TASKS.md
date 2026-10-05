@@ -5529,7 +5529,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
 Realignment fix install hardware: disabled.
 Control diagnostic recovery hardware: disabled.
 Queue workaround install hardware: disabled.
-Queue workaround reinstall hardware: enabled.
+Queue workaround reinstall hardware: disabled (attempt-001 stopped).
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
@@ -5876,6 +5876,24 @@ reproduction):
   (The gate line lives in `task-str005-start-panic-diagnosis`, the
   profile's task; the first preflight refused it here with
   `noise_live_task_disabled`, before any root or effect existed.)
+- Reinstall attempt-001 (2026-10-05): STOP, monitor stream lost after the
+  flash.
+  - Candidate `e823c851`, ELF `7cebd55b…`, passed both audits. Preflight
+    (recovery015) and the before-install accounting passed.
+  - Install 0 wrote the exact package (`flash_status=completed`). The USB
+    monitor then received only 4 lines and stopped mid-bootloader, at
+    "Disabling RNG early entropy source", with no reboot or panic pattern
+    (`application_execution=not_observed`). The detector still enumerates
+    the runtime profile.
+  - Consistent with the documented USB link defect; the application state
+    is unknown.
+  - Operator stopped (browser closed, supervisor exited 0, no listener).
+    `finalize` sealed `unverified`. Result
+    `b2911c4be5c438cab86cf9774c3e147ccb62a9ac7bd788ba5e79e2055ccbe05f`,
+    seal `a3ba83786ca74b248ae753ee8cb0a8e25d8bda5d9e19bda8285a3e8778626018`.
+  - Next: the owner checks the display and does a USB-only replug. Then a
+    continuation attempt binds install-0's installed image and confirms it
+    with a fresh Connect. A boot loop instead takes the restore path.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
