@@ -251,3 +251,20 @@ test("realignment-fix profile refuses the idle-panic recovery basis", async (t) 
     const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "idle_panic_current_recovery" } };
   } }), { code: "noise_predecessor" });
 });
+test("queue-workaround profile binds the realignment-fix recovery and its own publication", async (t) => {
+  // Arrange / Act
+  const f = await fixture(t, { profile: "queue-workaround-install" });
+  // Assert
+  assert.equal(f.context.profile, "queue-workaround-install");
+  assert.deepEqual(f.context.expected_ledger, { next_ordinal: 27, last_ordinal: 26, total_charged_ms: 3180000 });
+  assert.equal(publicationPath(f.context), resolve(f.options.firmwareRoot, "docs/parity/evidence/str005-queue-workaround/attempt-001.json"));
+});
+test("queue-workaround profile refuses the older control-diagnostic recovery basis", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "queue-workaround-install" });
+  const inspect = f.operations.inspectPredecessor;
+  // Act / Assert
+  await assert.rejects(preflight(f.options, { ...f.operations, inspectPredecessor: async (path) => {
+    const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "control_diagnostic_current_recovery" } };
+  } }), { code: "noise_predecessor" });
+});

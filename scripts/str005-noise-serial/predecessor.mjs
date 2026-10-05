@@ -107,7 +107,7 @@ export const inspectStep5InstallPassPredecessor = passPredecessor({
 export const IDLE_PANIC_RECOVERY_RESULT = "473546a8714067aa3c2af3c1772ce48050cf1c2aca8dc584886b6393a9b8f11b";
 export const IDLE_PANIC_RECOVERY_SEAL = "3a84383e127d39785e963b1888f8c65d5e3c8664740c602d310b6494e7cd8644";
 /** A sealed current-recovery collection: safe, idle and released on its pinned image. */
-function currentRecoveryPredecessor({ resultSha256, sealSha256, basis, maybeIdentity = null }) {
+function currentRecoveryPredecessor({ resultSha256, sealSha256, basis, maybeIdentity = null, allowRetainedRecord = false }) {
   return async function inspectCurrentRecoveryPredecessor(path) {
     check(await realpath(path) === resolve(path), "noise_predecessor_alias");
     await protectedPath(path); const root = dirname(path); await protectedPath(root, true);
@@ -117,8 +117,10 @@ function currentRecoveryPredecessor({ resultSha256, sealSha256, basis, maybeIden
     await verifyInventory(root, sealed.value.files, new Set(["sealed-inventory.json"]));
     const result = (await proof(root, "result.json")).value, context = (await proof(root, "context.json")).value;
     const ledger = (await proof(root, "ledger.json")).value, original = (await proof(root, "original_budget.json")).value;
+    // A retained terminal record is safe when its resources were proven released; installing clears it.
+    const v2Safe = result.current_v2_idle === true || (allowRetainedRecord && result.retained_resource_proof === true);
     check(result.schema === "str005-share-current-recovery-v1" && result.current_safe_recovery === true &&
-      result.host_resources_released === true && result.first_failure === null && result.current_v2_idle === true &&
+      result.host_resources_released === true && result.first_failure === null && v2Safe &&
       context.schema === "str005-share-failure-recovery-context-v1" &&
       (maybeIdentity === null || (context.firmware_commit === maybeIdentity.firmware_commit &&
         context.app_elf_sha256 === maybeIdentity.app_elf_sha256)), "noise_predecessor_recovery");
@@ -141,3 +143,11 @@ export const inspectControlDiagnosticRecoveryPredecessor = currentRecoveryPredec
   basis: "control_diagnostic_current_recovery",
   maybeIdentity: { firmware_commit: "c634cc206979fd4179eb32478d20feab1825e31c",
     app_elf_sha256: "d986b2ead04672f42dbab9eb8c17e52f63cf1877881cf4c7ddcdb276cf8b5770" } });
+// Recovery012: the sealed current recovery on the realignment-fix image after heartbeat007, with that
+// Start's terminal record read by its device attempt and its resources released.
+export const inspectRealignmentFixRecoveryPredecessor = currentRecoveryPredecessor({
+  resultSha256: "61de415cd13b20503d1f27bffc45c00498d83dbf0f80ec2352458960ad58f2c8",
+  sealSha256: "6b3cef1acedf71caa13499424217a45c7143b50f751ae06077d07fcc21cecc4d",
+  basis: "realignment_fix_current_recovery", allowRetainedRecord: true,
+  maybeIdentity: { firmware_commit: "7ca3e29ce1870396c801f9d8d74ff02aac2ef112",
+    app_elf_sha256: "227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0" } });

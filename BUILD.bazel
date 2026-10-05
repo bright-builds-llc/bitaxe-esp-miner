@@ -330,6 +330,7 @@ js_library(
         "docs/hardware/str005-step5-diagnostic-amendment.md",
         "docs/hardware/str005-control-stack-diagnostic-amendment.md",
         "docs/hardware/str005-realignment-fix-amendment.md",
+        "docs/hardware/str005-queue-workaround-amendment.md",
     ],
 )
 

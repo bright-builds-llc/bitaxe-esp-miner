@@ -5527,7 +5527,8 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: enabled.
+Control diagnostic recovery hardware: disabled.
+Queue workaround install hardware: enabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
@@ -5644,6 +5645,22 @@ Control review loop hardware: disabled.
         consolidation tasks (both archived): recovery012 with the device
         record attempt from the lineage head, then the install, loop and
         closing recovery.
+      - recovery012 (2026-10-04): current safe recovery. It read
+        heartbeat007's terminal record by its device record attempt
+        (confirmed mode) with resources released, on boot 5, with the
+        ledger at next 27, last 26, 3,180,000 ms, not pending. No errors.
+        Result `61de415cd13b20503d1f27bffc45c00498d83dbf0f80ec2352458960ad58f2c8`,
+        seal `6b3cef1acedf71caa13499424217a45c7143b50f751ae06077d07fcc21cecc4d`.
+      - Install contract:
+        [queue-workaround amendment](docs/hardware/str005-queue-workaround-amendment.md).
+        - Profile `queue-workaround-install`, namespace
+          `scratch/str005-queue-workaround`.
+        - Predecessor recovery012: a retained terminal record is admitted
+          only with proven resource release.
+        - Ledger 27/26/3,180,000 ms. The candidate's exact ELF must pass
+          `just audit-stack-realignment` with no callers.
+        - After a pass, run `just str005-lineage advance-install`, then
+          loop007 and recovery013.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
