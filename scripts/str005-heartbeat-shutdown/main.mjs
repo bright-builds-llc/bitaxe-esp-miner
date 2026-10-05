@@ -9,7 +9,7 @@ import { processSnapshot, requireLsofAbsent, requireNoHolders } from '../str005-
 import { createServerOwner } from '../str005-startup-probe/server.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { preflight } from '../str005-step5-diagnostic/preflight.mjs';
-import { installation, previousStart, restartAfter } from '../str005-step5-diagnostic/lineage.mjs';
+import { currentRecovery, installation, previousStart, restartAfter } from '../str005-step5-diagnostic/lineage.mjs';
 import { validateRun } from '../str005-heartbeat-probe/evidence.mjs';
 import { createHeartbeatOwner } from '../str005-heartbeat-probe/owner.mjs';
 import { finalize } from '../str005-heartbeat-probe/finish.mjs';
@@ -27,12 +27,15 @@ async function verifyLineage(root, context, live) {
   const anchors = context.anchors;
   const installed = await installation(anchors.installation.root, PINS);
   check(Boolean(anchors.previousStart) === Boolean(PINS.previousStartResult) &&
-    Boolean(anchors.restart) === Boolean(PINS.restartResult), 'share_lineage_changed');
+    Boolean(anchors.restart) === Boolean(PINS.restartResult) &&
+    Boolean(anchors.currentRecovery) === Boolean(PINS.currentRecoveryResult), 'share_lineage_changed');
   const maybePrevious = anchors.previousStart ? await previousStart(anchors.previousStart.root, installed, PINS) : null;
   const maybeRestarted = anchors.restart ? await restartAfter(anchors.restart.root, maybePrevious, PINS) : null;
-  const current = maybeRestarted ?? maybePrevious ?? installed;
+  const maybeRecovery = anchors.currentRecovery ? await currentRecovery(anchors.currentRecovery.root, installed, PINS) : null;
+  const current = maybeRecovery ?? maybeRestarted ?? maybePrevious ?? installed;
   check(installed.seal === anchors.installation.seal && maybePrevious?.seal === anchors.previousStart?.seal &&
-    maybeRestarted?.seal === anchors.restart?.seal && installed.identity.firmware_commit === context.firmware_commit &&
+    maybeRestarted?.seal === anchors.restart?.seal && maybeRecovery?.seal === anchors.currentRecovery?.seal &&
+    installed.identity.firmware_commit === context.firmware_commit &&
     installed.identity.app_elf_sha256 === context.app_elf_sha256 && installed.physical === context.physical &&
     current.expectedBootOrdinal === context.expectedBootOrdinal, 'share_lineage_changed');
   cleanPushed(context.gate_root, context.gate_commit);

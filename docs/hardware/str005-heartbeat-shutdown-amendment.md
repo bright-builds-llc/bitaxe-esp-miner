@@ -107,6 +107,29 @@ retry runs on the corrected image and replaces only the lineage:
 Everything else in Phase B applies unchanged: the four native audits run on
 the corrected ELF, the Gate stays `86fc62d7`, and pass criteria are the same.
 
+## Current-image re-run
+
+The firmware changed twice after heartbeat007's pass on `7ca3e29c`:
+
+- the queue workaround changed the USB control, mining-session and safety
+  queues;
+- the BBPLL setting changed startup clocking.
+
+The re-run (`task-str005-heartbeat-current-image`) uses the same Phase B
+contract on the image named by the verified lineage head. It changes only
+the lineage:
+
+- **Install.** The lineage head's install (`usb-bbpll-install`
+  attempt-001, image `60e344e2`/`3f01a5f4`), read from
+  `scripts/str005-lineage/head.json`, never hand-edited.
+- **Current recovery.** Reset-endurance loops rebooted the board many
+  times after the install, so a sealed current recovery on the same image
+  and board re-bases the expected boot ordinal and ledger. It must show
+  idle V2 and a settled ledger. Preflight takes it as
+  `--current-recovery-root`.
+- **Expected after ledger.** Next 28, last 27, 3,360,000 ms, at attempt
+  ordinal 27.
+
 ## Operator sequence
 
 Use the persistent Gate tab and click Connect Worker before each step:

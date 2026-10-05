@@ -40,3 +40,29 @@ test('the heartbeat owner loads on the granted origin without a device', async (
   // Assert
   assert.equal(loaded.PORT, 48765);
 });
+
+test('preflight accepts an optional current-recovery root', () => {
+  // Arrange
+  const base = ['--private-root', '/p', '--gate-root', '/g', '--fixture-binary', '/f', '--installation-root', '/i'];
+  // Act
+  const { options } = argumentsFor(['preflight', ...base, '--current-recovery-root', '/r']);
+  // Assert
+  assert.equal(options['--current-recovery-root'], '/r');
+});
+
+test('a current recovery re-bases the expected boot only for the same idle image and board', async () => {
+  // Arrange
+  const { recoveryAnchor } = await import('../str005-step5-diagnostic/lineage.mjs');
+  const installed = { identity: { firmware_commit: 'c'.repeat(40), app_elf_sha256: 'e'.repeat(64) }, physical: 'p'.repeat(64) };
+  const parts = { result: { schema: 'str005-share-current-recovery-v1', current_safe_recovery: true, current_v2_idle: true,
+    first_failure: null, host_resources_released: true },
+  context: { firmware_commit: 'c'.repeat(40), app_elf_sha256: 'e'.repeat(64), physical: 'p'.repeat(64) },
+  ledger: { next_ordinal: 27, pending: false }, status: { state: 'idle', observation: { bootOrdinal: 301 } } };
+  // Act
+  const anchor = recoveryAnchor(parts, installed);
+  // Assert
+  assert.equal(anchor.expectedBootOrdinal, 301);
+  assert.throws(() => recoveryAnchor({ ...parts, context: { ...parts.context, physical: 'q'.repeat(64) } }, installed), /step5_recovery_state/u);
+  assert.throws(() => recoveryAnchor({ ...parts, result: { ...parts.result, current_v2_idle: false } }, installed), /step5_recovery_state/u);
+  assert.throws(() => recoveryAnchor({ ...parts, ledger: { pending: true } }, installed), /step5_recovery_state/u);
+});

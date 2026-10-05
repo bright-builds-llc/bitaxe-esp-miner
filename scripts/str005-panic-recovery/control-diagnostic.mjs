@@ -9,7 +9,7 @@ import { main as collect } from '../str005-share-recovery/main.mjs';
 import { loadSealedStartRecord } from '../str005-startup-probe/start-record.mjs';
 import { HEAD } from '../str005-lineage/head.mjs';
 
-export const ENABLED = false;
+export const ENABLED = true;
 // The installed image and its latest Start come from the verified lineage head
 // (`just str005-lineage show`), never from hand-edited constants.
 export const INSTALL = Object.freeze({ profile: HEAD.install.profile, path: HEAD.install.path, result: HEAD.install.result,
@@ -58,7 +58,8 @@ export function retainedAttempt(install, fallback, maybeLatest) {
 }
 export const CONTROL_DIAGNOSTIC_RECOVERY = Object.freeze({
   enabled: ENABLED,
-  task: 'task-str005-start-panic-diagnosis',
+  // Re-owned by the active task that needs a current recovery; the panic-diagnosis task is archived.
+  task: 'task-str005-heartbeat-current-image',
   contract: 'docs/hardware/str005-control-stack-reproduction-amendment.md',
   lines: ['Control diagnostic recovery hardware: enabled.'],
   seal: INSTALL.seal,

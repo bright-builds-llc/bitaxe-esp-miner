@@ -13,7 +13,7 @@ import { main as provenanceAudit } from '../audit-fault-provenance.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { verifyGateCompatibility } from '../str005-startup-probe/gate-compatibility.mjs';
 import { PINS } from './contract.mjs';
-import { installation, previousStart, restartAfter } from './lineage.mjs';
+import { currentRecovery, installation, previousStart, restartAfter } from './lineage.mjs';
 
 export const SCHEMA = 'str005-step5-diagnostic-context-v1';
 export const ADMISSION = 'diagnostic-step5-v1';
@@ -31,7 +31,11 @@ export async function preflight(repo, root, options, source, operations = {}, pr
   const maybeRestart = options['--restart-root'] && maybePrevious
     ? await (operations.restartAfter ?? restartAfter)(options['--restart-root'], maybePrevious, pins) : null;
   check((maybeRestart !== null) === Boolean(pins.restartResult), 'step5_restart_required');
-  const current = maybeRestart ?? maybePrevious;
+  // A current recovery re-bases an install-only lineage after reboots that left no retained record.
+  const maybeRecovery = options['--current-recovery-root'] && !maybePrevious
+    ? await (operations.currentRecovery ?? currentRecovery)(options['--current-recovery-root'], installed, pins) : null;
+  check((maybeRecovery !== null) === Boolean(pins.currentRecoveryResult), 'step5_recovery_required');
+  const current = maybeRecovery ?? maybeRestart ?? maybePrevious;
   const gateRoot = options['--gate-root'];
   check(gateRoot === installed.gate_root && installed.identity.gate_commit === pins.gate, 'step5_gate');
   cleanPushed(gateRoot, installed.identity.gate_commit);
@@ -70,7 +74,8 @@ export async function preflight(repo, root, options, source, operations = {}, pr
     retainedManifestSha256: installed.retainedManifestSha256,
     anchors: { installation: { root: installed.root, seal: installed.seal },
       ...(maybePrevious ? { previousStart: { root: maybePrevious.root, seal: maybePrevious.seal } } : {}),
-      ...(maybeRestart ? { restart: { root: maybeRestart.root, seal: maybeRestart.seal } } : {}) },
+      ...(maybeRestart ? { restart: { root: maybeRestart.root, seal: maybeRestart.seal } } : {}),
+      ...(maybeRecovery ? { currentRecovery: { root: maybeRecovery.root, seal: maybeRecovery.seal } } : {}) },
     auditSha256: audits, gateCompatibilitySha256: await fileDigest(resolve(root, 'gate-compatibility.json')),
     symbolVerifierSha256: await fileDigest(symbolsPath),
     assetHashes: Object.fromEntries(Object.entries(assets).map(([name, bytes]) => [name, sha256(bytes)])) };

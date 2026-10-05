@@ -1605,7 +1605,7 @@ js_test(
 js_library(
     name = "str005_heartbeat_shutdown_sources",
     srcs = glob(["str005-heartbeat-shutdown/*.mjs"]),
-    deps = [":str005_heartbeat_probe_sources", ":str005_accepted_share_sources"],
+    deps = [":str005_heartbeat_probe_sources", ":str005_accepted_share_sources", ":str005_lineage_sources"],
 )
 
 js_binary(

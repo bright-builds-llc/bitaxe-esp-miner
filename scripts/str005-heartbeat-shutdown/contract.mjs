@@ -2,23 +2,25 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
-export const TASK = 'task-str005-heartbeat-shutdown-probe';
-export const ENABLED_LINE = 'Heartbeat shutdown probe hardware: enabled.';
+import { HEAD } from '../str005-lineage/head.mjs';
+export const TASK = 'task-str005-heartbeat-current-image';
+export const ENABLED_LINE = 'Heartbeat current image hardware: enabled.';
 export const ENABLED = false;
 export const CONTRACT = 'docs/hardware/str005-heartbeat-shutdown-amendment.md';
 export const SCHEMA = 'str005-heartbeat-shutdown-context-v1';
 export const ADMISSION = 'heartbeat-shutdown-v1';
-/** The audited install and, when a Start ran on it, that Start and the restart clearing its retained record. */
-export const PINS = Object.freeze({ installationProfile: 'realignment-fix-install',
-  // Realignment-fix attempt-001: the corrected image 7ca3e29c (ledger 26/25/3,000,000 ms, boot 5).
-  installationResult: '13296cfb30ec0721b290141deb658d94fa7eb724c8d7a3a39f3acff478e79293',
-  installationSeal: 'd3ec8ccb73cde4b655120781c45ba5a8ba6b463cdd151d3ff14600006d9551f0',
-  // No Start has run on this image, so no retained record needs a restart first.
+/** The verified lineage head's install, plus a current recovery that re-bases the boot after the install's
+ * later reboots. A previous Start and its restart are pinned only when a Start ran on this install. */
+export const PINS = Object.freeze({ installationProfile: HEAD.install.profile,
+  installationResult: HEAD.install.result,
+  installationSeal: HEAD.install.seal,
   previousStartResult: null,
   previousStartSeal: null,
   restartResult: null,
   restartSeal: null,
-  gate: '86fc62d7a9d75da1affa2d51bc3b9eab41d86031' });
+  currentRecoveryResult: null,
+  currentRecoverySeal: null,
+  gate: HEAD.install.identity.gate_commit });
 /** The exact active task line and the compiled flag both admit effects; a pinned Start needs a pinned restart. */
 export function taskEnabled(tasks, compiled = ENABLED, pins = PINS) {
   const active = tasks.split(/^## Active$/mu)[1]?.split(/^## /mu)[0] ?? '';
@@ -32,7 +34,7 @@ export async function source(repo) {
   return { commit, contractSha256: sha256(await readFile(resolve(repo, CONTRACT))) };
 }
 const OPTIONS = ['--private-root', '--gate-root', '--fixture-binary', '--installation-root', '--previous-start-root', '--restart-root',
-  '--authority-directory'];
+  '--current-recovery-root', '--authority-directory'];
 export function argumentsFor(argv) {
   const [action, ...rest] = argv, options = {};
   check(['preflight', 'serve', 'finish'].includes(action) && rest.length % 2 === 0, 'heartbeat_arguments');
@@ -41,9 +43,10 @@ export function argumentsFor(argv) {
     check(OPTIONS.includes(key) && !options[key] && typeof value === 'string' && resolve(value) === value, 'heartbeat_arguments');
     options[key] = value;
   }
-  // The shared preflight requires the Start and restart roots exactly when they are pinned.
+  // The shared preflight requires the Start, restart and recovery roots exactly when they are pinned.
   const [required, optional] = action === 'preflight'
-    ? [['--private-root', '--gate-root', '--fixture-binary', '--installation-root'], ['--previous-start-root', '--restart-root']]
+    ? [['--private-root', '--gate-root', '--fixture-binary', '--installation-root'],
+      ['--previous-start-root', '--restart-root', '--current-recovery-root']]
     : [action === 'serve' ? ['--private-root', '--authority-directory'] : ['--private-root'], []];
   check(required.every(key => options[key]) && Object.keys(options).every(key => required.includes(key) || optional.includes(key)),
     'heartbeat_arguments');

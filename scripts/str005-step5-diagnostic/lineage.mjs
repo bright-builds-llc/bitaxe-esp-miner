@@ -84,3 +84,26 @@ export async function restartAfter(root, previous, pins = PINS) {
     result.ledger?.pending === false && JSON.stringify(result.ledger) === JSON.stringify(previous.ledger), 'step5_restart_state');
   return { root, seal: sealed.sha256, ledger: result.ledger, expectedBootOrdinal: result.after_boot_ordinal };
 }
+
+/** A sealed current recovery on the installed image and board: idle V2, a settled ledger, and the boot it
+ * observed. It re-bases the expected boot after reboots that left no Start, such as reset loops. */
+export async function currentRecovery(root, installed, pins = PINS) {
+  check(pins.currentRecoveryResult && pins.currentRecoverySeal, 'step5_recovery_unpinned');
+  check(await realpath(root) === resolve(root), 'step5_recovery_alias'); await protectedPath(root, true);
+  check(await fileDigest(resolve(root, 'result.json')) === pins.currentRecoveryResult, 'step5_recovery_anchor');
+  const sealed = await proof(root, 'sealed-inventory.json');
+  check(sealed.sha256 === pins.currentRecoverySeal, 'step5_recovery_seal');
+  await verifyInventory(root, sealed.value.files, new Set(['sealed-inventory.json']));
+  const read = async name => (await proof(root, name)).value;
+  const [result, context, ledger, status] = await Promise.all(['result.json', 'context.json', 'ledger.json', 'status.json'].map(read));
+  return { root, seal: sealed.sha256, ...recoveryAnchor({ result, context, ledger, status }, installed) };
+}
+/** Pure admission of a current recovery against the install it must follow. */
+export function recoveryAnchor({ result, context, ledger, status }, installed) {
+  check(result.schema === 'str005-share-current-recovery-v1' && result.current_safe_recovery === true &&
+    result.current_v2_idle === true && result.first_failure === null && result.host_resources_released === true &&
+    context.firmware_commit === installed.identity.firmware_commit && context.app_elf_sha256 === installed.identity.app_elf_sha256 &&
+    context.physical === installed.physical && ledger?.pending === false && status?.state === 'idle' &&
+    Number.isSafeInteger(status.observation?.bootOrdinal), 'step5_recovery_state');
+  return { ledger, expectedBootOrdinal: status.observation.bootOrdinal };
+}
