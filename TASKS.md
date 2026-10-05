@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
+Development core-dump acquisition: disabled (queue boot-loop capture002 completed).
 Development core-dump clearing: disabled (queue boot-loop clear002 completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5527,7 +5527,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: enabled.
+Control diagnostic recovery hardware: disabled.
 Queue workaround install hardware: disabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
@@ -5755,7 +5755,7 @@ Retry and stop:
 - If the read fails, keep the dump; never clear it here.
 
 Gates:
-Queue boot-loop restore hardware: enabled.
+Queue boot-loop restore hardware: disabled (reproduction, restore and capture002 completed).
 
 - [x] Restore and verify the exact identity at boot (2026-10-04).
       - The detector admitted one Ultra 205 and `board-info` passed.
