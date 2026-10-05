@@ -5527,7 +5527,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: disabled.
+Control diagnostic recovery hardware: enabled.
 Queue workaround install hardware: disabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
@@ -5756,8 +5756,23 @@ Retry and stop:
 Gates:
 Queue boot-loop restore hardware: enabled.
 
-- [ ] Restore and verify the exact identity at boot.
-- [ ] Advance the lineage head; recovery013.
+- [x] Restore and verify the exact identity at boot (2026-10-04).
+      - The detector admitted one Ultra 205 and `board-info` passed.
+      - The first dry run on HEAD was refused
+        (`package_workspace_identity_mismatch`), as expected, so the
+        restore ran from a clean detached worktree at `7ca3e29c`. Its
+        reference submodules were checked out from the local module store,
+        and `.embuild` was an APFS clone, because the tool refuses an
+        `esptool` path outside the workspace. Two earlier invocations
+        stopped at path admission before any ROM write.
+      - The restore wrote bootloader, partition table, application, web
+        and boot selection only; NVS and the core-dump partition were
+        untouched.
+      - `startup_status=complete`, `monitor_qualified=true`, the exact
+        package was observed, and the board is stable on boot 1. The
+        worktree was removed; evidence is kept under
+        `scratch/str005-queue-bootloop/restore`.
+- [ ] Advance the lineage head (done: `latestStart` is null); recovery013.
 - [ ] Capture and analyze the core dump; record the fault.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
