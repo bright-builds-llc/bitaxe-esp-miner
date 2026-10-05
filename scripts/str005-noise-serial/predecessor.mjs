@@ -151,3 +151,11 @@ export const inspectRealignmentFixRecoveryPredecessor = currentRecoveryPredecess
   basis: "realignment_fix_current_recovery", allowRetainedRecord: true,
   maybeIdentity: { firmware_commit: "7ca3e29ce1870396c801f9d8d74ff02aac2ef112",
     app_elf_sha256: "227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0" } });
+// Recovery015: the sealed current recovery with idle V2 on the restored realignment-fix image, after the
+// queue boot-loop reproduction and restore.
+export const inspectRestoredRealignmentRecoveryPredecessor = currentRecoveryPredecessor({
+  resultSha256: "473546a8714067aa3c2af3c1772ce48050cf1c2aca8dc584886b6393a9b8f11b",
+  sealSha256: "4eaacb69591026b90764d1198bfdbd52b7914ceeeabf4891e8927084f513e8d8",
+  basis: "restored_realignment_current_recovery",
+  maybeIdentity: { firmware_commit: "7ca3e29ce1870396c801f9d8d74ff02aac2ef112",
+    app_elf_sha256: "227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0" } });

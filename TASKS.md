@@ -5866,6 +5866,13 @@ reproduction):
     (4,896, inlined) and passes the fix (1,072);
   - synthetic tests cover each rule.
 - [x] Capture and analyze the boot-loop dump.
+- Reinstall contract (verified-fix continuation):
+  [reinstall amendment](docs/hardware/str005-queue-workaround-reinstall-amendment.md),
+  profile `queue-workaround-reinstall`, predecessor recovery015, ledger
+  27/26/3,180,000 ms. The candidate's exact ELF must pass both
+  `just audit-stack-realignment` and `just audit-startup-frames`. After a
+  pass: advance the lineage head, then loop007 and recovery016.
+Queue workaround reinstall hardware: enabled.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 

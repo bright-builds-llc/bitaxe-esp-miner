@@ -268,3 +268,20 @@ test("queue-workaround profile refuses the older control-diagnostic recovery bas
     const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "control_diagnostic_current_recovery" } };
   } }), { code: "noise_predecessor" });
 });
+test("queue-workaround reinstall binds the restored recovery and its own publication", async (t) => {
+  // Arrange / Act
+  const f = await fixture(t, { profile: "queue-workaround-reinstall" });
+  // Assert
+  assert.equal(f.context.profile, "queue-workaround-reinstall");
+  assert.deepEqual(f.context.expected_ledger, { next_ordinal: 27, last_ordinal: 26, total_charged_ms: 3180000 });
+  assert.equal(publicationPath(f.context), resolve(f.options.firmwareRoot, "docs/parity/evidence/str005-queue-workaround-reinstall/attempt-001.json"));
+});
+test("queue-workaround reinstall refuses the pre-reproduction recovery basis", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "queue-workaround-reinstall" });
+  const inspect = f.operations.inspectPredecessor;
+  // Act / Assert
+  await assert.rejects(preflight(f.options, { ...f.operations, inspectPredecessor: async (path) => {
+    const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "realignment_fix_current_recovery" } };
+  } }), { code: "noise_predecessor" });
+});
