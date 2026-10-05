@@ -5823,8 +5823,14 @@ change; the owner's replug is the only remediation for a stuck link.
     deadline; a persistent failure still fails. Regressions cover both cases.
     The flash tool and device-session suites pass.
   - baseline-003 reruns with that fix.
+- baseline-003 (2026-10-05): PASS, 100 of 100 cycles on `6f268518` (with
+  recalibration). Boot ordinals 2 to 101, identity 1675 to 2193 ms after
+  the reset, 0 re-enumerations, final cleanup proven. The defect did not
+  reproduce, so this path's per-reset rate is likely below about 3% (95%
+  bound). The loop cannot discriminate the fix. Per the contract, the
+  fixed image gets a 100-cycle no-regression run, not a fix claim.
 USB reset endurance hardware: enabled.
-USB BBPLL install hardware: disabled.
+USB BBPLL install hardware: enabled.
 
 Risk: devices whose bootloader came from an OTA-only update keep an older
 bootloader. Every install in this project writes the v5.5.4 bootloader.
