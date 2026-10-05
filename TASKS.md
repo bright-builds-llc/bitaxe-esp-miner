@@ -5730,6 +5730,57 @@ Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.
 
+### task-usb-stuck-link-after-reset | 2026-10-05 | Stop the USB link wedging after resets
+
+Status: Active. Owner-requested 2026-10-05 after the defect needed a USB
+replug three times: after a panic, during a boot loop, and after an
+ordinary install.
+Objective: the USB-Serial/JTAG link survives resets without a physical
+replug, shown by a bounded reset loop.
+Read before changing USB behavior: ADR-0021, ADR-0023 and
+`docs/hardware/native-usb-ownership.md`. This change is config-only, with
+no controller, PHY, descriptor or ownership change.
+
+Findings (read-only, 2026-10-05):
+- ESP-IDF v5.5.4 does not reset the USB-Serial/JTAG peripheral on
+  `esp_restart`, a panic restart, or the USB-core reset used after flashing
+  (`ESP_RST_USB`); the peripheral's clock is the BBPLL.
+- `recalib_bbpll` (`esp_system/port/soc/esp32s3/clk.c:358-374`, called from
+  `esp_rtc_init`) powers the BBPLL down and up whenever the CPU arrives on
+  the PLL. The 2nd-stage bootloader leaves it there after every non-cold
+  reset.
+- Kconfig: disable `ESP_SYSTEM_BBPLL_RECALIB` for bootloaders built with
+  v5.2 or later. Every package flashes our v5.5.4 bootloader.
+- The stuck install-0 monitor stream stopped at "Disabling RNG early entropy
+  source", the same point where a working stream continues with
+  `octal_psram`, which is the window that contains `recalib_bbpll`.
+
+- [x] Fix (software): `CONFIG_ESP_SYSTEM_BBPLL_RECALIB=n` in
+      `sdkconfig.defaults`, enforced by `build.rs` `REQUIRED_DEFAULTS`
+      (now 8). The built sdkconfig reports it unset. `recalib_bbpll` is
+      present in `6f268518`'s ELF and absent from the new build. Both
+      stack audits pass.
+- [ ] Repo-owned bounded reset loop, a new `device-session` command:
+      - per cycle, the same USB-core reset as after flashing
+        (`espflash reset --before no-reset-no-sync --after hard-reset`) on
+        the admitted physical device;
+      - then a receive-only observation must see the exact application
+        identity within a bound;
+      - stop at the first miss (that state needs a replug). No flash, NVS,
+        Start or network effect.
+- [ ] Baseline on the installed `6f268518` (with recalibration), then install
+      the fix through a noise-serial profile, then the same loop.
+      - Pass: zero misses over the fixed-image run, with cycle counts set
+        in the contract from the baseline rate.
+      - If the baseline shows no misses at all, the loop cannot discriminate;
+        record that instead of claiming a fix.
+- [ ] Record the outcome; update `docs/hardware/known-issues.md`.
+
+Risk: devices whose bootloader came from an OTA-only update keep an older
+bootloader. Every install in this project writes the v5.5.4 bootloader.
+
+Verification: pending. Completion review: pending.
+
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
 Status: Blocked on independent checkpoint results; no campaign is pre-authorized.

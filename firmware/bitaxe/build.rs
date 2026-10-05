@@ -85,11 +85,12 @@ fn rollback_probe_enabled() -> bool {
 }
 
 fn assert_sdkconfig_contract() {
-    const REQUIRED_DEFAULTS: [&str; 7] = [
+    const REQUIRED_DEFAULTS: [&str; 8] = [
         "CONFIG_ESP_CONSOLE_UART_DEFAULT=y",
         "CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200",
         "CONFIG_ESP_CONSOLE_SECONDARY_NONE=y",
         "CONFIG_USJ_ENABLE_USB_SERIAL_JTAG=y",
+        "CONFIG_ESP_SYSTEM_BBPLL_RECALIB=n",
         "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
         "CONFIG_ESP_COREDUMP_CAPTURE_DRAM=n",
         "CONFIG_FREERTOS_WATCHPOINT_END_OF_STACK=y",

@@ -5,6 +5,11 @@ CONFIG_ESP_CONSOLE_UART_DEFAULT=y
 CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
 CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
 CONFIG_USJ_ENABLE_USB_SERIAL_JTAG=y
+# USB-Serial/JTAG runs on the BBPLL, which a CPU or USB-core reset does not reset. Startup BBPLL
+# recalibration powers the PLL down after any reset that left the CPU on it, which can wedge an active
+# host link until a USB replug (docs/hardware/known-issues.md). The packaged bootloader is v5.5.4,
+# and IDF says to disable this for bootloaders built with v5.2 or later.
+CONFIG_ESP_SYSTEM_BBPLL_RECALIB=n
 CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
 # Rust DWARF enables DEBUG=true in esp-idf-sys; retain the original IDF -O2 policy.
 CONFIG_COMPILER_OPTIMIZATION_PERF=y

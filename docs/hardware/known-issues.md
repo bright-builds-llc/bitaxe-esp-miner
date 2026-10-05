@@ -26,10 +26,25 @@ what was observed, how to recover, and what is not known.
   connected. The firmware keeps running (uptime continues), the link
   re-enumerates, and Gate hello, JTAG and recovery all work again. A full
   power cycle is not needed.
-- **Unknown:** whether the stuck state is in the chip's USB-Serial/JTAG
-  peripheral (not reset by a software CPU reset) or in host-side USB state
-  for the device, and whether every panic triggers it. Earlier panics on this
-  board were followed by working sessions, so it may be intermittent.
+- **Also seen:** during a panic boot loop (`board-info` could not connect),
+  and once after an ordinary install, where the USB monitor stopped
+  mid-bootloader while the application kept running (2026-10-05).
+- **Leading hypothesis (2026-10-05, not yet verified on silicon):**
+  - The USB-Serial/JTAG peripheral runs on the BBPLL, and neither a CPU
+    reset nor the USB-core reset used after flashing resets it.
+  - At application start, ESP-IDF's `CONFIG_ESP_SYSTEM_BBPLL_RECALIB`
+    powers the BBPLL down and up again whenever the CPU arrived on the PLL,
+    which is every reset path except a cold boot.
+  - With a host transfer in flight, that clock glitch can wedge the link
+    without re-enumeration.
+  - The stuck install's stream stopped inside exactly that window (after
+    "Disabling RNG early entropy source", before PSRAM init).
+- **Mitigation in progress:** `CONFIG_ESP_SYSTEM_BBPLL_RECALIB=n`, which
+  the build enforces. ESP-IDF says to disable it for bootloaders built with
+  v5.2 or later; ours is v5.5.4. Verification needs a bounded reset loop
+  (`task-usb-stuck-link-after-reset`).
+- **Unknown:** whether that window is the only trigger; the bootloader's
+  own PLL setup is a second, unaddressed candidate.
 - **Operator guidance:** after any `reset_reason=panic` or an unexplained
   hello timeout with a ticking display, try a USB-only replug before
   escalating to a power cycle or a debugger.
