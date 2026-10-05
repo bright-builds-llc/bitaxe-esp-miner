@@ -4516,8 +4516,17 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       passed): five installs, four verified cycles, Noise exchange,
       restoration and cleanup; passed, `hardware_qualified`. Result
       `cad35320…`, seal `a0f3312e…`. The lineage head now names it.
-- [ ] Phase 2 idle baseline capture (1,200 s).
-- [ ] Phase 3 heartbeat009 (ordinal 28, after ledger 29/28/3,540,000 ms).
+- [x] Phase 2 idle baseline capture (1,200 s, 20 samples, boot 307, no
+      Start). Internal heap (`INTERNAL|8BIT`) idles at about 11.5 KB free
+      (1,039 blocks) but 6 of 20 samples dip to 2.6–4 KB free (about 8 KB
+      more in about 195 more blocks). The largest free block never exceeds
+      1,792 bytes; the lifetime minimum is 1,395 bytes. No monotonic loss:
+      the board runs at the edge of internal RAM even without a Start.
+- [x] Phase 3 heartbeat009 at ordinal 28: `heartbeat_timeout`, gate closed
+      2,801 ms and shutdown started 2,842 ms after the last heartbeat,
+      safe stop complete, ledger 29/28/3,540,000 ms, no recovery errors,
+      sealed `complete=true` (result `888069c1…`). Recorded as the
+      lineage's latest Start.
 - [ ] Phase 4 post-shutdown idle captures (at least 60 minutes).
 - [ ] Phase 5 recovery019 (and recovery020 after a reproduced panic).
 - [ ] Analyse the series, identify the allocator, fix with a regression.
@@ -4528,7 +4537,7 @@ cleanup. No pool, no Wi-Fi provisioning, no NVS or factory reset, no
 core-dump clearing, at most five installs.
 Control diagnostic recovery hardware: disabled.
 Internal heap diagnostic install hardware: disabled.
-Heartbeat heap diagnosis hardware: enabled.
+Heartbeat heap diagnosis hardware: disabled.
 
 Verification: pending. Completion review: pending.
 

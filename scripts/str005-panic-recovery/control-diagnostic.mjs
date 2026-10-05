@@ -20,10 +20,9 @@ export const RECOVERY001 = Object.freeze({ path: 'scratch/str005-idle-panic/reco
 // The latest sealed Start on this install, when one ran: its retained record replaces recovery001's
 // attempt. A new install resets it to null, because installing reboots the board.
 export const LATEST_START = HEAD.latestStart;
-// Restart006: a sealed root that observed the board reboot (boot 301 to 302, panic) after the latest
-// Start, so the firmware no longer retains that Start's record. Null when no reboot followed it.
-export const LATEST_START_REBOOT = Object.freeze({ path: 'scratch/str005-share-restart-006/restart006',
-  seal: 'c1be2d48df15a6695c28894602d11b09f7c549b1abdd51917d843a0624dda6f4' });
+// A sealed root that observed the board reboot after the latest Start, so the firmware no longer retains
+// that Start's record; null when no reboot followed it. Restart006 proved one after heartbeat008.
+export const LATEST_START_REBOOT = null;
 
 async function sealed(root, expected) {
   await privateRoot(root);
