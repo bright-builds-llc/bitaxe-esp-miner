@@ -406,11 +406,20 @@ impl UsbSession {
         let timeout = phase.timeout();
         let deadline = Instant::now() + timeout;
         let mut tracker = RecoveryTracker::new(phase, timeout);
+        let mut sampler_failures = recovery::SamplerFailures::default();
 
         while Instant::now() < deadline {
             let maybe_snapshot =
                 match MacOsDeviceAdapter::maybe_physical_snapshot(&self.physical_identity_digest) {
-                    Ok(maybe_snapshot) => maybe_snapshot,
+                    Ok(maybe_snapshot) => {
+                        sampler_failures.reset();
+                        maybe_snapshot
+                    }
+                    Err(_) if sampler_failures.tolerate() => {
+                        tracker.observe(RecoverySample::absent());
+                        thread::sleep(SAMPLE_INTERVAL);
+                        continue;
+                    }
                     Err(_) => {
                         return Err(self.recovery_error_with_summary(
                             &tracker,

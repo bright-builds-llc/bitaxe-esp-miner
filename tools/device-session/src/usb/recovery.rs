@@ -57,6 +57,28 @@ impl RecoveryFinalState {
     }
 }
 
+/// Consecutive identity-sampler failures tolerated while the device re-enumerates. macOS can briefly
+/// list both the departing and the arriving node, or drop one mid-scan; a persistent failure still fails.
+pub(super) const MAX_CONSECUTIVE_SAMPLER_FAILURES: u8 = 5;
+
+/// Counts consecutive sampler failures; any successful sample resets the run.
+#[derive(Debug, Default)]
+pub(super) struct SamplerFailures {
+    consecutive: u8,
+}
+
+impl SamplerFailures {
+    /// Records one failed sample and reports whether the run is still within tolerance.
+    pub(super) fn tolerate(&mut self) -> bool {
+        self.consecutive = self.consecutive.saturating_add(1);
+        self.consecutive <= MAX_CONSECUTIVE_SAMPLER_FAILURES
+    }
+
+    pub(super) fn reset(&mut self) {
+        self.consecutive = 0;
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct RecoverySample {
     pub(super) same_device: bool,

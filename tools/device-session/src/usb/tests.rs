@@ -563,3 +563,33 @@ fn partition_erasure_is_an_effect_without_automatic_retry() {
     );
     assert!(!allows_command_retry(&args));
 }
+
+#[test]
+fn transient_sampler_failures_are_tolerated_but_a_persistent_run_is_not() {
+    // Arrange
+    let mut failures = recovery::SamplerFailures::default();
+    // Act
+    let tolerated: Vec<bool> = (0..=recovery::MAX_CONSECUTIVE_SAMPLER_FAILURES)
+        .map(|_| failures.tolerate())
+        .collect();
+    // Assert
+    assert!(
+        tolerated[..usize::from(recovery::MAX_CONSECUTIVE_SAMPLER_FAILURES)]
+            .iter()
+            .all(|value| *value)
+    );
+    assert!(!tolerated[usize::from(recovery::MAX_CONSECUTIVE_SAMPLER_FAILURES)]);
+}
+
+#[test]
+fn a_successful_sample_resets_the_sampler_failure_run() {
+    // Arrange
+    let mut failures = recovery::SamplerFailures::default();
+    for _ in 0..recovery::MAX_CONSECUTIVE_SAMPLER_FAILURES {
+        assert!(failures.tolerate());
+    }
+    // Act
+    failures.reset();
+    // Assert
+    assert!(failures.tolerate());
+}

@@ -5811,6 +5811,18 @@ change; the owner's replug is the only remediation for a stuck link.
     ROM-to-application hard reset that ends every flash. A regression test
     pins it.
   - baseline-002 reruns with that fix.
+- baseline-002 (2026-10-05): 9 clean cycles; boot ordinals 7 to 15, each
+  identity seen about 1.7 s after the reset, 5.4 s per cycle. Cycle 10
+  stopped as `physical_identity_drift` with detail "the USB identity sampler
+  failed", during its first re-enumeration. The detector then admitted the
+  same physical device in the runtime profile, so the link was not stuck.
+  - Cause: the shared `UsbSession::reacquire` failed on the first sampler
+    error, while macOS can briefly list two nodes, or none, mid
+    re-enumeration.
+  - Fix: tolerate up to 5 consecutive sampler failures within the existing
+    deadline; a persistent failure still fails. Regressions cover both cases.
+    The flash tool and device-session suites pass.
+  - baseline-003 reruns with that fix.
 USB reset endurance hardware: enabled.
 USB BBPLL install hardware: disabled.
 
