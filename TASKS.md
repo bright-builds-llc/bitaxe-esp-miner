@@ -5829,8 +5829,19 @@ change; the owner's replug is the only remediation for a stuck link.
   reproduce, so this path's per-reset rate is likely below about 3% (95%
   bound). The loop cannot discriminate the fix. Per the contract, the
   fixed image gets a 100-cycle no-regression run, not a fix claim.
+- usb-bbpll-install attempt-001 (2026-10-05): PASS, `complete`,
+  `hardware_qualified`; the independent review agrees.
+  - Candidate `60e344e2`, ELF `3f01a5f4…`: both stack audits pass and
+    `recalib_bbpll` is absent.
+  - Five installs, each with a qualified monitor and no stuck link; four
+    verified cycles; Noise exchange, restoration and after-accounting
+    recorded.
+  - Ledger 27/26/3,180,000 ms, unchanged. Result
+    `c8fe31cf349b588571feacfbc22a056d652a8d5e090becab6918e5b93c3bb127`,
+    seal `b3232e1af991f9ceaeb32066b29f71ae454d2f9b436e375d33a0b6090d4a7f38`.
+  - The lineage head advanced. Next: fixed-001, 100 cycles.
 USB reset endurance hardware: enabled.
-USB BBPLL install hardware: enabled.
+USB BBPLL install hardware: disabled (attempt-001 complete).
 
 Risk: devices whose bootloader came from an OTA-only update keep an older
 bootloader. Every install in this project writes the v5.5.4 bootloader.

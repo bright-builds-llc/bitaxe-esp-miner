@@ -1,13 +1,13 @@
 {
   "schema": "str005-lineage-head-v1",
   "install": {
-    "profile": "queue-workaround-reinstall",
-    "path": "scratch/str005-queue-workaround-reinstall/attempt-002",
-    "result": "1a5019a019cf427afbb77b71f8398c1ad925521d5fede71baae0960ca672a30e",
-    "seal": "8cde5c3ca32d309da3f04fb8269c97a543def20989098d4d40eb63627c727aee",
+    "profile": "usb-bbpll-install",
+    "path": "scratch/usb-bbpll-install/attempt-001",
+    "result": "c8fe31cf349b588571feacfbc22a056d652a8d5e090becab6918e5b93c3bb127",
+    "seal": "b3232e1af991f9ceaeb32066b29f71ae454d2f9b436e375d33a0b6090d4a7f38",
     "identity": {
-      "firmware_commit": "6f268518b86ee264911e033acad769fac176f375",
-      "app_elf_sha256": "b6908f6dda85b5e4d133401dcf3dc84f940d4f41121216c40e93f2ff4f6cbe3b",
+      "firmware_commit": "60e344e21a89acab13c108311d315417c0704eba",
+      "app_elf_sha256": "3f01a5f4dea1676b505ea686a58d16f1bd2122138556b7ac1a1bbb4c43f4ac3d",
       "gate_commit": "86fc62d7a9d75da1affa2d51bc3b9eab41d86031"
     }
   },
