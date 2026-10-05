@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { argumentsFor, requireEnabled } from '../str005-share-recovery/contract.mjs';
 import { ENABLED, PANIC_RECOVERY } from './profile.mjs';
-import { CONTROL_DIAGNOSTIC_RECOVERY, retainedAttempt } from './control-diagnostic.mjs';
+import { CONTROL_DIAGNOSTIC_RECOVERY, rebootedAfterStart, retainedAttempt } from './control-diagnostic.mjs';
 import { statusModeFor } from '../str005-share-recovery/main.mjs';
 
 const tasks = line => `## Active\n### ${PANIC_RECOVERY.task} | fixture\n${line}\n`;
@@ -65,6 +65,25 @@ test('a later Start on another board is refused', () => {
   const latest = { context: { ...install, physical: 'q'.repeat(64) }, ledger: ledger(27), deviceRecordAttemptId: 'device-attempt' };
   // Act / Assert
   assert.throws(() => retainedAttempt(install, fallback, latest), /share_recovery_predecessor_identity/u);
+});
+
+test('a reboot after the latest Start clears its retained record but keeps its ledger', () => {
+  // Arrange
+  const latest = { context: install, ledger: ledger(28), deviceRecordAttemptId: 'device-attempt', rebooted: true };
+  // Act
+  const before = retainedAttempt(install, fallback, latest);
+  // Assert
+  assert.deepEqual([before.attempt, before.ledger.next_ordinal], [{ id: 'device-attempt', recordRetained: false }, 28]);
+});
+
+test('a reboot proof needs the same parent Start and a later observed boot', () => {
+  // Arrange
+  const context = { parentSeals: { start: 's'.repeat(64) }, before_boot_ordinal: 301 };
+  const diagnostics = boot => ({ schema: 'str005-recovery-diagnostics-v1', observations: [{ category: 'boot', boot_ordinal: boot }] });
+  // Act / Assert
+  assert.equal(rebootedAfterStart('s'.repeat(64), context, diagnostics(302)), true);
+  assert.throws(() => rebootedAfterStart('s'.repeat(64), context, diagnostics(301)), /share_recovery_reboot_proof/u);
+  assert.throws(() => rebootedAfterStart('t'.repeat(64), context, diagnostics(302)), /share_recovery_reboot_proof/u);
 });
 
 test('a retained record is read by its attempt; otherwise the current state is discovered', () => {

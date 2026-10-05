@@ -4491,6 +4491,39 @@ socket/worker/fence release from current idle state or reconstruct missing proof
 Task remains blocked and unarchived; no Start/grants/mining/flash/replay occurred,
 no next mining ordinal is authorized, and parity remains 90/95.
 
+### task-str005-heap-loss-diagnosis | 2026-10-05 | Diagnose the internal-heap loss after a heartbeat-loss shutdown
+
+Status: Active. Owner-authorized 2026-10-05 ("write the contract and start the
+investigation"). Blocks `task-str005-share-current-image` and the integration
+review.
+Objective: decide whether `60e344e2` loses internal heap while idle after a
+heartbeat-loss shutdown or inside the next connection, and name the
+allocator.
+Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnosis-amendment.md).
+
+- [x] Firmware: `internal_heap_sample` every 60 s on the idle serial link
+      only (`f7999faf`); host tests for format, idle emission and absence in
+      a session.
+- [x] Recovery owner: admits restart006 as proof of a reboot after
+      heartbeat008, so status is discovered rather than read by id; tests.
+- [ ] Phase 0 recovery018 on boot 302; pin it as the install predecessor.
+- [ ] Phase 1 internal-heap-diagnostic install; advance the lineage.
+- [ ] Phase 2 idle baseline capture (1,200 s).
+- [ ] Phase 3 heartbeat009 (ordinal 28, after ledger 29/28/3,540,000 ms).
+- [ ] Phase 4 post-shutdown idle captures (at least 60 minutes).
+- [ ] Phase 5 recovery019 (and recovery020 after a reproduced panic).
+- [ ] Analyse the series, identify the allocator, fix with a regression.
+
+Stop on any detector failure, identity, ledger or baseline drift, a lost or
+ambiguous Start, a panic other than the Phase 5 reproduction, or unproven
+cleanup. No pool, no Wi-Fi provisioning, no NVS or factory reset, no
+core-dump clearing, at most five installs.
+Control diagnostic recovery hardware: enabled.
+Internal heap diagnostic install hardware: disabled.
+Heartbeat heap diagnosis hardware: disabled.
+
+Verification: pending. Completion review: pending.
+
 ### task-str005-share-current-image | 2026-10-05 | Repeat the accepted-share check on the final candidate
 
 Status: Stopped on a new panic (restart006); diagnosis in progress. Owner-requested
@@ -4530,8 +4563,9 @@ Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendme
       of the queue change (`00f84eae`) found no growth path: every queue is
       created once at boot and bounded or drained.
 - [ ] Diagnose the internal-heap loss after a heartbeat-loss shutdown
-      on `60e344e2`; fix it with a regression. A fix is a new candidate:
-      it needs its own install and reopens heartbeat008 and this review.
+      on `60e344e2` (`task-str005-heap-loss-diagnosis`); fix it with a
+      regression. A fix is a new candidate: it needs its own install and
+      reopens heartbeat008 and this review.
 - [ ] share-current-001: detector, preflight, serve, baseline and candidate,
       startup detector, Run, fresh recovery, release, final detector, finish.
       Expected after ledger 29/28/3,540,000 ms. Record confirmed renewals.

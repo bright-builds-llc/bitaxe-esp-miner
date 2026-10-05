@@ -9,7 +9,7 @@ import { main as collect } from '../str005-share-recovery/main.mjs';
 import { loadSealedStartRecord } from '../str005-startup-probe/start-record.mjs';
 import { HEAD } from '../str005-lineage/head.mjs';
 
-export const ENABLED = false;
+export const ENABLED = true;
 // The installed image and its latest Start come from the verified lineage head
 // (`just str005-lineage show`), never from hand-edited constants.
 export const INSTALL = Object.freeze({ profile: HEAD.install.profile, path: HEAD.install.path, result: HEAD.install.result,
@@ -20,6 +20,10 @@ export const RECOVERY001 = Object.freeze({ path: 'scratch/str005-idle-panic/reco
 // The latest sealed Start on this install, when one ran: its retained record replaces recovery001's
 // attempt. A new install resets it to null, because installing reboots the board.
 export const LATEST_START = HEAD.latestStart;
+// Restart006: a sealed root that observed the board reboot (boot 301 to 302, panic) after the latest
+// Start, so the firmware no longer retains that Start's record. Null when no reboot followed it.
+export const LATEST_START_REBOOT = Object.freeze({ path: 'scratch/str005-share-restart-006/restart006',
+  seal: 'c1be2d48df15a6695c28894602d11b09f7c549b1abdd51917d843a0624dda6f4' });
 
 async function sealed(root, expected) {
   await privateRoot(root);
@@ -39,6 +43,12 @@ export async function loadInstallPredecessor(firmwareRoot, installRoot) {
   await sealed(recoveryRoot, RECOVERY001.seal);
   const recovered = (await proof(recoveryRoot, 'context.json')).value;
   const maybeLatest = LATEST_START === null ? null : await loadSealedStartRecord(resolve(firmwareRoot, LATEST_START.path), LATEST_START);
+  if (maybeLatest !== null && LATEST_START_REBOOT !== null) {
+    const rebootRoot = resolve(firmwareRoot, LATEST_START_REBOOT.path);
+    await sealed(rebootRoot, LATEST_START_REBOOT.seal);
+    maybeLatest.rebooted = rebootedAfterStart(LATEST_START.seal, (await proof(rebootRoot, 'context.json')).value,
+      (await proof(rebootRoot, 'recovery/diagnostics.json')).value);
+  }
   const gate = async name => sha256(await readFile(resolve(installRoot, 'qualified-artifacts/gate', name)));
   const context = { ...INSTALL.identity, physical: recovered.physical, original_campaign_id: install.original_campaign_id,
     assetHashes: { page: await gate(PAGE), bundle: await gate(BUNDLE), trust: recovered.assetHashes.trust } };
@@ -50,17 +60,27 @@ export async function loadInstallPredecessor(firmwareRoot, installRoot) {
  * install lineage's attempt is named and nothing is retained. */
 export function retainedAttempt(install, fallback, maybeLatest) {
   if (maybeLatest === null) return { attempt: { id: fallback.attemptId, recordRetained: false }, ledger: fallback.ledger };
-  const { context, ledger, deviceRecordAttemptId } = maybeLatest;
+  const { context, ledger, deviceRecordAttemptId, rebooted = false } = maybeLatest;
   check(context.firmware_commit === install.firmware_commit && context.app_elf_sha256 === install.app_elf_sha256 &&
     context.physical === install.physical && typeof deviceRecordAttemptId === 'string', 'share_recovery_predecessor_identity');
   validateLedger(ledger); check(ledger.pending === false, 'share_recovery_predecessor_identity');
-  return { attempt: { id: deviceRecordAttemptId, recordRetained: true }, ledger };
+  // A reboot clears the retained record but never the charged ledger.
+  return { attempt: { id: deviceRecordAttemptId, recordRetained: !rebooted }, ledger };
+}
+/** True only when a sealed root that names this Start as its parent observed a later boot ordinal. */
+export function rebootedAfterStart(startSeal, context, diagnostics) {
+  check(context.parentSeals?.start === startSeal && Number.isSafeInteger(context.before_boot_ordinal) &&
+    diagnostics?.schema === 'str005-recovery-diagnostics-v1' && Array.isArray(diagnostics.observations),
+  'share_recovery_reboot_proof');
+  const boots = diagnostics.observations.filter(row => row.category === 'boot').map(row => row.boot_ordinal);
+  check(boots.some(boot => Number.isSafeInteger(boot) && boot > context.before_boot_ordinal), 'share_recovery_reboot_proof');
+  return true;
 }
 export const CONTROL_DIAGNOSTIC_RECOVERY = Object.freeze({
   enabled: ENABLED,
   // Re-owned by the active task that needs a current recovery; the panic-diagnosis task is archived.
-  task: 'task-str005-heartbeat-current-image',
-  contract: 'docs/hardware/str005-control-stack-reproduction-amendment.md',
+  task: 'task-str005-heap-loss-diagnosis',
+  contract: 'docs/hardware/str005-heap-loss-diagnosis-amendment.md',
   lines: ['Control diagnostic recovery hardware: enabled.'],
   seal: INSTALL.seal,
   rootOption: '--predecessor-root',
