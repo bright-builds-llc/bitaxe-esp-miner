@@ -4655,7 +4655,7 @@ Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
 Development core-dump acquisition: disabled (queue boot-loop capture001 completed).
-Development core-dump clearing: enabled (private archive verified).
+Development core-dump clearing: disabled (queue boot-loop clear002 completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
 compares the archived full region before its exact erase. These declarations do
