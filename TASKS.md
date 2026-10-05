@@ -5528,7 +5528,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
 Control diagnostic recovery hardware: disabled.
-Queue workaround install hardware: enabled.
+Queue workaround install hardware: disabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
@@ -5661,6 +5661,33 @@ Control review loop hardware: disabled.
           `just audit-stack-realignment` with no callers.
         - After a pass, run `just str005-lineage advance-install`, then
           loop007 and recovery013.
+      - Queue-workaround attempt-001 (2026-10-04): STOP, panic boot loop.
+        - Detector, preflight (recovery012 predecessor), and the
+          before-install accounting on boot 5 passed.
+        - Candidate `a2052ab0`, ELF `84d1cd51…`, had a clean
+          `audit-stack-realignment` (0 realigning functions).
+        - Install 0 wrote the exact package. The monitor then saw the new
+          image panic every boot about 266 ms in, after the
+          `worker_owner_prepare` checkpoint and the runtime identity line.
+          The boot ordinal reached 14 or more, each with
+          `reset_reason=panic`. Neither a Rust-panic marker nor an
+          allocation-failure marker was printed, which points to a CPU
+          exception or the end-of-stack watchpoint.
+        - The saved PC is `esp_restart_noos`, which is not the fault.
+          `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y` keeps the first panic's
+          core dump without further flash writes.
+        - Leading hypothesis (unconfirmed): a 4 KiB thread, such as the
+          Wi-Fi reconnect thread, overflows its stack. The new queue's
+          timed wait goes through ESP-IDF's pthread condition variable,
+          where std's channel parked the thread.
+        - Operator stopped: browser closed, supervisor exited 0, no
+          listener. `recordCleanup` cannot run for a pre-cycle failure
+          (`ENOENT`). `finalize` sealed `unverified`, labelled
+          `stop_impossible_contract` because the cleanup receipt was
+          missing. Result `375ca57f631df74dd9008116eceb926f0ea681ce1960259cb738c94dda17ff4f`, seal `66f693ccdf398507ab7a8d17713dfa88cc990268d66318b0dbdba5b20456dbcd`.
+        - The device is still boot-looping on the candidate. Recovery
+          (restore the last good image, then capture the core dump) needs
+          its own contract; it waits for the owner.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
