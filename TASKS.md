@@ -5674,8 +5674,9 @@ Control review loop hardware: disabled.
           allocation-failure marker was printed, which points to a CPU
           exception or the end-of-stack watchpoint.
         - The saved PC is `esp_restart_noos`, which is not the fault.
-          `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y` keeps the first panic's
-          core dump without further flash writes.
+          Correction: `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y` kept the
+          older loop005 dump, which was never cleared, so none of these
+          panics were stored (see `task-str005-queue-bootloop-recovery`).
         - Leading hypothesis (unconfirmed): a 4 KiB thread, such as the
           Wi-Fi reconnect thread, overflows its stack. The new queue's
           timed wait goes through ESP-IDF's pthread condition variable,
@@ -5772,8 +5773,23 @@ Queue boot-loop restore hardware: disabled (restore and capture completed).
         package was observed, and the board is stable on boot 1. The
         worktree was removed; evidence is kept under
         `scratch/str005-queue-bootloop/restore`.
-- [ ] Advance the lineage head (done: `latestStart` is null); recovery013.
-- [ ] Capture and analyze the core dump; record the fault.
+- [x] Advance the lineage head (`latestStart` is null); recovery013.
+      Current safe recovery, idle V2, no errors. Result `473546a8714067aa3c2af3c1772ce48050cf1c2aca8dc584886b6393a9b8f11b`, seal
+      `755201566a1a87708de2fa5bea698dd981a6b8cf1da9e57bee089f99372c4261`.
+- [x] Capture the core dump: capture001 read inside the proof window
+      (`core_dump: complete`), with the application identity restored.
+      - The dump is byte-identical to capture-003's loop005 dump (ELF
+        `d986b2ea`). The partition was never cleared after capture-003, so
+        no-overwrite left the boot-loop panics unstored.
+      - Offline decoding against the candidate ELF is refused, as it
+        should be (the dump's identity is `d986b2ea`). The boot-loop fault
+        is therefore still unknown.
+- [ ] Next, owner decision: clear the archived dump, then reproduce the
+      boot loop once with the candidate to store its dump, restore again
+      and capture; or diagnose without a dump. A static direct-call
+      depth comparison of the logging path shows no change (2,464 bytes on
+      both images; register-indirect calls are not covered).
+Gates: acquisition, recovery and restore are disabled again.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
