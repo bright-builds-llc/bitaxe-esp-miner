@@ -4493,8 +4493,8 @@ no next mining ordinal is authorized, and parity remains 90/95.
 
 ### task-str005-share-current-image | 2026-10-05 | Repeat the accepted-share check on the final candidate
 
-Status: Active. Owner-requested 2026-10-05 as the integration review's one
-uncovered interaction (`task-str005-piecewise-integration-review`).
+Status: Stopped on a new panic (restart006); diagnosis in progress. Owner-requested
+2026-10-05 as the integration review's one uncovered interaction (`task-str005-piecewise-integration-review`).
 Objective: one bounded accepted-share Start on the lineage head's image
 (`60e344e2`) that passes every share-probe judge criterion, ending in a
 Worker-requested normal Stop.
@@ -4513,10 +4513,21 @@ Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendme
       module graph; the regression walks the client's imports and requires
       each to load. The same gap affected every restart and preparation
       recovery stage since the recovery consolidation.
-- [ ] restart006: preflight with heartbeat008 as `--start-root`, recovery
-      stage, restart stage, finish. Expected boot 301 to 302, ledger
-      28/27/3,360,000 ms unchanged. Then pin it in
-      `scripts/str005-accepted-share/contract.mjs` and enable the share line.
+- [x] restart006 (ordinal 2): preflight passed and the recovery page
+      loaded. On Connect, about 44 minutes after heartbeat008's shutdown,
+      the ledger and budget reads timed out and the board rebooted with
+      `reset_reason=panic` (boot 301 to 302). The retained diagnostics show
+      an 8,192-byte internal allocation failure (caps `0x804`). Internal
+      heap was 9,687 bytes free (largest 1,920) right after heartbeat008's
+      shutdown and 607 bytes (largest 168) at the Connect. Stopped,
+      released; the final detector admitted one Ultra 205; sealed failed
+      with `preparation_boot_changed`. Stop condition: a new panic.
+      Comparison: on `7ca3e29c` the heap after heartbeat007 went from
+      5,859 to 4,819 bytes over about four hours idle, and the next Connect
+      worked. The idle drain is new on the candidate.
+- [ ] Diagnose the idle internal-heap drain after a heartbeat-loss shutdown
+      on `60e344e2`; fix it with a regression. A fix is a new candidate:
+      it needs its own install and reopens heartbeat008 and this review.
 - [ ] share-current-001: detector, preflight, serve, baseline and candidate,
       startup detector, Run, fresh recovery, release, final detector, finish.
       Expected after ledger 29/28/3,540,000 ms. Record confirmed renewals.
@@ -4528,7 +4539,7 @@ ambiguous Start (never resend), a panic or unproven cleanup. Effects and
 prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
 firmware write. Retries need a regression-backed fix, a fresh ordinal and a
 new restart.
-Share current image restart hardware: enabled.
+Share current image restart hardware: disabled.
 Share current image hardware: disabled.
 
 Verification: pending. Completion review: pending.

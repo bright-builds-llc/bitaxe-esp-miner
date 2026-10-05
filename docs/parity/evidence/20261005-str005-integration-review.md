@@ -1,8 +1,8 @@
 # STR-005 integration review
 
-Status: in progress. The obligation map and change-impact review are
-complete. One bounded accepted-share check on the final candidate is pending
-(`task-str005-share-current-image`). Parity stays 90/95; any transition
+Status: blocked. The obligation map and change-impact review are complete.
+The candidate's restart before the share check found a new panic: idle
+internal heap drains after a heartbeat-loss shutdown (see open item 1). Parity stays 90/95; any transition
 belongs to `task-str005-evidence-promotion`.
 
 Policy: [ADR-0029](../../adr/0029-piecewise-str005-qualification.md), with
@@ -72,17 +72,26 @@ removing them would be a new candidate and would reopen this review.
 
 ## Open items
 
-1. **Accepted share, renewal and normal Stop on the candidate.** One
-   bounded check: restart006 after heartbeat008, then share-current-001
+1. **Idle heap drain after a heartbeat-loss shutdown (candidate defect).**
+   Free internal heap was 9,687 bytes (largest block 1,920) right after
+   heartbeat008's shutdown and 607 bytes (largest 168) about 44 minutes
+   later, while idle. The next Worker connection hit an 8,192-byte
+   internal allocation failure and a panic reboot (restart006, boot 301 to
+   302). On `7ca3e29c` the same state lost about 1 KB in four hours and
+   the next connection worked. The fix will be a new candidate, which
+   reopens heartbeat008 and this review.
+2. **Accepted share, renewal and normal Stop on the candidate.** One
+   bounded check, after the fix: a restart after the latest Start, then
+   share-current-001
    ([contract](../../hardware/str005-accepted-share-amendment.md),
    "Current-image re-run").
-2. **Share002 retained resource proof.** It cannot be supplied: the device
+3. **Share002 retained resource proof.** It cannot be supplied: the device
    reports idle status with no retained record. This stays an explicit
    blocker on `task-str005-failure-recovery-accounting`. It does not block
    other claims (ADR-0029, ADR-0031).
-3. **Channel006 publication.** Its result stays private. The candidate does
+4. **Channel006 publication.** Its result stays private. The candidate does
    not depend on it.
-4. **Panic attribution.** The original Share001 and Share002 panics are
+5. **Panic attribution.** The original Share001 and Share002 panics are
    "likely the same compiler bug, not proven", as accepted by the owner.
 
 ## Naming

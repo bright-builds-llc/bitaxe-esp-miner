@@ -16,7 +16,7 @@ import { conclusion, restartEvidence, STAGES, FRESH_MS } from '../str005-startup
 import { RESTART } from './restart-config.mjs';
 import { startGeneration } from './lineage.mjs';
 /** One no-mining qualification restart that clears the previous Start's retained V2 record. */
-export const ENABLED = true;
+export const ENABLED = false;
 const TASK = RESTART.task, CONTRACT = RESTART.contract;
 const ENABLED_LINE = RESTART.enabledLine;
 // The origin that holds the Ultra 205 Web Serial grant.
