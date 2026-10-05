@@ -1,5 +1,9 @@
 //! Closed boot diagnostic allowlist for the single Serial/JTAG writer.
+mod internal_heap;
 mod storage_http;
+pub use internal_heap::{
+    internal_heap_sample_marker, InternalHeapSample, INTERNAL_HEAP_SAMPLE_INTERVAL_MS,
+};
 pub use storage_http::{
     StorageHttpError, StorageHttpFailure, StorageHttpOutcome, StorageHttpPhase,
 };

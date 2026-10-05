@@ -1,5 +1,6 @@
 //! Fixed Serial/JTAG Worker owner with independent link supervision.
 
+mod heap_sample;
 mod link;
 mod prepared_link;
 mod rx_diagnostics;

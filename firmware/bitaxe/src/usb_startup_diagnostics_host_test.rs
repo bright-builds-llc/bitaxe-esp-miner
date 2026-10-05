@@ -21,6 +21,8 @@ mod rx_diagnostics;
 #[allow(dead_code)]
 #[path = "bwg_worker_usb/trace.rs"]
 mod trace;
+#[path = "usb_startup_diagnostics_host_test/heap_sample.rs"]
+mod heap_sample;
 
 static CURRENT_SESSION: AtomicU32 = AtomicU32::new(0);
 static RECEIVE_CREDIT: bitaxe_worker_control::serial::ReceiveCreditMailbox =

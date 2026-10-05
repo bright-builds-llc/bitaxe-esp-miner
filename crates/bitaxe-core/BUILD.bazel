@@ -36,6 +36,7 @@ js_library(
     name = "native_usb_ownership_source",
     srcs = [
         "src/usb_diagnostics.rs",
+        "src/usb_diagnostics/internal_heap.rs",
         "src/usb_diagnostics/storage_http.rs",
     ],
     visibility = ["//scripts:__pkg__"],
@@ -74,6 +75,7 @@ rust_library(
         "src/screen/tests.rs",
         "src/wifi_reconnect.rs",
         "src/usb_diagnostics.rs",
+        "src/usb_diagnostics/internal_heap.rs",
         "src/usb_diagnostics/storage_http.rs",
     ],
     compile_data = glob(["fixtures/**"]),

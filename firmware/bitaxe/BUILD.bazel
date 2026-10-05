@@ -10,6 +10,7 @@ js_library(
         "src/stratum_v2_tcp_payload_diagnostic.rs",
         "src/stratum_v2_tcp_payload_replay.rs",
         "src/usb_runtime.rs",
+        "src/bwg_worker_usb/heap_sample.rs",
         "src/bwg_worker_usb/link.rs",
         "src/bwg_worker_usb/writer.rs",
         "src/bwg_worker_usb/rx_diagnostics.rs",
@@ -67,6 +68,7 @@ js_library(
         "src/panic_evidence.rs",
         "src/startup.rs",
         "src/usb_runtime.rs",
+        "src/bwg_worker_usb/heap_sample.rs",
         "src/bwg_worker_usb/link.rs",
         "src/bwg_worker_usb/writer.rs",
         "src/bwg_worker_usb/rx_diagnostics.rs",
@@ -402,6 +404,7 @@ rust_test(
     compile_data = [
         "src/boot_evidence/worker_diagnostics.rs",
         "src/usb_runtime.rs",
+        "src/bwg_worker_usb/heap_sample.rs",
         "src/bwg_worker_usb/link.rs",
         "src/bwg_worker_usb/writer.rs",
         "src/bwg_worker_usb/rx_diagnostics.rs",
@@ -1284,6 +1287,7 @@ rust_test(
     name = "usb_startup_diagnostics_tests",
     srcs = [
         "src/usb_startup_diagnostics_host_test.rs",
+        "src/usb_startup_diagnostics_host_test/heap_sample.rs",
         "src/usb_startup_diagnostics_host_test/statistics.rs",
         "src/usb_startup_diagnostics_host_test/transport.rs",
         "src/statistics_runtime/diagnostics.rs",

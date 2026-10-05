@@ -127,6 +127,7 @@ pub(super) fn run(
     let mut next_startup_marker = 0;
     let mut next_admission_marker = 0;
     let mut admission_turn = false;
+    let mut next_heap_sample = 0;
     let mut last_heartbeat = 0;
     let mut credited_bytes = 0;
     let mut maybe_write_failure = None;
@@ -306,6 +307,12 @@ pub(super) fn run(
                         RecordKind::Admission,
                         false,
                     ))
+                } else if now >= next_heap_sample && CURRENT_SESSION.load(Ordering::Acquire) == 0 {
+                    // Bootstrap-only, so Worker sessions and their judges see an unchanged stream.
+                    next_heap_sample = now.saturating_add(
+                        bitaxe_core::usb_diagnostics::INTERNAL_HEAP_SAMPLE_INTERVAL_MS,
+                    );
+                    Some((heap_sample::marker(now), RecordKind::RetainedDiagnostic, false))
                 } else {
                     diagnostics
                         .try_recv()
