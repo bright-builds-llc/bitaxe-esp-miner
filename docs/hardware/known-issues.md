@@ -48,3 +48,25 @@ what was observed, how to recover, and what is not known.
 - **Operator guidance:** after any `reset_reason=panic` or an unexplained
   hello timeout with a ticking display, try a USB-only replug before
   escalating to a power cycle or a debugger.
+
+## Rare chip power-on reset during a requested reset
+
+- **Observed:** 2026-10-05, Ultra 205, image `60e344e2`, during
+  `just usb-reset-endurance` (`task-usb-stuck-link-after-reset`). Cycle 64 of
+  fixed-001 came back with `reset_reason=power_on` and boot ordinal 1 after a
+  normal USB downloader reset. Nobody touched the power. The application
+  then ran normally.
+- **Rate so far:** 1 in 364 requested resets on that image; 0 in 100 on
+  `6f268518`; 0 in the following 300-cycle run.
+- **What the reason can mean:** on ESP32-S3, raw reset cause `0x01` covers
+  chip power-on, chip brown-out and the super watchdog, and ESP-IDF reports
+  all of them as `power_on`. Until ESP-IDF installs its brown-out handler,
+  the analog brown-out reset resets the whole chip. A supply dip during the
+  ROM, bootloader or early-startup window therefore reads as `power_on`; the
+  same dip later would read `brownout`. An EN-pin glitch reads as `power_on`
+  too.
+- **Unknown:** which of these occurred. Confirming a rail dip or EN glitch
+  needs electrical probing, which requires explicit owner authorization.
+- **Operator guidance:** a `power_on` reset that nobody caused is
+  unexpected; record it with its time. The device recovers by itself, and
+  the boot ordinal restarts at 1.

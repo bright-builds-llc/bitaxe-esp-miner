@@ -4631,7 +4631,29 @@ change; the owner's replug is the only remediation for a stuck link.
     recorded and counted, and the ordinal check restarts.
   - Every other failure, including a stuck link, still stops at once.
   - Expected identity `60e344e2` / `3f01a5f4…`.
-USB reset endurance hardware: enabled.
+- fixed-002 (2026-10-05): PASS, 300 of 300 cycles with power-on counting.
+  - 0 power-on events, 0 stuck links, 0 re-enumerations, final cleanup
+    proven.
+  - Identity latency: median 1,750 ms, p99 4,501 ms, max 5,074 ms.
+  - The 16 cycles over 3 s show the boot-diagnostic replay restarting from
+    its first line, probably because the host opened the port mid-replay.
+    The identity arrived on the second pass, so this is observation timing,
+    not a device fault.
+- Totals on the fixed image `60e344e2`: 363 reset cycles plus 5 installs.
+  - USB link stuck: 0.
+  - Chip power-on during a requested reset: 1 (fixed-001 cycle 64), about
+    1 in 364.
+- Totals on the old image `6f268518`: 100 reset cycles (baseline-003) with
+  0 stuck links and 0 power-ons.
+- Conclusions:
+  - USB stuck link: this reset path does not reproduce it. The BBPLL change
+    is the ESP-IDF-recommended configuration, installed and showing no
+    regression, but it is not shown to fix the defect.
+  - Power-on: rare. The likely cause is a supply dip or EN glitch in the
+    pre-handler boot window. Confirming it needs electrical probing, which
+    is not authorized.
+  - Both are recorded in `docs/hardware/known-issues.md`.
+USB reset endurance hardware: disabled (fixed-002 complete).
 USB BBPLL install hardware: disabled (attempt-001 complete).
 
 Risk: devices whose bootloader came from an OTA-only update keep an older
