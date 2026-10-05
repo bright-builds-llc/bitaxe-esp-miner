@@ -2,22 +2,24 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
-export const TASK = 'task-str005-v2-accepted-share-probe';
-export const ENABLED_LINE = 'Accepted share probe hardware: enabled.';
+import { HEAD } from '../str005-lineage/head.mjs';
+export const TASK = 'task-str005-share-current-image';
+export const ENABLED_LINE = 'Share current image hardware: enabled.';
 export const ENABLED = false;
 export const CONTRACT = 'docs/hardware/str005-accepted-share-amendment.md';
 export const SCHEMA = 'str005-accepted-share-context-v1';
 export const ADMISSION = 'accepted-share-v1';
-/** The audited install, the last sealed Start and the restart that cleared its retained record. */
-export const PINS = Object.freeze({ installationProfile: 'step5-diagnostic-reinstall',
-  installationResult: '04f2f8d1689f8059eb59a8522c7b582b87dbb22375436f6fd4294d4b654afa46',
-  installationSeal: '0751d602e4874a1224923d8e5ef2b86e492fbfc9f7b382140965cb7519a81092',
-  previousStartResult: '4ea90e4f71ad877e9c480f1edc30b00248f0d54910d178c85f755675030208ea',
-  previousStartSeal: 'd37808f87818e418449fee720c8618d31ea79a2a39ebc90d8002d4699238623c',
-  // Restart002: one no-mining restart after start004 (boot 12 -> 13, ledger unchanged).
-  restartResult: '98bdfdf2e4cc10b718d9bed093626bdd8e7cc54ebbfedafe136afdc6e010a899',
-  restartSeal: '7f602f4f01ce607f99bd00c9a46155234716851b11cbfb6b7ee374bb65e59af2',
-  gate: '86fc62d7a9d75da1affa2d51bc3b9eab41d86031' });
+/** The verified lineage head's install, its latest sealed Start and the restart that cleared that Start's retained record. */
+export const PINS = Object.freeze({ installationProfile: HEAD.install.profile,
+  installationResult: HEAD.install.result,
+  installationSeal: HEAD.install.seal,
+  // Heartbeat008: the lineage head's latest Start on 60e344e2 (boot 301, ledger 28/27/3,360,000 ms).
+  previousStartResult: 'fcbb3ce7767778183584a36dc23a1efcd31874b11ded3e518d562b015a0cbdae',
+  previousStartSeal: '68621dc4406ec506e4b067b0c1cdd5447439e206db331b50c7ce4cc215005b92',
+  // Pinned once its sealed no-mining restart after heartbeat008 passes.
+  restartResult: null,
+  restartSeal: null,
+  gate: HEAD.install.identity.gate_commit });
 /** The exact active task line and the compiled flag both admit effects; a restart must be pinned. */
 export function taskEnabled(tasks, compiled = ENABLED, pins = PINS) {
   const active = tasks.split(/^## Active$/mu)[1]?.split(/^## /mu)[0] ?? '';

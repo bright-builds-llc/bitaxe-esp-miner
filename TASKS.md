@@ -4491,9 +4491,44 @@ socket/worker/fence release from current idle state or reconstruct missing proof
 Task remains blocked and unarchived; no Start/grants/mining/flash/replay occurred,
 no next mining ordinal is authorized, and parity remains 90/95.
 
+### task-str005-share-current-image | 2026-10-05 | Repeat the accepted-share check on the final candidate
+
+Status: Active. Owner-requested 2026-10-05 as the integration review's one
+uncovered interaction (`task-str005-piecewise-integration-review`).
+Objective: one bounded accepted-share Start on the lineage head's image
+(`60e344e2`) that passes every share-probe judge criterion, ending in a
+Worker-requested normal Stop.
+Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendment.md),
+"Current-image re-run".
+
+- [x] Software: the restart owner follows heartbeat008 under this task's
+      restart line; the share owner reads its install from the lineage head
+      and pins heartbeat008 as its previous Start. Its restart stays
+      unpinned, so no Start is admitted until restart005 is sealed.
+- [ ] restart005: preflight with heartbeat008 as `--start-root`, recovery
+      stage, restart stage, finish. Expected boot 301 to 302, ledger
+      28/27/3,360,000 ms unchanged. Then pin it in
+      `scripts/str005-accepted-share/contract.mjs` and enable the share line.
+- [ ] share-current-001: detector, preflight, serve, baseline and candidate,
+      startup detector, Run, fresh recovery, release, final detector, finish.
+      Expected after ledger 29/28/3,540,000 ms. Record confirmed renewals.
+- [ ] Record, `just str005-lineage record-start`, publish redacted evidence,
+      update the integration review, disable both lines, archive.
+
+Stop on any detector failure, an identity, boot or ledger drift, a lost or
+ambiguous Start (never resend), a panic or unproven cleanup. Effects and
+prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
+firmware write. Retries need a regression-backed fix, a fresh ordinal and a
+new restart.
+Share current image restart hardware: enabled.
+Share current image hardware: disabled.
+
+Verification: pending. Completion review: pending.
+
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
-Status: Blocked on independent checkpoint results; no campaign is pre-authorized.
+Status: Active 2026-10-05. Map and impact review recorded; one current-image
+share check is pending in `task-str005-share-current-image`.
 Objective: establish cumulative requirement coverage and compatibility for the
 final candidate with only the additional integration measurement actually needed.
 Depends on: `task-str005-failure-recovery-accounting`, `task-str005-start-panic-diagnosis`,
@@ -4501,10 +4536,14 @@ Depends on: `task-str005-failure-recovery-accounting`, `task-str005-start-panic-
 `task-str005-heartbeat-shutdown-probe` and applicable channel/continuity evidence.
 Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
-- [ ] Map every protocol/authentication/work/share/safety/restoration/accounting
+- [x] Map every protocol/authentication/work/share/safety/restoration/accounting
       and cleanup obligation to its independent result and actual tested identities.
-- [ ] Review intervening changes and negative-test/native resource coverage;
+- [x] Review intervening changes and negative-test/native resource coverage;
       document reuse rationale, invalidated checks and precise remaining gaps.
+      [Integration review](docs/parity/evidence/20261005-str005-integration-review.md):
+      the candidate is `60e344e2`/`3f01a5f4`/Gate `86fc62d7`. Heartbeat008 and
+      usb-bbpll-install attempt-001 cover it except share, renewal and a
+      Worker-requested Stop while mining; that impact is uncertain.
 - [ ] Reuse a qualifying final-candidate probe as integration smoke evidence.
       Only for a concrete uncovered interaction, publish a narrow bounded contract,
       verify its implementation and execute that missing check; no mandatory big-bang run.

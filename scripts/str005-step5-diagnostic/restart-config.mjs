@@ -1,9 +1,9 @@
 /** Which sealed Start the next no-mining restart follows, and which active task owns it. */
 export const RESTART = Object.freeze({
-  task: 'task-str005-heartbeat-shutdown-probe',
-  enabledLine: 'Heartbeat restart hardware: enabled.',
-  contract: 'docs/hardware/str005-heartbeat-shutdown-amendment.md',
-  // Heartbeat002: heartbeat-loss Start whose terminal V2 record must be cleared.
-  startResult: '6ffa84ea1113c5bd57c711f1c3fe4192feaf79bc7ad4a71ec87a82ca90647936',
-  startSeal: 'aad964919c38207cd5890011fad2599c9063a5b8f0c551f6523e53c9e361fd83',
+  task: 'task-str005-share-current-image',
+  enabledLine: 'Share current image restart hardware: enabled.',
+  contract: 'docs/hardware/str005-accepted-share-amendment.md',
+  // Heartbeat008: the lineage head's latest Start on 60e344e2, whose terminal V2 record must be cleared.
+  startResult: 'fcbb3ce7767778183584a36dc23a1efcd31874b11ded3e518d562b015a0cbdae',
+  startSeal: '68621dc4406ec506e4b067b0c1cdd5447439e206db331b50c7ce4cc215005b92',
 });

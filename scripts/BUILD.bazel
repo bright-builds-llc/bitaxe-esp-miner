@@ -1586,7 +1586,7 @@ js_binary(
 js_library(
     name = "str005_accepted_share_sources",
     srcs = glob(["str005-accepted-share/*.mjs", "str005-share-probe/*.mjs"]),
-    deps = [":str005_step5_diagnostic_sources", ":str005_startup_probe_sources"],
+    deps = [":str005_step5_diagnostic_sources", ":str005_startup_probe_sources", ":str005_lineage_sources"],
 )
 
 js_binary(

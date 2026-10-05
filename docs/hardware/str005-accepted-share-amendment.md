@@ -32,16 +32,18 @@ promotes it.
 The retained terminal V2 record of start004 clears only on reboot. One no-mining
 `qualificationRestart` follows the step-5 restart rules, with start004 as its
 pinned parent:
+
 - stage `recovery` reads the record freshly by ID;
 - stage `restart` makes exactly one software restart, keeps the ledger and
   budget unchanged and proves boot N+1, served on `127.0.0.1:48765`.
-The pre-reset admission marker may show start004's completed attempt
-(`prior_attempt_completed`). The task line is
-`Accepted share restart hardware: enabled.`
+  The pre-reset admission marker may show start004's completed attempt
+  (`prior_attempt_completed`). The task line is
+  `Accepted share restart hardware: enabled.`
 
 ## Phase B: one accepted-share Start (`just str005-accepted-share`)
 
 Admission requires:
+
 - the compiled `ENABLED` flag, the exact active task line
   `Accepted share probe hardware: enabled.`, and clean pushed source;
 - the pinned chain of reinstall, then start004, then the sealed restart002;
@@ -49,6 +51,7 @@ Admission requires:
   the canonical fixture, and a detector at most 60 s old with no holder.
 
 Effects, from the share-probe contract:
+
 - One fresh `normal` attempt at the measured next ordinal (24): a
   180,000-ms reservation, a 60,000-ms initial lease and at most 2 same-lease
   renewals. Renewals are signed at issuance and executed only by the Gate's
@@ -64,6 +67,7 @@ Effects, from the share-probe contract:
 The expected after ledger is next 25, last 24, 2,820,000 ms.
 
 A pass requires every share-probe judge criterion:
+
 - an independently recomputed header, target, nonce, submission and native
   acknowledgement join;
 - a normal Stop with terminal resources released;
@@ -75,6 +79,44 @@ A pass requires every share-probe judge criterion:
 
 Any shortfall seals `unverified`. Running out of time without a share is not
 retry authority without a regression-backed change.
+
+## Current-image re-run
+
+The STR-005 integration review found that Share001's coverage cannot be
+reused on the final candidate. Share001 ran on `654338d0`. Since then:
+
+- the realignment fix and the queue workaround replaced every queue and
+  reply channel on the result, submission, acknowledgement, Renew and Stop
+  paths;
+- the BBPLL setting changed startup clocking;
+- an end-of-stack watchpoint and a per-command heap check were added.
+
+Heartbeat008 ran Start and dispatch on the candidate, but no share, renewal
+or Worker-requested Stop while mining. The impact is uncertain, so the check
+is repeated once (`task-str005-share-current-image`). Only the lineage
+changes:
+
+- **Install.** The lineage head's install (`usb-bbpll-install`
+  attempt-001, image `60e344e2`/`3f01a5f4`, Gate `86fc62d7`), read from
+  `scripts/str005-lineage/head.json`.
+- **Previous Start.** Heartbeat008 (result `fcbb3ce7…`, seal `68621dc4…`),
+  the head's latest Start: boot 301, ledger next 28, last 27, 3,360,000 ms.
+- **Phase A: restart005.** `restart-config.mjs` names heartbeat008 as the
+  parent and the line `Share current image restart hardware: enabled.`
+  The Phase A rules above apply unchanged: boot 301 to 302, ledger and
+  budget unchanged.
+- **Phase B: share-current-001.** The line
+  `Share current image hardware: enabled.` and a pinned restart005 admit one
+  Start at ordinal 28 under the Phase B effects and pass criteria above.
+  The expected after ledger is next 29, last 28, 3,540,000 ms. The judge
+  still accepts 0 to 2 renewals. The Renew path counts as covered on this
+  image only if at least one renewal is confirmed; otherwise the
+  integration review keeps it as an explicit gap.
+
+The fixture (`66b6659b…`) and the Gate are the ones Share001 used. Every
+prohibition, stop condition and non-claim below applies. A pass covers the
+share, renewal and normal-stop paths on the candidate; it does not relabel
+Share001.
 
 ## Prohibited
 
@@ -98,6 +140,7 @@ Retries need a targeted, regression-backed fix, a fresh ordinal and, before any
 further Start, a new restart.
 
 Stop on:
+
 - a detector result other than exactly one Ultra 205;
 - identity, ledger or baseline drift;
 - a lost or ambiguous Start (never resend);
