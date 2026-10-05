@@ -5527,7 +5527,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
             ([projection](docs/parity/evidence/str005-realignment-fix/attempt-001.json))
       - The recovery and review-loop owners now pin this install.
 Realignment fix install hardware: disabled.
-Control diagnostic recovery hardware: disabled.
+Control diagnostic recovery hardware: enabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
@@ -5640,6 +5640,10 @@ Control review loop hardware: disabled.
           attempt. Regressions cover this, a disagreeing record and the
           owner nonce never being used. An offline load resolves exactly
           the retained record's id.
+      - The owner approved continuing (2026-10-04) after the hardening and
+        consolidation tasks (both archived): recovery012 with the device
+        record attempt from the lineage head, then the install, loop and
+        closing recovery.
 - [ ] Step 3: Gate-visible control stack and heap telemetry.
 - [ ] Phase D: on any panic, recovery, read and offline analysis; otherwise
       record that it did not reproduce.
