@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: disabled (control repro capture-003 completed).
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5695,6 +5695,65 @@ Development core-dump clearing: disabled (clear001 completed).
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.
+
+### task-str005-queue-bootloop-recovery | 2026-10-04 | Restore the last good image and capture the boot-loop core dump
+
+Status: Active. Owner-authorized 2026-10-04 after queue-workaround
+attempt-001 left the Ultra 205 panicking every boot on candidate
+`a2052ab0`/`84d1cd51`.
+Objective: return the board to the verified `7ca3e29c`/`227bc380` image
+with NVS, Device Identity and the ledger preserved. Then capture the stored
+core dump of the boot-loop panic for offline analysis.
+
+Commands, in order, each under a fresh mode-0700 parent with distinct
+mode-0600 logs:
+1. `just detect-ultra205`: exactly one admitted Ultra 205. Then
+   `espflash board-info --chip esp32s3 --port <port> --non-interactive`
+   before any write.
+2. Restore, state-preserving:
+   `just flash-monitor --board 205 --port <port> --expected-physical-sha256 <physical> --manifest <repo>/scratch/str005-realignment-fix/attempt-001/qualified-artifacts/firmware/bitaxe-ultra205-package.json --evidence-dir <parent>/restore --capture-timeout-seconds 360`.
+   The exact sealed realignment-fix package is used. No `--factory-reset`
+   and no Wi-Fi credentials.
+3. `just str005-lineage advance-install --root <repo>/scratch/str005-realignment-fix/attempt-001`:
+   the reflash rebooted the board, so heartbeat007's retained record is
+   gone. Commit and push it.
+4. A current recovery (`just str005-control-diagnostic-recovery`, recovery013)
+   with the control-diagnostic recovery gate.
+5. Inside its 120-s proof window, one
+   `just core-dump-read --board 205 --port <port> --expected-physical-sha256 <physical> --expected-installed-source 7ca3e29ce1870396c801f9d8d74ff02aac2ef112 --expected-installed-elf 227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0 --recovery-proof <recovery013>/current-recovery.json --private-root <parent>/capture001`.
+   Then offline `just core-dump inspect|analyze` against the candidate ELF
+   `84d1cd51…`, which is retained by attempt-001's `qualified-artifacts`.
+
+Allowed effects:
+- one state-preserving reflash of the sealed known-good package;
+- the read-only recovery reviews;
+- one core-dump partition read.
+
+Prohibited:
+- factory or NVS reset, erase, rollback;
+- core-dump clearing;
+- any Start, grant or mining;
+- Wi-Fi provisioning;
+- direct UART or pins;
+- network discovery.
+
+Evidence and privacy: raw logs, dumps and device identifiers stay in
+ignored protected roots; committed records use categories, counts and
+digests only.
+
+Retry and stop:
+- Stop on zero or ambiguous ports, a `board-info` failure, an identity
+  change, a failed or partial write, a restored image that does not boot to
+  its exact identity, ledger drift, or unproven cleanup.
+- A second restore attempt needs a verified, targeted fix.
+- If the read fails, keep the dump; never clear it here.
+
+Gates:
+Queue boot-loop restore hardware: enabled.
+
+- [ ] Restore and verify the exact identity at boot.
+- [ ] Advance the lineage head; recovery013.
+- [ ] Capture and analyze the core dump; record the fault.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
