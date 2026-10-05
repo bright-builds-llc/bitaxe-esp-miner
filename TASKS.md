@@ -4545,10 +4545,10 @@ Stop on any detector failure, identity, ledger or baseline drift, a lost or
 ambiguous Start, a panic other than the Phase 5 reproduction, or unproven
 cleanup. No pool, no Wi-Fi provisioning, no NVS or factory reset, no
 core-dump clearing, at most five installs.
-Control diagnostic recovery hardware: disabled.
+Control diagnostic recovery hardware: enabled.
 Internal heap diagnostic install hardware: disabled.
 Heartbeat heap diagnosis hardware: disabled.
-Heap-loss core-dump acquisition: disabled.
+Heap-loss core-dump acquisition: enabled (fresh recovery required).
 
 Verification: pending. Completion review: pending.
 
