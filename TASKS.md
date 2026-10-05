@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: disabled (queue boot-loop capture001 completed).
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 Development core-dump clearing: disabled (queue boot-loop clear002 completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5836,6 +5836,11 @@ reproduction):
   - STOP: waiting for the owner's USB-only replug, with barrel power kept.
     The board stays in its panic boot loop on the candidate until then; no
     mining runs.
+- The owner did a USB-only replug (2026-10-05). Restore attempt 2 through
+  the gated driver: detector, `board-info` and the physical identity
+  re-check passed. The restore reported `startup_status=complete` and
+  `monitor_qualified=true` with the exact package observed, and the board is
+  stable. Next: recovery015 and capture002, with acquisition enabled.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
