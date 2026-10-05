@@ -5840,7 +5840,17 @@ change; the owner's replug is the only remediation for a stuck link.
     `c8fe31cf349b588571feacfbc22a056d652a8d5e090becab6918e5b93c3bb127`,
     seal `b3232e1af991f9ceaeb32066b29f71ae454d2f9b436e375d33a0b6090d4a7f38`.
   - The lineage head advanced. Next: fixed-001, 100 cycles.
-USB reset endurance hardware: enabled.
+- fixed-001 (2026-10-05): 63 clean cycles on `60e344e2` (boot ordinals
+  increasing to 169, identity 1.7 to 2.0 s after each reset, no stuck link).
+  Cycle 64 stopped as `reboot_not_proven`: the device answered, but
+  reported `reset_reason=power_on` with boot ordinal 1. The RTC domain lost
+  power, so this was a full power-on, not the requested reset; it also
+  re-enumerated.
+  - Not a stuck link. The cause is unknown: an external power interruption,
+    or a supply event coinciding with the reset. Waiting for the owner to
+    say whether the board's power was touched; the endurance gate is
+    disabled until then.
+USB reset endurance hardware: disabled (fixed-001 stopped on an unexplained power-on).
 USB BBPLL install hardware: disabled (attempt-001 complete).
 
 Risk: devices whose bootloader came from an OTA-only update keep an older
