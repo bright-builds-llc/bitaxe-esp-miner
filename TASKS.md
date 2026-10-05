@@ -5529,6 +5529,7 @@ Plan (`task-str005-start-panic-diagnosis`, correction):
 Realignment fix install hardware: disabled.
 Control diagnostic recovery hardware: disabled.
 Queue workaround install hardware: disabled.
+Queue workaround reinstall hardware: enabled.
 Control review loop hardware: disabled.
 - [x] Hardware verification on `7ca3e29c`:
       - loop006 completed all 5 batches (500 rounds, 2,000 read-only reviews,
@@ -5872,7 +5873,9 @@ reproduction):
   27/26/3,180,000 ms. The candidate's exact ELF must pass both
   `just audit-stack-realignment` and `just audit-startup-frames`. After a
   pass: advance the lineage head, then loop007 and recovery016.
-Queue workaround reinstall hardware: enabled.
+  (The gate line lives in `task-str005-start-panic-diagnosis`, the
+  profile's task; the first preflight refused it here with
+  `noise_live_task_disabled`, before any root or effect existed.)
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
