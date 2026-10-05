@@ -98,3 +98,31 @@ Residual risk:
 - A separate defect: after a panic reset, the USB link stayed unusable until
   a physical USB replug.
 - Parity stays 90/95.
+
+## Startup channels replaced (queue workaround)
+
+The nine startup-time std channels were replaced by `bitaxe_runtime::queue`.
+The realignment audit's allowlist is now empty, and the image contains no
+realigning function at all.
+
+The first queue image (`a2052ab0`) panicked on every boot:
+
+- A one-time reproduction, after an archive-verified clear of the core-dump
+  partition, stored its dump.
+- The decode shows the 16 KiB main task overflowing in the Worker trust
+  parse's curve25519 key checks.
+- The cause: the change let `production_mining_session::start` (4.4 KiB
+  frame) inline into `run_startup`. That frame grew from 1,776 to 4,896 bytes
+  and stayed live under the parse.
+
+The fix keeps `start` out of line (1,072 bytes). `just audit-startup-frames`
+blocks the failing image and passes the previous and fixed ones.
+
+Verification on `6f268518` (ELF `b6908f6d…`):
+
+- Reinstall attempt-002 `complete` and `hardware_qualified`.
+- 500 read-only review rounds (loop007) with no failure.
+- recovery016 on the same boot as the install's restoration, with the
+  ledger unchanged at next 27, last 26, 3,180,000 ms.
+
+Parity stays 90/95.

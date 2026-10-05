@@ -9,7 +9,7 @@ import { main as collect } from '../str005-share-recovery/main.mjs';
 import { loadSealedStartRecord } from '../str005-startup-probe/start-record.mjs';
 import { HEAD } from '../str005-lineage/head.mjs';
 
-export const ENABLED = true;
+export const ENABLED = false;
 // The installed image and its latest Start come from the verified lineage head
 // (`just str005-lineage show`), never from hand-edited constants.
 export const INSTALL = Object.freeze({ profile: HEAD.install.profile, path: HEAD.install.path, result: HEAD.install.result,
