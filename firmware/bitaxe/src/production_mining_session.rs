@@ -65,6 +65,10 @@ enum OwnerInboxMessage {
 }
 
 /// Starts the single boot-lifetime production mining owner and its bounded I/O workers.
+// Never inlined: its ~4.4 KiB frame must be released before the rest of startup runs. Inlined
+// into `run_startup`, it stayed live under the Worker trust parse and overflowed the 16 KiB
+// main task (queue-workaround boot loop, 2026-10-04).
+#[inline(never)]
 pub fn start() -> anyhow::Result<()> {
     let (sender, receiver) = queue::sync_channel(NOTIFICATION_CAPACITY);
     NOTIFICATIONS

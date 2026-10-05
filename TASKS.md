@@ -5841,6 +5841,31 @@ reproduction):
   re-check passed. The restore reported `startup_status=complete` and
   `monitor_qualified=true` with the exact package observed, and the board is
   stable. Next: recovery015 and capture002, with acquisition enabled.
+- recovery015: current safe recovery, idle V2, ledger 27/26/3,180,000 ms.
+  Result `473546a8714067aa3c2af3c1772ce48050cf1c2aca8dc584886b6393a9b8f11b`, seal `4eaacb69591026b90764d1198bfdbd52b7914ceeeabf4891e8927084f513e8d8`.
+- capture002: read inside the proof window. It is a new dump (SHA-256
+  `fabd12b4…`) and decodes against the candidate ELF `84d1cd51…` with the
+  full identity verified. Gates are disabled again.
+- Root cause:
+  - The crashing thread is the 16 KiB main task, in
+    `bwg_worker_usb::prepare` → `WorkLeaseAuthorityTrust::from_deployment_json`
+    → `parse_keys` → `EdwardsPoint::is_torsion_free` → curve25519 variable-base
+    scalar multiplication (`field::mul`), which overflows the stack.
+  - The queue change altered inlining: `production_mining_session::start`
+    (4,400-byte frame), standalone in `7ca3e29c`, was inlined into
+    `run_startup`. That grew `run_startup`'s frame from 0x6f0 to 0x1320
+    bytes, and it stays live under the trust parse.
+  - The queue itself is not at fault: making its constructor out of line
+    left the frame at 0x1320.
+- Fix: `#[inline(never)]` on `production_mining_session::start`, with a
+  comment; `run_startup`'s frame is now 0x430 (1,072 bytes).
+- Regression guard: `just audit-startup-frames` (`scripts/startup-frame-budget.json`):
+  - `run_startup`'s frame must be at most 2,048 bytes, and the session start
+    must stay standalone;
+  - against the real ELFs it passes `7ca3e29c` (1,776), blocks `a2052ab0`
+    (4,896, inlined) and passes the fix (1,072);
+  - synthetic tests cover each rule.
+- [x] Capture and analyze the boot-loop dump.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 

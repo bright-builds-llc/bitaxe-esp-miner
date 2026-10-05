@@ -415,6 +415,11 @@ audit-owner-stack elf objdump owner_source:
 audit-stack-realignment elf output:
     bazel run //scripts:audit_stack_realignment -- --elf "{{ elf }}" --output "{{ output }}"
 
+# Fails if a budgeted startup frame on the 16 KiB main task grows past its bound or a large startup
+# owner is inlined into it (the queue-workaround boot loop); never opens a device.
+audit-startup-frames elf output:
+    bazel run //scripts:audit_startup_frames -- --elf "{{ elf }}" --output "{{ output }}"
+
 audit-control-stack elf output:
     bazel run //scripts:audit_control_stack -- --elf "{{ elf }}" --output "{{ output }}"
 

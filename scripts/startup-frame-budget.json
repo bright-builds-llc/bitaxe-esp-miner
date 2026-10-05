@@ -1,0 +1,12 @@
+{
+  "schema": "startup-frame-budget-v1",
+  "rationale": "The 16 KiB main task runs startup and then the Worker trust parse (curve25519 key checks) on the same stack. A startup owner inlined into run_startup keeps its frame live underneath that parse; the queue-workaround image overflowed this way (run_startup grew from 1,776 to 4,896 bytes).",
+  "frames": [
+    { "symbol": "bitaxe_firmware::startup::run_startup", "max_bytes": 2048,
+      "reason": "it stays live under bwg_worker_usb::prepare and the trust parse" }
+  ],
+  "standalone": [
+    { "symbol": "bitaxe_firmware::production_mining_session::start",
+      "reason": "its ~4.4 KiB frame must be released before the Worker trust parse" }
+  ]
+}

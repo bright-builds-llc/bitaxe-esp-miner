@@ -1488,6 +1488,18 @@ js_test(
 )
 
 js_binary(
+    name = "audit_startup_frames",
+    entry_point = "audit-startup-frames.mjs",
+    data = ["audit-stack-realignment.mjs", "stack-realignment-audit.mjs", "startup-frame-audit.mjs", "startup-frame-budget.json"],
+)
+
+js_test(
+    name = "startup_frame_audit_test",
+    entry_point = "startup-frame-audit.test.mjs",
+    data = ["startup-frame-audit.mjs", "startup-frame-budget.json"],
+)
+
+js_binary(
     name = "audit_fault_provenance",
     entry_point = "audit-fault-provenance.mjs",
     data = [":core_dump_sources", "noise-native-calls.mjs", "noise-native-disassembly.mjs"],
