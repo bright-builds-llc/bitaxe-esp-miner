@@ -14,6 +14,8 @@ use sha2::{Digest, Sha256};
 
 #[path = "cli/display_uat.rs"]
 mod display_uat;
+#[path = "cli/reset_endurance.rs"]
+mod reset_endurance;
 #[path = "cli/transaction.rs"]
 mod transaction;
 

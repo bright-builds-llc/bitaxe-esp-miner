@@ -13,6 +13,7 @@ mod macos;
 mod model;
 mod platform;
 mod reboot_loop;
+mod reset_endurance;
 mod transaction;
 mod usb;
 mod usb_ownership;
@@ -42,6 +43,11 @@ pub use platform::current_platform;
 pub use reboot_loop::{
     observe_usb_reboot_loop, parse_usb_reboot_diagnostics, UsbMemoryCheckpoint,
     UsbRebootLoopCategory, UsbRebootLoopObservation, UsbRuntimeIdentity, UsbStartupProgress,
+};
+pub use reset_endurance::{
+    admit_reset_endurance_task, run_usb_reset_endurance, CycleRow, FirstFailure,
+    ResetEnduranceConfig, ResetEnduranceProjection, ResetEnduranceRequest, ResetEnduranceStop,
+    RESET_ENDURANCE_PRIVATE_SCHEMA, RESET_ENDURANCE_PROJECTION_SCHEMA,
 };
 pub use transaction::{
     run_admitted_transaction, DeviceTransactionIntent, TransactionGoal, TRANSACTION_INTENT_SCHEMA,

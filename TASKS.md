@@ -5776,6 +5776,35 @@ Findings (read-only, 2026-10-05):
         record that instead of claiming a fix.
 - [ ] Record the outcome; update `docs/hardware/known-issues.md`.
 
+Hardware contract (bounded, no flash, NVS, Start, mining or network effect
+except the profiled install):
+1. Baseline (`baseline-001`) on the installed `6f268518`, which still has
+   the recalibration:
+   `just usb-reset-endurance --port <port> --expected-physical-sha256 <physical> --expected-firmware-commit 6f268518b86ee264911e033acad769fac176f375 --expected-app-elf-sha256 b6908f6dda85b5e4d133401dcf3dc84f940d4f41121216c40e93f2ff4f6cbe3b --cycles 100 --private-root <parent>/baseline-001 --projection-output <parent>/baseline-001.projection.json`.
+   - Each cycle is the native USB-core reset of the running application,
+     then a receive-only observation of a strictly newer boot ordinal and
+     the exact identity.
+   - The loop stops at the first miss. A miss leaves the link stuck, so
+     the owner does a USB-only replug and the detector re-admits before
+     anything else.
+2. Install the fixed image with the `usb-bbpll-install` profile
+   ([amendment](docs/hardware/usb-bbpll-recalib-install-amendment.md),
+   predecessor recovery016, ledger 27/26/3,180,000 ms). The candidate ELF
+   must pass both stack audits and lack `recalib_bbpll`.
+3. Fixed run (`fixed-001`): the same command against the new identity.
+   - If the baseline missed at cycle k, run `max(100, 3k)` cycles.
+   - Pass: zero misses.
+   - If the baseline had no miss in 100 cycles, the loop does not
+     discriminate. Record that, and run the fixed image for 100 cycles only
+     as a no-regression check.
+
+Every run first passes `just detect-ultra205` with exactly one admitted
+Ultra 205. Evidence stays in mode-0700 `scratch/usb-stuck-link/` roots;
+only the redacted projections may be committed. Retries need a verified
+change; the owner's replug is the only remediation for a stuck link.
+USB reset endurance hardware: enabled.
+USB BBPLL install hardware: disabled.
+
 Risk: devices whose bootloader came from an OTA-only update keep an older
 bootloader. Every install in this project writes the v5.5.4 bootloader.
 

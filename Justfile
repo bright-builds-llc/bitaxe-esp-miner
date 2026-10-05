@@ -95,6 +95,10 @@ monitor *args:
 diagnose-usb-reboot-loop *args:
     bazel run //tools/device-session:device-session -- observe-usb-reboot-loop {{ args }}
 
+# Task-gated loop of native USB resets of the running app; stops at the first unobserved boot.
+usb-reset-endurance *args:
+    bazel run //tools/device-session:device-session -- usb-reset-endurance {{ args }}
+
 flash-monitor *args:
     bazel run //tools/flash:flash -- flash-monitor {{ args }}
 

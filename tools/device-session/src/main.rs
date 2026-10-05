@@ -5,9 +5,10 @@ use anyhow::{Context, Result};
 use bitaxe_device_session::{
     create_empty_private_root, finalize_display_uat, observe_usb_reboot_loop,
     run_admitted_inspection, run_admitted_transaction, run_display_uat_live, run_fixture_session,
-    run_live_session, validate_private_input, DeviceInspectionIntent, DeviceTransactionIntent,
-    DisplayUatIntent, FixtureTranscript, InspectionArtifacts, OtaIntent, RebootIntent,
-    SessionArtifacts, SessionRequest, TerminalCategory, TransactionGoal, UsbRuntimeIdentity,
+    run_live_session, run_usb_reset_endurance, validate_private_input, DeviceInspectionIntent,
+    DeviceTransactionIntent, DisplayUatIntent, FixtureTranscript, InspectionArtifacts, OtaIntent,
+    RebootIntent, ResetEnduranceConfig, ResetEnduranceRequest, SessionArtifacts, SessionRequest,
+    TerminalCategory, TransactionGoal, UsbRuntimeIdentity,
 };
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
@@ -39,6 +40,8 @@ enum Command {
     DisplayUatFinalize(DisplayUatFinalizeArgs),
     #[command(name = "observe-usb-reboot-loop")]
     ObserveUsbRebootLoop(ObserveUsbRebootLoopArgs),
+    #[command(name = "usb-reset-endurance")]
+    UsbResetEndurance(UsbResetEnduranceArgs),
 }
 
 #[derive(Debug, Args)]
@@ -203,6 +206,34 @@ struct ObserveUsbRebootLoopArgs {
     maybe_expected_app_elf_sha256: Option<String>,
 }
 
+/// Task-gated loop of native USB application resets with receive-only identity proof.
+#[derive(Debug, Args)]
+struct UsbResetEnduranceArgs {
+    #[arg(long)]
+    port: String,
+
+    #[arg(long = "expected-physical-sha256")]
+    expected_physical_sha256: String,
+
+    #[arg(long = "expected-firmware-commit")]
+    expected_firmware_commit: String,
+
+    #[arg(long = "expected-app-elf-sha256")]
+    expected_app_elf_sha256: String,
+
+    #[arg(long)]
+    cycles: u32,
+
+    #[arg(long = "observe-timeout-seconds", default_value_t = 20)]
+    observe_timeout_seconds: u64,
+
+    #[arg(long = "private-root")]
+    private_root: Utf8PathBuf,
+
+    #[arg(long = "projection-output")]
+    projection_output: Utf8PathBuf,
+}
+
 fn main() {
     match run() {
         Ok(TerminalCategory::Ready) => {}
@@ -232,6 +263,41 @@ fn run() -> Result<TerminalCategory> {
         Command::DisplayUatLive(args) => run_display_uat(args),
         Command::DisplayUatFinalize(args) => run_display_uat_finalize(args),
         Command::ObserveUsbRebootLoop(args) => run_observe_usb_reboot_loop(args),
+        Command::UsbResetEndurance(args) => run_reset_endurance(args),
+    }
+}
+
+fn run_reset_endurance(args: UsbResetEnduranceArgs) -> Result<TerminalCategory> {
+    let config = ResetEnduranceConfig::new(
+        &args.expected_physical_sha256,
+        &args.expected_firmware_commit,
+        &args.expected_app_elf_sha256,
+        args.cycles,
+        args.observe_timeout_seconds,
+    )
+    .inspect_err(|error| eprintln!("{error}"))?;
+    let request = ResetEnduranceRequest {
+        config,
+        port: args.port,
+        workspace: resolve_workspace_path(Utf8PathBuf::new())?,
+        private_root: resolve_workspace_path(args.private_root)?,
+        projection_output: resolve_workspace_path(args.projection_output)?,
+    };
+    let projection = run_usb_reset_endurance(request).inspect_err(|error| {
+        // Gate and validation reasons are path-free closed labels; other details stay private.
+        if let Some(reason) = error
+            .chain()
+            .map(ToString::to_string)
+            .find(|message| message.starts_with("usb_reset_endurance="))
+        {
+            eprintln!("{reason}");
+        }
+    })?;
+    println!("{}", projection.summary_line());
+    if projection.passed() {
+        Ok(TerminalCategory::Ready)
+    } else {
+        Ok(TerminalCategory::Incomplete)
     }
 }
 

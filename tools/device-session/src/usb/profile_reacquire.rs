@@ -55,6 +55,12 @@ impl UsbSession {
         Ok((profile, snapshot.enumeration_token != previous_enumeration))
     }
 
+    /// Proves the admitted device is stable, accessible and free of other holders,
+    /// which shows prior supervised children and readers no longer own the port.
+    pub(crate) fn prove_transport_released(&mut self) -> Result<(), UsbSessionError> {
+        self.reacquire(RecoveryPhase::PostProbe).map(|_| ())
+    }
+
     pub(crate) fn reacquire_profile(
         &mut self,
         expected_profile: UsbProfile,

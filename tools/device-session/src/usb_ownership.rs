@@ -19,6 +19,7 @@ use profile_trace::MAX_PROFILE_OBSERVATION_SAMPLES;
 pub(crate) use profile_trace::{
     profile_observation_category, ProfileObservationCategory, ProfileObservationTrace,
 };
+pub(crate) use verification::installed_application_args;
 pub use verification::{run_installed_application, ApplicationTransportObservation};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

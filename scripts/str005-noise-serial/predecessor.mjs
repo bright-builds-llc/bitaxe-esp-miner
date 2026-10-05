@@ -159,3 +159,10 @@ export const inspectRestoredRealignmentRecoveryPredecessor = currentRecoveryPred
   basis: "restored_realignment_current_recovery",
   maybeIdentity: { firmware_commit: "7ca3e29ce1870396c801f9d8d74ff02aac2ef112",
     app_elf_sha256: "227bc380ec2d2171d187f8561390259fae464b92164d4d30c2a80354135eb3f0" } });
+// Recovery016: the sealed current recovery with idle V2 on the queue-workaround image after loop007.
+export const inspectQueueReinstallRecoveryPredecessor = currentRecoveryPredecessor({
+  resultSha256: "473546a8714067aa3c2af3c1772ce48050cf1c2aca8dc584886b6393a9b8f11b",
+  sealSha256: "3924ff15cd0875b4899f08573d3f0fc271268193ec00d002a841904552107ad1",
+  basis: "queue_reinstall_current_recovery",
+  maybeIdentity: { firmware_commit: "6f268518b86ee264911e033acad769fac176f375",
+    app_elf_sha256: "b6908f6dda85b5e4d133401dcf3dc84f940d4f41121216c40e93f2ff4f6cbe3b" } });

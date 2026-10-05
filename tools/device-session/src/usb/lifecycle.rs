@@ -11,6 +11,7 @@ pub enum UsbOperation {
     MiningCampaign,
     VerifyDurability,
     VerifyTransition,
+    ResetEndurance,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

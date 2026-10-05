@@ -177,7 +177,7 @@ pub(crate) fn validate_empty_private_root(directory: &Utf8Path) -> Result<()> {
     Ok(())
 }
 
-fn open_private_new(path: &Utf8Path) -> Result<File> {
+pub(crate) fn open_private_new(path: &Utf8Path) -> Result<File> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
