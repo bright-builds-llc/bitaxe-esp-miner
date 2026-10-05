@@ -5815,6 +5815,27 @@ reproduction):
   restore anyway, and record it.
 - No Start, mining, NVS or factory reset, direct UART, or second candidate
   install.
+- clear002 (2026-10-04): recovery014 was a current safe recovery. The
+  clear inside the proof window completed; the archived dump was
+  identical. The clearing gate is disabled again.
+- Candidate reproduction (worktree at `a2052ab0`): detector and
+  `board-info` passed. The flash wrote the exact package, and the 120-s
+  monitor saw 11 `reset_reason=panic` boots, so the boot loop reproduced.
+  The first panic should be stored in the cleared partition.
+- Restore attempt 1 (worktree at `7ca3e29c`): the detector passed, but
+  `board-info` failed to connect.
+  - Process error: my driver did not stop on that failure, as the
+    contract requires, and invoked `flash-monitor`. The flash tool refused
+    in its own prerequisite probe (`flash_failed_before_transfer`), so
+    nothing was written.
+  - Fix: the driver now exits on any nonzero detector or `board-info`
+    status.
+  - The symptom matches the documented USB defect
+    ([known issues](docs/hardware/known-issues.md)): after panic resets
+    the USB link refuses connections until a USB-only replug.
+  - STOP: waiting for the owner's USB-only replug, with barrel power kept.
+    The board stays in its panic boot loop on the candidate until then; no
+    mining runs.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
