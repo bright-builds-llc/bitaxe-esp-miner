@@ -5802,6 +5802,15 @@ Every run first passes `just detect-ultra205` with exactly one admitted
 Ultra 205. Evidence stays in mode-0700 `scratch/usb-stuck-link/` roots;
 only the redacted projections may be committed. Retries need a verified
 change; the owner's replug is the only remediation for a stuck link.
+- baseline-001 (2026-10-05): stopped at cycle 1, `reset_failed`, 0 bytes,
+  final cleanup proven; no reset happened. `espflash reset --before
+  no-reset-no-sync` waits for ROM sync ("Connecting...") that a running
+  application never provides; that form only works right after a flash.
+  - Fix: the loop now uses `--before usb-reset --after hard-reset`. That is
+    the native USB-Serial/JTAG reset into the ROM downloader, then the same
+    ROM-to-application hard reset that ends every flash. A regression test
+    pins it.
+  - baseline-002 reruns with that fix.
 USB reset endurance hardware: enabled.
 USB BBPLL install hardware: disabled.
 

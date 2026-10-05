@@ -15,7 +15,6 @@ use super::identity::{IdentityScanner, IdentityVerdict};
 use super::model::CycleRow;
 use super::runner::{CycleEffects, ObserveFacts, ProfileFacts, ResetFacts};
 use crate::evidence::{create_empty_private_root, open_private_new};
-use crate::usb_ownership::installed_application_args;
 use crate::{
     inspect_usb_profile, UsbCommandTermination, UsbProfile, UsbSession, UsbSessionError,
     UsbTerminalCategory,
@@ -24,6 +23,28 @@ use crate::{
 const ESPFLASH_EXPECTED_VERSION: &str = "espflash 4.5.0";
 const VERSION_TIMEOUT: Duration = Duration::from_secs(10);
 const RESET_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Native USB-Serial/JTAG reset of the running application into the ROM downloader, then a hard reset
+/// back into the application: the same ROM-to-application transition that ends every flash. The
+/// post-flash `no-reset-no-sync` form only works when the chip already waits in the downloader.
+pub(super) fn endurance_reset_args(port: &str) -> Vec<String> {
+    [
+        "reset",
+        "--chip",
+        "esp32s3",
+        "--port",
+        port,
+        "--before",
+        "usb-reset",
+        "--after",
+        "hard-reset",
+        "--no-stub",
+        "--non-interactive",
+        "--skip-update-check",
+    ]
+    .map(str::to_owned)
+    .to_vec()
+}
 const MAX_CYCLE_SERIAL_BYTES: usize = 256 * 1024;
 
 /// Pinned espflash executable whose bytes must stay unchanged across every reset.
@@ -174,7 +195,7 @@ impl CycleEffects for SessionEffects<'_> {
                 }),
             };
         }
-        let args = installed_application_args(self.session.port());
+        let args = endurance_reset_args(self.session.port());
         let result = self.session.run_bootstrap_reset(
             self.espflash.path.as_std_path(),
             &args,

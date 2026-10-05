@@ -141,7 +141,7 @@ fn reset_admission_error(detail: &str) -> UsbSessionError {
 }
 
 /// Native Serial/JTAG DTR/RTS reset that starts the installed application without ROM sync.
-pub(crate) fn installed_application_args(port: &str) -> Vec<String> {
+fn installed_application_args(port: &str) -> Vec<String> {
     // espflash4.5 reset() calls Connection::reset() directly, which selects the native
     // USB DTR=false/RTS sequence. No separate ROM 'run' or subsequent reset is sent.
     [

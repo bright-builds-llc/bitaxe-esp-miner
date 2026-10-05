@@ -432,3 +432,21 @@ fn projection_summarizes_counts_and_durations() {
         (true, 2, Some(4), Some(5))
     );
 }
+
+#[test]
+fn endurance_reset_enters_the_downloader_from_the_running_application_then_hard_resets() {
+    // Arrange
+    let args = super::session::endurance_reset_args("admitted-port");
+    // Act
+    let pairs: Vec<_> = args
+        .windows(2)
+        .map(|pair| (pair[0].as_str(), pair[1].as_str()))
+        .collect();
+    // Assert: `no-reset-no-sync` waits for a downloader that a running application never provides.
+    assert_eq!(args[0], "reset");
+    assert!(pairs.contains(&("--before", "usb-reset")));
+    assert!(pairs.contains(&("--after", "hard-reset")));
+    assert!(!args
+        .iter()
+        .any(|arg| arg == "no-reset-no-sync" || arg == "write_flash" || arg == "erase_flash"));
+}
