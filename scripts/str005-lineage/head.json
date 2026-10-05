@@ -11,5 +11,9 @@
       "gate_commit": "86fc62d7a9d75da1affa2d51bc3b9eab41d86031"
     }
   },
-  "latestStart": null
+  "latestStart": {
+    "path": "scratch/str005-heartbeat-shutdown/heartbeat008/attempt",
+    "result": "fcbb3ce7767778183584a36dc23a1efcd31874b11ded3e518d562b015a0cbdae",
+    "seal": "68621dc4406ec506e4b067b0c1cdd5447439e206db331b50c7ce4cc215005b92"
+  }
 }

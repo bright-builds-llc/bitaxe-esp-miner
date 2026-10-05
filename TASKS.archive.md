@@ -22617,3 +22617,55 @@ Residual risks:
 - The stuck link may depend on the panic, boot-loop or post-flash paths,
   which this loop does not exercise; the replug remedy stays documented.
 - The power-on cause is unknown: a supply dip or EN glitch.
+
+### task-str005-heartbeat-current-image | 2026-10-05 | Re-verify heartbeat-loss shutdown on the current image
+
+Status: Completed 2026-10-05. Owner-requested 2026-10-05. Heartbeat007 passed on
+`7ca3e29c`; since then the queue workaround and the BBPLL setting changed
+the firmware. The heartbeat task's invalidation rule requires the check
+again after changes to scheduling and queues.
+Objective: one bounded heartbeat-loss Start on the lineage head's image
+(`60e344e2`) that passes every heartbeat judge and inspector criterion.
+Contract: [heartbeat-shutdown amendment](docs/hardware/str005-heartbeat-shutdown-amendment.md),
+"Current-image re-run".
+
+- [x] Software: the heartbeat owner reads its install pins from the
+      verified lineage head. A sealed current recovery
+      (`--current-recovery-root`) re-bases the expected boot and ledger; it
+      must be the same image and board, with idle V2 and a settled ledger.
+      This task re-owns the control-diagnostic recovery gate. Regressions
+      cover the anchor's admission and refusals.
+- [x] recovery017: current safe recovery on `60e344e2`, idle V2, boot 301,
+      ledger 27/26/3,180,000 ms, no errors. Seal
+      `7aacb820d2ccfcb939e32f25cbafe8a6bb473ac8723debe3bc62af1e23680efc`,
+      pinned as the heartbeat contract's current recovery.
+- [x] heartbeat008: detector, preflight with `--current-recovery-root`,
+      serve, baseline and candidate, startup detector, Run, fresh
+      recovery, release, final detector, finish. Expected after ledger:
+      28/27/3,360,000 ms. Passed: `heartbeat_timeout`, gate closed
+      2,803 ms and shutdown started 2,814 ms after the last heartbeat,
+      `safe_stop_complete`, ledger 28/27/3,360,000 ms, no recovery errors,
+      sealed `complete=true` with no blockers.
+- [x] Record, advance the lineage's latest Start (`just str005-lineage
+      record-start`), publish redacted evidence, archive.
+
+Stop on any detector failure, an identity, boot or ledger drift, a panic,
+a missed native deadline (never relaxed) or unproven cleanup. Effects and
+prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
+firmware write.
+Control diagnostic recovery hardware: disabled.
+Heartbeat current image hardware: disabled.
+
+Verification: heartbeat008 on boot 301, ordinal 27, generation 4; result
+`fcbb3ce7767778183584a36dc23a1efcd31874b11ded3e518d562b015a0cbdae`, seal
+`68621dc4406ec506e4b067b0c1cdd5447439e206db331b50c7ce4cc215005b92`; final
+detector admitted one Ultra 205; port released. The lineage head records it
+as the latest Start. Redacted summary:
+[heartbeat-loss evidence](docs/parity/evidence/20261004-str005-heartbeat-loss-shutdown.md).
+
+Completion review: the heartbeat-loss check holds on the current image with
+the same native margins as heartbeat007 (2,803/2,814 versus 2,802/2,823 ms).
+Both hardware gates are disabled in the task and the contract. Residual
+risks: one generation on a local fixture; no sustained mining, pool or
+accepted-share claim; parity stays 90/95. A later firmware change to
+scheduling or queues requires the check again.
