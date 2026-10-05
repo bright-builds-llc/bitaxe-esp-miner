@@ -22427,3 +22427,193 @@ Development core-dump clearing: disabled (clear001 completed).
 Idle panic recovery hardware: disabled.
 Clearing stays disabled. No Start, grant, mining, flash, NVS reset or second
 read is admitted. Stop conditions are in the amendment.
+
+### task-usb-stuck-link-after-reset | 2026-10-05 | Stop the USB link wedging after resets
+
+Status: Closed 2026-10-05 by the owner's choice (accept and monitor);
+archived. Owner-requested 2026-10-05 after the defect needed a USB
+replug three times: after a panic, during a boot loop, and after an
+ordinary install.
+Objective: the USB-Serial/JTAG link survives resets without a physical
+replug, shown by a bounded reset loop.
+Read before changing USB behavior: ADR-0021, ADR-0023 and
+`docs/hardware/native-usb-ownership.md`. This change is config-only, with
+no controller, PHY, descriptor or ownership change.
+
+Findings (read-only, 2026-10-05):
+- ESP-IDF v5.5.4 does not reset the USB-Serial/JTAG peripheral on
+  `esp_restart`, a panic restart, or the USB-core reset used after flashing
+  (`ESP_RST_USB`); the peripheral's clock is the BBPLL.
+- `recalib_bbpll` (`esp_system/port/soc/esp32s3/clk.c:358-374`, called from
+  `esp_rtc_init`) powers the BBPLL down and up whenever the CPU arrives on
+  the PLL. The 2nd-stage bootloader leaves it there after every non-cold
+  reset.
+- Kconfig: disable `ESP_SYSTEM_BBPLL_RECALIB` for bootloaders built with
+  v5.2 or later. Every package flashes our v5.5.4 bootloader.
+- The stuck install-0 monitor stream stopped at "Disabling RNG early entropy
+  source", the same point where a working stream continues with
+  `octal_psram`, which is the window that contains `recalib_bbpll`.
+
+- [x] Fix (software): `CONFIG_ESP_SYSTEM_BBPLL_RECALIB=n` in
+      `sdkconfig.defaults`, enforced by `build.rs` `REQUIRED_DEFAULTS`
+      (now 8). The built sdkconfig reports it unset. `recalib_bbpll` is
+      present in `6f268518`'s ELF and absent from the new build. Both
+      stack audits pass.
+- [x] Repo-owned bounded reset loop, a new `device-session` command:
+      - per cycle, the same USB-core reset as after flashing
+        (`espflash reset --before no-reset-no-sync --after hard-reset`) on
+        the admitted physical device;
+      - then a receive-only observation must see the exact application
+        identity within a bound;
+      - stop at the first miss (that state needs a replug). No flash, NVS,
+        Start or network effect.
+- [x] Baseline on the installed `6f268518` (with recalibration), then install
+      the fix through a noise-serial profile, then the same loop.
+      - Pass: zero misses over the fixed-image run, with cycle counts set
+        in the contract from the baseline rate.
+      - If the baseline shows no misses at all, the loop cannot discriminate;
+        record that instead of claiming a fix.
+- [x] Record the outcome; update `docs/hardware/known-issues.md`.
+
+Hardware contract (bounded, no flash, NVS, Start, mining or network effect
+except the profiled install):
+1. Baseline (`baseline-001`) on the installed `6f268518`, which still has
+   the recalibration:
+   `just usb-reset-endurance --port <port> --expected-physical-sha256 <physical> --expected-firmware-commit 6f268518b86ee264911e033acad769fac176f375 --expected-app-elf-sha256 b6908f6dda85b5e4d133401dcf3dc84f940d4f41121216c40e93f2ff4f6cbe3b --cycles 100 --private-root <parent>/baseline-001 --projection-output <parent>/baseline-001.projection.json`.
+   - Each cycle is the native USB-core reset of the running application,
+     then a receive-only observation of a strictly newer boot ordinal and
+     the exact identity.
+   - The loop stops at the first miss. A miss leaves the link stuck, so
+     the owner does a USB-only replug and the detector re-admits before
+     anything else.
+2. Install the fixed image with the `usb-bbpll-install` profile
+   ([amendment](docs/hardware/usb-bbpll-recalib-install-amendment.md),
+   predecessor recovery016, ledger 27/26/3,180,000 ms). The candidate ELF
+   must pass both stack audits and lack `recalib_bbpll`.
+3. Fixed run (`fixed-001`): the same command against the new identity.
+   - If the baseline missed at cycle k, run `max(100, 3k)` cycles.
+   - Pass: zero misses.
+   - If the baseline had no miss in 100 cycles, the loop does not
+     discriminate. Record that, and run the fixed image for 100 cycles only
+     as a no-regression check.
+
+Every run first passes `just detect-ultra205` with exactly one admitted
+Ultra 205. Evidence stays in mode-0700 `scratch/usb-stuck-link/` roots;
+only the redacted projections may be committed. Retries need a verified
+change; the owner's replug is the only remediation for a stuck link.
+- baseline-001 (2026-10-05): stopped at cycle 1, `reset_failed`, 0 bytes,
+  final cleanup proven; no reset happened. `espflash reset --before
+  no-reset-no-sync` waits for ROM sync ("Connecting...") that a running
+  application never provides; that form only works right after a flash.
+  - Fix: the loop now uses `--before usb-reset --after hard-reset`. That is
+    the native USB-Serial/JTAG reset into the ROM downloader, then the same
+    ROM-to-application hard reset that ends every flash. A regression test
+    pins it.
+  - baseline-002 reruns with that fix.
+- baseline-002 (2026-10-05): 9 clean cycles; boot ordinals 7 to 15, each
+  identity seen about 1.7 s after the reset, 5.4 s per cycle. Cycle 10
+  stopped as `physical_identity_drift` with detail "the USB identity sampler
+  failed", during its first re-enumeration. The detector then admitted the
+  same physical device in the runtime profile, so the link was not stuck.
+  - Cause: the shared `UsbSession::reacquire` failed on the first sampler
+    error, while macOS can briefly list two nodes, or none, mid
+    re-enumeration.
+  - Fix: tolerate up to 5 consecutive sampler failures within the existing
+    deadline; a persistent failure still fails. Regressions cover both cases.
+    The flash tool and device-session suites pass.
+  - baseline-003 reruns with that fix.
+- baseline-003 (2026-10-05): PASS, 100 of 100 cycles on `6f268518` (with
+  recalibration). Boot ordinals 2 to 101, identity 1675 to 2193 ms after
+  the reset, 0 re-enumerations, final cleanup proven. The defect did not
+  reproduce, so this path's per-reset rate is likely below about 3% (95%
+  bound). The loop cannot discriminate the fix. Per the contract, the
+  fixed image gets a 100-cycle no-regression run, not a fix claim.
+- usb-bbpll-install attempt-001 (2026-10-05): PASS, `complete`,
+  `hardware_qualified`; the independent review agrees.
+  - Candidate `60e344e2`, ELF `3f01a5f4…`: both stack audits pass and
+    `recalib_bbpll` is absent.
+  - Five installs, each with a qualified monitor and no stuck link; four
+    verified cycles; Noise exchange, restoration and after-accounting
+    recorded.
+  - Ledger 27/26/3,180,000 ms, unchanged. Result
+    `c8fe31cf349b588571feacfbc22a056d652a8d5e090becab6918e5b93c3bb127`,
+    seal `b3232e1af991f9ceaeb32066b29f71ae454d2f9b436e375d33a0b6090d4a7f38`.
+  - The lineage head advanced. Next: fixed-001, 100 cycles.
+- fixed-001 (2026-10-05): 63 clean cycles on `60e344e2` (boot ordinals
+  increasing to 169, identity 1.7 to 2.0 s after each reset, no stuck link).
+  Cycle 64 stopped as `reboot_not_proven`: the device answered, but
+  reported `reset_reason=power_on` with boot ordinal 1. The RTC domain lost
+  power, so this was a full power-on, not the requested reset; it also
+  re-enumerated.
+  - Not a stuck link. The cause is unknown: an external power interruption,
+    or a supply event coinciding with the reset. Waiting for the owner to
+    say whether the board's power was touched; the endurance gate is
+    disabled until then.
+- The owner confirmed (2026-10-05) that nobody touched the power, so the
+  power-on is investigated.
+  - On ESP32-S3, raw reset cause 0x01 covers chip power-on, chip
+    brown-out and the super watchdog; ESP-IDF reports all of them as
+    `ESP_RST_POWERON`.
+  - `brownout_hal_config` notes that the analog hardware brown-out reset is
+    active until IDF installs its handler. So a supply dip in the
+    ROM, bootloader or early-startup window resets the whole chip and reads
+    as `power_on`; after startup the same dip would read `brownout`.
+  - An EN-pin glitch reads the same way.
+  - No `reset_reason=brownout` appears anywhere in the retained evidence.
+  - The firmware's brown-out level is 7, the same default upstream uses.
+  - Confirming a rail dip or EN glitch needs electrical probing, which
+    stays prohibited without explicit owner authorization.
+- Measurement contract, fixed-002:
+  - The same command with `--count-power-on` and `--cycles 300`.
+  - A power-on cycle (exact identity, `reset_reason=power_on`, ordinal 1) is
+    recorded and counted, and the ordinal check restarts.
+  - Every other failure, including a stuck link, still stops at once.
+  - Expected identity `60e344e2` / `3f01a5f4…`.
+- fixed-002 (2026-10-05): PASS, 300 of 300 cycles with power-on counting.
+  - 0 power-on events, 0 stuck links, 0 re-enumerations, final cleanup
+    proven.
+  - Identity latency: median 1,750 ms, p99 4,501 ms, max 5,074 ms.
+  - The 16 cycles over 3 s show the boot-diagnostic replay restarting from
+    its first line, probably because the host opened the port mid-replay.
+    The identity arrived on the second pass, so this is observation timing,
+    not a device fault.
+- Totals on the fixed image `60e344e2`: 363 reset cycles plus 5 installs.
+  - USB link stuck: 0.
+  - Chip power-on during a requested reset: 1 (fixed-001 cycle 64), about
+    1 in 364.
+- Totals on the old image `6f268518`: 100 reset cycles (baseline-003) with
+  0 stuck links and 0 power-ons.
+- Conclusions:
+  - USB stuck link: this reset path does not reproduce it. The BBPLL change
+    is the ESP-IDF-recommended configuration, installed and showing no
+    regression, but it is not shown to fix the defect.
+  - Power-on: rare. The likely cause is a supply dip or EN glitch in the
+    pre-handler boot window. Confirming it needs electrical probing, which
+    is not authorized.
+  - Both are recorded in `docs/hardware/known-issues.md`.
+USB reset endurance hardware: disabled (fixed-002 complete).
+USB BBPLL install hardware: disabled (attempt-001 complete).
+
+Risk: devices whose bootloader came from an OTA-only update keep an older
+bootloader. Every install in this project writes the v5.5.4 bootloader.
+
+Verification: see the run records below. Completion review: below.
+
+Completion review (owner decision, 2026-10-05: accept and monitor):
+- The objective (the link survives resets without a replug) is not proven
+  fixed. The bounded loop never reproduced the stuck link: 100 resets on
+  `6f268518`, 363 resets plus 5 installs on `60e344e2`.
+- `CONFIG_ESP_SYSTEM_BBPLL_RECALIB=n` stays. It is ESP-IDF's
+  recommendation for v5.2+ bootloaders, enforced by the build, and showed
+  no regression.
+- The rare chip power-on reset is documented as a separate known issue.
+  Electrical probing was offered and not authorized.
+- Delivered tooling:
+  - `just usb-reset-endurance`, with the reboot proof and power-on
+    counting;
+  - tolerance of brief identity-sampler failures during re-enumeration.
+
+Residual risks:
+- The stuck link may depend on the panic, boot-loop or post-flash paths,
+  which this loop does not exercise; the replug remedy stays documented.
+- The power-on cause is unknown: a supply dip or EN glitch.
