@@ -4506,7 +4506,11 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       a session.
 - [x] Recovery owner: admits restart006 as proof of a reboot after
       heartbeat008, so status is discovered rather than read by id; tests.
-- [ ] Phase 0 recovery018 on boot 302; pin it as the install predecessor.
+- [x] Phase 0 recovery018 on boot 302: complete, idle V2, ledger
+      28/27/3,360,000 ms, no failures, host released. Result
+      `473546a8…`, seal
+      `e12fa393833fca0472fe31a3b368a0038980021a171aa1f511e0dcfaba3cbaa7`;
+      pinned as the `internal-heap-diagnostic-install` predecessor.
 - [ ] Phase 1 internal-heap-diagnostic install; advance the lineage.
 - [ ] Phase 2 idle baseline capture (1,200 s).
 - [ ] Phase 3 heartbeat009 (ordinal 28, after ledger 29/28/3,540,000 ms).
@@ -4518,8 +4522,8 @@ Stop on any detector failure, identity, ledger or baseline drift, a lost or
 ambiguous Start, a panic other than the Phase 5 reproduction, or unproven
 cleanup. No pool, no Wi-Fi provisioning, no NVS or factory reset, no
 core-dump clearing, at most five installs.
-Control diagnostic recovery hardware: enabled.
-Internal heap diagnostic install hardware: disabled.
+Control diagnostic recovery hardware: disabled.
+Internal heap diagnostic install hardware: enabled.
 Heartbeat heap diagnosis hardware: disabled.
 
 Verification: pending. Completion review: pending.

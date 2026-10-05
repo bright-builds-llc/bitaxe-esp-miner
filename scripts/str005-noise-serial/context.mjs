@@ -4,7 +4,7 @@ import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLE, PAGE, admitTrust, canonicalDirectory, cleanPushed, fileDigest, git, ignored,
   missing, nonce, packageSnapshot } from "../fixed-usb-qualification/contract.mjs";
-import { inspectControlStackPassPredecessor, inspectHelperPassPredecessor, inspectControlDiagnosticRecoveryPredecessor, inspectRealignmentFixRecoveryPredecessor, inspectRestoredRealignmentRecoveryPredecessor, inspectQueueReinstallRecoveryPredecessor, inspectIdlePanicRecoveryPredecessor, inspectPredecessor, inspectRecoveryPredecessor, inspectStep5InstallPassPredecessor } from "./predecessor.mjs";
+import { inspectControlStackPassPredecessor, inspectHelperPassPredecessor, inspectControlDiagnosticRecoveryPredecessor, inspectRealignmentFixRecoveryPredecessor, inspectRestoredRealignmentRecoveryPredecessor, inspectQueueReinstallRecoveryPredecessor, inspectHeapLossRecoveryPredecessor, inspectIdlePanicRecoveryPredecessor, inspectPredecessor, inspectRecoveryPredecessor, inspectStep5InstallPassPredecessor } from "./predecessor.mjs";
 import { verifyArtifactSnapshot } from "../fixed-usb-qualification/snapshot.mjs";
 import { BASE_CONTRACT_SHA256 } from "./contract-v2.mjs";
 import { canonical, check, digest, inventory, privateRoot, proof, protectedPath, readJson, retain, verifyInventory, writeNew } from "./files.mjs";
@@ -23,6 +23,8 @@ export const CONTROL_DIAGNOSTIC_SUCCESSOR_PATH = "docs/hardware/str005-control-s
 export const REALIGNMENT_FIX_SUCCESSOR_PATH = "docs/hardware/str005-realignment-fix-amendment.md";
 export const USB_BBPLL_SUCCESSOR_PATH = "docs/hardware/usb-bbpll-recalib-install-amendment.md";
 export const USB_BBPLL_SUCCESSOR_SHA256 = "d5ad097741002b14aa65a89cc824b4866043da2bf7eacaf70e977c6afa899f4b";
+export const HEAP_DIAGNOSTIC_SUCCESSOR_PATH = "docs/hardware/str005-heap-loss-diagnosis-amendment.md";
+export const HEAP_DIAGNOSTIC_SUCCESSOR_SHA256 = "f3c92961fd04c5fbc63c236030ef1f51731355ff23dd0240ab97ec4e050f5444";
 export const QUEUE_REINSTALL_SUCCESSOR_PATH = "docs/hardware/str005-queue-workaround-reinstall-amendment.md";
 export const QUEUE_REINSTALL_SUCCESSOR_SHA256 = "928b29a654f37c5d2dabfac8420f6c61bbdf68d3fca316dfc82aadb54a6a255b";
 export const QUEUE_WORKAROUND_SUCCESSOR_PATH = "docs/hardware/str005-queue-workaround-amendment.md";
@@ -138,6 +140,13 @@ export const PROFILES = Object.freeze({
     inspect: inspectQueueReinstallRecoveryPredecessor, ledger: { next_ordinal: 27, last_ordinal: 26, total_charged_ms: 3180000 },
     admits: (previous) => previous.basis === "queue_reinstall_current_recovery" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 26 },
+  "internal-heap-diagnostic-install": { namespace: "scratch/internal-heap-diagnostic-install", task: "task-str005-heap-loss-diagnosis",
+    enabledLine: "Internal heap diagnostic install hardware: enabled.",
+    successor: { path: HEAP_DIAGNOSTIC_SUCCESSOR_PATH, sha256: HEAP_DIAGNOSTIC_SUCCESSOR_SHA256 },
+    publication: "docs/parity/evidence/internal-heap-diagnostic-install",
+    inspect: inspectHeapLossRecoveryPredecessor, ledger: { next_ordinal: 28, last_ordinal: 27, total_charged_ms: 3360000 },
+    admits: (previous) => previous.basis === "heap_loss_current_recovery" && previous.cleanup_confirmed === true &&
+      previous.last_ordinal === 27 },
 });
 /** Public projection path; ordinals restart per profile, so each profile owns its directory. */
 export function publicationPath(context) {
@@ -197,7 +206,7 @@ export function profileOf(context) {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SOURCE_DIRS = ["scripts/str005-noise-serial", "scripts/fixed-usb-qualification", "tools/stratum-v2-fixture",
   "crates/bitaxe-stratum", "crates/bitaxe-worker-control", "scripts/host-stalls"];
-const SOURCE_FILES = [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, CONTROL_SUCCESSOR_PATH, STEP5_SUCCESSOR_PATH, CONTROL_DIAGNOSTIC_SUCCESSOR_PATH, REALIGNMENT_FIX_SUCCESSOR_PATH, QUEUE_WORKAROUND_SUCCESSOR_PATH, QUEUE_REINSTALL_SUCCESSOR_PATH, USB_BBPLL_SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel",
+const SOURCE_FILES = [BASE_PATH, AMENDMENT_PATH, SUCCESSOR_PATH, CONTROL_SUCCESSOR_PATH, STEP5_SUCCESSOR_PATH, CONTROL_DIAGNOSTIC_SUCCESSOR_PATH, REALIGNMENT_FIX_SUCCESSOR_PATH, QUEUE_WORKAROUND_SUCCESSOR_PATH, QUEUE_REINSTALL_SUCCESSOR_PATH, USB_BBPLL_SUCCESSOR_PATH, HEAP_DIAGNOSTIC_SUCCESSOR_PATH, "Cargo.lock", "Cargo.toml", "MODULE.bazel",
   "firmware/bitaxe/bwg/deployment-trust.json", ...NATIVE_AUDITOR_SOURCES,
   "firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/src/noise_completion_stack.rs", "firmware/bitaxe/src/production_mining_session.rs", "firmware/bitaxe/src/production_mining_session/transport.rs",
   "firmware/bitaxe/src/production_mining_session/transport/borrow.rs", "tools/automation/src/redaction.ts", "tools/automation/src/noise-serial-redaction.ts"];

@@ -333,6 +333,7 @@ js_library(
         "docs/hardware/str005-queue-workaround-amendment.md",
         "docs/hardware/str005-queue-workaround-reinstall-amendment.md",
         "docs/hardware/usb-bbpll-recalib-install-amendment.md",
+        "docs/hardware/str005-heap-loss-diagnosis-amendment.md",
     ],
 )
 

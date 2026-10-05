@@ -166,3 +166,10 @@ export const inspectQueueReinstallRecoveryPredecessor = currentRecoveryPredecess
   basis: "queue_reinstall_current_recovery",
   maybeIdentity: { firmware_commit: "6f268518b86ee264911e033acad769fac176f375",
     app_elf_sha256: "b6908f6dda85b5e4d133401dcf3dc84f940d4f41121216c40e93f2ff4f6cbe3b" } });
+// Recovery018: the sealed current recovery with idle V2 on 60e344e2 after restart006's panic reboot (boot 302).
+export const inspectHeapLossRecoveryPredecessor = currentRecoveryPredecessor({
+  resultSha256: "473546a8714067aa3c2af3c1772ce48050cf1c2aca8dc584886b6393a9b8f11b",
+  sealSha256: "e12fa393833fca0472fe31a3b368a0038980021a171aa1f511e0dcfaba3cbaa7",
+  basis: "heap_loss_current_recovery",
+  maybeIdentity: { firmware_commit: "60e344e21a89acab13c108311d315417c0704eba",
+    app_elf_sha256: "3f01a5f4dea1676b505ea686a58d16f1bd2122138556b7ac1a1bbb4c43f4ac3d" } });

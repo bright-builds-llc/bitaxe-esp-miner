@@ -49,7 +49,7 @@ Expected: idle V2, ledger next 28, last 27, 3,360,000 ms, not pending. Line:
 
 ### Phase 1: internal-heap-diagnostic install
 
-Profile `internal-heap-diagnostic-install`, namespace
+This phase defines the successor profile `internal-heap-diagnostic-install`, namespace
 `scratch/internal-heap-diagnostic-install`, predecessor the sealed
 recovery018, ledger unchanged at 28/27/3,360,000 ms. Line:
 `Internal heap diagnostic install hardware: enabled.` The operator sequence,

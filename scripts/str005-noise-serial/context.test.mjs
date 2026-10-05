@@ -331,3 +331,20 @@ test("USB BBPLL install refuses the restored-image recovery basis", async (t) =>
     const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "restored_realignment_current_recovery" } };
   } }), { code: "noise_predecessor" });
 });
+test("internal heap diagnostic install binds recovery018 and its own publication", async (t) => {
+  // Arrange / Act
+  const f = await fixture(t, { profile: "internal-heap-diagnostic-install" });
+  // Assert
+  assert.equal(f.context.profile, "internal-heap-diagnostic-install");
+  assert.deepEqual(f.context.expected_ledger, { next_ordinal: 28, last_ordinal: 27, total_charged_ms: 3360000 });
+  assert.equal(publicationPath(f.context), resolve(f.options.firmwareRoot, "docs/parity/evidence/internal-heap-diagnostic-install/attempt-001.json"));
+});
+test("internal heap diagnostic install refuses an earlier image's recovery basis", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "internal-heap-diagnostic-install" });
+  const inspect = f.operations.inspectPredecessor;
+  // Act / Assert
+  await assert.rejects(preflight(f.options, { ...f.operations, inspectPredecessor: async (path) => {
+    const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "queue_reinstall_current_recovery" } };
+  } }), { code: "noise_predecessor" });
+});
