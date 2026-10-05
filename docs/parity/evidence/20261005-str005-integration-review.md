@@ -73,7 +73,7 @@ removing them would be a new candidate and would reopen this review.
 ## Open items
 
 1. **Accepted share, renewal and normal Stop on the candidate.** One
-   bounded check: restart005 after heartbeat008, then share-current-001
+   bounded check: restart006 after heartbeat008, then share-current-001
    ([contract](../../hardware/str005-accepted-share-amendment.md),
    "Current-image re-run").
 2. **Share002 retained resource proof.** It cannot be supplied: the device

@@ -101,12 +101,15 @@ changes:
   `scripts/str005-lineage/head.json`.
 - **Previous Start.** Heartbeat008 (result `fcbb3ce7…`, seal `68621dc4…`),
   the head's latest Start: boot 301, ledger next 28, last 27, 3,360,000 ms.
-- **Phase A: restart005.** `restart-config.mjs` names heartbeat008 as the
+- **Phase A: restart006.** `restart-config.mjs` names heartbeat008 as the
   parent and the line `Share current image restart hardware: enabled.`
   The Phase A rules above apply unchanged: boot 301 to 302, ledger and
-  budget unchanged.
+  budget unchanged. Restart005 sealed failed before any device contact:
+  its recovery page could not load one browser module, so the page never
+  connected. The current-recovery server now serves the client's whole
+  module graph from the source workspace, with a regression.
 - **Phase B: share-current-001.** The line
-  `Share current image hardware: enabled.` and a pinned restart005 admit one
+  `Share current image hardware: enabled.` and a pinned restart006 admit one
   Start at ordinal 28 under the Phase B effects and pass criteria above.
   The expected after ledger is next 29, last 28, 3,540,000 ms. The judge
   still accepts 0 to 2 renewals. The Renew path counts as covered on this

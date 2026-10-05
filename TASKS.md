@@ -4504,8 +4504,16 @@ Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendme
 - [x] Software: the restart owner follows heartbeat008 under this task's
       restart line; the share owner reads its install from the lineage head
       and pins heartbeat008 as its previous Start. Its restart stays
-      unpinned, so no Start is admitted until restart005 is sealed.
-- [ ] restart005: preflight with heartbeat008 as `--start-root`, recovery
+      unpinned, so no Start is admitted until a restart is sealed.
+- [x] restart005 (ordinal 1): preflight passed, then the recovery page
+      failed to load (`/recovery-error-row.mjs` was not served), so it never
+      connected. Stopped, final detector admitted one Ultra 205, sealed
+      failed before any device contact. Fix: `createCurrentRecoveryServer`
+      serves `recoveryClientModules(firmwareRoot)`, the client's whole
+      module graph; the regression walks the client's imports and requires
+      each to load. The same gap affected every restart and preparation
+      recovery stage since the recovery consolidation.
+- [ ] restart006: preflight with heartbeat008 as `--start-root`, recovery
       stage, restart stage, finish. Expected boot 301 to 302, ledger
       28/27/3,360,000 ms unchanged. Then pin it in
       `scripts/str005-accepted-share/contract.mjs` and enable the share line.

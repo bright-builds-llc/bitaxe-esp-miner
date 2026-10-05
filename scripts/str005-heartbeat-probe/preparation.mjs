@@ -10,7 +10,7 @@ import { privateRoot, proof, verifyInventory, writeNew, retain, inventory } from
 import { processSnapshot, requireGone, requireNoHolders, requireLsofAbsent } from '../str005-v2-serial/host-resources.mjs';
 import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { currentConclusion } from '../str005-startup-probe/recovery-main.mjs';
-import { createCurrentRecoveryServer, RECOVERY_STAGES } from '../str005-startup-probe/recovery-server.mjs';
+import { createCurrentRecoveryServer, RECOVERY_STAGES, recoveryClientModules } from '../str005-startup-probe/recovery-server.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { createRestartServer } from '../str005-startup-preparation/server.mjs';
 import { conclusion, restartEvidence, STAGES, FRESH_MS } from '../str005-startup-preparation/model.mjs';
@@ -95,8 +95,7 @@ export async function main(argv) {
     check(current.source_commit === context.source_commit && current.contractSha256 === context.contractSha256, 'preparation_source_changed'); if (stage === 'restart') await recoveryReady(root, context, true); };
   let server;
   if (stage === 'recovery') {
-    assets.client = await readFile(resolve(firmwareRoot, 'scripts/str005-startup-probe/recovery-client.mjs'));
-    assets.retainedStatus = await readFile(resolve(firmwareRoot, 'scripts/str005-startup-probe/retained-status.mjs'));
+    assets.modules = await recoveryClientModules(firmwareRoot);
     server = createCurrentRecoveryServer({ root: child, context, assets });
   } else { assets.client = await readFile(resolve(firmwareRoot, 'scripts/str005-startup-preparation/restart-client.mjs')); server = createRestartServer({ root: child, context, assets, verify }); }
   let maybeClosing; const stop = () => { maybeClosing ??= server.release(); };

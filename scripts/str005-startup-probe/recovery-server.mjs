@@ -1,6 +1,7 @@
 import { CONTROL_REJECTIONS } from '../str005-v2-serial/safety-diagnostics.mjs';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { BUNDLE, nonce } from '../fixed-usb-qualification/contract.mjs';
 import { body, send } from '../fixed-usb-qualification/http.mjs';
@@ -9,6 +10,15 @@ import { configuration } from '../str005-v2-serial/server-assets.mjs';
 import { projectRecoveryPart } from '../str005-v2-serial/recovery-evidence.mjs';
 import { validateDiagnosticExport } from '../fixed-usb-qualification/diagnostic-export.mjs';
 import { check, object } from '../str005-v2-serial/values.mjs';
+/** The recovery page's browser module graph: the client and every module it imports, transitively. */
+export const RECOVERY_CLIENT_MODULES = Object.freeze(['recovery-client.mjs', 'retained-status.mjs', 'recovery-error-row.mjs']);
+/** Reads the recovery page's modules from the verified source workspace, so no caller can omit an import. */
+export async function recoveryClientModules(firmwareRoot) {
+  const modules = new Map();
+  for (const name of RECOVERY_CLIENT_MODULES)
+    modules.set(`/${name}`, await readFile(resolve(firmwareRoot, 'scripts/str005-startup-probe', name)));
+  return modules;
+}
 export const RECOVERY_STAGES = ['ledger', 'original_budget', 'diagnostics', 'status', 'stop', 'state', 'closed'];
 export function validateFinished(value) {
   object(value, ['failures']); check(Array.isArray(value.failures) && value.failures.length <= RECOVERY_STAGES.length + 1, 'recovery_failure_bound');
@@ -32,8 +42,7 @@ export function createCurrentRecoveryServer({ root, context, assets }, operation
       if (path === '/') return send(response, 200, Buffer.from(`${assets.page}\n<script type="module" src="/recovery-client.mjs"></script>`), 'text/html');
       if (path === '/context') return send(response, 200, { ...configuration({ ...context, before_source: context }, 'before', assets.trust), coreDumpSelfTestQualification: true });
       if (path === `/${BUNDLE}`) return send(response, 200, assets.bundle, 'text/javascript');
-      if (path === '/recovery-client.mjs') return send(response, 200, assets.client, 'text/javascript');
-      if (path === '/retained-status.mjs') return send(response, 200, assets.retainedStatus, 'text/javascript');
+      if (assets.modules?.has(path)) return send(response, 200, assets.modules.get(path), 'text/javascript');
       return send(response, 404, { error: 'recovery_route_unavailable' });
     }
     check(request.method === 'POST' && (request.headers.origin === origin || (!request.headers.origin && request.headers['sec-fetch-site'] === 'same-origin')), 'recovery_origin');

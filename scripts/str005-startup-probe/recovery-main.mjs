@@ -10,7 +10,7 @@ import { validateRecoveryParts, recoveryConclusion } from '../str005-v2-serial/r
 import { validateAttempt, validateLedger } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
-import { createCurrentRecoveryServer, RECOVERY_STAGES, validateFinished } from './recovery-server.mjs';
+import { createCurrentRecoveryServer, RECOVERY_STAGES, recoveryClientModules, validateFinished } from './recovery-server.mjs';
 export const RECOVERY_ENABLED = false;
 export const STARTUP_SEAL = '950a8e55b5efb468905a4edd2e739cfd02e47013797e026bf0218af955234cb7';
 const TASK = 'task-str005-mining-startup-probe', CONTRACT = 'docs/hardware/str005-startup-current-recovery.md';
@@ -100,8 +100,7 @@ export async function recoveryMain(argv) {
   const detector = parseDetector(await readFile(detectorPath, 'utf8'), context.physical, Date.now() - (await stat(detectorPath)).mtimeMs); requireNoHolders(detector.port);
   const assets = {};
   for (const [key, hash] of Object.entries(context.assetHashes)) { const bytes = await readFile(resolve(root, `gate-${key}`)); check(sha256(bytes) === hash, 'startup_recovery_asset'); assets[key] = bytes; }
-  assets.trust = JSON.parse(assets.trust); assets.client = await readFile(resolve(firmwareRoot, 'scripts/str005-startup-probe/recovery-client.mjs'));
-  assets.retainedStatus = await readFile(resolve(firmwareRoot, 'scripts/str005-startup-probe/retained-status.mjs'));
+  assets.trust = JSON.parse(assets.trust); assets.modules = await recoveryClientModules(firmwareRoot);
   await missing(resolve(root, 'serve-claim.json'));
   const admissionOwner = (await processSnapshot()).find(row => row.pid === process.pid); check(admissionOwner, 'startup_recovery_owner');
   await writeNew(resolve(root, 'serve-claim.json'), { schema: 'str005-current-recovery-serve-claim-v1', owner: admissionOwner, contextSha256: sha256(JSON.stringify(context)) });

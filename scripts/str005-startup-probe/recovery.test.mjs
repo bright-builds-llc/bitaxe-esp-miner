@@ -6,7 +6,8 @@ import { promisify } from 'node:util';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCurrentRecovery } from './recovery-client.mjs';
-import { createCurrentRecoveryServer } from './recovery-server.mjs';
+import { readFile } from 'node:fs/promises';
+import { createCurrentRecoveryServer, RECOVERY_CLIENT_MODULES, recoveryClientModules } from './recovery-server.mjs';
 import { currentConclusion, recoveryArguments } from './recovery-main.mjs';
 import { collectRecovery } from './client.mjs';
 const maybeGateRoot = process.env.STARTUP_GATE_ROOT ?? (process.argv[2] ? dirname(resolve(process.argv[2])) : undefined);
@@ -98,4 +99,25 @@ test('production Stop invalidates possession and fresh recovery reacquires it be
   const output = await promisify(execFile)('bun', [resolve(dirname(fileURLToPath(import.meta.url)), 'post-stop-possession.fixture.mjs'), maybeGateRoot], { timeout: 30000 });
   // Assert
   assert.equal(output.stdout.trim(), 'post_stop_possession_boundary_passed'); assert.equal(output.stderr, '');
+});
+
+test('the recovery page loads: the server serves every module the client imports', async () => {
+  // Arrange
+  const here = dirname(fileURLToPath(import.meta.url)), firmwareRoot = resolve(here, '../..');
+  const graph = new Set(), pending = ['recovery-client.mjs'];
+  while (pending.length > 0) {
+    const name = pending.pop(); if (graph.has(name)) continue; graph.add(name);
+    const source = await readFile(resolve(here, name), 'utf8');
+    for (const match of source.matchAll(/(?:from|import)\s*\(?\s*'\.\/([a-z-]+\.mjs)'/gu)) pending.push(match[1]);
+  }
+  const server = createCurrentRecoveryServer({ root: '/unused', context: {}, assets: { modules: await recoveryClientModules(firmwareRoot) } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); const origin = `http://127.0.0.1:${server.address().port}`;
+  try {
+    // Act
+    const served = [];
+    for (const name of graph) served.push([name, (await fetch(`${origin}/${name}`)).status]);
+    // Assert
+    assert.deepEqual(new Set(RECOVERY_CLIENT_MODULES), graph);
+    assert.deepEqual(served.filter(([, status]) => status !== 200), []);
+  } finally { await server.release(); }
 });
