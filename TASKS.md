@@ -190,6 +190,15 @@ projection validates, and an independent reviewer re-derives it before
 `OTA-002` moves to `verified` with evidence `hardware-regression` and notes
 naming the `interrupted-update` case.
 
+Attempt 001 log (2026-10-06): package `5241d2b90945-dev` built at the clean
+pushed contract commit. Step 1 admitted one Ultra 205 in the Serial/JTAG
+runtime profile. Step 2 installed the exact package (`complete`). Step 3's
+first preflight stopped with `repository_check_failed` before any device
+effect: under `bazel run` the relative `--gate-root` resolved inside the
+runfiles tree. Host-only fix: operator paths resolve against the workspace,
+with a regression test. The installed image and its manifest are unchanged
+(the package is not rebuilt); step 3 reruns under the same ordinal.
+
 Verification: pending. Completion review: pending.
 
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection

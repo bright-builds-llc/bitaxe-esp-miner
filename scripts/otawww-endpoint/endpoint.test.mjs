@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import test from 'node:test';
 import { admitEndpoint, createEndpointServer, handoffConfiguration } from './server.mjs';
+import { workspacePath } from './main.mjs';
 
 const context = { gate_commit: 'a'.repeat(40), firmware_commit: 'b'.repeat(40), app_elf_sha256: 'c'.repeat(64) };
 const endpoint = { schema: 'worker-telemetry-endpoint-v1', ipv4: '192.168.1.20', httpPort: 80, observedAtUs: 1, bootOrdinal: 7,
@@ -79,4 +80,12 @@ test('a cross-origin post is refused', async () => {
     // Assert
     assert.equal(response.status, 400);
   } finally { await server.release(); }
+});
+
+test('operator paths resolve against the workspace, not the runfiles directory', () => {
+  // Act
+  const gate = workspacePath('/work/bitaxe-esp-miner', '../bitaxe-turnstile-system');
+
+  // Assert
+  assert.equal(gate, '/work/bitaxe-turnstile-system');
 });

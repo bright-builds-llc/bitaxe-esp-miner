@@ -13,6 +13,9 @@ const GATE_PORT = 48765;
 const ACTIONS = { preflight: ['--private-root', '--gate-root', '--package-manifest', '--detector-output'],
   serve: ['--private-root', '--detector-output'], finish: ['--private-root', '--detector-output'] };
 
+/** `bazel run` executes in the runfiles tree, so every operator path resolves against the workspace. */
+export function workspacePath(firmwareRoot, value) { return resolve(firmwareRoot, value); }
+
 function argumentsFor(argv) {
   const [action, ...rest] = argv; check(Object.hasOwn(ACTIONS, action), 'endpoint_action');
   const options = {};
@@ -35,13 +38,13 @@ async function preflight(firmwareRoot, root, options) {
   await missing(root); await protectedPath(dirname(root), true); ignored(firmwareRoot, root);
   const pins = [...(await readFile(resolve(firmwareRoot, 'MODULE.bazel'), 'utf8')).matchAll(/strip_prefix\s*=\s*"bitaxe-turnstile-system-([a-f0-9]{40})"/gu)];
   check(pins.length === 1, 'endpoint_gate_pin'); const gateCommit = pins[0][1];
-  const gateRoot = options['--gate-root']; cleanPushed(gateRoot, gateCommit);
-  const manifest = JSON.parse(await readFile(resolve(firmwareRoot, options['--package-manifest']), 'utf8'));
+  const gateRoot = workspacePath(firmwareRoot, options['--gate-root']); cleanPushed(gateRoot, gateCommit);
+  const manifest = JSON.parse(await readFile(workspacePath(firmwareRoot, options['--package-manifest']), 'utf8'));
   check(/^[0-9a-f]{40}$/u.test(manifest.source_commit) && /^[0-9a-f]{64}$/u.test(manifest.app_elf_sha256) && manifest.build_identity?.source_dirty === false, 'endpoint_package');
   const assets = { page: await readFile(resolve(gateRoot, PAGE)), bundle: await readFile(resolve(gateRoot, BUNDLE)),
     trust: await readFile(resolve(firmwareRoot, 'firmware/bitaxe/bwg/deployment-trust.json')) };
   check(assets.bundle.includes(gateCommit) && assets.bundle.includes('observeStationEndpoint'), 'endpoint_gate_bundle');
-  const detected = await detect(resolve(firmwareRoot, options['--detector-output']));
+  const detected = await detect(workspacePath(firmwareRoot, options['--detector-output']));
   const context = { schema: 'otawww-endpoint-context-v1', gate_commit: gateCommit, firmware_commit: manifest.source_commit,
     app_elf_sha256: manifest.app_elf_sha256, physical: detected.physical,
     assetHashes: Object.fromEntries(Object.entries(assets).map(([key, bytes]) => [key, sha256(bytes)])) };
@@ -52,7 +55,7 @@ async function preflight(firmwareRoot, root, options) {
 
 async function serve(firmwareRoot, root, context, options) {
   await missing(resolve(root, 'server-owner.json'));
-  const selected = await detect(resolve(firmwareRoot, options['--detector-output']), context.physical); requireNoHolders(selected.port);
+  const selected = await detect(workspacePath(firmwareRoot, options['--detector-output']), context.physical); requireNoHolders(selected.port);
   const assets = {};
   for (const [key, hash] of Object.entries(context.assetHashes)) {
     const bytes = await readFile(resolve(root, `gate-${key}`)); check(sha256(bytes) === hash, 'endpoint_asset_changed'); assets[key] = bytes;
@@ -76,7 +79,7 @@ async function finish(firmwareRoot, root, context, options) {
   const owner = (await proof(root, 'server-owner.json')).value;
   check(!(await processSnapshot()).some(row => sameProcess(row, owner.owner) || row.ppid === owner.owner.pid), 'endpoint_owner_live');
   requireLsofAbsent(['-nP', `-iTCP:${owner.port}`, '-sTCP:LISTEN', '-t']);
-  const selected = await detect(resolve(firmwareRoot, options['--detector-output']), context.physical);
+  const selected = await detect(workspacePath(firmwareRoot, options['--detector-output']), context.physical);
   for (const port of new Set([owner.serialPort, selected.port])) requireNoHolders(port);
   const closed = (await proof(root, CLOSED_FILE)).value; await protectedPath(resolve(root, ENDPOINT_FILE));
   const result = { schema: 'otawww-endpoint-result-v1', endpoint_recorded: closed.endpoint_saved === true, page_closed: true, host_released: true };
@@ -88,7 +91,7 @@ async function finish(firmwareRoot, root, context, options) {
 export async function main(argv) {
   const { action, options } = argumentsFor(argv);
   const firmwareRoot = process.env.BUILD_WORKSPACE_DIRECTORY ?? git(process.cwd(), ['rev-parse', '--show-toplevel']);
-  const root = resolve(firmwareRoot, options['--private-root']);
+  const root = workspacePath(firmwareRoot, options['--private-root']);
   if (action === 'preflight') return preflight(firmwareRoot, root, options);
   await privateRoot(root);
   const context = (await proof(root, 'context.json')).value; check(context.schema === 'otawww-endpoint-context-v1', 'endpoint_context');
