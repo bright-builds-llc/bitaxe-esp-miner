@@ -27,7 +27,8 @@ new work.
 ### task-parity-ota002-www-partition-update | 2026-10-06 | Implement AxeOS OTAWWW static-partition updates
 
 Status: Active, software first. Selected 2026-10-06 as the only remaining
-device-user parity gap on the Ultra 205. The stock AxeOS update page posts
+device-user parity gap on the Ultra 205.
+Plan: `docs/parity/work-plans/20261006T164502Z-OTA-002/PLAN.md`. The stock AxeOS update page posts
 `www.bin` to `/api/system/OTAWWW`
 (`reference/esp-miner/main/http_server/axe-os/src/app/services/system.service.ts:380`),
 and this firmware answers it fail-closed with `Wrong API input`, the documented
@@ -52,9 +53,9 @@ partition-sized, so undersized-body behavior needs an explicit parity decision.
       core for admission order, size bound, erase plan, chunk offsets, status
       strings and response codes and bodies, with golden tests from the pinned
       reference.
-- [ ] Decide and record undersized-body handling (match the upstream offset or
-      reject) and whether to check the image before erasing; any divergence
-      from upstream needs an ADR or an explicit parity note.
+- [x] Decide and record undersized-body handling: the owner chose on
+      2026-10-06 to refuse any body that is not exactly the partition size,
+      before erasing; recorded in the plan and release guide.
 - [ ] Implement the firmware adapter behind `firmware/bitaxe/src/http_api.rs`
       over `esp_partition_*`: watchdog-safe bounded erase and write, mutual
       exclusion with app OTA and other update state, the mounted SPIFFS and
