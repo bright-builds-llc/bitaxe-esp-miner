@@ -4579,8 +4579,12 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       five installs, four verified cycles, the Noise exchange, restoration
       and cleanup; passed, `hardware_qualified`. Result `45db405c…`, seal
       `3998bc37…`. The lineage head now names it.
-- [ ] Phase B: 1,200 s idle capture keeps at least 16,384 free bytes and
-      an 8,192-byte largest block in every sample.
+- [x] Phase B: 1,200 s idle capture keeps at least 16,384 free bytes and
+      an 8,192-byte largest block in every sample. Passed: 20 samples,
+      least free 53,271 bytes, least largest block 31,744 bytes, lifetime
+      minimum 52,011 bytes, a constant 251 allocated blocks (the diagnosis
+      image idled at 2.6–11.5 KB free, a 1,792-byte largest block and
+      1,039–1,236 fluctuating blocks).
 - [ ] Phase C: heartbeat010 at ordinal 29 (after ledger 30/29/3,720,000 ms).
 - [ ] Phase D: three 1,200 s post-shutdown captures meet the same minimums.
 - [ ] Phase E: hand the candidate to the share check and integration review.
@@ -4594,7 +4598,7 @@ Internal heap diagnostic install hardware: disabled.
 Heartbeat heap diagnosis hardware: disabled.
 Heap-loss core-dump acquisition: disabled.
 PSRAM default install hardware: disabled.
-Heartbeat PSRAM candidate hardware: disabled.
+Heartbeat PSRAM candidate hardware: enabled.
 
 Verification: pending. Completion review: pending.
 
