@@ -1,10 +1,3 @@
-## lesson-gsd-frontmatter-body-separators | 2026-06-28 14:14
-
-1. Date: 2026-06-28
-2. What went wrong: A GSD summary used standalone `---` body separators after YAML frontmatter. The GSD frontmatter parser scans all `--- ... ---` blocks and selected the last body pair, so lifecycle validation ignored the real frontmatter and failed.
-3. Preventive rule: In GSD artifacts and other frontmatter-parsed Markdown, use standalone `---` only for the opening and closing YAML frontmatter delimiters at the top of the file. Use headings or `***` for body breaks instead. Markdown table separator rows such as `| --- |` remain valid.
-4. Trigger signal to catch it earlier: Lifecycle validation reports missing frontmatter fields even though the file visibly has them near the top, or a Markdown artifact has more than two standalone `---` lines.
-
 ## lesson-esp-idf-service-ownership-and-redaction | 2026-07-02 23:29
 
 1. Date: 2026-07-02
@@ -235,9 +228,58 @@
 3. Preventive rule: Treat USB, Wi-Fi, and forced-internal pthread stacks as one ordered budget. Allocate large required pthread stacks while internal memory is contiguous, defer optional USB installation until after Wi-Fi's fixed DMA resources, size the internal reserve from measured post-stage headroom plus the largest remaining forced-internal allocation, assert resolved Kconfig values at compile/build time, and retain stage-specific heap plus previous-boot failure evidence for field diagnosis.
 4. Trigger signal to catch it earlier: An optional USB task starts before Wi-Fi, a forced-internal pthread is added without increasing or measuring the internal reserve, generated sdkconfig omits a requested setting, Worker enumerates briefly before repeated `panic` resets, an allocation receipt reports capability mask `0x0000080c`, or a deferred Worker spawn returns `ENOMEM` after Wi-Fi connects.
 
-## lesson-cdc-commit-receipt-requires-live-control-state | 2026-09-04 17:46
+## lesson-clear-archived-core-dumps-before-the-next-panic | 2026-10-06 18:00
 
-1. Date: 2026-09-04
-2. What went wrong: The native-USB maintenance protocol used DTR falling as its commit edge and only afterward emitted the committed receipt over CDC. Real macOS/TinyUSB hardware accepted readiness but timed out on the receipt because clearing DTR made the acknowledgment channel unreliable.
-3. Preventive rule: When a control transition must be acknowledged over CDC, emit and observe the acknowledgment while DTR still represents a live connection. Use an exact post-readiness class-control transition for commit, then clear DTR and close only after the receipt arrives.
-4. Trigger signal to catch it earlier: Hardware consistently receives the ready receipt but times out on committed while the Worker remains mounted, or firmware emits CDC evidence only after the host deasserts DTR.
+1. Date: 2026-10-06
+2. What went wrong: The firmware stores flash core dumps with `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y`. An earlier read returned a stale dump from a previous panic, and later the restart006 panic left no dump at all because the already-analysed queue boot-loop dump still occupied the partition, so its exact panic site was never captured.
+3. Preventive rule: After a dump is captured, archived and analysed, clear it under its task contract so the partition is empty before the next effectful run. Before trusting a read, compare the dump's embedded app SHA-256 with the image that actually panicked.
+4. Trigger signal to catch it earlier: A core-dump decode fails with `coredump SHA256 != app SHA256`, a read returns a dump whose app identity matches an older image, or an analysed dump has not been cleared when hardware work resumes.
+
+## lesson-diagnose-heap-loss-from-a-passive-series | 2026-10-06 18:00
+
+1. Date: 2026-10-06
+2. What went wrong: Two internal-heap readings, 9,687 and 607 bytes free, suggested an idle leak, but both were sampled during Worker connections. A once-a-minute idle sample read passively over serial showed persistent exhaustion with periodic 6 KB dips, not a leak. Separately, the retained `allocation_failure` row is the boot's first failed allocation, which was not necessarily the one that caused the panic.
+3. Preventive rule: Before attributing internal-heap loss to a leak or to idle time, capture a passive time series (`internal_heap_sample` via receive-only `just monitor`, judged with `just internal-heap-series`) both idle and after the suspect session, without opening the connection under test. Treat a retained allocation-failure row as the first failure of that boot, not as the panic cause. This extends `lesson-native-usb-and-wifi-share-internal-dma-heap`.
+4. Trigger signal to catch it earlier: A leak hypothesis rests on samples taken inside connections, the largest free internal block is below the size of the next required allocation, or a panic is explained by the retained allocation-failure row alone.
+
+## lesson-stop-on-first-success-cannot-prove-later-events | 2026-10-06 18:00
+
+1. Date: 2026-10-06
+2. What went wrong: The accepted-share probe stopped as soon as the share was acknowledged, which on the candidate came before the Gate's first 20-second renewal, so the Renew path went unexercised. The renewal probe's 45-second window, with about 2.5 expected qualifying shares, also left about a 6% chance of no share; renew-current-001 hit it and sealed unverified.
+3. Preventive rule: When a run must prove several events, make its stop rule require every claimed event, not the first success. Size each bounded window from measured event rates (probability of no event) and keep it inside the lease or authority expiry those events extend.
+4. Trigger signal to catch it earlier: A claim needs two events from a run that stops on the first, an event scheduled after the stop condition is listed as covered, or a window's expected event count is below about 4.
+
+## lesson-sealed-run-bindings-must-accept-every-run-shape | 2026-10-06 18:00
+
+1. Date: 2026-10-06
+2. What went wrong: The lineage record-key check and the restart owner's generation lookup assumed one sealed-run shape (a heartbeat dispatch record). They refused a share run, which keeps a proof instead, and then a share run without a share, which keeps neither; each needed a separate fix while hardware work waited.
+3. Preventive rule: When a new owner seals runs that later owners consume, enumerate every run shape it can produce, including failed and partial ones, and test each in the shared binding helpers (`deviceRecordAttemptId`, `startGeneration`) before the first hardware run.
+4. Trigger signal to catch it earlier: `start_record_attempt_mismatch`, `preparation_parent_binding` or a refused previous Start right after a new owner or a new failure mode produced its first sealed run.
+
+## lesson-serve-a-page-s-whole-module-graph | 2026-10-06 18:00
+
+1. Date: 2026-10-06
+2. What went wrong: The recovery client gained an import (`recovery-error-row.mjs`) that the shared current-recovery server never served. Every restart and preparation recovery page then failed to load before connecting, which surfaced only on hardware (restart005).
+3. Preventive rule: A server that serves a browser module must own that module's whole import graph, derived in one place, with a test that walks the real imports and requires each to load. Never let individual callers list a page's modules.
+4. Trigger signal to catch it earlier: A served page shows only the base Gate controls, the network log shows a non-200 for an `.mjs`, or a browser module gains an import while several servers serve it.
+
+## lesson-join-random-ids-to-their-cli-flags | 2026-10-06 18:00
+
+1. Date: 2026-10-06
+2. What went wrong: The noise-serial owner passed a random base64url attempt id as a separate argument. One id began with `-`, the fixture's clap parser read it as a flag and exited with code 2 before listening, and the install attempt failed after five good installs.
+3. Preventive rule: Pass generated or user-derived values to CLIs as `--flag=value`, never as a separate argument, and cover a leading `-` value in a regression on the real parser.
+4. Trigger signal to catch it earlier: A child exits with code 2 and a short stderr before doing work, or an argv builder places a random token after its flag as its own element.
+
+## lesson-independent-review-before-parity-promotion | 2026-10-06 18:00
+
+1. Date: 2026-10-06
+2. What went wrong: The STR-005 review numbers were correct, but an independent adversarial review still found overclaims: renewal coverage taken from an `unverified` seal without its caveats, a renewal reply described as signed when it is only matched, an older-image result cited as candidate evidence, and a blocking dependency described as non-blocking.
+3. Preventive rule: Before any parity promotion, run an independent reviewer that re-derives every cited number from sealed roots and challenges each claim's framing. Evidence taken from an unverified seal must say so and carry its judge's blockers.
+4. Trigger signal to catch it earlier: Evidence summaries written by the same agent that produced the runs, a covering result whose seal is not `complete`, or a protocol property asserted from documentation rather than the implementing source.
+
+## lesson-update-validator-scope-lists-with-scope-changes | 2026-10-06 18:00
+
+1. Date: 2026-10-06
+2. What went wrong: A June parity guard hard-coded STR-005 as deferred scope, from when only Stratum v1 was planned. After STR-005 became an active Ultra 205 row, the guard blocked its own promotion at the final `just parity` check.
+3. Preventive rule: When a row's scope or deferral changes, search the parity tool for hard-coded row lists and update them in the same change, replacing a blanket exclusion with the precise rule it protected and keeping its original test case.
+4. Trigger signal to catch it earlier: A validation error cites deferred or non-205 scope for an active row, or a checklist row's status leaves `deferred` without a parity-tool diff.

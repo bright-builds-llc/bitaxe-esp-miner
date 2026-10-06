@@ -88,7 +88,7 @@ The project is for Bitaxe owners and firmware contributors who need a maintainab
 | Command | Backing implementation | Required behavior |
 | --- | --- | --- |
 | `just build` | `bazel build //firmware/bitaxe:firmware` | Build the canonical firmware target. |
-| `just test` | `bazel test //...` or a scoped test target group | Run pure crate, host tool, and script tests. Hardware tests stay explicit. |
+| `just test` | `bazel test //... --local_test_jobs=4` or a scoped test target group | Run pure crate, host tool, and script tests. Hardware tests stay explicit. Four parallel tests avoid load timeouts on a developer host. |
 | `just package` | `bazel build //firmware/bitaxe:firmware_image` | Produce image artifacts and print paths. |
 | `just flash --board 205 [--port ...]` | `bazel run //tools/flash:flash -- flash --board 205 ...` | Build/package first unless image override is provided; fail clearly on missing/ambiguous port. |
 | `just monitor [--port ...]` | `bazel run //tools/flash:flash -- monitor ...` | Open serial monitor without flashing. |

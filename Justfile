@@ -84,8 +84,10 @@ diagnose-ultra205-uart-capture *args:
 build:
     bazel build //firmware/bitaxe:firmware
 
+# Four parallel tests: at full parallelism slow script tests time out and starve the firmware build on a
+# developer host, which looks like a regression (STR-005 promotion, 2026-10-06).
 test:
-    bazel test //...
+    bazel test //... --local_test_jobs=4
 
 package:
     bazel build //firmware/bitaxe:firmware_image

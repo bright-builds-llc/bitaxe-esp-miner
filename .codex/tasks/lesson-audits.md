@@ -65,3 +65,24 @@
   - Bytes and estimates: global `5,230` / `1,744`, repository `28,410` / `9,470`, combined `33,640` / `11,214`
   - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `a613294cc49aec8e92c9acff8ee4eeacd0f8f79925df9c222d51c9a7f3957c67`
   - Threshold state: above both hard loading limits; this 10-new-lesson trigger is consumed and cannot recursively retrigger without a distinct later trigger
+
+## audit-str005-promotion-lessons | 2026-10-06T18:00:00Z
+
+- Audit timestamp: `2026-10-06T18:00:00Z`
+- Trigger: a proposed append of eight lessons from the STR-005 integration and promotion work, with the combined active total already above the 24,000-byte and 8,000-token limits
+- Active source paths:
+  - Global: `/Users/peterryszkiewicz/.codex/tasks/lessons.md`
+  - Repository: `/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/.codex/tasks/lessons.md`
+- Retained lesson IDs: every active lesson except the two archived below
+- Consolidated lesson IDs: none; `lesson-diagnose-heap-loss-from-a-passive-series` extends `lesson-native-usb-and-wifi-share-internal-dma-heap` but has a different cause, rule and trigger
+- Archived lesson IDs:
+  - `lesson-gsd-frontmatter-body-separators`: obsolete; GSD is sunset and no GSD artifacts may be created
+  - `lesson-cdc-commit-receipt-requires-live-control-state`: obsolete; the TinyUSB CDC maintenance protocol no longer exists and USB Serial/JTAG is the sole controller (ADR-0021, ADR-0023)
+- Archive files created: `.codex/tasks/lessons.archive.md`
+- Added lesson IDs: `lesson-clear-archived-core-dumps-before-the-next-panic`, `lesson-diagnose-heap-loss-from-a-passive-series`, `lesson-stop-on-first-success-cannot-prove-later-events`, `lesson-sealed-run-bindings-must-accept-every-run-shape`, `lesson-serve-a-page-s-whole-module-graph`, `lesson-join-random-ids-to-their-cli-flags`, `lesson-independent-review-before-parity-promotion`, `lesson-update-validator-scope-lists-with-scope-changes`
+- Next baseline:
+  - Timestamp: `2026-10-06T18:00:00Z`; the 90-day changed-lessons trigger becomes eligible on `2027-01-04T18:00:00Z`
+  - Counts: global `7`, repository `41`, combined `48`, with `0` new active lessons accumulated
+  - Bytes and estimates: global `5,230` / `1,744`, repository `38,145` / `12,715`, combined `43,375` / `14,459`
+  - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `fe5aec699f43ff1d3fb37b5cb1c12ec5e35091d6286cd002a12aa1295479a1b6`
+  - Threshold state: above both hard loading limits; startup loading uses the priority-ordered whole-block rule, and this trigger is consumed

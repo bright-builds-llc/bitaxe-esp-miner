@@ -4956,6 +4956,34 @@ all physical-effect gates stay disabled and parity remains90/95.
 
 ## Future
 
+### task-repo-owned-hardware-operator-helpers | 2026-10-06 | Promote repeated hardware operator helpers into repo commands
+
+Status: Future. Owner-requested 2026-10-06 after the STR-005 integration and
+promotion work, where agent-only scratch scripts were reused many times.
+Objective: replace error-prone ad hoc sequencing with repo-owned, tested
+`just` commands that keep every existing task gate, privacy and cleanup rule.
+
+- [ ] Noise-serial operator: launch the detached parent with a held-open
+      command FIFO, send one command and wait for its single reply, and stop
+      the holder; refuse a second launch for the same attempt.
+- [ ] Owner stop and finish: stop a detached server by its recorded owner,
+      prove the port and process are released, write the final detector and
+      run the owner's `finish`, for the heartbeat, share, restart and
+      control-diagnostic owners.
+- [ ] Restart sequencing: run a restart's recovery finish, restart detector
+      and restart-stage serve inside the 120-second freshness window.
+- [ ] Recovery plus core-dump read: finish a recovery and start one read-only
+      `just core-dump-read` inside its proof window.
+- [ ] Passive heap capture: detector, receive-only `just monitor` into
+      mode-0600 files under a mode-0700 root, and chained windows judged by
+      `just internal-heap-series`.
+- [ ] Tests for each command's refusals (missing owner record, held port,
+      existing root, stale recovery) without hardware.
+
+Authorization: software and documentation only; using these commands on
+hardware still needs an active task contract.
+Verification: pending. Completion review: pending.
+
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 
 - [ ] Implement Linux physical/enumeration identity, exclusive ownership,
