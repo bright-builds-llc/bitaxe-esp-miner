@@ -61,6 +61,10 @@ just stratum-v2-noise-serial serve --private-root "$ATTEMPT_ROOT" > "$PRIVATE_ST
 
 ## Same-page workflow
 
+Drive the parent with `just hardware-operator noise-launch`, `noise-send` and
+`noise-stop-holder` ([operator helpers](../hardware-operator/README.md)); they own
+the parent, its command FIFO and holder described below.
+
 Keep the same loaded Gate page and private preservation baseline throughout. Use
 native browser interaction for permission/Connect; do not synthesize a
 permission gesture or adopt a new page baseline.

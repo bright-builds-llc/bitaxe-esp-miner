@@ -463,6 +463,13 @@ Agents executing current evidence wrappers with `blocked|hardware` modes must:
 - The active semantic redaction verifier has no exception mechanism. Inline,
   CLI, wildcard, environment, and path-based bypasses are forbidden.
 
+### Repo-Owned Operator Helpers
+
+- Use `just hardware-operator` (`scripts/hardware-operator/README.md`) for the
+  Noise-serial operator parent, owner stop/finish, restart sequencing, recovery
+  plus core-dump read and passive heap capture instead of scratch shell glue.
+  The helpers add no authority; each effect still needs its active task contract.
+
 ### Progress-Gated Hardware Attempts
 
 - Follow `docs/hardware/hardware-attempt-policy.md` for every current or future hardware attempt. The closed outcomes are `continue_after_verified_fix`, `continue_after_manual_remediation`, `complete`, `stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`, and `stop_impossible_contract`.

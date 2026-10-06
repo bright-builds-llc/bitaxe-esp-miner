@@ -1755,3 +1755,33 @@ js_test(
     data = [":otawww_endpoint_sources"],
     entry_point = "otawww-endpoint/endpoint.test.mjs",
 )
+
+js_library(
+    name = "hardware_operator_sources",
+    srcs = glob(["hardware-operator/*.mjs"]),
+    deps = [
+        ":fixed_usb_qualification_sources",
+        ":internal_heap_series_sources",
+        ":str005_noise_serial_sources",
+    ],
+    data = [":host_stall_sources"],
+)
+
+js_binary(
+    name = "hardware_operator",
+    chdir = "..",
+    data = [":hardware_operator_sources"],
+    entry_point = "hardware-operator/main.mjs",
+)
+
+[js_test(
+    name = "hardware_operator_%s_test" % name.replace("-", "_"),
+    data = [":hardware_operator_sources"],
+    entry_point = "hardware-operator/%s.test.mjs" % name,
+) for name in [
+    "heap-capture",
+    "main",
+    "noise-operator",
+    "owner-finish",
+    "sequences",
+]]

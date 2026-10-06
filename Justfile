@@ -39,6 +39,11 @@ str005-review-loop action *args:
 str005-share-crash action *args:
     bazel run //scripts:str005_share_crash -- {{ action }} {{ args }}
 
+# Repo-owned operator sequencing for task-gated hardware runs; adds no authority. See scripts/hardware-operator/README.md.
+[positional-arguments]
+hardware-operator action *args:
+    bazel run //scripts:hardware_operator -- "$@"
+
 core-dump action *args:
     bazel run //scripts:core_dump -- {{ action }} {{ args }}
 

@@ -27159,3 +27159,84 @@ flash. Caveats and non-claims are in
 boot-time `safe_state` line rotates out of the 512 KiB retained log ring
 within minutes, and the device address now comes only from the authenticated
 Gate handoff.
+
+### task-repo-owned-hardware-operator-helpers | 2026-10-06 | Promote repeated hardware operator helpers into repo commands
+
+Status: Completed 2026-10-06. Owner-requested 2026-10-06 after the
+STR-005 integration and promotion work, where agent-only scratch scripts were
+reused many times. Objective: replace error-prone ad hoc sequencing with
+repo-owned, tested `just` commands that keep every existing task gate, privacy
+and cleanup rule.
+
+- [x] Noise-serial operator: launch the detached parent with a held-open
+      command FIFO, send one command and wait for its single reply, and stop
+      the holder; refuse a second launch for the same attempt.
+- [x] Owner stop and finish: stop a detached server by its recorded owner,
+      prove the port and process are released, write the final detector and
+      run the owner's `finish`, for the heartbeat, share, restart and
+      control-diagnostic owners.
+- [x] Restart sequencing: run a restart's recovery finish, restart detector
+      and restart-stage serve inside the 120-second freshness window.
+- [x] Recovery plus core-dump read: finish a recovery and start one read-only
+      `just core-dump-read` inside its proof window.
+- [x] Passive heap capture: detector, receive-only `just monitor` into
+      mode-0600 files under a mode-0700 root, and chained windows judged by
+      `just internal-heap-series`.
+- [x] Tests for each command's refusals (missing owner record, held port,
+      existing root, stale recovery) without hardware.
+- [x] Run the full gates and an independent review, then record the
+      completion review.
+
+Implementation: `just hardware-operator <action>` (`//scripts:hardware_operator`,
+`scripts/hardware-operator/README.md`) with actions `noise-launch`,
+`noise-send`, `noise-stop-holder`, `owner-finish`, `restart-sequence`,
+`recovery-core-dump`, `heap-capture` and `noise-await`. The repo-owned
+`noise-parent.mjs` replaces the per-attempt scratch `parent.mjs` copies; every
+command, including `exit`, now gets exactly one reply, and the parent releases
+its FIFO stdin on exit. AGENTS.md "Repo-Owned Operator Helpers" and the
+noise-serial README point agents at the commands.
+
+Authorization: software and documentation only; using these commands on
+hardware still needs an active task contract.
+Verification: 53 hardware-free tests in five `hardware_operator_*_test`
+targets. They use real detached processes, a real FIFO, real `lsof` port
+checks, the real parent's module graph and a stand-in `just`. All of them pass
+under `node --test` and under Bazel.
+
+The other gates also pass:
+- `just test`: 302 of 302.
+- Bright Builds checker: 0 findings.
+- Rust gates (`cargo fmt --check`, clippy `-D warnings`, build, `cargo test`
+  2,684 passed).
+- `just verify-redaction`: 34 checked.
+- `just hardware-operator` smoke refusals through `just`/`bazel run`.
+
+An independent review found no high-severity issues. Its four medium findings
+are fixed with regressions:
+- a restart serve that is not ready is now stopped with its whole group;
+- polls tolerate records still being written;
+- an ordered reply ledger with `noise-await` stops a late reply being credited
+  to the next command;
+- a parent that fails before readiness stops its supervisor and exits, and its
+  holder is always stopped.
+
+So are its low findings:
+- nested commands drop the rules_js launcher environment;
+- owner records need a real port;
+- a failed heap window stops the chain and exits 1;
+- the lock test no longer depends on timing;
+- nullable names take the `maybe` prefix;
+- step rows go to a private `hardware-operator.jsonl`.
+
+Completion review: the five scratch flows from the STR-005 work are now tested
+repo commands with refusals checked before their first effect. No hardware was
+used and no hardware or parity claim is made. The commands add no authority;
+each effect still needs an active task contract.
+
+Residual risks:
+- The real parent's supervisor, install and cleanup path is checked only
+  against the proven scratch template and the real module graph, not end to
+  end; its first hardware use will be the end-to-end check.
+- Nested `just` calls assume `bazel run` keeps the served binary in the
+  launching process group, as the existing owners' `requireGone` checks
+  already do.
