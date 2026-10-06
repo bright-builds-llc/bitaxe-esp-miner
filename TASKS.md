@@ -24,6 +24,36 @@ new work.
 
 ## Active
 
+### task-str005-evidence-promotion | 2026-08-28 | Compose evidence and promote STR-005
+
+Status: Active 2026-10-06; owner-requested ("run the promotion").
+Plan: [20261006T144034Z-STR-005](docs/parity/work-plans/20261006T144034Z-STR-005/PLAN.md).
+
+- [ ] Validate every accepted child projection and provenance relationship.
+- [ ] Require independently reviewed cumulative coverage and final-candidate
+      compatibility from the piecewise integration review; diagnostics alone
+      do not substitute for acceptance evidence. No single cumulative run is required.
+- [ ] Create `RESULT.md`, transition only STR-005 to `verified` with
+      `unit,golden,workflow,hardware-regression`, synchronize progress, and
+      archive only finalized active native records in their completion commits;
+      preserve already archived child records unchanged.
+
+Depends on: completed `task-str005-piecewise-integration-review` under
+[ADR-0029](docs/adr/0029-piecewise-str005-qualification.md), including applicable
+channel, startup, accepted-share, shutdown, restoration, accounting and cleanup
+evidence. The superseded qualification/channel/share IDs supply history only. Deferred
+cooperative crypto cancellation is not a promotion prerequisite; protocol,
+authentication, work/share, safety and evidence requirements remain unchanged.
+
+Authorization: repository evidence validation, documentation, checklist
+transition, task archival, commit, and push only. No hardware, network, flash,
+NVS, mining, or other device effect is permitted.
+
+Verification: Pending.
+
+Completion review: Pending. No promotion is eligible before every dependency
+and the piecewise compatibility, coverage and publication gates pass.
+
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
 
 Status: Blocked historical evidence. The consumed commands/plans below are historical, not current execution authority. ADR-0021 and `task-fixed-usb-serial-qualification` own the replacement transport/baseline; missing historical evidence is not promoted or erased.
@@ -4955,33 +4985,6 @@ calibration remains an explicit fidelity non-claim. Accepted-share stays active,
 all physical-effect gates stay disabled and parity remains90/95.
 
 ## Future
-
-### task-str005-evidence-promotion | 2026-08-28 | Compose evidence and promote STR-005
-
-- [ ] Validate every accepted child projection and provenance relationship.
-- [ ] Require independently reviewed cumulative coverage and final-candidate
-      compatibility from the piecewise integration review; diagnostics alone
-      do not substitute for acceptance evidence. No single cumulative run is required.
-- [ ] Create `RESULT.md`, transition only STR-005 to `verified` with
-      `unit,golden,workflow,hardware-regression`, synchronize progress, and
-      archive only finalized active native records in their completion commits;
-      preserve already archived child records unchanged.
-
-Depends on: completed `task-str005-piecewise-integration-review` under
-[ADR-0029](docs/adr/0029-piecewise-str005-qualification.md), including applicable
-channel, startup, accepted-share, shutdown, restoration, accounting and cleanup
-evidence. The superseded qualification/channel/share IDs supply history only. Deferred
-cooperative crypto cancellation is not a promotion prerequisite; protocol,
-authentication, work/share, safety and evidence requirements remain unchanged.
-
-Authorization: repository evidence validation, documentation, checklist
-transition, task archival, commit, and push only. No hardware, network, flash,
-NVS, mining, or other device effect is permitted.
-
-Verification: Pending.
-
-Completion review: Pending. No promotion is eligible before every dependency
-and the piecewise compatibility, coverage and publication gates pass.
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 
