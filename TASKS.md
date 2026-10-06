@@ -4491,74 +4491,10 @@ socket/worker/fence release from current idle state or reconstruct missing proof
 Task remains blocked and unarchived; no Start/grants/mining/flash/replay occurred,
 no next mining ordinal is authorized, and parity remains 90/95.
 
-### task-str005-share-current-image | 2026-10-05 | Repeat the accepted-share check on the final candidate
-
-Status: Active; resumed on the PSRAM-first candidate after the archived
-`task-str005-heap-loss-diagnosis`. Owner-requested 2026-10-05 as the
-integration review's one uncovered interaction (`task-str005-piecewise-integration-review`).
-Objective: one bounded accepted-share Start on the lineage head's image
-(`2bff1004`) that passes every share-probe judge criterion, ending in a
-Worker-requested normal Stop.
-Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendment.md),
-"Current-image re-run".
-
-- [x] Software: the restart owner follows heartbeat008 under this task's
-      restart line; the share owner reads its install from the lineage head
-      and pins heartbeat008 as its previous Start. Its restart stays
-      unpinned, so no Start is admitted until a restart is sealed.
-- [x] restart005 (ordinal 1): preflight passed, then the recovery page
-      failed to load (`/recovery-error-row.mjs` was not served), so it never
-      connected. Stopped, final detector admitted one Ultra 205, sealed
-      failed before any device contact. Fix: `createCurrentRecoveryServer`
-      serves `recoveryClientModules(firmwareRoot)`, the client's whole
-      module graph; the regression walks the client's imports and requires
-      each to load. The same gap affected every restart and preparation
-      recovery stage since the recovery consolidation.
-- [x] restart006 (ordinal 2): preflight passed and the recovery page
-      loaded. On Connect, about 44 minutes after heartbeat008's shutdown,
-      the ledger and budget reads timed out and the board rebooted with
-      `reset_reason=panic` (boot 301 to 302). The retained diagnostics show
-      an 8,192-byte internal allocation failure (caps `0x804`). Internal
-      heap sampled during heartbeat008's recovery connection was 9,687
-      bytes free (largest 1,920); sampled during this Connect it was 607
-      bytes (largest 168). Whether the loss happened while idle or inside
-      this connection is not yet resolved. Stopped,
-      released; the final detector admitted one Ultra 205; sealed failed
-      with `preparation_boot_changed`. Stop condition: a new panic.
-      Comparison: on `7ca3e29c` the heap after heartbeat007 went from
-      5,859 to 4,819 bytes between connections four hours apart, and the
-      next Connect worked. The loss is new on the candidate. A code audit
-      of the queue change (`00f84eae`) found no growth path: every queue is
-      created once at boot and bounded or drained.
-- [x] Diagnose the internal-heap loss after a heartbeat-loss shutdown
-      on `60e344e2` (`task-str005-heap-loss-diagnosis`); fix it with a
-      regression. Done: exhaustion, not a leak; the PSRAM-first candidate
-      `2bff1004` installed, kept 52 KB of internal headroom and passed
-      heartbeat010.
-- [x] restart007: recovery stage read heartbeat010's record, then one
-      software restart took boot 318 to 319 with the ledger
-      (30/29/3,720,000 ms) and budget unchanged; no failures. Result
-      `ef87f9a9…`, seal `b87302e9…`; pinned, share line enabled.
-- [ ] share-current-001: detector, preflight, serve, baseline and candidate,
-      startup detector, Run, fresh recovery, release, final detector, finish.
-      Expected after ledger 31/30/3,900,000 ms. Record confirmed renewals.
-- [ ] Record, `just str005-lineage record-start`, publish redacted evidence,
-      update the integration review, disable both lines, archive.
-
-Stop on any detector failure, an identity, boot or ledger drift, a lost or
-ambiguous Start (never resend), a panic or unproven cleanup. Effects and
-prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
-firmware write. Retries need a regression-backed fix, a fresh ordinal and a
-new restart.
-Share current image restart hardware: disabled.
-Share current image hardware: enabled.
-
-Verification: pending. Completion review: pending.
-
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
-Status: Active 2026-10-05. Map and impact review recorded; one current-image
-share check is pending in `task-str005-share-current-image`.
+Status: Active 2026-10-05. Map, impact review and the current-candidate share
+check are done; the independent evidence and publication review remains.
 Objective: establish cumulative requirement coverage and compatibility for the
 final candidate with only the additional integration measurement actually needed.
 Depends on: `task-str005-failure-recovery-accounting`, `task-str005-start-panic-diagnosis`,
@@ -4575,9 +4511,12 @@ Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
       `60e344e2` heap-exhaustion defect. Heartbeat010 and
       psram-default-install attempt-002 cover it except share, renewal and
       a Worker-requested Stop while mining; that impact is uncertain.
-- [ ] Reuse a qualifying final-candidate probe as integration smoke evidence.
+- [x] Reuse a qualifying final-candidate probe as integration smoke evidence.
       Only for a concrete uncovered interaction, publish a narrow bounded contract,
       verify its implementation and execute that missing check; no mandatory big-bang run.
+      Done: the uncovered interaction (share, acknowledgement, normal Stop)
+      ran as share-current-001 on `2bff1004` and passed; it is also the
+      final-candidate integration smoke. Renewal remains unexercised there.
 - [ ] Independently review evidence and publication eligibility. Keep failed roots
       sealed and Channel006 private until its applicable recovery/cleanup and
       prospective publication gates pass; hand eligible evidence to promotion.

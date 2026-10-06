@@ -4,9 +4,10 @@ Status: in progress. The obligation map and change-impact review are
 complete. The first candidate (`60e344e2`) failed: its restart before the
 share check found internal-heap exhaustion. The corrected PSRAM-first
 candidate (`2bff1004`) has passed install continuity, idle and
-post-shutdown headroom, and heartbeat-loss shutdown. One bounded
-accepted-share check remains. Parity stays 90/95; any transition belongs to
-`task-str005-evidence-promotion`.
+post-shutdown headroom, heartbeat-loss shutdown and an accepted share with
+a normal Stop. One gap remains on the candidate: no renewal was exercised.
+The independent evidence and publication review is next. Parity stays
+90/95; any transition belongs to `task-str005-evidence-promotion`.
 
 Policy: [ADR-0029](../../adr/0029-piecewise-str005-qualification.md), with
 prospective diagnostics under
@@ -32,22 +33,22 @@ candidate and would reopen this review.
 
 ## Obligations and covering results
 
-| Obligation                                      | Covering result on the candidate                                               | Older results (kept on their own identities)               |
-| ----------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| Noise authentication, encrypted proof           | psram-default-install attempt-002 (all criteria true)                          | usb-bbpll-install (`60e344e2`), Noise-serial (`ad629679`)  |
-| Channel and job dispatch over V2                | Heartbeat010 (`work_ready`, `asic_dispatch`, same generation)                  | heartbeat008 (`60e344e2`), Share001 (`654338d0`)           |
-| Fresh admission, signed Start, charged ledger   | Heartbeat010 (ordinal 29, exactly +180,000 ms, not pending)                    | heartbeat008, startup003, Share001                         |
-| Heartbeat revocation, bounded shutdown, cooling | Heartbeat010 (2,808/2,813 ms)                                                  | [heartbeat008](20261004-str005-heartbeat-loss-shutdown.md) |
-| Internal-memory headroom                        | [Idle and post-shutdown captures](20261005-str005-internal-heap-exhaustion.md) | the diagnosis image (fails)                                |
-| ASIC result, encrypted submission, device ACK   | **Pending: share-current-001**                                                 | [Share001](20261003-str005-accepted-share.md) (`654338d0`) |
-| Renewal                                         | **Pending: share-current-001, only if a renewal is confirmed**                 | Share001 (one renewal)                                     |
-| Worker-requested normal Stop while mining       | **Pending: share-current-001**                                                 | startup003 (`361425b9`), Share001                          |
-| Restoration, settings and identity preservation | Heartbeat010 recovery; psram-default-install attempt-002                       | every complete result                                      |
-| Install/update continuity                       | psram-default-install attempt-002                                              | usb-bbpll-install, Channel006, Noise-serial                |
-| Host, serial, signer and fixture cleanup        | Heartbeat010; psram-default-install attempt-002                                | every complete result                                      |
-| Privacy                                         | Per-result redaction; `just verify-redaction` on every publication             | —                                                          |
-| Fixture correctness                             | Share001's independent header, target, nonce and ACK joins                     | —                                                          |
-| Negative tests                                  | Software only, per probe (share, heartbeat, normal stop, recovery)             | not hardware evidence                                      |
+| Obligation                                      | Covering result on the candidate                                                                      | Older results (kept on their own identities)               |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Noise authentication, encrypted proof           | psram-default-install attempt-002 (all criteria true)                                                 | usb-bbpll-install (`60e344e2`), Noise-serial (`ad629679`)  |
+| Channel and job dispatch over V2                | Heartbeat010 (`work_ready`, `asic_dispatch`, same generation)                                         | heartbeat008 (`60e344e2`), Share001 (`654338d0`)           |
+| Fresh admission, signed Start, charged ledger   | Heartbeat010 (ordinal 29, exactly +180,000 ms, not pending)                                           | heartbeat008, startup003, Share001                         |
+| Heartbeat revocation, bounded shutdown, cooling | Heartbeat010 (2,808/2,813 ms)                                                                         | [heartbeat008](20261004-str005-heartbeat-loss-shutdown.md) |
+| Internal-memory headroom                        | [Idle and post-shutdown captures](20261005-str005-internal-heap-exhaustion.md)                        | the diagnosis image (fails)                                |
+| ASIC result, encrypted submission, device ACK   | [Share-current-001](20261005-str005-current-candidate-share.md) (1 submitted, 1 accepted, 0 rejected) | [Share001](20261003-str005-accepted-share.md) (`654338d0`) |
+| Renewal                                         | **Gap: share-current-001 confirmed 0 renewals**                                                       | Share001 (one renewal)                                     |
+| Worker-requested normal Stop while mining       | Share-current-001 (`restoration_requested`, `fan_paused`)                                             | startup003 (`361425b9`), Share001                          |
+| Restoration, settings and identity preservation | Heartbeat010 recovery; psram-default-install attempt-002                                              | every complete result                                      |
+| Install/update continuity                       | psram-default-install attempt-002                                                                     | usb-bbpll-install, Channel006, Noise-serial                |
+| Host, serial, signer and fixture cleanup        | Heartbeat010; psram-default-install attempt-002                                                       | every complete result                                      |
+| Privacy                                         | Per-result redaction; `just verify-redaction` on every publication                                    | —                                                          |
+| Fixture correctness                             | Share001's independent header, target, nonce and ACK joins                                            | —                                                          |
+| Negative tests                                  | Software only, per probe (share, heartbeat, normal stop, recovery)                                    | not hardware evidence                                      |
 
 ## Change impact since each result
 
@@ -84,10 +85,10 @@ heartbeat-loss session.
 
 ## Open items
 
-1. **Accepted share, renewal and normal Stop on the candidate.** One
-   bounded check: restart007 after heartbeat010, then share-current-001
-   ([contract](../../hardware/str005-accepted-share-amendment.md),
-   "Current-image re-run").
+1. **Renewal on the candidate.** Share-current-001 acknowledged its share
+   before the first 20-second renewal. Covering Renew on this image needs a
+   probe that holds the Start until one renewal is confirmed; that is a new
+   bounded contract, not a re-run.
 2. **Share002 retained resource proof.** It cannot be supplied: the device
    reports idle status with no retained record. This stays an explicit
    blocker on `task-str005-failure-recovery-accounting`. It does not block

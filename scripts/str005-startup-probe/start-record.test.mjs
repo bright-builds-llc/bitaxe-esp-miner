@@ -20,6 +20,16 @@ test('disagreeing dispatch or recovery records are refused', () => {
   assert.throws(() => deviceRecordAttemptId(evidence('device-attempt', 'device-attempt', 'other')), /start_record_attempt_mismatch/u);
 });
 
+test('a share run binds by its proven generation when it keeps no dispatch record', () => {
+  // Arrange
+  const share = generation => ({ before: { attempt: { id: 'device-attempt' } }, run: { proof: { generation } },
+    recoveryStatus: { state: 'terminal', record: { ...record('device-attempt'), workerGeneration: 3 } } });
+  // Act / Assert
+  assert.equal(deviceRecordAttemptId(share(3)), 'device-attempt');
+  assert.throws(() => deviceRecordAttemptId(share(4)), /start_record_attempt_mismatch/u);
+  assert.throws(() => deviceRecordAttemptId({ ...share(3), run: {} }), /start_record_attempt_mismatch/u);
+});
+
 test('a Start without a retained terminal record is refused', () => {
   // Arrange
   const idle = { ...evidence('device-attempt'), recoveryStatus: { state: 'idle', record: null } };

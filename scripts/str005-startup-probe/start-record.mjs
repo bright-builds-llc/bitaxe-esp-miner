@@ -10,10 +10,13 @@ import { check } from '../str005-v2-serial/values.mjs';
 // Status reads of a retained record must name the second one; this module is the only place that
 // derives it from sealed Start evidence.
 
-/** The firmware's record key, required to agree across the baseline, the dispatch and the fresh recovery. */
+/** The firmware's record key, required to agree across the baseline, the run and the fresh recovery. Heartbeat
+ * runs keep the dispatch record; share and diagnostic runs keep a proof of the Start's Worker generation. */
 export function deviceRecordAttemptId({ before, run, recoveryStatus }) {
   const issued = before?.attempt?.id, dispatched = run?.dispatchStatus?.record, retained = recoveryStatus?.record;
-  check(typeof issued === 'string' && dispatched?.attemptId === issued && retained?.attemptId === issued &&
+  const runBinds = dispatched ? dispatched.attemptId === issued
+    : Number.isSafeInteger(run?.proof?.generation) && run.proof.generation === retained?.workerGeneration;
+  check(typeof issued === 'string' && runBinds && retained?.attemptId === issued &&
     retained.scope === 'share' && recoveryStatus.state === 'terminal', 'start_record_attempt_mismatch');
   return issued;
 }

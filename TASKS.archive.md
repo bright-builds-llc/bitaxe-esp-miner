@@ -22801,3 +22801,81 @@ inferred, not captured (no core dump); the settings-snapshot churn still
 runs, now in PSRAM, and is worth removing for efficiency; the old core dump
 still occupies the partition, so a future panic would again leave no dump
 until it is cleared under a separate contract.
+
+### task-str005-share-current-image | 2026-10-05 | Repeat the accepted-share check on the final candidate
+
+Status: Complete 2026-10-05; archived. Resumed on the PSRAM-first candidate after the archived
+`task-str005-heap-loss-diagnosis`. Owner-requested 2026-10-05 as the
+integration review's one uncovered interaction (`task-str005-piecewise-integration-review`).
+Objective: one bounded accepted-share Start on the lineage head's image
+(`2bff1004`) that passes every share-probe judge criterion, ending in a
+Worker-requested normal Stop.
+Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendment.md),
+"Current-image re-run".
+
+- [x] Software: the restart owner follows heartbeat008 under this task's
+      restart line; the share owner reads its install from the lineage head
+      and pins heartbeat008 as its previous Start. Its restart stays
+      unpinned, so no Start is admitted until a restart is sealed.
+- [x] restart005 (ordinal 1): preflight passed, then the recovery page
+      failed to load (`/recovery-error-row.mjs` was not served), so it never
+      connected. Stopped, final detector admitted one Ultra 205, sealed
+      failed before any device contact. Fix: `createCurrentRecoveryServer`
+      serves `recoveryClientModules(firmwareRoot)`, the client's whole
+      module graph; the regression walks the client's imports and requires
+      each to load. The same gap affected every restart and preparation
+      recovery stage since the recovery consolidation.
+- [x] restart006 (ordinal 2): preflight passed and the recovery page
+      loaded. On Connect, about 44 minutes after heartbeat008's shutdown,
+      the ledger and budget reads timed out and the board rebooted with
+      `reset_reason=panic` (boot 301 to 302). The retained diagnostics show
+      an 8,192-byte internal allocation failure (caps `0x804`). Internal
+      heap sampled during heartbeat008's recovery connection was 9,687
+      bytes free (largest 1,920); sampled during this Connect it was 607
+      bytes (largest 168). Whether the loss happened while idle or inside
+      this connection is not yet resolved. Stopped,
+      released; the final detector admitted one Ultra 205; sealed failed
+      with `preparation_boot_changed`. Stop condition: a new panic.
+      Comparison: on `7ca3e29c` the heap after heartbeat007 went from
+      5,859 to 4,819 bytes between connections four hours apart, and the
+      next Connect worked. The loss is new on the candidate. A code audit
+      of the queue change (`00f84eae`) found no growth path: every queue is
+      created once at boot and bounded or drained.
+- [x] Diagnose the internal-heap loss after a heartbeat-loss shutdown
+      on `60e344e2` (`task-str005-heap-loss-diagnosis`); fix it with a
+      regression. Done: exhaustion, not a leak; the PSRAM-first candidate
+      `2bff1004` installed, kept 52 KB of internal headroom and passed
+      heartbeat010.
+- [x] restart007: recovery stage read heartbeat010's record, then one
+      software restart took boot 318 to 319 with the ledger
+      (30/29/3,720,000 ms) and budget unchanged; no failures. Result
+      `ef87f9a9…`, seal `b87302e9…`; pinned, share line enabled.
+- [x] share-current-001: detector, preflight, serve, baseline and candidate,
+      startup detector, Run, fresh recovery, release, final detector, finish.
+      Passed: ordinal 30, generation 3, 1 submitted and 1 accepted share,
+      0 rejected, Worker-requested Stop (`restoration_requested`,
+      `fan_paused`), ledger 31/30/3,900,000 ms, no recovery failures;
+      sealed `complete=true`, `accepted_share_verified=true`. 0 renewals
+      confirmed, so the Renew path stays a gap on this image.
+- [x] Record, `just str005-lineage record-start` (its record-key check now
+      also binds a share run by its proven generation, with a regression),
+      publish redacted evidence, update the integration review, disable
+      both lines, archive.
+
+Stop on any detector failure, an identity, boot or ledger drift, a lost or
+ambiguous Start (never resend), a panic or unproven cleanup. Effects and
+prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
+firmware write. Retries need a regression-backed fix, a fresh ordinal and a
+new restart.
+Share current image restart hardware: disabled.
+Share current image hardware: disabled.
+
+Verification: [current-candidate share](docs/parity/evidence/20261005-str005-current-candidate-share.md);
+result `0227a65e…`, seal `2d0d31b9…`.
+
+Completion review: accepted share, encrypted submission, device
+acknowledgement and a Worker-requested normal Stop now hold on the final
+candidate. Restart005 found a recovery-page bug and restart006 found the
+internal-heap exhaustion; both are fixed with regressions. Residual risk:
+the Renew path is unexercised on this image (0 renewals); one generation on
+a local fixture only.
