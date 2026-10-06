@@ -90,109 +90,105 @@ prerequisites in `task-parity-ota002-www-hardware-verification`.
 
 ### task-parity-ota002-www-hardware-verification | 2026-10-06 | Verify live OTAWWW update and interrupted-update recovery
 
-Status: Draft contract. Not effect-eligible until every software item below is
-committed, verified and pushed, an immutable work plan binds the exact command,
-and a fresh ordinal is recorded here. Parent:
+Status: Active. Software prerequisites are implemented; hardware ordinal
+`001` is the next effect, under plan `docs/parity/work-plans/20261006T185454Z-OTA-002/PLAN.md`. Parent:
 `task-parity-ota002-www-partition-update`.
 
 Objective: promote `OTA-002` to `verified` with `hardware-regression` evidence
 covering one complete OTAWWW update, one `interrupted-update`, and recovery, on
 one detector-admitted Ultra 205, with NVS and firmware unchanged throughout.
 
-Why a new command: the REL-002 wrapper (`just capture-sdkconfig-rollback-evidence`,
-`tools/automation/src/interrupted-upload.ts`) is hard-wired to
-`/api/system/OTA`, and its install step passes `--wifi-credentials` without a
-factory reset, which ordinary installs now reject. `device-session ota-live`
-also assumes the firmware route and a reboot.
+Design notes:
 
-Software prerequisites:
+- Since the fixed Serial/JTAG migration the firmware no longer prints its
+  station address over USB, so the device origin comes from the authenticated
+  Gate: Gate `f3c7f5a` adds a one-use `observeStationEndpoint()` in an
+  exclusive `stationEndpointHandoff` page mode (possession plus the existing
+  `telemetry_cadence_endpoint`; no lease, work or mining). `just
+  otawww-endpoint` serves that page and stores the endpoint in a mode-0600
+  file; the browser closes the Worker and leaves the page before any CLI
+  serial use.
+- `just capture-otawww-evidence` runs in two phases because the endpoint must
+  belong to the installed boot: `--phase install` (state-preserving
+  exact-package install, 60-second capture that only proves a completed boot)
+  and `--phase run` (HTTP stages at the handed-off origin, which must report
+  the same boot ordinal and exact build).
+- Each OTAWWW stage is followed by one HTTP restart proven by `device-session
+  reboot-live`; every restart session must carry the validator's required
+  facts or the run stops at that restart.
 
-- [ ] `www_probe_image` Bazel target: the package's `www.bin` inputs with a
-      distinct canonical `version.txt` label (at most 22 bytes of
-      `[a-z0-9-]`), exactly `0x300000` bytes, with its digest in a probe
-      manifest. A same-image upload cannot prove the partition changed.
-- [ ] Parameterize the interruption helper by route, keeping reset-before-FIN
-      semantics. The firmware erases the whole partition before reading the
-      body, so a small prefix followed by a reset deterministically yields an
-      erased partition and a retained `www_update_status=Protocol Error`.
-- [ ] `just capture-otawww-evidence` supervisor with `--private-root`,
-      `--package-manifest`, `--www-probe-manifest`, `--detector-output`,
-      `--projection` and `--capture-timeout-seconds`; refuses an existing
-      root, a non-exact package or probe, `--wifi-credentials` and
-      `--factory-reset`.
-- [ ] Closed `bitaxe-otawww-evidence-v1` projection and validator (digests,
-      booleans, counts and categories only), covered by `just verify-redaction`.
-- [ ] Host tests with fake device and transport for every terminal category,
-      the earliest-failure precedence and cleanup; no hardware.
+- [x] `www_probe_image` outputs (`www-probe.bin`, `www-probe.json`) from
+      `just package`.
+- [x] Route-parameterized reset-before-FIN interruption helper.
+- [x] `just capture-otawww-evidence` with install and run phases, the
+      `bitaxe-otawww-evidence-v1` contract, validator and redaction coverage.
+- [x] Gate endpoint handoff and `just otawww-endpoint preflight|serve|finish`.
+- [x] Host tests for every terminal category, handoff refusal and cleanup.
+- [ ] Run attempt `001` as authorized below.
+- [ ] Independent evidence review, then promote `OTA-002`.
 
-Preconditions for the attempt: clean pushed HEAD containing the OTA-002
-implementation; pinned reference clean; exact `just package` manifest and probe
-manifest; the dedicated Gate tab at `about:blank` so the serial port is
-released; station Wi-Fi already stored in NVS (none is supplied); mining
-disabled; absent `wrapper-NNN`, `attempt-NNN` and projection paths.
+Authorized hardware commands for ordinal `001`, run once each in order, with
+`P=scratch/ota002-otawww`, `W=$P/wrapper-001`, `A=$P/attempt-001`,
+`M=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`,
+`R=bazel-bin/firmware/bitaxe/www-probe.json` and
+`J=docs/parity/evidence/ota002-otawww/otawww-projection.json`, at the clean
+pushed HEAD after `just package`:
 
-Authorized hardware command (fill NNN with the recorded ordinal):
+1. `test ! -e $W && test ! -e $A && (umask 077; mkdir -m 700 -p $W && just detect-ultra205 > $W/detector.stdout.log 2> $W/detector.stderr.log)`
+2. With the dedicated Gate tab confirmed at `about:blank` and no serial holder:
+   `(umask 077; just capture-otawww-evidence --phase install --private-root $A --package-manifest $M --www-probe-manifest $R --detector-output $W/detector.stdout.log --projection $J --capture-timeout-seconds 420 > $W/install.stdout.log 2> $W/install.stderr.log)`
+3. `(umask 077; just detect-ultra205 > $W/endpoint-detector.stdout.log 2> $W/endpoint-detector.stderr.log && just otawww-endpoint preflight --private-root $A/endpoint --gate-root ../bitaxe-turnstile-system --package-manifest $M --detector-output $W/endpoint-detector.stdout.log > $W/endpoint-preflight.stdout.log 2> $W/endpoint-preflight.stderr.log)`
+4. `(umask 077; just detect-ultra205 > $W/serve-detector.stdout.log 2> $W/serve-detector.stderr.log)`, then detached:
+   `nohup just otawww-endpoint serve --private-root $A/endpoint --detector-output $W/serve-detector.stdout.log > $W/serve.stdout.log 2> $W/serve.stderr.log &`;
+   navigate the dedicated Gate tab to `http://127.0.0.1:48765/`, confirm
+   `document.visibilityState` is `visible`, and click Connect Worker once. The
+   page hands off the endpoint, closes the Worker and leaves for
+   `about:blank`; the server then exits.
+5. `(umask 077; just detect-ultra205 > $W/final-endpoint-detector.stdout.log 2> $W/final-endpoint-detector.stderr.log && just otawww-endpoint finish --private-root $A/endpoint --detector-output $W/final-endpoint-detector.stdout.log > $W/endpoint-finish.stdout.log 2> $W/endpoint-finish.stderr.log)`
+6. `(umask 077; just detect-ultra205 > $W/run-detector.stdout.log 2> $W/run-detector.stderr.log && just capture-otawww-evidence --phase run --private-root $A --endpoint-input $A/endpoint/endpoint.private.json --package-manifest $M --www-probe-manifest $R --detector-output $W/run-detector.stdout.log --projection $J --capture-timeout-seconds 420 > $W/run.stdout.log 2> $W/run.stderr.log)`
 
-1. `test ! -e scratch/ota002-otawww/wrapper-NNN && (umask 077; mkdir -m 700 -p scratch/ota002-otawww/wrapper-NNN && just detect-ultra205 > scratch/ota002-otawww/wrapper-NNN/detector.stdout 2> scratch/ota002-otawww/wrapper-NNN/detector.stderr)`
-2. Only if step 1 admits exactly one Ultra 205:
-   `test ! -e scratch/ota002-otawww/attempt-NNN && (umask 077; just capture-otawww-evidence --private-root scratch/ota002-otawww/attempt-NNN --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --www-probe-manifest <probe manifest> --detector-output scratch/ota002-otawww/wrapper-NNN/detector.stdout --projection docs/parity/evidence/ota002-otawww/otawww-projection.json --capture-timeout-seconds 420 > scratch/ota002-otawww/wrapper-NNN/capture.stdout 2> scratch/ota002-otawww/wrapper-NNN/capture.stderr)`
+Allowed effects: the one exact-package install; one Gate session (Hello,
+possession, one endpoint read, Stop, Close); same-origin HTTP `GET` of system
+info, logs and static files; exactly three OTAWWW requests (complete probe,
+interrupted package, complete package) and at most three single-POST
+restarts. A recovery `just flash` of the exact package (state-preserving,
+which rewrites `www` without NVS) runs at most once, automatically, after any
+failure once the probe upload has started and before recovery is proven, or
+after a failed install write; it never counts as success.
 
-Sequence inside the supervisor:
-
-1. One state-preserving exact-package install (`just flash` semantics, no
-   factory reset) with a receive-only capture; take the device URL only from
-   that session's `runtime_origin` line. No discovery of any kind.
-2. Baseline: exact build identity, mining disabled, settings and hostname
-   digests, `axeOSVersion` equal to the package label.
-3. Complete OTAWWW of the probe image: `WWW update complete`, retained
-   `www_update_status=Finished...`; one HTTP restart proven by
-   `device-session reboot-live`; `axeOSVersion` equals the probe label and
-   served `version.txt` and asset digests match the probe inputs.
-4. Interrupted OTAWWW of the package image: reset before FIN; same boot
-   session, retained `Protocol Error`, firmware unchanged; one proven restart;
-   static assets unavailable, `axeOSVersion` unavailable, `/recovery` served.
-5. Recovery: one complete OTAWWW of the package image (the route the
-   `/recovery` page uses); one proven restart; `axeOSVersion` equals the
-   package label, served digests match, and build, settings and hostname
-   digests equal the baseline.
-
-Allowed effects: the one install above; receive-only USB; same-origin HTTP
-`GET` of system info, logs and static files; exactly three OTAWWW requests
-(complete, interrupted, recovery); at most three single-POST restarts. If
-step 5 fails, at most one ordinary exact-package `just flash`, which rewrites
-`www` without touching NVS, as fallback recovery that never counts as success.
-
-Prohibited effects: factory reset, `--wifi-credentials`, NVS seeding or erase;
-`/api/system/OTA`, erase-flash, raw writes, and bootloader or partition-table
-changes outside the package install; writes to any partition except `www`
-after the install; mining, pool, ASIC, voltage, frequency, fan, thermal or
-power control; mDNS, ARP, router or subnet discovery; direct UART, pins or
-power interruption; a second capture under the same ordinal.
+Prohibited effects: factory reset, `--wifi-credentials`, NVS seeding or
+erase; firmware `/api/system/OTA`, erase-flash, raw writes; writes to any
+partition except `www` after the install; mining, pool, lease, Start, ASIC,
+voltage, frequency, fan, thermal or power control; mDNS, ARP, router or
+subnet discovery; direct UART, pins or power interruption; a second capture,
+endpoint read or restart beyond the counts above under this ordinal.
 
 Evidence and privacy: ignored mode-0700 roots with mode-0600 files, per
-`docs/parity/evidence-policy.md`. Origins, IP addresses, hostnames, USB
-identities, HTTP bodies, logs and image bytes stay private. Only the closed
-redacted projection is committed, after `just verify-redaction` and an
-independent review.
+`docs/parity/evidence-policy.md`. The endpoint, origins, IP addresses,
+hostnames, USB identities, HTTP bodies, logs and image bytes stay private.
+Only the closed redacted projection `$J` is committed, after `just
+verify-redaction` and an independent review.
 
-Recovery, retry and stop: a detector failure stops before any write. Keep the
-earliest typed category through recovery and cleanup. Any capture start
-consumes the ordinal. Continue only under `docs/hardware/hardware-attempt-policy.md`
-with a fresh ordinal and verified progress; the same `(category, stage)`
-recurring after its targeted fix selects `stop_repeated_boundary`. Missing
-station-address evidence stops as `origin_unavailable`; it is never a reason
-to start discovery.
+Recovery, retry and stop: a detector failure stops before any write. Keep
+the earliest typed category through recovery and cleanup. Any capture or
+serve start consumes the ordinal. Continue only under
+`docs/hardware/hardware-attempt-policy.md` with a fresh ordinal and verified
+progress; the same `(category, stage)` recurring after its targeted fix
+selects `stop_repeated_boundary`. A missing, stale or wrong-boot endpoint
+stops as `origin_unavailable` or `evidence_invalid`; it is never a reason to
+start discovery. A hidden Gate tab holds the run in its safe state without a
+deadline.
 
-Terminal categories: `complete`, `package_invalid`, `process_failed`,
+Terminal categories: success, `package_invalid`, `process_failed`,
 `timeout`, `hardware_blocked`, `evidence_invalid`, `origin_unavailable`,
 `update_not_observed`, `asset_identity_mismatch`,
 `interruption_not_observed`, `recovery_not_observed`, `nvs_not_preserved`,
 `recovery_failed`.
 
-Acceptance: every step's postcondition holds, cleanup and modes pass, and an
-independent reviewer re-derives the projection before `OTA-002` moves to
-`verified` with evidence `hardware-regression` and notes naming the
-`interrupted-update` case.
+Acceptance: every stage postcondition holds, cleanup and modes pass, the
+projection validates, and an independent reviewer re-derives it before
+`OTA-002` moves to `verified` with evidence `hardware-regression` and notes
+naming the `interrupted-update` case.
 
 Verification: pending. Completion review: pending.
 
