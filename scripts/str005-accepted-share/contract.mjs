@@ -5,7 +5,7 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { HEAD } from '../str005-lineage/head.mjs';
 export const TASK = 'task-str005-renewal-window-current-image';
 export const ENABLED_LINE = 'Renewal window hardware: enabled.';
-export const ENABLED = true;
+export const ENABLED = false;
 export const CONTRACT = 'docs/hardware/str005-accepted-share-amendment.md';
 export const SCHEMA = 'str005-accepted-share-context-v1';
 export const ADMISSION = 'accepted-share-v1';

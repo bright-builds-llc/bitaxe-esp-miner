@@ -23049,3 +23049,50 @@ proof as a permanent non-claim (ADR-0032). Authenticated accounting,
 restoration and host release stand as measured; nothing about Share002's
 pre-reset resource release is claimed. Share002's seal, outcome and
 Channel006's private status are unchanged.
+
+### task-str005-renewal-window-current-image | 2026-10-05 | Prove a share and a renewal in one run on the final candidate
+
+Status: Complete 2026-10-05; archived. Owner-requested 2026-10-05 ("write
+the longer-window probe"). Follows the archived `task-str005-renewal-current-image`, whose
+renew-current-001 confirmed two renewals but sealed `unverified` with no
+share in 45 s.
+Objective: one bounded renewal probe on `2bff1004` with an 80-second window
+that passes every share-probe criterion plus at least one renewal.
+Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendment.md),
+"Longer-window renewal re-run".
+
+- [x] Software: the renewal context carries `observe_window_ms: 80000`;
+      the judge's Stop bound uses it (default 45 s elsewhere); the owner
+      refuses a context whose window differs from its contract; the
+      renewal page's constants are tested against the contract. A
+      proofless share run supplies its generation to the restart owner
+      from its in-run status read. Regressions cover each.
+- [x] restart009: recovery stage read renew-current-001's record (its
+      generation from the in-run status read), then one software restart
+      took boot 320 to 321 with the ledger (32/31/4,080,000 ms) and budget
+      unchanged; no failures. Result `f736af76…`, seal `6cee41ef…`; pinned,
+      probe line enabled.
+- [x] renew-current-002: detector, preflight, serve, baseline and
+      candidate, startup detector, Run, fresh recovery, release, final
+      detector, finish. Passed: ordinal 32, generation 3, 1 submitted and 1
+      accepted share, 0 rejected, 2 renewals in proof and recovered state,
+      Stop 60.0 s after the reply (`restoration_requested`, `fan_paused`),
+      ledger 33/32/4,260,000 ms, no recovery failures; sealed
+      `complete=true` (result `3e2c282b…`, seal `7f691b80…`).
+- [x] Record, `just str005-lineage record-start`, publish redacted evidence,
+      update the integration review, disable both lines, archive.
+
+Stop on any detector failure, an identity, boot or ledger drift, a lost or
+ambiguous Start (never resend), a panic or unproven cleanup. Effects and
+prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
+firmware write. Retries need a regression-backed change, a fresh ordinal
+and a new restart.
+Renewal window restart hardware: disabled.
+Renewal window hardware: disabled.
+
+Verification: [share and renewal evidence](docs/parity/evidence/20261005-str005-current-candidate-share.md).
+
+Completion review: the final candidate now has an accepted share, two
+renewals and a normal Stop in one complete run, which resolves the
+integration review's renewal blocker. Residual risk: one run on one board
+against a local fixture.

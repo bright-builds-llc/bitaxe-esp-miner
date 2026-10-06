@@ -5,10 +5,9 @@ complete. The first candidate (`60e344e2`) failed: its restart before the
 share check found internal-heap exhaustion. The corrected PSRAM-first
 candidate (`2bff1004`) has passed install continuity, idle and
 post-shutdown headroom, heartbeat-loss shutdown, an accepted share with a
-normal Stop, and two device-acknowledged renewals in a separate run whose
-own seal is `unverified`. The independent evidence review found the numbers
-correct and three blockers that need owner decisions (see "Promotion
-blockers"). Parity stays 90/95; any transition belongs to
+normal Stop, and an accepted share with two renewals in one complete run.
+The independent evidence review found the numbers correct; the remaining
+promotion blockers are listed below. Parity stays 90/95; any transition belongs to
 `task-str005-evidence-promotion`.
 
 Policy: [ADR-0029](../../adr/0029-piecewise-str005-qualification.md), with
@@ -35,22 +34,22 @@ candidate and would reopen this review.
 
 ## Obligations and covering results
 
-| Obligation                                      | Covering result on the candidate                                                                                                                                                    | Older results (kept on their own identities)               |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Noise authentication, encrypted proof           | psram-default-install attempt-002 (all criteria true)                                                                                                                               | usb-bbpll-install (`60e344e2`), Noise-serial (`ad629679`)  |
-| Channel and job dispatch over V2                | Heartbeat010 (`work_ready`, `asic_dispatch`, same generation)                                                                                                                       | heartbeat008 (`60e344e2`), Share001 (`654338d0`)           |
-| Fresh admission, signed Start, charged ledger   | Heartbeat010 (ordinal 29, exactly +180,000 ms, not pending)                                                                                                                         | heartbeat008, startup003, Share001                         |
-| Heartbeat revocation, bounded shutdown, cooling | Heartbeat010 (2,808/2,813 ms)                                                                                                                                                       | [heartbeat008](20261004-str005-heartbeat-loss-shutdown.md) |
-| Internal-memory headroom                        | [Idle and post-shutdown captures](20261005-str005-internal-heap-exhaustion.md)                                                                                                      | the diagnosis image (fails)                                |
-| ASIC result, encrypted submission, device ACK   | [Share-current-001](20261005-str005-current-candidate-share.md) (1 submitted, 1 accepted, 0 rejected)                                                                               | [Share001](20261003-str005-accepted-share.md) (`654338d0`) |
-| Renewal                                         | **Owner decision:** [renew-current-001](20261005-str005-current-candidate-share.md) shows 2 renewals the device acknowledged, but its seal is `unverified` (no share, no run proof) | Share001 (one renewal)                                     |
-| Worker-requested normal Stop while mining       | Share-current-001 (`restoration_requested`, `fan_paused`)                                                                                                                           | startup003 (`361425b9`), Share001                          |
-| Restoration, settings and identity preservation | Heartbeat010 recovery; psram-default-install attempt-002                                                                                                                            | every complete result                                      |
-| Install/update continuity                       | psram-default-install attempt-002                                                                                                                                                   | usb-bbpll-install, Channel006, Noise-serial                |
-| Host, serial, signer and fixture cleanup        | Heartbeat010; psram-default-install attempt-002                                                                                                                                     | every complete result                                      |
-| Privacy                                         | `just verify-redaction` (JSON only) plus a manual review of the Markdown summaries                                                                                                  | —                                                          |
-| Fixture correctness                             | Share-current-001's independent header, target, nonce and ACK joins (`accepted_share_verified=true`)                                                                                | Share001 (`654338d0`)                                      |
-| Negative tests                                  | **Not yet audited:** software tests exist per probe (share, heartbeat, normal stop, recovery), without an inventory                                                                 | not hardware evidence                                      |
+| Obligation                                      | Covering result on the candidate                                                                                                         | Older results (kept on their own identities)               |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Noise authentication, encrypted proof           | psram-default-install attempt-002 (all criteria true)                                                                                    | usb-bbpll-install (`60e344e2`), Noise-serial (`ad629679`)  |
+| Channel and job dispatch over V2                | Heartbeat010 (`work_ready`, `asic_dispatch`, same generation)                                                                            | heartbeat008 (`60e344e2`), Share001 (`654338d0`)           |
+| Fresh admission, signed Start, charged ledger   | Heartbeat010 (ordinal 29, exactly +180,000 ms, not pending)                                                                              | heartbeat008, startup003, Share001                         |
+| Heartbeat revocation, bounded shutdown, cooling | Heartbeat010 (2,808/2,813 ms)                                                                                                            | [heartbeat008](20261004-str005-heartbeat-loss-shutdown.md) |
+| Internal-memory headroom                        | [Idle and post-shutdown captures](20261005-str005-internal-heap-exhaustion.md)                                                           | the diagnosis image (fails)                                |
+| ASIC result, encrypted submission, device ACK   | [Share-current-001](20261005-str005-current-candidate-share.md) (1 submitted, 1 accepted, 0 rejected)                                    | [Share001](20261003-str005-accepted-share.md) (`654338d0`) |
+| Renewal                                         | [Renew-current-002](20261005-str005-current-candidate-share.md) (complete: 2 renewals plus an accepted share and normal Stop in one run) | Share001 (one renewal); renew-current-001 (`unverified`)   |
+| Worker-requested normal Stop while mining       | Share-current-001 (`restoration_requested`, `fan_paused`)                                                                                | startup003 (`361425b9`), Share001                          |
+| Restoration, settings and identity preservation | Heartbeat010 recovery; psram-default-install attempt-002                                                                                 | every complete result                                      |
+| Install/update continuity                       | psram-default-install attempt-002                                                                                                        | usb-bbpll-install, Channel006, Noise-serial                |
+| Host, serial, signer and fixture cleanup        | Heartbeat010; psram-default-install attempt-002                                                                                          | every complete result                                      |
+| Privacy                                         | `just verify-redaction` (JSON only) plus a manual review of the Markdown summaries                                                       | —                                                          |
+| Fixture correctness                             | Share-current-001's independent header, target, nonce and ACK joins (`accepted_share_verified=true`)                                     | Share001 (`654338d0`)                                      |
+| Negative tests                                  | **Not yet audited:** software tests exist per probe (share, heartbeat, normal stop, recovery), without an inventory                      | not hardware evidence                                      |
 
 ## Change impact since each result
 
@@ -96,6 +95,8 @@ heartbeat-loss session.
 | Share-current-001     | `0227a65e35eb7e11778d39ec44dc2520d9e4e23f5772a45db77d498eae29fe00` | `2d0d31b9976acdd7d1374d4ad3b389fca140d3189d1b66eefa13144836869116` |
 | Restart008            | `003683ef76032c87ba2ca632e9988dec4dd6d6f824c03341e364d70f4b5d9195` | `764cbaa7026f253cfad5453c58586e5125098b953c22a51ac21ff1b47ed99f70` |
 | Renew-current-001     | `81ae7513e93a85c42c753a725356c0635176958203cdc63761a0fc26fc0fec89` | `998da7e265215bc5004b2d46f4824ca69936e70a780dbedd91c1986c96f8f91d` |
+| Restart009            | `f736af76046fb12a57777647cab3794d810540862f991ebecd1da667e1ee5451` | `6cee41efcdfd6492640a02fa75cc0e1e305e39c6a2b419a27e83d704b30538af` |
+| Renew-current-002     | `3e2c282b7b8d5cf93b0b0ababcd9ee0d9c262afba1c83c2a3e07b0559af758e4` | `7f691b80ad694112bcc2233f42ac783053c4feb56698ffbe45842e21cb85cf82` |
 
 ## Independent review
 
@@ -114,16 +115,9 @@ history. Must stay private: Channel006, every failed or unverified raw root
 
 ## Promotion blockers
 
-1. **Renewal coverage from an unverified seal.** Renew-current-001 shows two
-   renewals the device acknowledged: the Gate counts a renewal only after a
-   session- and sequence-matched reply whose mining status shows the
-   recomputed lease offsets (the reply is not itself signed; the renewal
-   grant is). The reviewer's re-derivation of normal Stop and the
-   authorization checkpoint for generation 3 also holds. But the run sealed
-   `unverified`: no share arrived, so the run has no proof and its judge
-   could not establish normal Stop, the checkpoint or the minimum. Accepting
-   this as renewal coverage is an owner decision. The alternative is a new
-   bounded probe with a longer window under its own contract.
+1. **Renewal coverage.** Resolved 2026-10-05: renew-current-002 sealed
+   complete with an accepted share, two renewals and a normal Stop in one
+   run, under an 80-second window that stays inside the renewed lease.
 2. **Share002 retained resource proof.** Resolved 2026-10-05: the owner
    accepted it as a permanent non-claim
    ([ADR-0032](../../adr/0032-share002-resource-proof-non-claim.md)).
@@ -139,12 +133,9 @@ history. Must stay private: Channel006, every failed or unverified raw root
 
 ## Open items
 
-1. **Share and renewal in one run.** They are proven in two separate runs
-   on the candidate (share-current-001 and renew-current-001), not in one.
-   No obligation requires them together.
-2. **Channel006 publication.** Its result stays private. The candidate does
+1. **Channel006 publication.** Its result stays private. The candidate does
    not depend on it.
-3. **Panic attribution.** The original Share001 and Share002 panics are
+2. **Panic attribution.** The original Share001 and Share002 panics are
    "likely the same compiler bug, not proven", as accepted by the owner.
    The restart006 panic site is inferred from heap evidence, not captured.
 

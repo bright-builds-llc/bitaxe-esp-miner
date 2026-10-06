@@ -47,13 +47,28 @@ generation for the Gate's renewals:
 - **Seal.** Result `81ae7513e93a85c42c753a725356c0635176958203cdc63761a0fc26fc0fec89`,
   seal `998da7e265215bc5004b2d46f4824ca69936e70a780dbedd91c1986c96f8f91d`.
 
-The share is proven by a complete seal. The renewal evidence comes from a
-run sealed `unverified`; whether it counts as renewal coverage is an owner
-decision recorded in the integration review.
+## Share and renewal in one run
+
+Renew-current-002 repeated the renewal probe with an 80-second window
+(after restart009: boot 320 to 321) and sealed `complete=true` with no
+blockers:
+
+| Boundary | Direct evidence                                                                                                                                    |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Start    | Ordinal 32, generation 3; Start reply after about 10.1 s                                                                                           |
+| Share    | 1 submitted, 1 accepted, 0 rejected; `accepted_share_verified=true`                                                                                |
+| Renewals | 2 confirmed, in both the run proof and the recovered state (minimum 1)                                                                             |
+| Stop     | Requested about 60.0 s after the reply, inside the 80 s window: `restoration_requested`, `fan_paused`, 34 °C, `mine_on_boot=false`                 |
+| Recovery | Fresh recovery on boot 321 with no failures; ledger 33/32/4,260,000 ms (exactly +180,000), not pending                                             |
+| Release  | Server, fixture, signer and serial owners released; final detector admitted one Ultra 205                                                          |
+| Seal     | Result `3e2c282b7b8d5cf93b0b0ababcd9ee0d9c262afba1c83c2a3e07b0559af758e4`, seal `7f691b80ad694112bcc2233f42ac783053c4feb56698ffbe45842e21cb85cf82` |
+
+Renew-current-001 stays as the earlier `unverified` attempt; the renewal
+claim rests on renew-current-002.
 
 ## Non-claims
 
 One generation on a local fixture. Not pool, sustained-mining or
 parity-promotion evidence. Raw evidence stays in protected private roots
-under `scratch/str005-accepted-share/share-current-001` and
-`scratch/str005-accepted-share/renew-current-001`.
+under `scratch/str005-accepted-share/share-current-001`,
+`renew-current-001` and `renew-current-002`.
