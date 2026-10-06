@@ -66,6 +66,8 @@ export async function preflight(repo, root, options, source, operations = {}, pr
   const symbols = execFileSync(process.execPath, [symbolsPath, installed.candidateElf], { encoding: 'utf8', timeout: 30000, maxBuffer: 65536 });
   check(symbols.trim() === 'native_usb_symbols=verified', 'step5_native_usb');
   const context = { schema: profile.schema, admission: profile.admission, source_commit: source.commit, contractSha256: source.contractSha256,
+    // Only a renewal probe's context carries a minimum; every other profile's context is unchanged.
+    ...(profile.minimumRenewals ? { minimum_renewals: profile.minimumRenewals } : {}),
     ...installed.identity, firmware_root: repo, gate_root: gateRoot, before_source: installed.identity, scope: 'share',
     attemptId: nonce(), expectedBootOrdinal: current?.expectedBootOrdinal ?? installed.expectedBootOrdinal,
     expectedLedger: current?.ledger ?? installed.ledger,

@@ -53,3 +53,17 @@ for (const [label, mutate, blocker] of [
   const result = judge(parts, context);
   assert.equal(result.complete, false); assert.ok(result.blockers.includes(blocker));
 });
+
+test('a renewal probe needs the required renewal in both the run proof and the recovered state', () => {
+  // Arrange
+  const missing = fixture(), renewed = fixture();
+  renewed.parts.run.proof.renewalsConfirmed = 1; renewed.parts.recovery.state.renewalsConfirmed = 1;
+  renewed.parts.recovery.status.record.firstFailure = { stage: 'worker_quiescent', category: 'authority', atDeviceUs: 10000 };
+  missing.parts.recovery.status.record.firstFailure = { stage: 'worker_quiescent', category: 'authority', atDeviceUs: 10000 };
+  // Act
+  const withoutRenewal = judge(missing.parts, { ...missing.context, minimum_renewals: 1 });
+  const withRenewal = judge(renewed.parts, { ...renewed.context, minimum_renewals: 1 });
+  // Assert
+  assert.ok(withoutRenewal.blockers.includes('share_renewal_minimum_unproven'));
+  assert.deepEqual([withRenewal.complete, withRenewal.renewals_confirmed], [true, 1]);
+});

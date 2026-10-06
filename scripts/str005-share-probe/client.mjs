@@ -2,7 +2,7 @@ import { recoveryFailure } from './recovery-collection.mjs';
 /** One Start; independent timers request normal Stop even while an observation is blocked. */
 export function createShareCoordinator({ gate, prepare, post, record, recover, release, recordFailure = async () => {},
   now = () => performance.now(), limits = {} }) {
-  const bounds = { replyMs: 30000, observeMs: 45000, readMs: 30000, cleanupMs: 150000, pollMs: 200, ...limits };
+  const bounds = { replyMs: 30000, observeMs: 45000, readMs: 30000, cleanupMs: 150000, pollMs: 200, minRenewals: 0, ...limits };
   let consumed = false;
   const bounded = async (operation, ms) => {
     let timer;
@@ -53,6 +53,17 @@ export function createShareCoordinator({ gate, prepare, post, record, recover, r
         await new Promise(resolve => setTimeout(resolve, Math.min(bounds.pollMs, Math.max(0, deadline - now()))));
       }
       if (!proof) throw Error('share_not_observed');
+      // A renewal probe keeps the acknowledged generation running, under the same live checks, until the
+      // Gate's timer confirms the required renewals; the independent deadline still requests Stop.
+      phase = 'renewal';
+      while (gate.state().renewalsConfirmed < bounds.minRenewals) {
+        const state = gate.state();
+        if (now() >= deadline || stopRequestedAt !== null) throw Error('share_renewal_not_observed');
+        if (!state.running || state.failure || state.heartbeatSuppressed || state.qualification?.generation !== admission.generation ||
+          state.renewalsConfirmed > 2) throw Error('share_state_changed');
+        await new Promise(resolve => setTimeout(resolve, Math.min(bounds.pollMs, Math.max(0, deadline - now()))));
+      }
+      proof.renewalsConfirmed = gate.state().renewalsConfirmed;
     } catch (error) { clientFailure = { schema: 'str005-client-failure-v1', ...recoveryFailure(phase, error), observedAtMs: now() }; firstFailure = phase; timedOut = startInvokedAt !== null && !settled; }
     finally {
       clearTimeout(deadlineTimer); const stopping = stop();

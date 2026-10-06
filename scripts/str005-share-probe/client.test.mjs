@@ -64,3 +64,29 @@ test('internal Start deadline records timeout category without an underlying Gat
   await createShareCoordinator({ ...f.options, limits: { replyMs: 5 }, recordFailure: async value => { saved = value; } })();
   assert.equal(saved.phase, 'start'); assert.equal(saved.category, 'timeout');
 });
+
+test('a renewal probe keeps running after the ACK until the Gate confirms one renewal', async () => {
+  // Arrange
+  let renewals = 0, polls = 0; const f = fixture(); const records = [];
+  f.gate.state = () => { if (++polls > 6) renewals = 1;
+    return { running: !f.calls.includes('stop'), heartbeatSuppressed: false, renewalsConfirmed: renewals, qualification: { generation: 3 } }; };
+  f.options.record = async value => { records.push(value); };
+  // Act
+  const result = await createShareCoordinator({ ...f.options, limits: { minRenewals: 1, pollMs: 1 } })();
+  // Assert
+  assert.equal(result.complete, true);
+  assert.equal(records[0].proof.renewalsConfirmed, 1);
+  assert.equal(f.calls.filter(call => call === 'stop').length, 1);
+});
+
+test('a renewal probe without a renewal before the deadline fails in the renewal phase and still stops', async () => {
+  // Arrange
+  const f = fixture(0); const records = [];
+  f.options.record = async value => { records.push(value); };
+  // Act
+  const result = await createShareCoordinator({ ...f.options, limits: { minRenewals: 1, observeMs: 30, pollMs: 1 } })();
+  // Assert
+  assert.equal(result.complete, false);
+  assert.equal(records[0].firstFailure, 'renewal');
+  assert.ok(f.calls.includes('stop')); assert.ok(f.calls.includes('release'));
+});

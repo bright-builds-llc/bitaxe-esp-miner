@@ -29,3 +29,11 @@ test('the share owner and its routes load without a device', async () => {
   // Assert
   assert.equal(loaded.PORT, 48765);
 });
+
+test('a renewal context is served the renewal page; a plain share context keeps the share page', async () => {
+  // Arrange
+  const { pageClientFor } = await import('./main.mjs');
+  // Act / Assert
+  assert.equal(pageClientFor({ minimum_renewals: 1 }), 'scripts/str005-share-probe/renewal-page.mjs');
+  assert.equal(pageClientFor({}), 'scripts/str005-share-probe/page.mjs');
+});

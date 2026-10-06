@@ -3,22 +3,24 @@ import { resolve } from 'node:path';
 import { git, cleanPushed } from '../fixed-usb-qualification/contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { HEAD } from '../str005-lineage/head.mjs';
-export const TASK = 'task-str005-share-current-image';
-export const ENABLED_LINE = 'Share current image hardware: enabled.';
+export const TASK = 'task-str005-renewal-current-image';
+export const ENABLED_LINE = 'Renewal current image hardware: enabled.';
 export const ENABLED = false;
 export const CONTRACT = 'docs/hardware/str005-accepted-share-amendment.md';
 export const SCHEMA = 'str005-accepted-share-context-v1';
 export const ADMISSION = 'accepted-share-v1';
+/** Renewals the Gate must confirm before the probe may Stop; 0 is the plain accepted-share probe. */
+export const MINIMUM_RENEWALS = 1;
 /** The verified lineage head's install, its latest sealed Start and the restart that cleared that Start's retained record. */
 export const PINS = Object.freeze({ installationProfile: HEAD.install.profile,
   installationResult: HEAD.install.result,
   installationSeal: HEAD.install.seal,
-  // Heartbeat010: the lineage head's latest Start on 2bff1004 (boot 318, ledger 30/29/3,720,000 ms).
-  previousStartResult: '8fc48d2f283b10aef8f6ceca0d3d284ac9170a44d834426c263702a8283049de',
-  previousStartSeal: '0e23e10f91fb539e433a0204ee841cd410674b01aceaad544d2bddf4d0d8c958',
-  // Restart007: one no-mining restart after heartbeat010 (boot 318 -> 319, ledger unchanged).
-  restartResult: 'ef87f9a9e68c5936c954489022b47aab766023dacd75e7129e7e05e2a1051b00',
-  restartSeal: 'b87302e90848062eff3b673d872e501591c340950122b7625ad29dbbfdc28620',
+  // Share-current-001: the lineage head's latest Start on 2bff1004 (boot 319, ledger 31/30/3,900,000 ms).
+  previousStartResult: '0227a65e35eb7e11778d39ec44dc2520d9e4e23f5772a45db77d498eae29fe00',
+  previousStartSeal: '2d0d31b9976acdd7d1374d4ad3b389fca140d3189d1b66eefa13144836869116',
+  // Pinned once its sealed no-mining restart after share-current-001 passes.
+  restartResult: null,
+  restartSeal: null,
   gate: HEAD.install.identity.gate_commit });
 /** The exact active task line and the compiled flag both admit effects; a restart must be pinned. */
 export function taskEnabled(tasks, compiled = ENABLED, pins = PINS) {

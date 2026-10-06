@@ -12,15 +12,19 @@ import { preflight } from '../str005-step5-diagnostic/preflight.mjs';
 import { installation, previousStart, restartAfter } from '../str005-step5-diagnostic/lineage.mjs';
 import { routePolicy } from '../str005-share-probe/routes.mjs';
 import { finalize } from '../str005-share-probe/finish.mjs';
-import { ADMISSION, PINS, SCHEMA, argumentsFor, source } from './contract.mjs';
+import { ADMISSION, MINIMUM_RENEWALS, PINS, SCHEMA, argumentsFor, source } from './contract.mjs';
 
 // The origin that holds the Ultra 205 Web Serial grant; another port would show the chooser.
 export const PORT = 48765;
-const PROFILE = Object.freeze({ pins: PINS, schema: SCHEMA, admission: ADMISSION });
+const PROFILE = Object.freeze({ pins: PINS, schema: SCHEMA, admission: ADMISSION, minimumRenewals: MINIMUM_RENEWALS });
+/** The page client: a renewal probe's page holds the generation until its renewals are confirmed. */
+export function pageClientFor(context) {
+  return (context.minimum_renewals ?? 0) > 0 ? 'scripts/str005-share-probe/renewal-page.mjs' : 'scripts/str005-share-probe/page.mjs';
+}
 
 /** Re-verifies the frozen install -> previous Start -> restart chain and the frozen tools. */
 async function verifyLineage(root, context, live) {
-  check(context.schema === SCHEMA && context.admission === ADMISSION &&
+  check(context.schema === SCHEMA && context.admission === ADMISSION && (context.minimum_renewals ?? 0) === MINIMUM_RENEWALS &&
     context.source_commit === live.commit && context.contractSha256 === live.contractSha256, 'share_source_changed');
   const installed = await installation(context.anchors.installation.root, PINS);
   const previous = await previousStart(context.anchors.previousStart.root, installed, PINS);
@@ -61,7 +65,7 @@ export async function main(argv) {
     const bytes = await readFile(path); check(sha256(bytes) === hash, 'share_assets_changed'); assets[name] = bytes;
   }
   assets.trust = JSON.parse(assets.trust);
-  assets.pageClient = await readFile(resolve(repo, 'scripts/str005-share-probe/page.mjs'));
+  assets.pageClient = await readFile(resolve(repo, pageClientFor(context)));
   assets.coordinator = await readFile(resolve(repo, 'scripts/str005-startup-probe/client.mjs'));
   const extraAssets = new Map();
   for (const [url, file] of [['/shared-page.mjs', 'str005-startup-probe/page.mjs'], ['/share-client.mjs', 'str005-share-probe/client.mjs']])

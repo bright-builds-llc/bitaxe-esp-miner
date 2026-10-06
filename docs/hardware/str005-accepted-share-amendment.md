@@ -122,6 +122,39 @@ and the Gate is the one Share001 used. Every prohibition, stop condition
 and non-claim below applies. A pass covers the share, renewal and
 normal-stop paths on the candidate; it does not relabel Share001.
 
+## Renewal re-run
+
+Share-current-001 passed on `2bff1004`, but its acknowledgement arrived
+before the Gate's first 20-second renewal, so the Renew path was not run on
+the candidate (`task-str005-renewal-current-image`). The renewal probe
+changes only two things:
+
+- **Stop rule.** After the joined acknowledgement, the page keeps the same
+  generation running, under the same live checks, until the Gate confirms
+  one renewal. The independent timer still requests Stop no later than
+  45 s after the Start reply, so a renewal that does not arrive in time
+  fails the probe in its renewal phase, with the normal Stop and recovery.
+- **Judge.** The context carries `minimum_renewals: 1`. A pass needs at
+  least one confirmed renewal in both the run proof and the recovered
+  state, beside every Phase B criterion. The fixture may accept more than
+  one share while the generation waits; it still completes on peer close.
+
+The lineage:
+
+- **Install.** The lineage head's install (`psram-default-install`
+  attempt-002, `2bff1004`/`9783dc74`).
+- **Previous Start.** Share-current-001 (result `0227a65e…`, seal
+  `2d0d31b9…`): boot 319, ledger next 31, last 30, 3,900,000 ms.
+- **Phase A: restart008.** `restart-config.mjs` names share-current-001 as
+  the parent and the line `Renewal current image restart hardware: enabled.`
+  Expected boot 319 to 320, ledger and budget unchanged.
+- **Phase B: renew-current-001.** The line
+  `Renewal current image hardware: enabled.` and a pinned restart008 admit
+  one Start at ordinal 31. Expected after ledger next 32, last 31,
+  4,080,000 ms. At most the two signed renewals may execute.
+
+Every prohibition, stop condition and non-claim below applies.
+
 ## Prohibited
 
 - an external pool or pool credentials, Wi-Fi provisioning, or any firmware

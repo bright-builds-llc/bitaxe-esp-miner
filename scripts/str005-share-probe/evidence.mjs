@@ -4,7 +4,7 @@ import { normalStopVerified } from '../str005-startup-probe/normal-stop.mjs';
 import { check, object, digest } from '../str005-v2-serial/values.mjs';
 export function validateRun(value) {
   object(value, ['firstFailure', 'observedStart', 'startInvokedAt', 'startRepliedAt', 'stopRequestedAt', 'proof']);
-  check([null, 'prepare', 'start', 'share'].includes(value.firstFailure) && typeof value.observedStart === 'boolean', 'share_run_shape');
+  check([null, 'prepare', 'start', 'share', 'renewal'].includes(value.firstFailure) && typeof value.observedStart === 'boolean', 'share_run_shape');
   for (const key of ['startInvokedAt', 'startRepliedAt', 'stopRequestedAt']) check(value[key] === null || Number.isFinite(value[key]) && value[key] >= 0, 'share_run_clock');
   if (value.proof) {
     object(value.proof, ['generation', 'selectionSha256', 'renewalsConfirmed']); digest(value.proof.selectionSha256);
@@ -30,6 +30,9 @@ export function judge(parts, context) {
     blockers.push('share_charge_completion_unproven');
   const actualRenewals = recovery.state?.renewalsConfirmed;
   if (!Number.isInteger(actualRenewals) || actualRenewals < (run?.proof?.renewalsConfirmed ?? 0) || actualRenewals > 2) blockers.push('share_renewal_count_unproven');
+  const minimumRenewals = context.minimum_renewals ?? 0;
+  if (minimumRenewals > 0 && (!Number.isInteger(actualRenewals) || actualRenewals < minimumRenewals ||
+    (run?.proof?.renewalsConfirmed ?? 0) < minimumRenewals)) blockers.push('share_renewal_minimum_unproven');
   const generation = run?.proof?.generation;
   if (!generation || !normalStopVerified(recovery.status?.record, recovery.state, generation)) blockers.push('share_normal_stop_unproven');
   if (!generation || recovery.state?.authorizationRecovery?.matched !== true || recovery.state.authorizationRecovery.generation !== generation)
