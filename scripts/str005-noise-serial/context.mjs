@@ -154,6 +154,18 @@ export const PROFILES = Object.freeze({
     successor: { path: PSRAM_DEFAULT_SUCCESSOR_PATH, sha256: PSRAM_DEFAULT_SUCCESSOR_SHA256 },
     publication: "docs/parity/evidence/psram-default-install",
     inspect: inspectHeapDiagnosticRecoveryPredecessor, ledger: { next_ordinal: 29, last_ordinal: 28, total_charged_ms: 3540000 },
+    // Attempt-001 installed and verified four cycles, then its fixture exited before listening: the random
+    // attempt id began with "-" and the fixture's parser read it as a flag. The fixture argv now joins it.
+    continuations: Object.freeze({
+      2: { attempt: "attempt-001", resultSha256: "25faa4ef7f09c8ebe7110297d1ae45d62788e5914657bab0914843a5eedf95a0",
+        inventorySha256: "58a174abcbb835ba0fe157073ad9ec29858ba20a5e1b84b04e1192ea0e40dab4",
+        remediation: "fixture_attempt_id_joined_to_its_flag",
+        installed: { firmware_commit: "92f58abb2b71e1946c92f3a9e227d3613c2cbd32",
+          app_elf_sha256: "5ea7fa56b5dfc76a7513a08911e59e85f428e9fda260fd7e3dca2acff42c03aa",
+          evidence: { "install-0.claim.json": "eada3f4b131e75ca32ddc7daeb35db8fba7bde16c305b6035fed7bd9e5734d29",
+            "install-0.exit.json": "0ef49596f0b57faff659d3a6b1a902b6c83a52740d03077e9f713656d4d01e61",
+            "install-0/flash-command-evidence.json": "616206350b8914bbfe5f42a318cbcd5ca26faa335dba16cdfa7a0556e7d9b6e4" } } },
+    }),
     admits: (previous) => previous.basis === "heap_diagnostic_current_recovery" && previous.cleanup_confirmed === true &&
       previous.last_ordinal === 28 },
 });

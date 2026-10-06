@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { fileDigest } from "../fixed-usb-qualification/contract.mjs";
 import { processSnapshot } from "./host-resources.mjs";
-import { startFixture } from "./fixture-owner.mjs";
+import { fixtureArguments, startFixture } from "./fixture-owner.mjs";
 import { nodeRuntimeEnvironment } from "./node-runtime.mjs";
 
 for (const mode of ["owner-write-failure", "bad-ready"]) test(`real TERM-ignoring child is reaped after ${mode}`, async (t) => {
@@ -39,4 +39,15 @@ for (const mode of ["owner-write-failure", "bad-ready"]) test(`real TERM-ignorin
   assert.equal(child.signalCode, "SIGKILL");
   assert.throws(() => process.kill(child.pid, 0), { code: "ESRCH" });
   assert.equal(failures[0], mode === "owner-write-failure" ? "noise_owner_write_failed" : "noise_object_shape");
+});
+
+test("an attempt id that begins with a dash is passed joined, never as a separate argument", () => {
+  // Arrange
+  const attemptId = "-ABCDEFGHIJKLMNOPQRSTU";
+  // Act
+  const args = fixtureArguments("/private/fixture-run", "192.168.1.20", "192.168.1.10", attemptId);
+  // Assert
+  assert.equal(args.filter((arg) => arg.startsWith("--attempt-id")).length, 1);
+  assert.ok(args.includes(`--attempt-id=${attemptId}`));
+  assert.equal(args.includes(attemptId), false);
 });

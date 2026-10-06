@@ -4566,6 +4566,15 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       largest block 1,536 bytes).
 - [ ] Candidate Phase A: `psram-default-install` from recovery019
       ([PSRAM-first amendment](docs/hardware/str005-psram-default-allocation-amendment.md)).
+      Attempt-001 (`92f58abb`, ELF `5ea7fa56…`, both audits passed):
+      five installs and four verified cycles passed, then the Noise
+      exchange stopped with `noise_fixture_failed`. The host fixture
+      exited with code 2 before listening, because the random attempt id
+      began with `-` and its argument parser read it as a flag. No Start;
+      host released; sealed `unverified` (result `25faa4ef…`). Fix: the
+      owner passes `--attempt-id=<id>`; regressions on the real fixture
+      parser and on the argv. Attempt-002 continues from attempt-001's
+      verified install.
 - [ ] Phase B: 1,200 s idle capture keeps at least 16,384 free bytes and
       an 8,192-byte largest block in every sample.
 - [ ] Phase C: heartbeat010 at ordinal 29 (after ledger 30/29/3,720,000 ms).

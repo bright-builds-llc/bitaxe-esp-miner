@@ -475,3 +475,42 @@ fn native_shared_diagnostic_rejects_the_wrong_fixture_authority_without_proof() 
     assert_eq!(fixture.proof_bytes_received, 0);
     assert!(!fixture.encrypted_proof_exact);
 }
+
+#[test]
+fn attempt_id_with_a_leading_dash_parses_only_when_joined() {
+    // Arrange
+    use clap::Parser;
+    let base = [
+        "fixture",
+        "--mode",
+        "noise-serial",
+        "--private-root",
+        "/missing/root",
+        "--listen-address",
+        "192.168.1.2:0",
+        "--expected-peer-address",
+        "192.168.1.3",
+        "--accept-timeout-seconds",
+        "120",
+        "--read-timeout-seconds",
+        "10",
+        "--lifetime-seconds",
+        "150",
+    ];
+    let id = "-QEBAQEBAQEBAQEBAQEBAQ";
+
+    // Act
+    let separate = Args::try_parse_from(base.into_iter().chain(["--attempt-id", id]));
+    let joined_flag = format!("--attempt-id={id}");
+    let joined = Args::try_parse_from(base.into_iter().chain([joined_flag.as_str()]));
+
+    // Assert
+    assert!(separate.is_err());
+    assert_eq!(
+        joined
+            .expect("joined attempt id parses")
+            .attempt_id
+            .as_deref(),
+        Some(id)
+    );
+}

@@ -21,15 +21,20 @@ export function selectInterface(station, interfaces = networkInterfaces()) {
   return candidates[0];
 }
 const delay = (ms) => new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
+/** The fixture's argv. Attempt ids are random base64url and may begin with "-", which the fixture's parser
+ * would read as a flag (psram-default-install attempt-001), so the id is always joined with "=". */
+export function fixtureArguments(path, address, station, attemptId) {
+  return ["--mode", "noise-serial", "--private-root", path, "--listen-address", `${address}:0`,
+    "--expected-peer-address", station, `--attempt-id=${attemptId}`,
+    "--accept-timeout-seconds", "120", "--read-timeout-seconds", "10", "--lifetime-seconds", "150"];
+}
 /** Own exactly one canonical child; persist closed output classifications only. */
 export async function startFixture(root, context, station, fail, operations = {}) {
   const selected = selectInterface(station, (operations.networkInterfaces ?? networkInterfaces)());
   const path = resolve(root, "fixture-run"); await missing(path);
   check(await fileDigest(context.fixture_binary) === context.fixture_sha256, "noise_fixture_changed");
   const began = (operations.now ?? (() => Math.floor(performance.now())))();
-  const args = ["--mode", "noise-serial", "--private-root", path, "--listen-address", `${selected.address}:0`,
-    "--expected-peer-address", station, "--attempt-id", context.attempt_id,
-    "--accept-timeout-seconds", "120", "--read-timeout-seconds", "10", "--lifetime-seconds", "150"];
+  const args = fixtureArguments(path, selected.address, station, context.attempt_id);
   await writeNew(resolve(root, "fixture-start.claim.json"), { schema: "noise-serial-fixture-claim-v2", contextSha256: digest(JSON.stringify(context)),
     binarySha256: context.fixture_sha256, atHostMs: began, selected, station });
   const child = (operations.spawn ?? spawn)(context.fixture_binary, args, {
