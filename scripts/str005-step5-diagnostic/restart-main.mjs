@@ -16,7 +16,7 @@ import { conclusion, restartEvidence, STAGES, FRESH_MS } from '../str005-startup
 import { RESTART } from './restart-config.mjs';
 import { startGeneration } from './lineage.mjs';
 /** One no-mining qualification restart that clears the previous Start's retained V2 record. */
-export const ENABLED = false;
+export const ENABLED = true;
 const TASK = RESTART.task, CONTRACT = RESTART.contract;
 const ENABLED_LINE = RESTART.enabledLine;
 // The origin that holds the Ultra 205 Web Serial grant.
@@ -49,7 +49,8 @@ async function parents(roots) {
   const start = (await proof(roots.start, 'context.json')).value, before = (await proof(roots.start, 'before.json')).value;
   const run = (await proof(roots.start, 'run.json')).value, recovered = await parts(roots.start,
     ['recovery-1-ledger', 'recovery-1-original_budget', 'recovery-1-status']);
-  const status = recovered['recovery-1-status'], boot = status?.observation?.bootOrdinal, generation = startGeneration(run);
+  const maybeEarlier = run.proof || run.dispatchStatus ? null : (await parts(roots.start, ['recovery-0-status']))['recovery-0-status'] ?? null;
+  const status = recovered['recovery-1-status'], boot = status?.observation?.bootOrdinal, generation = startGeneration(run, maybeEarlier);
   check(run.observedStart === true && Number.isSafeInteger(generation) && status?.state === 'terminal' &&
     status.record?.attemptId === before.attempt.id && status.record.workerGeneration === generation &&
     recovered['recovery-1-ledger']?.pending === false && Number.isSafeInteger(boot), 'preparation_parent_binding');

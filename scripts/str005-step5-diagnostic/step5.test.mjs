@@ -127,6 +127,16 @@ test('a rerun after a restart needs that restart pinned', async () => {
   await assert.rejects(restartAfter('/nonexistent', {}, { restartResult: null, restartSeal: null }), /step5_restart_unpinned/u);
 });
 
+test('a proofless share run takes its generation only from its in-run status read after an observed Start', () => {
+  // Arrange
+  const earlier = { record: { workerGeneration: 3 } };
+  // Act
+  const generations = [startGeneration({ observedStart: true, proof: null }, earlier),
+    startGeneration({ observedStart: false, proof: null }, earlier), startGeneration({ observedStart: true, proof: null })];
+  // Assert
+  assert.deepEqual(generations, [3, undefined, undefined]);
+});
+
 test('a restart parent takes its generation from a diagnostic proof or a heartbeat dispatch record', () => {
   // Arrange
   const diagnostic = { proof: { generation: 3 } }, heartbeat = { dispatchStatus: { record: { workerGeneration: 6 } } };

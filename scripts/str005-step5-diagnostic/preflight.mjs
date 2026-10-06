@@ -68,6 +68,7 @@ export async function preflight(repo, root, options, source, operations = {}, pr
   const context = { schema: profile.schema, admission: profile.admission, source_commit: source.commit, contractSha256: source.contractSha256,
     // Only a renewal probe's context carries a minimum; every other profile's context is unchanged.
     ...(profile.minimumRenewals ? { minimum_renewals: profile.minimumRenewals } : {}),
+    ...(profile.observeWindowMs ? { observe_window_ms: profile.observeWindowMs } : {}),
     ...installed.identity, firmware_root: repo, gate_root: gateRoot, before_source: installed.identity, scope: 'share',
     attemptId: nonce(), expectedBootOrdinal: current?.expectedBootOrdinal ?? installed.expectedBootOrdinal,
     expectedLedger: current?.ledger ?? installed.ledger,

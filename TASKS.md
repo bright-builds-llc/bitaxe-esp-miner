@@ -4382,6 +4382,43 @@ from context rejection, and that seam is outside the standing authorization.
 
 Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md) proves real shares/renewal and foreground/heartbeat safe-stop on the exact fixed-USB pair. This broader task remains open: its Pause, independent expiry, USB-only disconnect, reboot/uncertain-time, negative authorization and credential-absence matrix still requires its own complete successor contract and evidence.
 
+### task-str005-renewal-window-current-image | 2026-10-05 | Prove a share and a renewal in one run on the final candidate
+
+Status: Active. Owner-requested 2026-10-05 ("write the longer-window
+probe"). Follows the archived `task-str005-renewal-current-image`, whose
+renew-current-001 confirmed two renewals but sealed `unverified` with no
+share in 45 s.
+Objective: one bounded renewal probe on `2bff1004` with an 80-second window
+that passes every share-probe criterion plus at least one renewal.
+Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendment.md),
+"Longer-window renewal re-run".
+
+- [x] Software: the renewal context carries `observe_window_ms: 80000`;
+      the judge's Stop bound uses it (default 45 s elsewhere); the owner
+      refuses a context whose window differs from its contract; the
+      renewal page's constants are tested against the contract. A
+      proofless share run supplies its generation to the restart owner
+      from its in-run status read. Regressions cover each.
+- [ ] restart009: preflight with renew-current-001 as `--start-root`,
+      recovery stage, restart stage, finish. Expected boot 320 to 321,
+      ledger 32/31/4,080,000 ms unchanged. Then pin it and enable the
+      probe line.
+- [ ] renew-current-002: detector, preflight, serve, baseline and
+      candidate, startup detector, Run, fresh recovery, release, final
+      detector, finish. Expected after ledger 33/32/4,260,000 ms.
+- [ ] Record, `just str005-lineage record-start`, publish redacted evidence,
+      update the integration review, disable both lines, archive.
+
+Stop on any detector failure, an identity, boot or ledger drift, a lost or
+ambiguous Start (never resend), a panic or unproven cleanup. Effects and
+prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
+firmware write. Retries need a regression-backed change, a fresh ordinal
+and a new restart.
+Renewal window restart hardware: enabled.
+Renewal window hardware: disabled.
+
+Verification: pending. Completion review: pending.
+
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
 Status: Active 2026-10-05; awaiting owner decisions. Map, impact review,

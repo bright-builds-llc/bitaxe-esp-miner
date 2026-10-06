@@ -19,7 +19,8 @@ export function judge(parts, context) {
   if (!run?.observedStart || !run.proof || run.firstFailure !== null) blockers.push('share_start_or_ack_unproven');
   if (!run || run.startInvokedAt === null || run.startRepliedAt === null || run.stopRequestedAt === null ||
     run.startRepliedAt < run.startInvokedAt || run.startRepliedAt - run.startInvokedAt > 30000 ||
-    run.stopRequestedAt < run.startRepliedAt || run.stopRequestedAt - run.startRepliedAt > 45000) blockers.push('share_stop_request_bound_unproven');
+    run.stopRequestedAt < run.startRepliedAt || run.stopRequestedAt - run.startRepliedAt > (context.observe_window_ms ?? 45000))
+    blockers.push('share_stop_request_bound_unproven');
   if (before) { validateLedger(before.ledger); requireExhaustedOriginal(before.original_budget); }
   else blockers.push('share_before_missing');
   const recovery = parts.recovery ?? {};

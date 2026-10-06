@@ -40,9 +40,11 @@ export async function installation(root, pins = PINS) {
     retainedManifestSha256: await fileDigest(retainedManifest) };
 }
 
-/** The Start's Worker generation: diagnostic and share runs keep a proof; heartbeat runs keep the dispatch record. */
-export function startGeneration(run) {
-  return run.proof?.generation ?? run.dispatchStatus?.record?.workerGeneration;
+/** The Start's Worker generation: diagnostic and share runs keep a proof; heartbeat runs keep the dispatch record. A
+ * share run that ended without a share keeps neither, so its in-run status read of the record supplies it. */
+export function startGeneration(run, maybeEarlierStatus = null) {
+  return run.proof?.generation ?? run.dispatchStatus?.record?.workerGeneration ??
+    (run.observedStart === true ? maybeEarlierStatus?.record?.workerGeneration : undefined);
 }
 
 /** Current safe facts after a sealed earlier Start on the same install: its fresh recovery

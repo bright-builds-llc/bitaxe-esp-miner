@@ -37,3 +37,14 @@ test('a renewal context is served the renewal page; a plain share context keeps 
   assert.equal(pageClientFor({ minimum_renewals: 1 }), 'scripts/str005-share-probe/renewal-page.mjs');
   assert.equal(pageClientFor({}), 'scripts/str005-share-probe/page.mjs');
 });
+
+test('the renewal page uses the contract minimum and observation window', async () => {
+  // Arrange
+  const { readFile } = await import('node:fs/promises');
+  const { MINIMUM_RENEWALS, OBSERVE_WINDOW_MS } = await import('./contract.mjs');
+  // Act
+  const page = await readFile(new URL('../str005-share-probe/renewal-page.mjs', import.meta.url), 'utf8');
+  // Assert
+  assert.ok(page.includes(`minRenewals: ${MINIMUM_RENEWALS}`));
+  assert.ok(page.includes(`observeMs: ${OBSERVE_WINDOW_MS}`));
+});

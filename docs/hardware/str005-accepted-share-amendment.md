@@ -155,6 +155,41 @@ The lineage:
 
 Every prohibition, stop condition and non-claim below applies.
 
+## Longer-window renewal re-run
+
+Renew-current-001 confirmed two renewals, but no qualifying share arrived
+in its 45-second window, so it sealed `unverified`
+(`task-str005-renewal-window-current-image`). The regression-backed change
+is the window:
+
+- **Window.** The renewal probe's context carries `observe_window_ms:
+80000`. The page's independent timer requests Stop no later than 80 s
+  after the Start reply, and the judge's Stop bound uses the same value.
+  Other profiles keep 45 s.
+- **Lease margin.** Each renewal sets the lease to expire 60 s after it.
+  The Gate's two signed renewals ran at about 30 s and 51 s of generation
+  time, so the lease lasts until about 100 s after the reply, about 20 s
+  beyond the window. A run without a qualifying share in 80 s is about a
+  1% outcome at the observed nonce rate.
+- **Stop rule and judge.** Unchanged: Stop follows the joined
+  acknowledgement and one confirmed renewal; a pass needs at least one
+  renewal in both the run proof and the recovered state.
+
+The lineage:
+
+- **Previous Start.** Renew-current-001 (result `81ae7513…`, seal
+  `998da7e2…`): boot 320, ledger next 32, last 31, 4,080,000 ms. It has no
+  run proof, so its Worker generation comes from its in-run status read of
+  the same record.
+- **Phase A: restart009.** `restart-config.mjs` names renew-current-001 and
+  the line `Renewal window restart hardware: enabled.` Expected boot 320 to
+  321, ledger and budget unchanged.
+- **Phase B: renew-current-002.** The line `Renewal window hardware:
+enabled.` and a pinned restart009 admit one Start at ordinal 32.
+  Expected after ledger next 33, last 32, 4,260,000 ms.
+
+Every prohibition, stop condition and non-claim below applies.
+
 ## Prohibited
 
 - an external pool or pool credentials, Wi-Fi provisioning, or any firmware

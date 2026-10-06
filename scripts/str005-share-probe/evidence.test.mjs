@@ -67,3 +67,15 @@ test('a renewal probe needs the required renewal in both the run proof and the r
   assert.ok(withoutRenewal.blockers.includes('share_renewal_minimum_unproven'));
   assert.deepEqual([withRenewal.complete, withRenewal.renewals_confirmed], [true, 1]);
 });
+
+test('the Stop bound follows the context window and defaults to 45 seconds', () => {
+  // Arrange
+  const late = fixture();
+  late.parts.run.stopRequestedAt = late.parts.run.startRepliedAt + 60000;
+  // Act
+  const defaultWindow = judge(late.parts, late.context);
+  const longWindow = judge(late.parts, { ...late.context, observe_window_ms: 80000 });
+  // Assert
+  assert.ok(defaultWindow.blockers.includes('share_stop_request_bound_unproven'));
+  assert.equal(longWindow.blockers.includes('share_stop_request_bound_unproven'), false);
+});
