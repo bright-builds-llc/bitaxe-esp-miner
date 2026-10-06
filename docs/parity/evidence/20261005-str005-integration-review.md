@@ -124,9 +124,10 @@ history. Must stay private: Channel006, every failed or unverified raw root
    `task-str005-failure-recovery-accounting` is complete and archived on what
    it measured; nothing about Share002's pre-reset resource release is
    claimed.
-3. **Evidence class.** Promotion would add `hardware-regression`, but the
-   evidence is one run per checkpoint, on one board, against a local
-   fixture. Whether that meets the class is an owner decision.
+3. **Evidence class.** Resolved 2026-10-06: the owner accepted one run per
+   checkpoint, on one board, against a local fixture, as qualifying for
+   `hardware-regression` on the STR-005 row. Pool, sustained-mining and
+   multi-board claims stay non-claims.
 4. **Negative-test and native-coverage audit.** ADR-0029 requires an
    inventory of the negative tests and native resource checks behind each
    probe; it is not done yet.

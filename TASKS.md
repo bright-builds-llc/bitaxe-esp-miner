@@ -4423,10 +4423,11 @@ Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
       renewal acknowledgement" should read "matched renewal reply".
 - [ ] Owner decisions before promotion (see the review's "Promotion
       blockers"). Resolved 2026-10-05: renewal coverage (renew-current-002
-      complete under an 80-second window) and Share002 (permanent non-claim,
-      ADR-0032). Open: whether single-run, single-board, local-fixture
-      evidence meets `hardware-regression`. Then the negative-test and
-      native-coverage inventory.
+      complete under an 80-second window), Share002 (permanent non-claim,
+      ADR-0032) and, 2026-10-06, the evidence class: the owner accepted
+      single-run, single-board, local-fixture evidence as qualifying for
+      `hardware-regression`.
+- [ ] Negative-test and native-coverage inventory (ADR-0029).
 
 Evidence: all named successors, private Channel006 and sealed Share002, and
 [failed successor report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md).
