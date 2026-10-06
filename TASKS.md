@@ -4585,7 +4585,12 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       minimum 52,011 bytes, a constant 251 allocated blocks (the diagnosis
       image idled at 2.6–11.5 KB free, a 1,792-byte largest block and
       1,039–1,236 fluctuating blocks).
-- [ ] Phase C: heartbeat010 at ordinal 29 (after ledger 30/29/3,720,000 ms).
+- [x] Phase C: heartbeat010 at ordinal 29: `heartbeat_timeout`, gate
+      closed 2,808 ms and shutdown started 2,813 ms after the last
+      heartbeat, safe stop complete, ledger 30/29/3,720,000 ms, no
+      recovery errors; internal heap during recovery 52,743 bytes free
+      (largest 31,744). Sealed `complete=true`; the lineage's latest
+      Start.
 - [ ] Phase D: three 1,200 s post-shutdown captures meet the same minimums.
 - [ ] Phase E: hand the candidate to the share check and integration review.
 
@@ -4598,7 +4603,7 @@ Internal heap diagnostic install hardware: disabled.
 Heartbeat heap diagnosis hardware: disabled.
 Heap-loss core-dump acquisition: disabled.
 PSRAM default install hardware: disabled.
-Heartbeat PSRAM candidate hardware: enabled.
+Heartbeat PSRAM candidate hardware: disabled.
 
 Verification: pending. Completion review: pending.
 
