@@ -85,7 +85,116 @@ plan's WORKLOG for gates and residual risks. The recovery page and
 `release.json` needed no change: the page already posts to the route.
 
 Verification: software gates pass; hardware evidence pending.
-Completion review: pending. Next safe action: write the hardware contract.
+Completion review: pending. Next safe action: complete the software
+prerequisites in `task-parity-ota002-www-hardware-verification`.
+
+### task-parity-ota002-www-hardware-verification | 2026-10-06 | Verify live OTAWWW update and interrupted-update recovery
+
+Status: Draft contract. Not effect-eligible until every software item below is
+committed, verified and pushed, an immutable work plan binds the exact command,
+and a fresh ordinal is recorded here. Parent:
+`task-parity-ota002-www-partition-update`.
+
+Objective: promote `OTA-002` to `verified` with `hardware-regression` evidence
+covering one complete OTAWWW update, one `interrupted-update`, and recovery, on
+one detector-admitted Ultra 205, with NVS and firmware unchanged throughout.
+
+Why a new command: the REL-002 wrapper (`just capture-sdkconfig-rollback-evidence`,
+`tools/automation/src/interrupted-upload.ts`) is hard-wired to
+`/api/system/OTA`, and its install step passes `--wifi-credentials` without a
+factory reset, which ordinary installs now reject. `device-session ota-live`
+also assumes the firmware route and a reboot.
+
+Software prerequisites:
+
+- [ ] `www_probe_image` Bazel target: the package's `www.bin` inputs with a
+      distinct canonical `version.txt` label (at most 22 bytes of
+      `[a-z0-9-]`), exactly `0x300000` bytes, with its digest in a probe
+      manifest. A same-image upload cannot prove the partition changed.
+- [ ] Parameterize the interruption helper by route, keeping reset-before-FIN
+      semantics. The firmware erases the whole partition before reading the
+      body, so a small prefix followed by a reset deterministically yields an
+      erased partition and a retained `www_update_status=Protocol Error`.
+- [ ] `just capture-otawww-evidence` supervisor with `--private-root`,
+      `--package-manifest`, `--www-probe-manifest`, `--detector-output`,
+      `--projection` and `--capture-timeout-seconds`; refuses an existing
+      root, a non-exact package or probe, `--wifi-credentials` and
+      `--factory-reset`.
+- [ ] Closed `bitaxe-otawww-evidence-v1` projection and validator (digests,
+      booleans, counts and categories only), covered by `just verify-redaction`.
+- [ ] Host tests with fake device and transport for every terminal category,
+      the earliest-failure precedence and cleanup; no hardware.
+
+Preconditions for the attempt: clean pushed HEAD containing the OTA-002
+implementation; pinned reference clean; exact `just package` manifest and probe
+manifest; the dedicated Gate tab at `about:blank` so the serial port is
+released; station Wi-Fi already stored in NVS (none is supplied); mining
+disabled; absent `wrapper-NNN`, `attempt-NNN` and projection paths.
+
+Authorized hardware command (fill NNN with the recorded ordinal):
+
+1. `test ! -e scratch/ota002-otawww/wrapper-NNN && (umask 077; mkdir -m 700 -p scratch/ota002-otawww/wrapper-NNN && just detect-ultra205 > scratch/ota002-otawww/wrapper-NNN/detector.stdout 2> scratch/ota002-otawww/wrapper-NNN/detector.stderr)`
+2. Only if step 1 admits exactly one Ultra 205:
+   `test ! -e scratch/ota002-otawww/attempt-NNN && (umask 077; just capture-otawww-evidence --private-root scratch/ota002-otawww/attempt-NNN --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --www-probe-manifest <probe manifest> --detector-output scratch/ota002-otawww/wrapper-NNN/detector.stdout --projection docs/parity/evidence/ota002-otawww/otawww-projection.json --capture-timeout-seconds 420 > scratch/ota002-otawww/wrapper-NNN/capture.stdout 2> scratch/ota002-otawww/wrapper-NNN/capture.stderr)`
+
+Sequence inside the supervisor:
+
+1. One state-preserving exact-package install (`just flash` semantics, no
+   factory reset) with a receive-only capture; take the device URL only from
+   that session's `runtime_origin` line. No discovery of any kind.
+2. Baseline: exact build identity, mining disabled, settings and hostname
+   digests, `axeOSVersion` equal to the package label.
+3. Complete OTAWWW of the probe image: `WWW update complete`, retained
+   `www_update_status=Finished...`; one HTTP restart proven by
+   `device-session reboot-live`; `axeOSVersion` equals the probe label and
+   served `version.txt` and asset digests match the probe inputs.
+4. Interrupted OTAWWW of the package image: reset before FIN; same boot
+   session, retained `Protocol Error`, firmware unchanged; one proven restart;
+   static assets unavailable, `axeOSVersion` unavailable, `/recovery` served.
+5. Recovery: one complete OTAWWW of the package image (the route the
+   `/recovery` page uses); one proven restart; `axeOSVersion` equals the
+   package label, served digests match, and build, settings and hostname
+   digests equal the baseline.
+
+Allowed effects: the one install above; receive-only USB; same-origin HTTP
+`GET` of system info, logs and static files; exactly three OTAWWW requests
+(complete, interrupted, recovery); at most three single-POST restarts. If
+step 5 fails, at most one ordinary exact-package `just flash`, which rewrites
+`www` without touching NVS, as fallback recovery that never counts as success.
+
+Prohibited effects: factory reset, `--wifi-credentials`, NVS seeding or erase;
+`/api/system/OTA`, erase-flash, raw writes, and bootloader or partition-table
+changes outside the package install; writes to any partition except `www`
+after the install; mining, pool, ASIC, voltage, frequency, fan, thermal or
+power control; mDNS, ARP, router or subnet discovery; direct UART, pins or
+power interruption; a second capture under the same ordinal.
+
+Evidence and privacy: ignored mode-0700 roots with mode-0600 files, per
+`docs/parity/evidence-policy.md`. Origins, IP addresses, hostnames, USB
+identities, HTTP bodies, logs and image bytes stay private. Only the closed
+redacted projection is committed, after `just verify-redaction` and an
+independent review.
+
+Recovery, retry and stop: a detector failure stops before any write. Keep the
+earliest typed category through recovery and cleanup. Any capture start
+consumes the ordinal. Continue only under `docs/hardware/hardware-attempt-policy.md`
+with a fresh ordinal and verified progress; the same `(category, stage)`
+recurring after its targeted fix selects `stop_repeated_boundary`. Missing
+station-address evidence stops as `origin_unavailable`; it is never a reason
+to start discovery.
+
+Terminal categories: `complete`, `package_invalid`, `process_failed`,
+`timeout`, `hardware_blocked`, `evidence_invalid`, `origin_unavailable`,
+`update_not_observed`, `asset_identity_mismatch`,
+`interruption_not_observed`, `recovery_not_observed`, `nvs_not_preserved`,
+`recovery_failed`.
+
+Acceptance: every step's postcondition holds, cleanup and modes pass, and an
+independent reviewer re-derives the projection before `OTA-002` moves to
+`verified` with evidence `hardware-regression` and notes naming the
+`interrupted-update` case.
+
+Verification: pending. Completion review: pending.
 
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
 
