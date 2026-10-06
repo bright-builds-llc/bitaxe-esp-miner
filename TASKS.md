@@ -4491,45 +4491,6 @@ socket/worker/fence release from current idle state or reconstruct missing proof
 Task remains blocked and unarchived; no Start/grants/mining/flash/replay occurred,
 no next mining ordinal is authorized, and parity remains 90/95.
 
-### task-str005-renewal-current-image | 2026-10-05 | Exercise the Renew path on the final candidate
-
-Status: Active. Owner-requested 2026-10-05 ("write the renewal probe, then
-do the independent review"). Closes the integration review's renewal gap:
-share-current-001 confirmed 0 renewals on `2bff1004`.
-Objective: one bounded accepted-share Start on the lineage head's image that
-holds its generation until the Gate confirms one renewal, then stops
-normally and passes every share-probe judge criterion plus the minimum.
-Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendment.md),
-"Renewal re-run".
-
-- [x] Software: the share coordinator takes `minRenewals` and waits after
-      the acknowledgement under the same live checks, failing in a
-      `renewal` phase at the deadline; the judge enforces the context's
-      `minimum_renewals` against the run proof and the recovered state; the
-      owner serves `renewal-page.mjs` for a renewal context and refuses a
-      context whose minimum differs from its contract. Regressions cover
-      the wait, the deadline failure, the judge and the page selection.
-- [x] restart008: recovery stage read share-current-001's record, then one
-      software restart took boot 319 to 320 with the ledger
-      (31/30/3,900,000 ms) and budget unchanged; no failures. Result
-      `003683ef…`, seal `764cbaa7…`; pinned, renewal line enabled.
-- [ ] renew-current-001: detector, preflight, serve, baseline and
-      candidate, startup detector, Run, fresh recovery, release, final
-      detector, finish. Expected after ledger 32/31/4,080,000 ms and at
-      least one confirmed renewal.
-- [ ] Record, `just str005-lineage record-start`, publish redacted evidence,
-      update the integration review, disable both lines, archive.
-
-Stop on any detector failure, an identity, boot or ledger drift, a lost or
-ambiguous Start (never resend), a panic or unproven cleanup. Effects and
-prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
-firmware write. Retries need a regression-backed fix, a fresh ordinal and a
-new restart.
-Renewal current image restart hardware: disabled.
-Renewal current image hardware: enabled.
-
-Verification: pending. Completion review: pending.
-
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
 Status: Active 2026-10-05. Map, impact review and the current-candidate share

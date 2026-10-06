@@ -30,6 +30,19 @@ test('a share run binds by its proven generation when it keeps no dispatch recor
   assert.throws(() => deviceRecordAttemptId({ ...share(3), run: {} }), /start_record_attempt_mismatch/u);
 });
 
+test('a share run without a share binds through its in-run status read of the same record', () => {
+  // Arrange
+  const status = (id, generation) => ({ state: 'terminal', record: { ...record(id), workerGeneration: generation } });
+  const unshared = (earlier, observedStart = true) => ({ before: { attempt: { id: 'device-attempt' } }, run: { observedStart, proof: null },
+    recoveryStatus: status('device-attempt', 3), maybeEarlierStatus: earlier });
+  // Act / Assert
+  assert.equal(deviceRecordAttemptId(unshared(status('device-attempt', 3))), 'device-attempt');
+  assert.throws(() => deviceRecordAttemptId(unshared(status('device-attempt', 4))), /start_record_attempt_mismatch/u);
+  assert.throws(() => deviceRecordAttemptId(unshared(status('other', 3))), /start_record_attempt_mismatch/u);
+  assert.throws(() => deviceRecordAttemptId(unshared(status('device-attempt', 3), false)), /start_record_attempt_mismatch/u);
+  assert.throws(() => deviceRecordAttemptId(unshared(null)), /start_record_attempt_mismatch/u);
+});
+
 test('a Start without a retained terminal record is refused', () => {
   // Arrange
   const idle = { ...evidence('device-attempt'), recoveryStatus: { state: 'idle', record: null } };

@@ -22879,3 +22879,57 @@ candidate. Restart005 found a recovery-page bug and restart006 found the
 internal-heap exhaustion; both are fixed with regressions. Residual risk:
 the Renew path is unexercised on this image (0 renewals); one generation on
 a local fixture only.
+
+### task-str005-renewal-current-image | 2026-10-05 | Exercise the Renew path on the final candidate
+
+Status: Closed 2026-10-05; archived. Owner-requested 2026-10-05 ("write the
+renewal probe, then do the independent review"). Closes the integration review's renewal gap:
+share-current-001 confirmed 0 renewals on `2bff1004`.
+Objective: one bounded accepted-share Start on the lineage head's image that
+holds its generation until the Gate confirms one renewal, then stops
+normally and passes every share-probe judge criterion plus the minimum.
+Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendment.md),
+"Renewal re-run".
+
+- [x] Software: the share coordinator takes `minRenewals` and waits after
+      the acknowledgement under the same live checks, failing in a
+      `renewal` phase at the deadline; the judge enforces the context's
+      `minimum_renewals` against the run proof and the recovered state; the
+      owner serves `renewal-page.mjs` for a renewal context and refuses a
+      context whose minimum differs from its contract. Regressions cover
+      the wait, the deadline failure, the judge and the page selection.
+- [x] restart008: recovery stage read share-current-001's record, then one
+      software restart took boot 319 to 320 with the ledger
+      (31/30/3,900,000 ms) and budget unchanged; no failures. Result
+      `003683ef…`, seal `764cbaa7…`; pinned, renewal line enabled.
+- [x] renew-current-001: detector, preflight, serve, baseline and
+      candidate, startup detector, Run, fresh recovery, release, final
+      detector, finish. Result: 2 renewals confirmed by validated device
+      acknowledgements, then no qualifying share before the 45 s deadline
+      (10 ASIC nonces, none at the 1024 target). Normal Stop, recovery
+      without failures, ledger 32/31/4,080,000 ms; sealed `unverified`,
+      first failure `share` (result `81ae7513…`, seal `998da7e2…`). No retry:
+      the contract forbids retrying a share timeout without a
+      regression-backed change.
+- [x] Record: `just str005-lineage record-start` (a proofless share run now
+      binds through its in-run status read of the same record, with a
+      regression), redacted evidence, integration review, both lines
+      disabled, archived.
+
+Stop on any detector failure, an identity, boot or ledger drift, a lost or
+ambiguous Start (never resend), a panic or unproven cleanup. Effects and
+prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
+firmware write. Retries need a regression-backed fix, a fresh ordinal and a
+new restart.
+Renewal current image restart hardware: disabled.
+Renewal current image hardware: disabled.
+
+Verification: [share and renewal evidence](docs/parity/evidence/20261005-str005-current-candidate-share.md).
+
+Completion review: the Renew path ran twice on `2bff1004`, which closes the
+integration review's renewal gap. The probe's own combined objective (a
+share and a renewal in one run) was not met: no qualifying share arrived in
+the window. The share is proven separately by share-current-001. Residual
+risk: the 45-second window makes a combined run a coin toss at this hash
+rate; a future combined proof needs a longer bounded window under its own
+contract.

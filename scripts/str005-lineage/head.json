@@ -12,8 +12,8 @@
     }
   },
   "latestStart": {
-    "path": "scratch/str005-accepted-share/share-current-001/attempt",
-    "result": "0227a65e35eb7e11778d39ec44dc2520d9e4e23f5772a45db77d498eae29fe00",
-    "seal": "2d0d31b9976acdd7d1374d4ad3b389fca140d3189d1b66eefa13144836869116"
+    "path": "scratch/str005-accepted-share/renew-current-001/attempt",
+    "result": "81ae7513e93a85c42c753a725356c0635176958203cdc63761a0fc26fc0fec89",
+    "seal": "998da7e265215bc5004b2d46f4824ca69936e70a780dbedd91c1986c96f8f91d"
   }
 }
