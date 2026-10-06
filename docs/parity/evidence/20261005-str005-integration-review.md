@@ -1,9 +1,12 @@
 # STR-005 integration review
 
-Status: blocked. The obligation map and change-impact review are complete.
-The candidate's restart before the share check found a new panic: idle
-internal heap is lost after a heartbeat-loss shutdown (see open item 1). Parity stays 90/95; any transition
-belongs to `task-str005-evidence-promotion`.
+Status: in progress. The obligation map and change-impact review are
+complete. The first candidate (`60e344e2`) failed: its restart before the
+share check found internal-heap exhaustion. The corrected PSRAM-first
+candidate (`2bff1004`) has passed install continuity, idle and
+post-shutdown headroom, and heartbeat-loss shutdown. One bounded
+accepted-share check remains. Parity stays 90/95; any transition belongs to
+`task-str005-evidence-promotion`.
 
 Policy: [ADR-0029](../../adr/0029-piecewise-str005-qualification.md), with
 prospective diagnostics under
@@ -14,88 +17,86 @@ STR-005 in [the parity checklist](../checklist.md), currently `implemented`.
 
 The candidate is the verified lineage head (`scripts/str005-lineage/head.json`):
 
-| Item     | Identity                                                              |
-| -------- | --------------------------------------------------------------------- |
-| Firmware | `60e344e21a89acab13c108311d315417c0704eba`                            |
-| App ELF  | `3f01a5f4dea1676b505ea686a58d16f1bd2122138556b7ac1a1bbb4c43f4ac3d`    |
-| Gate     | `86fc62d7a9d75da1affa2d51bc3b9eab41d86031`                            |
-| Fixture  | `66b6659b…` (the canonical V2 fixture, unchanged since Share001)      |
-| Install  | `usb-bbpll-install` attempt-001 (five installs, four verified cycles) |
+| Item     | Identity                                                                  |
+| -------- | ------------------------------------------------------------------------- |
+| Firmware | `2bff100442a7c5cbd4b806bdbbceff00f0c06a79`                                |
+| App ELF  | `9783dc74dfb369e633f9f3295021c34eefbd36fb50859a0d58a235447189b33a`        |
+| Gate     | `86fc62d7a9d75da1affa2d51bc3b9eab41d86031`                                |
+| Fixture  | The canonical stamped V2 fixture built from the same clean source         |
+| Install  | `psram-default-install` attempt-002 (five installs, four verified cycles) |
 
-The candidate keeps the diagnostic end-of-stack watchpoint and the
-per-command heap check. Every candidate result was measured with them, so
-removing them would be a new candidate and would reopen this review.
+The candidate keeps the diagnostic end-of-stack watchpoint, the
+per-command heap check and the idle `internal_heap_sample` line. Every
+candidate result was measured with them, so removing them would be a new
+candidate and would reopen this review.
 
 ## Obligations and covering results
 
-| Obligation                                      | Covering result on the candidate                                            | Older results (kept on their own identities)               |
-| ----------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Noise authentication, encrypted proof           | usb-bbpll-install attempt-001 (all 12 criteria true)                        | Noise-serial attempt-001 (`ad629679`)                      |
-| Channel and job dispatch over V2                | Heartbeat008 (`work_ready`, `asic_dispatch`, same generation)               | Share001 (`654338d0`), Channel006 (private)                |
-| Fresh admission, signed Start, charged ledger   | Heartbeat008 (ordinal 27, exactly +180,000 ms, not pending)                 | startup003, Share001, heartbeat007                         |
-| Heartbeat revocation, bounded shutdown, cooling | [Heartbeat008](20261004-str005-heartbeat-loss-shutdown.md) (2,803/2,814 ms) | heartbeat007 (`7ca3e29c`)                                  |
-| ASIC result, encrypted submission, device ACK   | **Pending: share-current-001**                                              | [Share001](20261003-str005-accepted-share.md) (`654338d0`) |
-| Renewal                                         | **Pending: share-current-001, only if a renewal is confirmed**              | Share001 (one renewal)                                     |
-| Worker-requested normal Stop while mining       | **Pending: share-current-001**                                              | startup003 (`361425b9`), Share001                          |
-| Restoration, settings and identity preservation | Heartbeat008 recovery; usb-bbpll-install attempt-001                        | installation005, every complete result                     |
-| Install/update continuity                       | usb-bbpll-install attempt-001; queue-workaround reinstall (`6f268518`)      | Channel006, Noise-serial                                   |
-| Host, serial, signer and fixture cleanup        | Heartbeat008; usb-bbpll-install attempt-001                                 | every complete result                                      |
-| Privacy                                         | Per-result redaction; `just verify-redaction` on every publication          | —                                                          |
-| Fixture correctness                             | Share001's independent header, target, nonce and ACK joins; same fixture    | —                                                          |
-| Negative tests                                  | Software only, per probe (share, heartbeat, normal stop, recovery)          | not hardware evidence                                      |
+| Obligation                                      | Covering result on the candidate                                               | Older results (kept on their own identities)               |
+| ----------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| Noise authentication, encrypted proof           | psram-default-install attempt-002 (all criteria true)                          | usb-bbpll-install (`60e344e2`), Noise-serial (`ad629679`)  |
+| Channel and job dispatch over V2                | Heartbeat010 (`work_ready`, `asic_dispatch`, same generation)                  | heartbeat008 (`60e344e2`), Share001 (`654338d0`)           |
+| Fresh admission, signed Start, charged ledger   | Heartbeat010 (ordinal 29, exactly +180,000 ms, not pending)                    | heartbeat008, startup003, Share001                         |
+| Heartbeat revocation, bounded shutdown, cooling | Heartbeat010 (2,808/2,813 ms)                                                  | [heartbeat008](20261004-str005-heartbeat-loss-shutdown.md) |
+| Internal-memory headroom                        | [Idle and post-shutdown captures](20261005-str005-internal-heap-exhaustion.md) | the diagnosis image (fails)                                |
+| ASIC result, encrypted submission, device ACK   | **Pending: share-current-001**                                                 | [Share001](20261003-str005-accepted-share.md) (`654338d0`) |
+| Renewal                                         | **Pending: share-current-001, only if a renewal is confirmed**                 | Share001 (one renewal)                                     |
+| Worker-requested normal Stop while mining       | **Pending: share-current-001**                                                 | startup003 (`361425b9`), Share001                          |
+| Restoration, settings and identity preservation | Heartbeat010 recovery; psram-default-install attempt-002                       | every complete result                                      |
+| Install/update continuity                       | psram-default-install attempt-002                                              | usb-bbpll-install, Channel006, Noise-serial                |
+| Host, serial, signer and fixture cleanup        | Heartbeat010; psram-default-install attempt-002                                | every complete result                                      |
+| Privacy                                         | Per-result redaction; `just verify-redaction` on every publication             | —                                                          |
+| Fixture correctness                             | Share001's independent header, target, nonce and ACK joins                     | —                                                          |
+| Negative tests                                  | Software only, per probe (share, heartbeat, normal stop, recovery)             | not hardware evidence                                      |
 
 ## Change impact since each result
 
-- **Heartbeat007 → candidate:** the queue workaround (`00f84eae`),
-  `#[inline(never)]` on the mining-session start (`9386999d`) and the BBPLL
-  setting (`2b784c49`). Heartbeat008 re-ran on the exact candidate, so
-  nothing is reused.
-- **Share001 (`654338d0`) → candidate:** the three changes above, plus the
-  stack-realignment fix (`24af10be`: one-shot replies for Start, Renew,
-  SafeStop, cooling, USB writes and safety actuation) and the diagnostic
-  watchpoint and heap check (`c634cc20`). The ASIC result, V2 transport and
-  session queues on the submit and ACK path all changed. The fixture,
-  `bitaxe-stratum`, `bitaxe-asic`, `bitaxe-worker-control`, `Cargo.lock` and
-  the toolchain did not. The changes are mechanical, but submission,
-  acknowledgement, Renew and a Worker-requested Stop while mining were never
-  run on the candidate. The impact is **uncertain**, so the check is
-  repeated.
-- **startup003 (`361425b9`) → candidate:** 21 commits, including Renew
-  isolation, the Noise helper stack, revocation refactors and the changes
-  above. Superseded by Share001 and heartbeat008. Its one uncovered path, a
-  Worker-requested Stop while mining, is part of the pending share check.
-- **Channel006, Noise-serial and reflash preservation → candidate:** about
-  27 to 29 commits, including USB-adjacent startup clocking (BBPLL). ADR-0029
-  requires a continuity reassessment for that; usb-bbpll-install attempt-001
-  is a full four-cycle continuity result on the exact candidate. USB
-  controller, descriptors, partitions and packaging did not change.
+- **`60e344e2` → candidate:** the idle heap sample (`f7999faf`), the
+  PSRAM-first allocation policy (`92f58abb`) and a host fixture argv fix
+  (`2bff1004`). Install continuity and heartbeat-loss shutdown re-ran on the
+  exact candidate, so nothing from `60e344e2` is reused.
+- **Share001 (`654338d0`) → candidate:** the stack-realignment fix
+  (`24af10be`), the diagnostic watchpoint and heap check (`c634cc20`), the
+  queue workaround (`00f84eae`), `#[inline(never)]` on the mining-session
+  start (`9386999d`), the BBPLL setting (`2b784c49`) and the changes above.
+  The ASIC result, V2 transport and session queues on the submit and ACK
+  path changed, and ordinary allocations moved to PSRAM. `bitaxe-stratum`,
+  `bitaxe-asic`, `bitaxe-worker-control`, `Cargo.lock` and the toolchain did
+  not. Submission, acknowledgement, Renew and a Worker-requested Stop while
+  mining were never run on the candidate. The impact is **uncertain**, so
+  the check is repeated.
+- **startup003 (`361425b9`) → candidate:** superseded by Share001 and
+  heartbeat010. Its one uncovered path, a Worker-requested Stop while
+  mining, is part of the pending share check.
+- **Channel006, Noise-serial and reflash preservation → candidate:**
+  USB-adjacent startup clocking (BBPLL) and the allocation policy changed;
+  ADR-0029 requires a continuity reassessment, which psram-default-install
+  attempt-002 supplies on the exact candidate. USB controller, descriptors,
+  partitions and packaging did not change.
+
+## Resolved: internal-heap exhaustion on `60e344e2`
+
+Restart006 panic-rebooted on a Worker connection after heartbeat008. The
+[diagnosis](20261005-str005-internal-heap-exhaustion.md) found persistent
+internal-RAM exhaustion, not a leak. The PSRAM-first candidate keeps about
+52 KB free with a 31 KB largest block, idle and for an hour after a
+heartbeat-loss session.
 
 ## Open items
 
-1. **Heap loss after a heartbeat-loss shutdown (candidate defect).**
-   Free internal heap sampled during heartbeat008's recovery connection
-   was 9,687 bytes (largest block 1,920). Sampled during the next
-   connection, about 44 minutes later, it was 607 bytes (largest 168).
-   That connection hit an 8,192-byte internal allocation failure and a
-   panic reboot (restart006, boot 301 to 302). Whether the loss accrued
-   while idle or inside the connection is unresolved. On `7ca3e29c`, two
-   connections four hours apart after heartbeat007 showed about 1 KB lost,
-   and the later connection worked. A code audit of the queue change found
-   no growth path. A fix will be a new candidate, which reopens heartbeat008
-   and this review.
-2. **Accepted share, renewal and normal Stop on the candidate.** One
-   bounded check, after the fix: a restart after the latest Start, then
-   share-current-001
+1. **Accepted share, renewal and normal Stop on the candidate.** One
+   bounded check: restart007 after heartbeat010, then share-current-001
    ([contract](../../hardware/str005-accepted-share-amendment.md),
    "Current-image re-run").
-3. **Share002 retained resource proof.** It cannot be supplied: the device
+2. **Share002 retained resource proof.** It cannot be supplied: the device
    reports idle status with no retained record. This stays an explicit
    blocker on `task-str005-failure-recovery-accounting`. It does not block
    other claims (ADR-0029, ADR-0031).
-4. **Channel006 publication.** Its result stays private. The candidate does
+3. **Channel006 publication.** Its result stays private. The candidate does
    not depend on it.
-5. **Panic attribution.** The original Share001 and Share002 panics are
+4. **Panic attribution.** The original Share001 and Share002 panics are
    "likely the same compiler bug, not proven", as accepted by the owner.
+   The restart006 panic site is inferred from heap evidence, not captured.
 
 ## Naming
 

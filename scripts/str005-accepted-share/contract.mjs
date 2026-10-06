@@ -13,10 +13,10 @@ export const ADMISSION = 'accepted-share-v1';
 export const PINS = Object.freeze({ installationProfile: HEAD.install.profile,
   installationResult: HEAD.install.result,
   installationSeal: HEAD.install.seal,
-  // Heartbeat008: the lineage head's latest Start on 60e344e2 (boot 301, ledger 28/27/3,360,000 ms).
-  previousStartResult: 'fcbb3ce7767778183584a36dc23a1efcd31874b11ded3e518d562b015a0cbdae',
-  previousStartSeal: '68621dc4406ec506e4b067b0c1cdd5447439e206db331b50c7ce4cc215005b92',
-  // Pinned once its sealed no-mining restart after heartbeat008 passes.
+  // Heartbeat010: the lineage head's latest Start on 2bff1004 (boot 318, ledger 30/29/3,720,000 ms).
+  previousStartResult: '8fc48d2f283b10aef8f6ceca0d3d284ac9170a44d834426c263702a8283049de',
+  previousStartSeal: '0e23e10f91fb539e433a0204ee841cd410674b01aceaad544d2bddf4d0d8c958',
+  // Pinned once its sealed no-mining restart after heartbeat010 passes.
   restartResult: null,
   restartSeal: null,
   gate: HEAD.install.identity.gate_commit });

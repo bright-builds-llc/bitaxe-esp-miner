@@ -89,37 +89,38 @@ reused on the final candidate. Share001 ran on `654338d0`. Since then:
   reply channel on the result, submission, acknowledgement, Renew and Stop
   paths;
 - the BBPLL setting changed startup clocking;
-- an end-of-stack watchpoint and a per-command heap check were added.
+- an end-of-stack watchpoint and a per-command heap check were added;
+- ordinary allocations now prefer PSRAM
+  ([internal-heap evidence](../parity/evidence/20261005-str005-internal-heap-exhaustion.md)).
 
-Heartbeat008 ran Start and dispatch on the candidate, but no share, renewal
-or Worker-requested Stop while mining. The impact is uncertain, so the check
-is repeated once (`task-str005-share-current-image`). Only the lineage
-changes:
+The impact is uncertain, so the check is repeated once
+(`task-str005-share-current-image`) on the PSRAM-first candidate. Only the
+lineage changes:
 
-- **Install.** The lineage head's install (`usb-bbpll-install`
-  attempt-001, image `60e344e2`/`3f01a5f4`, Gate `86fc62d7`), read from
+- **Install.** The lineage head's install (`psram-default-install`
+  attempt-002, image `2bff1004`/`9783dc74`, Gate `86fc62d7`), read from
   `scripts/str005-lineage/head.json`.
-- **Previous Start.** Heartbeat008 (result `fcbb3ce7…`, seal `68621dc4…`),
-  the head's latest Start: boot 301, ledger next 28, last 27, 3,360,000 ms.
-- **Phase A: restart006.** `restart-config.mjs` names heartbeat008 as the
+- **Previous Start.** Heartbeat010 (result `8fc48d2f…`, seal `0e23e10f…`),
+  the head's latest Start: boot 318, ledger next 30, last 29, 3,720,000 ms.
+- **Phase A: restart007.** `restart-config.mjs` names heartbeat010 as the
   parent and the line `Share current image restart hardware: enabled.`
-  The Phase A rules above apply unchanged: boot 301 to 302, ledger and
-  budget unchanged. Restart005 sealed failed before any device contact:
-  its recovery page could not load one browser module, so the page never
-  connected. The current-recovery server now serves the client's whole
-  module graph from the source workspace, with a regression.
+  The Phase A rules above apply unchanged: boot 318 to 319, ledger and
+  budget unchanged. On `60e344e2`, restart005 sealed failed before any
+  device contact (a recovery-page module was not served; fixed), and
+  restart006 found the internal-heap exhaustion that the PSRAM-first
+  candidate corrects.
 - **Phase B: share-current-001.** The line
-  `Share current image hardware: enabled.` and a pinned restart006 admit one
-  Start at ordinal 28 under the Phase B effects and pass criteria above.
-  The expected after ledger is next 29, last 28, 3,540,000 ms. The judge
+  `Share current image hardware: enabled.` and a pinned restart007 admit one
+  Start at ordinal 30 under the Phase B effects and pass criteria above.
+  The expected after ledger is next 31, last 30, 3,900,000 ms. The judge
   still accepts 0 to 2 renewals. The Renew path counts as covered on this
   image only if at least one renewal is confirmed; otherwise the
   integration review keeps it as an explicit gap.
 
-The fixture (`66b6659b…`) and the Gate are the ones Share001 used. Every
-prohibition, stop condition and non-claim below applies. A pass covers the
-share, renewal and normal-stop paths on the candidate; it does not relabel
-Share001.
+The fixture is the canonical stamped build from the same clean source,
+and the Gate is the one Share001 used. Every prohibition, stop condition
+and non-claim below applies. A pass covers the share, renewal and
+normal-stop paths on the candidate; it does not relabel Share001.
 
 ## Prohibited
 

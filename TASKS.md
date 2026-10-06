@@ -4491,128 +4491,13 @@ socket/worker/fence release from current idle state or reconstruct missing proof
 Task remains blocked and unarchived; no Start/grants/mining/flash/replay occurred,
 no next mining ordinal is authorized, and parity remains 90/95.
 
-### task-str005-heap-loss-diagnosis | 2026-10-05 | Diagnose the internal-heap loss after a heartbeat-loss shutdown
-
-Status: Active. Owner-authorized 2026-10-05 ("write the contract and start the
-investigation"). Blocks `task-str005-share-current-image` and the integration
-review.
-Objective: decide whether `60e344e2` loses internal heap while idle after a
-heartbeat-loss shutdown or inside the next connection, and name the
-allocator.
-Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnosis-amendment.md).
-
-- [x] Firmware: `internal_heap_sample` every 60 s on the idle serial link
-      only (`f7999faf`); host tests for format, idle emission and absence in
-      a session.
-- [x] Recovery owner: admits restart006 as proof of a reboot after
-      heartbeat008, so status is discovered rather than read by id; tests.
-- [x] Phase 0 recovery018 on boot 302: complete, idle V2, ledger
-      28/27/3,360,000 ms, no failures, host released. Result
-      `473546a8…`, seal
-      `e12fa393833fca0472fe31a3b368a0038980021a171aa1f511e0dcfaba3cbaa7`;
-      pinned as the `internal-heap-diagnostic-install` predecessor.
-- [x] Phase 1 internal-heap-diagnostic install attempt-001 on
-      `31fa7238` (ELF `15c4c140…`; realignment and startup-frame audits
-      passed): five installs, four verified cycles, Noise exchange,
-      restoration and cleanup; passed, `hardware_qualified`. Result
-      `cad35320…`, seal `a0f3312e…`. The lineage head now names it.
-- [x] Phase 2 idle baseline capture (1,200 s, 20 samples, boot 307, no
-      Start). Internal heap (`INTERNAL|8BIT`) idles at about 11.5 KB free
-      (1,039 blocks) but 6 of 20 samples dip to 2.6–4 KB free (about 8 KB
-      more in about 195 more blocks). The largest free block never exceeds
-      1,792 bytes; the lifetime minimum is 1,395 bytes. No monotonic loss:
-      the board runs at the edge of internal RAM even without a Start.
-- [x] Phase 3 heartbeat009 at ordinal 28: `heartbeat_timeout`, gate closed
-      2,801 ms and shutdown started 2,842 ms after the last heartbeat,
-      safe stop complete, ledger 29/28/3,540,000 ms, no recovery errors,
-      sealed `complete=true` (result `888069c1…`). Recorded as the
-      lineage's latest Start.
-- [x] Phase 4 post-shutdown idle captures: four 1,200-second windows, 81
-      samples over 80 minutes, no Worker connection. Free internal heap
-      holds flat at about 8.2 KB (about 1,069 blocks), about 3.3 KB below
-      the pre-Start baseline, with dips to 2.1–2.4 KB; the largest free
-      block stays at 1,536–1,792 bytes and the lifetime minimum is 1,295
-      bytes. No idle leak.
-- [x] Phase 5 recovery019 on boot 307: complete, the retained heartbeat009
-      record read by its attempt, ledger 29/28/3,540,000 ms, no failures,
-      no panic (this connection did not coincide with a dip). Result
-      `61de415c…`, seal `e72275dd…`.
-- [ ] Phase 5b: within recovery019's (or recovery020's) proof window, one
-      read-only `just core-dump-read --board 205 --port <port>
-      --expected-physical-sha256 <physical> --expected-installed-source
-      31fa72385660075ab699759a5df7dae73c75b34e --expected-installed-elf
-      15c4c14067d1435c5d1f9e175660cd429dd4dbadb4e766876220edb5e9404e55
-      --recovery-proof <recovery>/current-recovery.json --private-root
-      scratch/str005-heap-observation/core-001`. It names the panic site if
-      the restart006 panic left a dump. ADR-0030 handling: private mode-0600
-      root; decode only against the ELF that matches the dump's identity; no
-      clearing. A missing or older dump is recorded, not retried.
-      Done: the read completed, but the partition still holds the archived
-      queue boot-loop dump (app `84d1cd51…`). With no-overwrite, the
-      restart006 panic left no dump, so its exact site stays unknown.
-- [x] Analysis: not a leak. Internal heap is persistently exhausted. Thread
-      stacks take about 230 KiB of internal RAM, and
-      `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048` keeps about 1,000 ordinary
-      small Rust allocations internal. Settings snapshots rebuilt on 100 ms
-      to 1 s loops cause the 6 KB dips. A Worker connection that lands in
-      a dip can exhaust internal RAM; restart006 fits that, recovery019 did
-      not coincide with one.
-- [x] Fix: `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0`, so ordinary allocations
-      prefer PSRAM at every size; explicit internal/DMA requests and the
-      96 KiB reserve are unchanged. The resolved-config contract, its test
-      and the emulator configs require the new value.
-      `just internal-heap-series` judges captures against fixed minimums;
-      it fails all 101 diagnosis samples (least free 2,103 bytes, least
-      largest block 1,536 bytes).
-- [x] Candidate Phase A: `psram-default-install` from recovery019
-      ([PSRAM-first amendment](docs/hardware/str005-psram-default-allocation-amendment.md)).
-      Attempt-001 (`92f58abb`, ELF `5ea7fa56…`, both audits passed):
-      five installs and four verified cycles passed, then the Noise
-      exchange stopped with `noise_fixture_failed`. The host fixture
-      exited with code 2 before listening, because the random attempt id
-      began with `-` and its argument parser read it as a flag. No Start;
-      host released; sealed `unverified` (result `25faa4ef…`). Fix: the
-      owner passes `--attempt-id=<id>`; regressions on the real fixture
-      parser and on the argv. Attempt-002 continues from attempt-001's
-      verified install.
-      Attempt-002 (`2bff1004`, ELF `9783dc74…`, both audits passed):
-      five installs, four verified cycles, the Noise exchange, restoration
-      and cleanup; passed, `hardware_qualified`. Result `45db405c…`, seal
-      `3998bc37…`. The lineage head now names it.
-- [x] Phase B: 1,200 s idle capture keeps at least 16,384 free bytes and
-      an 8,192-byte largest block in every sample. Passed: 20 samples,
-      least free 53,271 bytes, least largest block 31,744 bytes, lifetime
-      minimum 52,011 bytes, a constant 251 allocated blocks (the diagnosis
-      image idled at 2.6–11.5 KB free, a 1,792-byte largest block and
-      1,039–1,236 fluctuating blocks).
-- [x] Phase C: heartbeat010 at ordinal 29: `heartbeat_timeout`, gate
-      closed 2,808 ms and shutdown started 2,813 ms after the last
-      heartbeat, safe stop complete, ledger 30/29/3,720,000 ms, no
-      recovery errors; internal heap during recovery 52,743 bytes free
-      (largest 31,744). Sealed `complete=true`; the lineage's latest
-      Start.
-- [ ] Phase D: three 1,200 s post-shutdown captures meet the same minimums.
-- [ ] Phase E: hand the candidate to the share check and integration review.
-
-Stop on any detector failure, identity, ledger or baseline drift, a lost or
-ambiguous Start, a panic other than the Phase 5 reproduction, or unproven
-cleanup. No pool, no Wi-Fi provisioning, no NVS or factory reset, no
-core-dump clearing, at most five installs.
-Control diagnostic recovery hardware: disabled.
-Internal heap diagnostic install hardware: disabled.
-Heartbeat heap diagnosis hardware: disabled.
-Heap-loss core-dump acquisition: disabled.
-PSRAM default install hardware: disabled.
-Heartbeat PSRAM candidate hardware: disabled.
-
-Verification: pending. Completion review: pending.
-
 ### task-str005-share-current-image | 2026-10-05 | Repeat the accepted-share check on the final candidate
 
-Status: Stopped on a new panic (restart006); diagnosis in progress. Owner-requested
-2026-10-05 as the integration review's one uncovered interaction (`task-str005-piecewise-integration-review`).
+Status: Active; resumed on the PSRAM-first candidate after the archived
+`task-str005-heap-loss-diagnosis`. Owner-requested 2026-10-05 as the
+integration review's one uncovered interaction (`task-str005-piecewise-integration-review`).
 Objective: one bounded accepted-share Start on the lineage head's image
-(`60e344e2`) that passes every share-probe judge criterion, ending in a
+(`2bff1004`) that passes every share-probe judge criterion, ending in a
 Worker-requested normal Stop.
 Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendment.md),
 "Current-image re-run".
@@ -4645,13 +4530,18 @@ Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendme
       next Connect worked. The loss is new on the candidate. A code audit
       of the queue change (`00f84eae`) found no growth path: every queue is
       created once at boot and bounded or drained.
-- [ ] Diagnose the internal-heap loss after a heartbeat-loss shutdown
+- [x] Diagnose the internal-heap loss after a heartbeat-loss shutdown
       on `60e344e2` (`task-str005-heap-loss-diagnosis`); fix it with a
-      regression. A fix is a new candidate: it needs its own install and
-      reopens heartbeat008 and this review.
+      regression. Done: exhaustion, not a leak; the PSRAM-first candidate
+      `2bff1004` installed, kept 52 KB of internal headroom and passed
+      heartbeat010.
+- [ ] restart007: preflight with heartbeat010 as `--start-root`, recovery
+      stage, restart stage, finish. Expected boot 318 to 319, ledger
+      30/29/3,720,000 ms unchanged. Then pin it in
+      `scripts/str005-accepted-share/contract.mjs` and enable the share line.
 - [ ] share-current-001: detector, preflight, serve, baseline and candidate,
       startup detector, Run, fresh recovery, release, final detector, finish.
-      Expected after ledger 29/28/3,540,000 ms. Record confirmed renewals.
+      Expected after ledger 31/30/3,900,000 ms. Record confirmed renewals.
 - [ ] Record, `just str005-lineage record-start`, publish redacted evidence,
       update the integration review, disable both lines, archive.
 
@@ -4660,7 +4550,7 @@ ambiguous Start (never resend), a panic or unproven cleanup. Effects and
 prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
 firmware write. Retries need a regression-backed fix, a fresh ordinal and a
 new restart.
-Share current image restart hardware: disabled.
+Share current image restart hardware: enabled.
 Share current image hardware: disabled.
 
 Verification: pending. Completion review: pending.
@@ -4681,9 +4571,10 @@ Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 - [x] Review intervening changes and negative-test/native resource coverage;
       document reuse rationale, invalidated checks and precise remaining gaps.
       [Integration review](docs/parity/evidence/20261005-str005-integration-review.md):
-      the candidate is `60e344e2`/`3f01a5f4`/Gate `86fc62d7`. Heartbeat008 and
-      usb-bbpll-install attempt-001 cover it except share, renewal and a
-      Worker-requested Stop while mining; that impact is uncertain.
+      the candidate is now `2bff1004`/`9783dc74`/Gate `86fc62d7` after the
+      `60e344e2` heap-exhaustion defect. Heartbeat010 and
+      psram-default-install attempt-002 cover it except share, renewal and
+      a Worker-requested Stop while mining; that impact is uncertain.
 - [ ] Reuse a qualifying final-candidate probe as integration smoke evidence.
       Only for a concrete uncovered interaction, publish a narrow bounded contract,
       verify its implementation and execute that missing check; no mandatory big-bang run.
