@@ -1652,12 +1652,12 @@ Authorization: software diagnosis and contract work only until the hardware
 contract is committed.
 Verification: pending. Completion review: pending.
 
-### task-web-ui-variants-and-size-budget | 2026-10-06 | Add selectable web UI variants with a SolidJS port and size audit
+### task-web-ui-variants-and-size-budget | 2026-10-06 | Add a SolidJS web UI variant with feature parity and a size audit
 
-Status: Future. Owner-requested 2026-10-06. Build three interchangeable web UI
-variants for comparison and debugging, choose one per build with a build
-flag, and audit bundle sizes, since small images suit the 3 MiB `www`
-partition and OTAWWW uploads.
+Status: Future. Owner-requested 2026-10-06, revised the same day. Keep two
+interchangeable web UI implementations for comparison and debugging, choose
+one per build with a build flag, and audit bundle sizes, since small images
+suit the 3 MiB `www` partition and OTAWWW uploads.
 
 Variants:
 
@@ -1668,27 +1668,27 @@ Variants:
 - `solid`: a SolidJS port that first matches the current UI's pages
   one-to-one (dashboard, network, pool, settings, scoreboard, logs, update,
   theme) and the same API calls, before growing.
-- `axeos-upstream`: upstream's Angular 18 AxeOS built from the pinned
-  `reference/esp-miner/main/http_server/axe-os` sources without modifying
-  the read-only reference (build from a copy outside the source tree).
+
+Upstream's Angular AxeOS (`reference/esp-miner/main/http_server/axe-os`) is a
+feature reference only. It is never built, bundled or copied into this
+repository; both variants reach feature parity with it through independent
+implementations, with breadcrumbs to the upstream sources they follow.
 
 - [ ] Decide the selector: one Bazel build setting (for example
-      `--//firmware/bitaxe:web_ui=current|solid|axeos-upstream`) surfaced
-      through `just build`, `just package` and `just flash`, and record the
-      chosen variant and its asset digests in the package manifest so
-      hardware evidence binds the exact variant.
-- [ ] Add JavaScript build tooling: the repo has no root `package.json`
-      today and imports npm packages individually in `MODULE.bazel`; choose a
-      locked, hermetic path (for example a pnpm lockfile through
-      `aspect_rules_js`) for SolidJS and its bundler, and for upstream's
-      `package-lock.json` (Node 22 or later).
+      `--//firmware/bitaxe:web_ui=current|solid`) surfaced through
+      `just build`, `just package` and `just flash`, and record the chosen
+      variant and its asset digests in the package manifest so hardware
+      evidence binds the exact variant.
+- [ ] Add locked, hermetic JavaScript build tooling for SolidJS and its
+      bundler; the repo has no root `package.json` today and imports npm
+      packages individually in `MODULE.bazel` (for example a pnpm lockfile
+      through `aspect_rules_js`).
 - [ ] Port the current UI to SolidJS, sharing `api-client.js` behavior and
       the static UI test contract, so `solid` passes the same workflow tests
       as `current`.
-- [ ] Build `axeos-upstream` and audit which upstream API routes our
-      firmware lacks or answers differently; it is GPL-3.0 upstream code, so
-      mark it in provenance and include it in the release artifact review
-      before any distributed image uses it.
+- [ ] Inventory upstream AxeOS features (pages, settings, charts, swarm,
+      update flows) against both variants and the firmware API, and plan the
+      parity work for each variant from that list.
 - [ ] Add a repo-owned size report (for example `just web-ui-sizes`) giving
       raw and gzip bytes per file, per-variant totals, and SPIFFS bytes used
       in the generated `www.bin`; run it in CI and keep a checked-in history
