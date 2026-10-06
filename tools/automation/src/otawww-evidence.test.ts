@@ -228,8 +228,11 @@ async function phase(value: Fixture, device: FakeDevice, commands: string[], sel
 }
 
 /** Writes the Gate handoff the endpoint supervisor would produce for the installed boot. */
-async function handoff(value: Fixture, origin: string, bootOrdinal: number, receivedAtMs = Date.now()): Promise<void> {
+async function handoff(value: Fixture, origin: string, bootOrdinal: number, receivedAtMs = Date.now(), leaseInactive = true): Promise<void> {
   const url = new URL(origin);
+  await writeFile(path.join(value.root, "scratch", "attempt", "closed.json"), JSON.stringify({
+    schema: "otawww-endpoint-closed-v1", endpoint_saved: true, worker_lease_inactive: leaseInactive, closedAtUnixMs: receivedAtMs,
+  }), { mode: 0o600 });
   await writeFile(path.join(value.root, "scratch", "attempt", "endpoint.private.json"), JSON.stringify({
     schema: "otawww-station-endpoint-v1", ipv4: url.hostname, httpPort: Number(url.port), bootOrdinal, generation: 3,
     observedAtUs: 5_000_000, hostReceivedAtMs: receivedAtMs,
@@ -308,6 +311,28 @@ test("a handoff from another boot is refused before any OTAWWW request", async (
 
     // Assert
     assert.equal(error.category, "evidence_invalid");
+    assert.equal(device.uploads, 0);
+  } finally {
+    await device.close();
+  }
+});
+
+test("a handoff without an inactive Worker lease is refused before any OTAWWW request", async () => {
+  // Arrange
+  const value = await fixture();
+  const device = new FakeDevice();
+  const commands: string[] = [];
+  const origin = await device.listen();
+
+  try {
+    await phase(value, device, commands, "install");
+    await handoff(value, origin, device.ordinal, Date.now(), false);
+
+    // Act
+    const error = await captureError(phase(value, device, commands, "run"));
+
+    // Assert
+    assert.equal(error.category, "hardware_blocked");
     assert.equal(device.uploads, 0);
   } finally {
     await device.close();

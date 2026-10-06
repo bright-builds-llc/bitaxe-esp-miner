@@ -198,6 +198,30 @@ effect: under `bazel run` the relative `--gate-root` resolved inside the
 runfiles tree. Host-only fix: operator paths resolve against the workspace,
 with a regression test. The installed image and its manifest are unchanged
 (the package is not rebuilt); step 3 reruns under the same ordinal.
+Step 3 then passed. The extension could not see the old dedicated Gate tab,
+so with the owner's approval a new dedicated tab was opened in the session
+group; the owner brought its window forward. Step 4 served the handoff page,
+one Connect produced the endpoint and the closed Worker state, and the page
+left for `about:blank`. Step 5 proved the endpoint recorded, the page closed
+and the listener and serial port released.
+Step 6 stopped at the run baseline before any OTAWWW request, restart or
+recovery: the boot's one-time `safe_state` line had rotated out of the
+512 KiB retained log ring (about 1,770 periodic snapshot and health lines),
+so the earliest category is `hardware_blocked` at `baseline`; the CLI also
+misreported it as `process_failed` because the OTAWWW error type was not in
+the typed-failure mapping. The device holds the exact `5241d2b9` package,
+idle, with no lease. Outcome: `continue_after_verified_fix`.
+
+Verified fixes (host only): the CLI maps `OtawwwEvidenceError` to its
+category; the handoff server requires the Gate's closed state to show
+`deviceLeaseInactive` and records `worker_lease_inactive`, and the run's
+baseline uses that record for the same boot instead of the rotated log line
+(post-restart log checks remain, read seconds after each boot); regression
+tests cover each.
+
+Ordinal `002` is authorized under this contract: the six commands above with
+`W=$P/wrapper-002` and `A=$P/attempt-002`, after `just package` at the clean
+pushed HEAD that contains these fixes.
 
 Verification: pending. Completion review: pending.
 

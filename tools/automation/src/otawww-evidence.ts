@@ -13,16 +13,15 @@ import {
   type JsonObject, type RecoveryFacts,
 } from "./otawww-evidence-io.js";
 import {
-  isRecoveryPage, OtawwwInputError, parseOtawwwInputs, parseStationEndpoint, privateIpv4, retainedLine, settingsDigest, sha256,
+  isRecoveryPage, OtawwwInputError, parseOtawwwInputs, parseStationEndpoint, privateIpv4, settingsDigest, sha256,
   unavailableAssetVersion, type OtawwwInputs,
 } from "./otawww-evidence-model.js";
 import {
-  interruptedPrefixBytes, interruptionObserved, provenRestart, sameBuild, servedDigest, systemInfo, logs, uploadComplete,
+  interruptedPrefixBytes, interruptionObserved, provenRestart, sameBuild, servedDigest, systemInfo, uploadComplete,
   type StageContext,
 } from "./otawww-evidence-stages.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
-import { passiveSafeStateLine } from "./sdkconfig-rollback-retained-log.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
 export { OtawwwEvidenceError, postBinaryOnce } from "./otawww-evidence-io.js";
@@ -178,6 +177,15 @@ async function install(paths: Paths, options: OtawwwEvidenceOptions, processPort
   }
 }
 
+async function workerLeaseInactive(endpointInput: string): Promise<boolean> {
+  try {
+    const closed = object(JSON.parse(await readFile(path.join(path.dirname(endpointInput), "closed.json"), "utf8")), "closed record");
+    return closed["schema"] === "otawww-endpoint-closed-v1" && closed["endpoint_saved"] === true && closed["worker_lease_inactive"] === true;
+  } catch {
+    return false;
+  }
+}
+
 async function readBaseline(context: Pick<StageContext, "origin" | "privateRoot">, retryDelayMs: number): Promise<JsonObject> {
   for (let attempt = 1; attempt <= baselineAttemptCount; attempt += 1) {
     try {
@@ -304,7 +312,9 @@ async function run(
     throw failure("evidence_invalid", "the handed-off origin does not serve the installed boot");
   }
   if (baseline["axeOSVersion"] !== loaded.inputs.buildLabel) throw failure("asset_identity_mismatch", "installed web assets do not report the package label");
-  if (!retainedLine(await logs(io, "baseline"), passiveSafeStateLine)) throw failure("hardware_blocked", "installed boot lacks the passive safe state");
+  // The boot's one-time safe-state log line rotates out of the 512 KiB ring within minutes; the Gate's closed
+  // Worker state for this same boot proves no lease, and therefore no mining, instead.
+  if (!await workerLeaseInactive(paths.maybeEndpoint)) throw failure("hardware_blocked", "the handoff did not prove an inactive Worker lease");
   const hostnameDigest = sha256(text(baseline, "hostname", "baseline info"));
   const baselineSettings = settingsDigest(baseline);
   const context: StageContext = {

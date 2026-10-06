@@ -55,13 +55,16 @@ test('one endpoint and the closed state are recorded, then the server releases',
   const replay = await post('/endpoint', { nonce, endpoint, requestedAtUnixMs: clock - 200, receivedAtUnixMs: clock - 100 });
   clock += 1_000;
   const released = once(server, 'close');
-  const closed = await post('/closed', { state: { status: 'closed', connected: false, running: false, serialOwnershipReleased: true } });
+  const leased = await post('/closed', { state: { status: 'closed', connected: false, running: false, serialOwnershipReleased: true, deviceLeaseInactive: false } });
+  const closed = await post('/closed', { state: { status: 'closed', connected: false, running: false, serialOwnershipReleased: true, deviceLeaseInactive: true } });
   await released;
 
   // Assert
   assert.equal(saved.status, 200);
   assert.equal(replay.status, 400);
+  assert.equal(leased.status, 400);
   assert.equal(closed.status, 200);
+  assert.equal(written.get('closed.json').worker_lease_inactive, true);
   assert.equal(written.get('endpoint.private.json').bootOrdinal, 7);
   assert.equal(written.get('closed.json').endpoint_saved, true);
 });

@@ -1,4 +1,5 @@
 import { OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
+import { OtawwwEvidenceError } from "./otawww-evidence-io.js";
 import { AdcObservationEvidenceError } from "./adc-observation-evidence.js";
 import { HashrateMonitorEvidenceError } from "./hashrate-monitor-evidence.js";
 import { ScoreboardEvidenceError } from "./scoreboard-evidence.js";
@@ -78,6 +79,7 @@ function maybeTypedFailure(error: unknown): TypedFailure | undefined {
     || error instanceof SettingsPatchEvidenceError
     || error instanceof StatisticsHistoryEvidenceError
     || error instanceof SdkconfigRollbackEvidenceError
+    || error instanceof OtawwwEvidenceError
     || error instanceof LogBufferEvidenceError
     || error instanceof PartitionLayoutEvidenceError
     || error instanceof UiWorkflowEvidenceError

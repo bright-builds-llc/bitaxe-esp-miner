@@ -61,8 +61,10 @@ export function createEndpointServer({ root, context, assets }, operations = {})
     }
     check(path === '/closed' && !closed, 'endpoint_route');
     const state = input?.state;
-    check(state && state.status === 'closed' && state.connected === false && state.running === false && state.serialOwnershipReleased === true, 'endpoint_closed_state');
-    await persist(CLOSED_FILE, { schema: 'otawww-endpoint-closed-v1', endpoint_saved: saved, closedAtUnixMs: now() }); closed = true;
+    check(state && state.status === 'closed' && state.connected === false && state.running === false && state.serialOwnershipReleased === true &&
+      state.deviceLeaseInactive === true, 'endpoint_closed_state');
+    // Mining needs an active Worker lease, so an inactive lease proves the handed-off boot is not mining.
+    await persist(CLOSED_FILE, { schema: 'otawww-endpoint-closed-v1', endpoint_saved: saved, worker_lease_inactive: true, closedAtUnixMs: now() }); closed = true;
     send(response, 200, { closed_recorded: true });
     setImmediate(() => server.release());
   }).catch(() => { if (!response.headersSent && !response.destroyed) send(response, 400, { error: 'endpoint_rejected' }); else response.destroy(); }); });
