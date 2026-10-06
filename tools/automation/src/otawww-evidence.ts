@@ -52,6 +52,13 @@ const interruptedPrefixBytes = 4_096;
 /** Whole-partition erase plus a 3 MiB body over Wi-Fi; the handler blocks the HTTP task throughout. */
 const uploadTimeoutMs = 600_000;
 const baselineAttemptCount = 6;
+/** Session facts the OTAWWW validator requires; checked per restart so a gap stops the run early. */
+const requiredSessionFacts = [
+  "same_physical_device", "stable_enumeration", "reader_armed", "pre_restart_serial_delivery",
+  "post_restart_serial_delivery", "service_loss_observed", "trusted_origin_preserved", "application_recovered",
+  "build_identity_matches", "boot_session_changed", "boot_ordinal_advanced_by_one", "software_reset_observed",
+  "postcondition_matches", "cleanup_complete",
+] as const;
 
 /** Polling cadence; the handler erases all 3 MiB before its first read fails and serves nothing meanwhile. */
 export type OtawwwTiming = {
@@ -285,6 +292,10 @@ async function provenRestart(
     throw failure("evidence_invalid", `${name} restart projection is invalid`, { stage: `${name}_restart` });
   }
   if (outcome.exitCode !== 0) throw failure("hardware_blocked", `${name} restart was not proven`, { stage: `${name}_restart` });
+  const missing = requiredSessionFacts.filter((field) => session[field] !== true);
+  if (missing.length > 0) {
+    throw failure("hardware_blocked", `${name} restart session lacks required facts`, { stage: `${name}_restart`, missing_facts: missing });
+  }
   const info = await systemInfo(context, `${name}-restart`);
   if (
     !sameBuild(info, context.inputs, `${name} restart info`)
