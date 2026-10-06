@@ -27,9 +27,10 @@ sample must keep 16,384 free bytes and an 8,192-byte largest free block.
 - The diagnostic image idled at about 11.5 KB free with dips to 2.6 KB.
   After one heartbeat-loss session the baseline settled about 3.3 KB lower
   and stayed flat for 80 minutes: no leak.
-- The dips came from periodic small allocations (settings snapshots rebuilt
-  on 100 ms to 1 s loops) that a 2 KiB always-internal cutoff kept in
-  internal RAM, beside about 230 KiB of internal thread stacks.
+- The dips are periodic bursts of about 195 small allocations that a 2 KiB
+  always-internal cutoff kept in internal RAM, beside about 230 KiB of
+  internal thread stacks. A code review points to settings snapshots
+  rebuilt on 100 ms to 1 s loops; that source is inferred, not measured.
 - Recovery019, a connection outside a dip, passed. The restart006 panic left
   no core dump, because the partition still held the archived boot-loop dump
   and dumps are never overwritten, so its exact site is not claimed.
