@@ -24,6 +24,71 @@ new work.
 
 ## Active
 
+### task-ultra205-default-profile-soak-reverification | 2026-10-06 | Fully verify the upstream-default mining soak
+
+Status: Active, selected 2026-10-06. Owner-requested 2026-10-06 to reopen the
+soak for full verification. Successor to the Active terminal-blocker records
+`task-ultra205-default-profile-soak` and
+`task-ultra205-default-profile-soak-attempt-004`; those records stay unchanged
+and their consumed authorization is not revived. STR-007 is verified through
+its separate criteria promotion; this task owns the soak itself.
+
+Recorded boundary: attempt-004 kept the earliest `marker_invalid`
+(`marker_json_invalid`) failure and then repeated the idle-reconnect signature
+after its targeted fix: 116 WebSocket reconnects, a 6,455 ms maximum WebSocket
+gap against the 5,000 ms continuity ceiling, a 20,872 ms maximum HTTP gap and
+invalid watchdog continuity. That selected `stop_repeated_boundary`.
+
+- [x] Diagnose the idle-reconnect and marker boundaries on current firmware,
+      which has since moved to the fixed Serial/JTAG baseline (ADR-0021), and
+      decide whether the old soak observers still apply.
+- [ ] Land regression-backed fixes for each boundary that still reproduces.
+- [ ] Write a complete hardware contract under the Effectful Hardware Task
+      Gate for a fresh-ordinal soak at upstream defaults (485 MHz, 1200 mV,
+      100% fan), with the original continuity, safety, safe-stop and
+      persistence criteria.
+- [ ] Run the soak, review the evidence independently, and close the two
+      predecessor records as superseded when it verifies.
+
+Diagnosis (2026-10-06, read-only):
+
+- The old observers no longer apply. `just mining-campaign` fails closed
+  with `provisioning_requires_factory_reset` since `b0165cd5`, and its serial
+  markers (`mining_campaign_status=`, `runtime_origin`, attestation) no longer
+  reach USB, because the fixed Serial/JTAG writer forwards only allowlisted
+  `usb_*` records.
+- Its 30-second-window HTTP/WebSocket judge (`tools/flash/src/campaign/network`)
+  takes its origin from those markers and expects to own the serial port.
+- `marker_json_invalid` was one 851-byte line truncated in transit, ahead of a
+  complete marker. Truncation became recoverable in `0e6e0351`/`2a97230c`; the
+  marker channel itself is gone now.
+- The idle-reconnect signature came from firmware empty pings every 500 ms
+  while ESP-IDF control-frame dispatch was off. The host-only fix in
+  `task-campaign-websocket-connection-stability` could not help. The firmware
+  fix (`0e6e0351`) enables dispatch and drains control frames, but it has
+  never run on hardware.
+- No current path mines at upstream defaults for 600 active seconds:
+  - The Gate Work Lease is hard-coded to the Conservative preset
+    (`production_mining_session/bwg.rs`), and the grant has no profile field.
+  - Stratum V2 `normal` allows 180 active seconds.
+  - The Gate rejects more than 16 renewal artifacts, and 600 s needs about 28.
+  - The legacy NVS campaign lease that still honours soak/upstream-default/600 s
+    is unreachable by design.
+  - The in-session endpoint is available only through the v2 observer route;
+    `otawww-endpoint` ends the session.
+
+Owner decision (2026-10-06): authorize the soak through the Gate path with a
+signed, bounded hardware profile field (`conservative | upstream-default`) in
+the Work Lease and a new one-shot `soak` allowance of 600 active seconds. The
+Gate repository (`bitaxe-turnstile-system`) may be changed and pushed, and its
+pin bumped here, for the renewal bound and soak/profile handling. The soak
+mines Stratum V1 against the owner's real pool, using the ignored local pool
+credentials under the existing privacy rules.
+
+Authorization: software diagnosis and contract work only until the hardware
+contract is committed.
+Verification: pending. Completion review: pending.
+
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
 
 Status: Blocked historical evidence. The consumed commands/plans below are historical, not current execution authority. ADR-0021 and `task-fixed-usb-serial-qualification` own the replacement transport/baseline; missing historical evidence is not promoted or erased.
@@ -1421,36 +1486,6 @@ calibration remains an explicit fidelity non-claim. Accepted-share stays active,
 all physical-effect gates stay disabled and parity remains90/95.
 
 ## Future
-
-### task-ultra205-default-profile-soak-reverification | 2026-10-06 | Fully verify the upstream-default mining soak
-
-Status: Future. Owner-requested 2026-10-06 to reopen the soak for full
-verification. Successor to the Active terminal-blocker records
-`task-ultra205-default-profile-soak` and
-`task-ultra205-default-profile-soak-attempt-004`; those records stay unchanged
-and their consumed authorization is not revived. STR-007 is verified through
-its separate criteria promotion; this task owns the soak itself.
-
-Recorded boundary: attempt-004 kept the earliest `marker_invalid`
-(`marker_json_invalid`) failure and then repeated the idle-reconnect signature
-after its targeted fix: 116 WebSocket reconnects, a 6,455 ms maximum WebSocket
-gap against the 5,000 ms continuity ceiling, a 20,872 ms maximum HTTP gap and
-invalid watchdog continuity. That selected `stop_repeated_boundary`.
-
-- [ ] Diagnose the idle-reconnect and marker boundaries on current firmware,
-      which has since moved to the fixed Serial/JTAG baseline (ADR-0021), and
-      decide whether the old soak observers still apply.
-- [ ] Land regression-backed fixes for each boundary that still reproduces.
-- [ ] Write a complete hardware contract under the Effectful Hardware Task
-      Gate for a fresh-ordinal soak at upstream defaults (485 MHz, 1200 mV,
-      100% fan), with the original continuity, safety, safe-stop and
-      persistence criteria.
-- [ ] Run the soak, review the evidence independently, and close the two
-      predecessor records as superseded when it verifies.
-
-Authorization: software diagnosis and contract work only until the hardware
-contract is committed.
-Verification: pending. Completion review: pending.
 
 ### task-web-ui-variants-and-size-budget | 2026-10-06 | Add a SolidJS web UI variant with feature parity and a size audit
 
