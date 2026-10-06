@@ -82,6 +82,7 @@ impl WwwWritePlan {
             plan: self,
             remaining: self.size,
             chunks: 0,
+            maybe_last_percent: None,
         }
     }
 }
@@ -136,13 +137,17 @@ pub struct WwwUploadCursor {
     plan: WwwWritePlan,
     remaining: usize,
     chunks: usize,
+    maybe_last_percent: Option<u8>,
 }
 
 /// Progress after one written chunk.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WwwChunkWritten {
-    /// Status to publish for this chunk.
+    /// Status for this chunk.
     pub status: WwwUpdateStatus,
+    /// Whether the status differs from the previous chunk's; publishing only
+    /// changes keeps a 3 MiB upload to 101 log lines.
+    pub status_changed: bool,
     /// Whether the adapter should yield before the next read.
     pub yield_now: bool,
 }
@@ -186,12 +191,14 @@ impl WwwUploadCursor {
     /// first chunk reports 0% and `Finished...` follows the last chunk.
     pub fn wrote(&mut self, len: usize) -> WwwChunkWritten {
         let percent = 100 - self.remaining.saturating_mul(100) / self.plan.size;
+        let percent = u8::try_from(percent).unwrap_or(100);
         self.remaining = self.remaining.saturating_sub(len);
         self.chunks += 1;
+        let status_changed = self.maybe_last_percent != Some(percent);
+        self.maybe_last_percent = Some(percent);
         WwwChunkWritten {
-            status: WwwUpdateStatus::Working {
-                percent: u8::try_from(percent).unwrap_or(100),
-            },
+            status: WwwUpdateStatus::Working { percent },
+            status_changed,
             yield_now: self.chunks % WWW_YIELD_EVERY_CHUNKS == 0,
         }
     }

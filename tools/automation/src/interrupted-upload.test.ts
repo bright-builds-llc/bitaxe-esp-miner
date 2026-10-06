@@ -6,7 +6,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import test from "node:test";
 
-import { sendInterruptedFirmwareUpload } from "./interrupted-upload.js";
+import { sendInterruptedFirmwareUpload, sendInterruptedUpload } from "./interrupted-upload.js";
 
 test("real child receives the strict prefix and forced reset without EOF", async () => {
   // Arrange
@@ -213,3 +213,31 @@ async function waitUntil(predicate: () => boolean | Promise<boolean>): Promise<v
   }
   throw new Error("test condition timed out");
 }
+
+test("interrupted upload targets the requested update route", async () => {
+  // Arrange
+  let requestLine = "";
+  const server = net.createServer({ allowHalfOpen: true }, (socket) => {
+    socket.on("error", () => {});
+    socket.once("data", (chunk: Buffer) => {
+      requestLine = chunk.toString("ascii").split("\r\n")[0] ?? "";
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address() as net.AddressInfo;
+
+  try {
+    // Act
+    await sendInterruptedUpload(
+      new URL(`http://127.0.0.1:${String(address.port)}`),
+      "/api/system/OTAWWW",
+      Buffer.alloc(8_192, 0x5a),
+      1_024,
+    );
+
+    // Assert
+    assert.equal(requestLine, "POST /api/system/OTAWWW HTTP/1.1");
+  } finally {
+    server.close();
+  }
+});

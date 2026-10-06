@@ -46,6 +46,7 @@ import "./partition-layout-evidence.test.js";
 import "./provisioning-client.test.js";
 import "./provisioning-network-evidence.test.js";
 import "./sdkconfig-rollback-evidence.test.js";
+import "./otawww-evidence.test.js";
 import "./process.test.js";
 import "./repository-guard.test.js";
 import "./redaction.test.js";

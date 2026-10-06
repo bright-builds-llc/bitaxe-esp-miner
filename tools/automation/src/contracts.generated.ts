@@ -33,7 +33,7 @@ export type AutomationCommand =
   | "capture-statistics-history-evidence"
   | "capture-log-buffer-evidence"
   | "capture-partition-layout-evidence"
-  | "capture-sdkconfig-rollback-evidence"
+  | "capture-sdkconfig-rollback-evidence" | "capture-otawww-evidence"
   | "capture-network-reconnect-evidence"
   | "capture-network-scan-evidence"
   | "project-asic-initialization-evidence"
@@ -68,7 +68,7 @@ export type AutomationCategory =
   | "recovery_failed"
   | "reconnect_not_observed"
   | "reconnect_timing_invalid"
-  | "service_recovery_failed" | "browser_blocked";
+  | "service_recovery_failed" | "browser_blocked" | "origin_unavailable" | "update_not_observed" | "asset_identity_mismatch" | "recovery_not_observed" | "nvs_not_preserved";
 export type AutomationResult = {
   schema_version: "bitaxe-automation-result-v1";
   command: AutomationCommand;
@@ -310,7 +310,7 @@ export type SdkconfigRollbackEvidence = {
   recovery_flash_used: false;
   private_modes_valid: true;
   redaction_status: "passed";
-};
+}; export type OtawwwObservationEvidence = { update_request_count: 3; probe_update_response_complete: true; probe_finished_status_retained: true; probe_version_reported: true; probe_version_txt_digest_matches: true; probe_index_html_digest_matches: true; interrupted_upload_attempt_count: 1; interrupted_upload_prefix_bytes: number; interruption_protocol_error_retained: true; interruption_boot_session_unchanged: true; interrupted_assets_unavailable_after_restart: true; recovery_page_served_after_interruption: true; recovery_update_response_complete: true; recovery_version_reported: true; recovery_version_txt_digest_matches: true; recovery_index_html_digest_matches: true; build_identity_unchanged: true; hostname_unchanged: true; settings_digest_unchanged: true; }; export type OtawwwEvidence = { schema_version: "bitaxe-otawww-evidence-v1"; board: 205; source_commit: string; reference_commit: string; package_manifest_sha256: string; www_probe_metadata_sha256: string; package_www_sha256: string; probe_www_sha256: string; workflow: WorkflowIdentity; detector_admitted: true; otawww: OtawwwObservationEvidence; probe_restart_session: DeviceSessionEvidence; interrupted_restart_session: DeviceSessionEvidence; recovery_restart_session: DeviceSessionEvidence; mining_state: "disabled"; hardware_control_state: "disabled"; cleanup_complete: true; recovery_flash_used: false; private_modes_valid: true; redaction_status: "passed"; };
 
 export type NetworkReconnectObservationEvidence = {
   disconnect_event_count: 1;
@@ -512,7 +512,7 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-hashrate-monitor-evidence", "capture-scoreboard-evidence", "capture-ultra205-defaults-evidence",
   "capture-settings-patch-evidence",
   "capture-statistics-history-evidence",
-  "capture-log-buffer-evidence", "capture-partition-layout-evidence", "capture-sdkconfig-rollback-evidence",
+  "capture-log-buffer-evidence", "capture-partition-layout-evidence", "capture-sdkconfig-rollback-evidence", "capture-otawww-evidence",
   "capture-network-reconnect-evidence", "capture-network-scan-evidence",
   "project-asic-initialization-evidence",
   "project-asic-power-initialization-evidence",

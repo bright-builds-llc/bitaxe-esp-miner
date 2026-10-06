@@ -1232,6 +1232,8 @@ js_run_binary(
         "partition-table.bin",
         "bitaxe-ultra205-factory.bin",
         "bitaxe-ultra205-package.json",
+        "www-probe.bin",
+        "www-probe.json",
     ],
     args = [
         "package-firmware",

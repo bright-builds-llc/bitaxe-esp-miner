@@ -33,6 +33,7 @@ const semanticSchemas = new Set([
   "bitaxe-asic-work-send-evidence-v1",
   "bitaxe-asic-result-parsing-evidence-v1",
   "bitaxe-ui-workflow-evidence-v1",
+  "bitaxe-otawww-evidence-v1",
 ]);
 
 const safeSemanticKeys = new Set([

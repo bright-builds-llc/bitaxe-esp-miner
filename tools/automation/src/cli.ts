@@ -49,6 +49,7 @@ import { captureNetworkScanEvidence } from "./network-scan-evidence.js";
 import { captureProvisioningNetworkEvidence } from "./provisioning-network-evidence.js";
 import { captureOperatorSnapshotEvidence } from "./operator-snapshot-evidence.js";
 import { capturePartitionLayoutEvidence } from "./partition-layout-evidence.js";
+import { captureOtawwwEvidence } from "./otawww-evidence.js";
 import { captureSdkconfigRollbackEvidence } from "./sdkconfig-rollback-evidence.js";
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
@@ -165,6 +166,7 @@ async function dispatchProcess(
     case "capture-log-buffer-evidence":
     case "capture-partition-layout-evidence":
     case "capture-sdkconfig-rollback-evidence":
+    case "capture-otawww-evidence":
     case "capture-network-reconnect-evidence":
     case "capture-network-scan-evidence":
     case "project-asic-initialization-evidence":
@@ -378,6 +380,16 @@ async function main(): Promise<number> {
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), deviceSessionProgram(root),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_sdkconfig_rollback_evidence"));
+    } else if (invocation.command === "capture-otawww-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureOtawwwEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wwwProbeManifest: optionValue(invocation, "--www-probe-manifest"),
+        port, projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root), deviceSessionProgram(root),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_otawww_evidence"));
     } else if (invocation.command === "capture-network-reconnect-evidence") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureNetworkReconnectEvidence(root, {

@@ -202,6 +202,23 @@ fn progress_is_computed_before_each_chunk_is_counted() {
 }
 
 #[test]
+fn status_is_published_only_when_the_percentage_changes() {
+    // Arrange
+    let mut cursor = exact_plan(ULTRA_205_WWW_BYTES).cursor();
+
+    // Act
+    let mut published = 0;
+    while !cursor.is_complete() {
+        if cursor.wrote(cursor.next_read_len()).status_changed {
+            published += 1;
+        }
+    }
+
+    // Assert: one status for each percentage from 0 through 100.
+    assert_eq!(published, 101);
+}
+
+#[test]
 fn adapter_yields_after_every_sixteen_chunks() {
     // Arrange
     let mut cursor = exact_plan(32 * WWW_RECEIVE_CHUNK_BYTES).cursor();

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { copyFile, cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -17,6 +18,34 @@ export type PackageFirmwareRequest = {
 };
 
 const otaPartitionBytes = 0x400000;
+const wwwPartitionSize = "0x300000";
+export const wwwProbeSchema = "bitaxe-www-probe-v1";
+
+/** Metadata binding the OTAWWW probe image to the exact package it was built with. */
+export type WwwProbeMetadata = {
+  readonly schema_version: typeof wwwProbeSchema;
+  readonly source_commit: string;
+  readonly reference_commit: string;
+  readonly build_label: string;
+  readonly probe_label: string;
+  readonly package_www_sha256: string;
+  readonly probe_www_sha256: string;
+  readonly probe_www_bytes: number;
+  readonly package_version_txt_sha256: string;
+  readonly probe_version_txt_sha256: string;
+  readonly index_html_sha256: string;
+};
+
+/** A distinct canonical `version.txt` label within the 22-byte build-label limit. */
+export function wwwProbeLabel(buildLabel: string): string {
+  const commitPrefix = buildLabel.split("-")[0] ?? "";
+  if (!/^[0-9a-f]{12}$/u.test(commitPrefix)) throw new Error("build label lacks a commit prefix");
+  return `${commitPrefix}-www-probe`;
+}
+
+function sha256Hex(value: string | Buffer): string {
+  return createHash("sha256").update(value).digest("hex");
+}
 
 export async function packageFirmware(
   workspaceRoot: string,
@@ -35,6 +64,7 @@ export async function packageFirmware(
   const packageElf = path.join(input.outDir, "bitaxe-ultra205.elf");
   const firmwareOta = path.join(input.outDir, "esp-miner.bin");
   const wwwImage = path.join(input.outDir, "www.bin");
+  const wwwProbeImage = path.join(input.outDir, "www-probe.bin");
   const otadata = path.join(input.outDir, "otadata-initial.bin");
   const factoryImage = path.join(input.outDir, "bitaxe-ultra205-factory.bin");
   await copyFile(input.bootloaderBin, path.join(input.outDir, "bootloader.bin"));
@@ -61,11 +91,24 @@ export async function packageFirmware(
       processPort.run(
         internalCommandSpec(
           "python3",
-          [spiffsgen, "--obj-name-len", "64", "0x300000", staging, wwwImage],
+          [spiffsgen, "--obj-name-len", "64", wwwPartitionSize, staging, wwwImage],
           (value) => value,
         ),
       ),
       "SPIFFS image generation",
+    );
+    const probeLabel = wwwProbeLabel(buildLabel);
+    const indexHtml = await readFile(path.join(staging, "index.html"));
+    await writeFile(path.join(staging, "version.txt"), `${probeLabel}\n`, { mode: 0o600 });
+    await requireSuccess(
+      processPort.run(
+        internalCommandSpec(
+          "python3",
+          [spiffsgen, "--obj-name-len", "64", wwwPartitionSize, staging, wwwProbeImage],
+          (value) => value,
+        ),
+      ),
+      "SPIFFS probe image generation",
     );
     await copyFile(input.otadataInitialBin, otadata);
     await requireSuccess(
@@ -130,6 +173,25 @@ export async function packageFirmware(
       ),
       "package manifest generation",
     );
+    const manifest = JSON.parse(await readFile(input.manifest, "utf8")) as Record<string, unknown>;
+    const [packageWww, probeWww] = await Promise.all([readFile(wwwImage), readFile(wwwProbeImage)]);
+    if (packageWww.length !== probeWww.length || packageWww.equals(probeWww)) {
+      throw new Error("www probe image must differ from the package image at the same size");
+    }
+    const metadata: WwwProbeMetadata = {
+      schema_version: wwwProbeSchema,
+      source_commit: String(manifest["source_commit"]),
+      reference_commit: String(manifest["reference_commit"]),
+      build_label: buildLabel,
+      probe_label: probeLabel,
+      package_www_sha256: sha256Hex(packageWww),
+      probe_www_sha256: sha256Hex(probeWww),
+      probe_www_bytes: probeWww.length,
+      package_version_txt_sha256: sha256Hex(`${buildLabel}\n`),
+      probe_version_txt_sha256: sha256Hex(`${probeLabel}\n`),
+      index_html_sha256: sha256Hex(indexHtml),
+    };
+    await writeFile(path.join(input.outDir, "www-probe.json"), `${JSON.stringify(metadata, null, 2)}\n`);
   } finally {
     await rm(staging, { recursive: true, force: true });
   }

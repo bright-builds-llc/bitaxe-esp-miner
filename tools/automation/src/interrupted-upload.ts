@@ -8,8 +8,21 @@ export type InterruptedUploadObservation = {
   readonly connection_closed: true;
 };
 
+export type InterruptedUploadRoute = "/api/system/OTA" | "/api/system/OTAWWW";
+
 export async function sendInterruptedFirmwareUpload(
   origin: URL,
+  image: Buffer,
+  prefixBytes: number,
+  timeoutMs = 10_000,
+): Promise<InterruptedUploadObservation> {
+  return sendInterruptedUpload(origin, "/api/system/OTA", image, prefixBytes, timeoutMs);
+}
+
+/** Sends a declared full-length upload, then resets the connection without a FIN. */
+export async function sendInterruptedUpload(
+  origin: URL,
+  route: InterruptedUploadRoute,
   image: Buffer,
   prefixBytes: number,
   timeoutMs = 10_000,
@@ -35,7 +48,7 @@ export async function sendInterruptedFirmwareUpload(
   const authority = origin.port === "" ? origin.hostname : origin.host;
   const headers = Buffer.from(
     [
-      "POST /api/system/OTA HTTP/1.1",
+      `POST ${route} HTTP/1.1`,
       `Host: ${authority}`,
       `Origin: ${origin.origin}`,
       "Content-Type: application/octet-stream",

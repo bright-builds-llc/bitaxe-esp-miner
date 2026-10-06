@@ -28,6 +28,7 @@ mod mining_criteria_evidence;
 mod network_reconnect_evidence;
 mod network_scan_evidence;
 mod operator_snapshot_evidence;
+mod otawww_evidence;
 mod partition_layout_evidence;
 mod protocol_coordinator_evidence;
 mod provisioning_network_evidence;
@@ -111,6 +112,7 @@ pub use network_scan_evidence::{NetworkScanEvidence, NetworkScanObservationEvide
 pub use operator_snapshot_evidence::{
     DeviceSessionEvidence, OperatorSnapshotEpochEvidence, OperatorSnapshotEvidence,
 };
+pub use otawww_evidence::{OtawwwEvidence, OtawwwObservationEvidence};
 pub use partition_layout_evidence::{PartitionLayoutEvidence, PartitionLayoutObservationEvidence};
 pub use protocol_coordinator_evidence::{
     ProtocolCoordinatorEvidence, ProtocolCoordinatorObservationEvidence,
@@ -172,6 +174,7 @@ pub const STATISTICS_HISTORY_EVIDENCE_SCHEMA: &str = "bitaxe-statistics-history-
 pub const LOG_BUFFER_EVIDENCE_SCHEMA: &str = "bitaxe-log-buffer-evidence-v1";
 pub const PARTITION_LAYOUT_EVIDENCE_SCHEMA: &str = "bitaxe-partition-layout-evidence-v1";
 pub const SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA: &str = "bitaxe-sdkconfig-rollback-evidence-v1";
+pub const OTAWWW_EVIDENCE_SCHEMA: &str = "bitaxe-otawww-evidence-v1";
 pub const NETWORK_RECONNECT_EVIDENCE_SCHEMA: &str = "bitaxe-network-reconnect-evidence-v1";
 pub const NETWORK_SCAN_EVIDENCE_SCHEMA: &str = "bitaxe-network-scan-evidence-v1";
 pub const ASIC_INITIALIZATION_EVIDENCE_SCHEMA: &str = "bitaxe-asic-initialization-evidence-v1";
@@ -234,6 +237,7 @@ pub enum AutomationCommand {
     CaptureLogBufferEvidence,
     CapturePartitionLayoutEvidence,
     CaptureSdkconfigRollbackEvidence,
+    CaptureOtawwwEvidence,
     CaptureNetworkReconnectEvidence,
     CaptureNetworkScanEvidence,
     ProjectAsicInitializationEvidence,
@@ -289,6 +293,11 @@ pub enum AutomationCategory {
     ReconnectTimingInvalid,
     ServiceRecoveryFailed,
     BrowserBlocked,
+    OriginUnavailable,
+    UpdateNotObserved,
+    AssetIdentityMismatch,
+    RecoveryNotObserved,
+    NvsNotPreserved,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]

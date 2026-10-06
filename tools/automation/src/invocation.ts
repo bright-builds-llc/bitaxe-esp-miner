@@ -252,6 +252,14 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--projection": value({ required: true }),
     "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
   },
+  "capture-otawww-evidence": {
+    "--private-root": value({ required: true }),
+    "--package-manifest": value({ required: true }),
+    "--www-probe-manifest": value({ required: true }),
+    "--detector-output": value({ required: true }),
+    "--projection": value({ required: true }),
+    "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
+  },
   "capture-network-reconnect-evidence": {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),

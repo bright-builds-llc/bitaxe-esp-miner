@@ -103,7 +103,9 @@ fn stream_body(
         }
 
         let written = cursor.wrote(len);
-        status_sink(written.status);
+        if written.status_changed {
+            status_sink(written.status);
+        }
         if written.yield_now {
             thread::sleep(Duration::from_millis(WWW_YIELD_MILLIS));
         }

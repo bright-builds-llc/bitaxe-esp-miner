@@ -24,6 +24,7 @@ pub struct ContractBundle {
     pub log_buffer_evidence_schema: Value,
     pub partition_layout_evidence_schema: Value,
     pub sdkconfig_rollback_evidence_schema: Value,
+    pub otawww_evidence_schema: Value,
     pub network_reconnect_evidence_schema: Value,
     pub network_scan_evidence_schema: Value,
     pub asic_initialization_evidence_schema: Value,
@@ -101,6 +102,8 @@ pub fn contract_bundle() -> ContractBundle {
             SdkconfigRollbackEvidence
         ))
         .expect("SDK config rollback evidence schema must serialize"),
+        otawww_evidence_schema: serde_json::to_value(schema_for!(OtawwwEvidence))
+            .expect("OTAWWW evidence schema must serialize"),
         network_reconnect_evidence_schema: serde_json::to_value(schema_for!(
             NetworkReconnectEvidence
         ))
@@ -206,6 +209,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureLogBufferEvidence,
             AutomationCommand::CapturePartitionLayoutEvidence,
             AutomationCommand::CaptureSdkconfigRollbackEvidence,
+            AutomationCommand::CaptureOtawwwEvidence,
             AutomationCommand::CaptureNetworkReconnectEvidence,
             AutomationCommand::CaptureNetworkScanEvidence,
             AutomationCommand::ProjectAsicInitializationEvidence,
@@ -248,6 +252,7 @@ pub fn contract_bundle() -> ContractBundle {
             LOG_BUFFER_EVIDENCE_SCHEMA,
             PARTITION_LAYOUT_EVIDENCE_SCHEMA,
             SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA,
+            OTAWWW_EVIDENCE_SCHEMA,
             NETWORK_RECONNECT_EVIDENCE_SCHEMA,
             NETWORK_SCAN_EVIDENCE_SCHEMA,
             ASIC_INITIALIZATION_EVIDENCE_SCHEMA,
