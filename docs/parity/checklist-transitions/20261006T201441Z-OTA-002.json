@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261006T201441Z-OTA-002",
+  "predecessor_sha256": "a34e746b660724ade1294b8bc976bd70055867f1a45ee7af6b862505d2f7f2c1",
+  "result_sha256": "82ebe64416223f1cbd3652eb11bb42ab86fd28853d0bb858224c77405102c658",
+  "row_id": "OTA-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261006T185454Z-OTA-002/PLAN.md",
+  "plan_sha256": "111437f59d0c8acae56028b5d1f8b0066a8f886adcfa871837f2ebd5d29b5048",
+  "result_path": "docs/parity/work-plans/20261006T185454Z-OTA-002/RESULT.md",
+  "result_document_sha256": "5404dd45bcc7b828e0748b0276f4f2c943513b00fad27454ce2cc64bf982efab",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/www_update.rs`, `crates/bitaxe-api/src/update_plan.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/www_update.rs`, `firmware/bitaxe/src/http_api/updates.rs`, `firmware/bitaxe/static/www/assets/app.js`, `docs/release/ultra-205.md`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/www_update.rs`, `crates/bitaxe-api/src/update_plan.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/www_update.rs`, `firmware/bitaxe/src/http_api/updates.rs`, `firmware/bitaxe/static/www/assets/app.js`, `docs/release/ultra-205.md`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit",
+  "after_evidence": "unit,hardware-regression",
+  "before_notes": "POST /api/system/OTAWWW follows upstream POST_WWW_update (network and AP gates, www partition lookup, oversize refusal, 64 KiB erase, ordered 1000-byte writes, upstream statuses and responses) with an owner-approved refusal of any body that is not exactly partition-sized before erase; see docs/parity/work-plans/20261006T164502Z-OTA-002/WORKLOG.md. Live update, reboot asset identity, interrupted-update recovery and hardware-regression evidence remain unclaimed.",
+  "after_notes": "One Ultra 205 run (ordinal 002, package 96a7935e19a7-dev) completed a probe OTAWWW update, an interrupted-update (reset mid-body after the full erase) that left axeOSVersion Unavailable while /recovery stayed served, and a recovery update that restored the exact package assets, each followed by a proven software restart with firmware, hostname and stored settings unchanged; see docs/parity/evidence/ota002-otawww/otawww-projection.json and the linked RESULT.md. Owner-approved divergence: only partition-sized bodies are accepted. Non-claims: other interruption shapes, power loss, cold boot, the /recovery upload form and OTAWWW during mining."
+}

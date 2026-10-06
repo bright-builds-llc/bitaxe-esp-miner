@@ -26936,3 +26936,226 @@ Active queue now lists only unresolved work. No disposition, non-claim or
 evidence statement in a moved record changed. Residual risk: the soak records
 stay Active as terminal blockers even though STR-007 is verified; closing them
 needs an explicit decision about the idle-reconnect boundary they record.
+
+### task-parity-ota002-www-partition-update | 2026-10-06 | Implement AxeOS OTAWWW static-partition updates
+
+Status: Active, software first. Selected 2026-10-06 as the only remaining
+device-user parity gap on the Ultra 205.
+Plan: `docs/parity/work-plans/20261006T164502Z-OTA-002/PLAN.md`. The stock AxeOS update page posts
+`www.bin` to `/api/system/OTAWWW`
+(`reference/esp-miner/main/http_server/axe-os/src/app/services/system.service.ts:380`),
+and this firmware answers it fail-closed with `Wrong API input`, the documented
+REL-03 gap in
+`docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/otawww.md`.
+
+Reference behavior (`reference/esp-miner/main/http_server/http_server.c:POST_WWW_update`):
+network-allowed check (401); reject AP or APSTA mode (500 `Not allowed in AP
+mode`); find the `www` SPIFFS partition (500 if missing); reject a body larger
+than the partition (400 `File provided is too large for device`); erase the
+whole partition in 64 KiB steps with yields; then receive 1000-byte chunks
+written at `partition_size - remaining`, retrying socket timeouts, failing with
+`Protocol Error` or `Write Error`, publishing `firmware_update_status` progress,
+and replying `WWW update complete`. There is no staging copy: an interrupted
+update leaves the UI partition erased or partial until another OTAWWW or a
+reinstall, while firmware, NVS and OTA slots are untouched. The write offset
+places a short body at the end of the partition; upstream `www.bin` images are
+partition-sized, so undersized-body behavior needs an explicit parity decision.
+
+- [x] Replace the `AxeOsStaticUpdateGap` decision in
+      `crates/bitaxe-api/src/update_plan.rs` and `route_shell.rs` with a pure
+      core for admission order, size bound, erase plan, chunk offsets, status
+      strings and response codes and bodies, with golden tests from the pinned
+      reference.
+- [x] Decide and record undersized-body handling: the owner chose on
+      2026-10-06 to refuse any body that is not exactly the partition size,
+      before erasing; recorded in the plan and release guide.
+- [x] Implement the firmware adapter behind `firmware/bitaxe/src/http_api.rs`
+      over `esp_partition_*`: watchdog-safe bounded erase and write, mutual
+      exclusion with app OTA and other update state, the mounted SPIFFS and
+      installed-asset-version consequences until reboot, and no write outside
+      `www`.
+- [x] Update `firmware/bitaxe/static/recovery_page.html`, `release.json`,
+      `docs/release/ultra-205.md` and operator copy; remove the REL-03 gap
+      wiring and its fail-closed test expectations.
+- [x] Host tests for every refusal and error path, including an interrupted
+      body; firmware build and package with a partition-sized `www.bin`.
+- [x] Before any device effect, read ADR-0021, ADR-0023 and
+      `docs/hardware/native-usb-ownership.md`, then add a complete contract
+      under the Effectful Hardware Task Gate for one exact-package OTAWWW
+      update, reboot and served-asset identity proof, plus one bounded
+      interrupted update with its NVS-preserving recovery path.
+- [x] Run an independent evidence review before promoting `OTA-002`
+      (`lesson-independent-review-before-parity-promotion`).
+
+Authorization: software, tests and documentation only until the hardware
+contract above is committed. This block authorizes no flash, device OTAWWW
+request, erase or other device effect.
+
+Software progress | 2026-10-06: implemented in `c03a4369` (plan `90231b06`).
+`OTA-002` moved `deferred` to `in-progress` (`20261006T164502Z-OTA-002`) and
+to `implemented` with `unit` evidence (`20261006T165530Z-OTA-002`); see the
+plan's WORKLOG for gates and residual risks. The recovery page and
+`release.json` needed no change: the page already posts to the route.
+
+Completion review: `OTA-002` is `verified` through
+`task-parity-ota002-www-hardware-verification` (transition
+`20261006T201441Z-OTA-002`). The owner-approved exact-size divergence from
+upstream is recorded in the plan, release guide and result.
+
+### task-parity-ota002-www-hardware-verification | 2026-10-06 | Verify live OTAWWW update and interrupted-update recovery
+
+Status: Active. Software prerequisites are implemented; hardware ordinal
+`001` is the next effect, under plan `docs/parity/work-plans/20261006T185454Z-OTA-002/PLAN.md`. Parent:
+`task-parity-ota002-www-partition-update`.
+
+Objective: promote `OTA-002` to `verified` with `hardware-regression` evidence
+covering one complete OTAWWW update, one `interrupted-update`, and recovery, on
+one detector-admitted Ultra 205, with NVS and firmware unchanged throughout.
+
+Design notes:
+
+- Since the fixed Serial/JTAG migration the firmware no longer prints its
+  station address over USB, so the device origin comes from the authenticated
+  Gate: Gate `f3c7f5a` adds a one-use `observeStationEndpoint()` in an
+  exclusive `stationEndpointHandoff` page mode (possession plus the existing
+  `telemetry_cadence_endpoint`; no lease, work or mining). `just
+  otawww-endpoint` serves that page and stores the endpoint in a mode-0600
+  file; the browser closes the Worker and leaves the page before any CLI
+  serial use.
+- `just capture-otawww-evidence` runs in two phases because the endpoint must
+  belong to the installed boot: `--phase install` (state-preserving
+  exact-package install, 60-second capture that only proves a completed boot)
+  and `--phase run` (HTTP stages at the handed-off origin, which must report
+  the same boot ordinal and exact build).
+- Each OTAWWW stage is followed by one HTTP restart proven by `device-session
+  reboot-live`; every restart session must carry the validator's required
+  facts or the run stops at that restart.
+
+- [x] `www_probe_image` outputs (`www-probe.bin`, `www-probe.json`) from
+      `just package`.
+- [x] Route-parameterized reset-before-FIN interruption helper.
+- [x] `just capture-otawww-evidence` with install and run phases, the
+      `bitaxe-otawww-evidence-v1` contract, validator and redaction coverage.
+- [x] Gate endpoint handoff and `just otawww-endpoint preflight|serve|finish`.
+- [x] Host tests for every terminal category, handoff refusal and cleanup.
+- [x] Run attempt `001` as authorized below.
+- [x] Independent evidence review, then promote `OTA-002`.
+
+Authorized hardware commands for ordinal `001`, run once each in order, with
+`P=scratch/ota002-otawww`, `W=$P/wrapper-001`, `A=$P/attempt-001`,
+`M=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`,
+`R=bazel-bin/firmware/bitaxe/www-probe.json` and
+`J=docs/parity/evidence/ota002-otawww/otawww-projection.json`, at the clean
+pushed HEAD after `just package`:
+
+1. `test ! -e $W && test ! -e $A && (umask 077; mkdir -m 700 -p $W && just detect-ultra205 > $W/detector.stdout.log 2> $W/detector.stderr.log)`
+2. With the dedicated Gate tab confirmed at `about:blank` and no serial holder:
+   `(umask 077; just capture-otawww-evidence --phase install --private-root $A --package-manifest $M --www-probe-manifest $R --detector-output $W/detector.stdout.log --projection $J --capture-timeout-seconds 420 > $W/install.stdout.log 2> $W/install.stderr.log)`
+3. `(umask 077; just detect-ultra205 > $W/endpoint-detector.stdout.log 2> $W/endpoint-detector.stderr.log && just otawww-endpoint preflight --private-root $A/endpoint --gate-root ../bitaxe-turnstile-system --package-manifest $M --detector-output $W/endpoint-detector.stdout.log > $W/endpoint-preflight.stdout.log 2> $W/endpoint-preflight.stderr.log)`
+4. `(umask 077; just detect-ultra205 > $W/serve-detector.stdout.log 2> $W/serve-detector.stderr.log)`, then detached:
+   `nohup just otawww-endpoint serve --private-root $A/endpoint --detector-output $W/serve-detector.stdout.log > $W/serve.stdout.log 2> $W/serve.stderr.log &`;
+   navigate the dedicated Gate tab to `http://127.0.0.1:48765/`, confirm
+   `document.visibilityState` is `visible`, and click Connect Worker once. The
+   page hands off the endpoint, closes the Worker and leaves for
+   `about:blank`; the server then exits.
+5. `(umask 077; just detect-ultra205 > $W/final-endpoint-detector.stdout.log 2> $W/final-endpoint-detector.stderr.log && just otawww-endpoint finish --private-root $A/endpoint --detector-output $W/final-endpoint-detector.stdout.log > $W/endpoint-finish.stdout.log 2> $W/endpoint-finish.stderr.log)`
+6. `(umask 077; just detect-ultra205 > $W/run-detector.stdout.log 2> $W/run-detector.stderr.log && just capture-otawww-evidence --phase run --private-root $A --endpoint-input $A/endpoint/endpoint.private.json --package-manifest $M --www-probe-manifest $R --detector-output $W/run-detector.stdout.log --projection $J --capture-timeout-seconds 420 > $W/run.stdout.log 2> $W/run.stderr.log)`
+
+Allowed effects: the one exact-package install; one Gate session (Hello,
+possession, one endpoint read, Stop, Close); same-origin HTTP `GET` of system
+info, logs and static files; exactly three OTAWWW requests (complete probe,
+interrupted package, complete package) and at most three single-POST
+restarts. A recovery `just flash` of the exact package (state-preserving,
+which rewrites `www` without NVS) runs at most once, automatically, after any
+failure once the probe upload has started and before recovery is proven, or
+after a failed install write; it never counts as success.
+
+Prohibited effects: factory reset, `--wifi-credentials`, NVS seeding or
+erase; firmware `/api/system/OTA`, erase-flash, raw writes; writes to any
+partition except `www` after the install; mining, pool, lease, Start, ASIC,
+voltage, frequency, fan, thermal or power control; mDNS, ARP, router or
+subnet discovery; direct UART, pins or power interruption; a second capture,
+endpoint read or restart beyond the counts above under this ordinal.
+
+Evidence and privacy: ignored mode-0700 roots with mode-0600 files, per
+`docs/parity/evidence-policy.md`. The endpoint, origins, IP addresses,
+hostnames, USB identities, HTTP bodies, logs and image bytes stay private.
+Only the closed redacted projection `$J` is committed, after `just
+verify-redaction` and an independent review.
+
+Recovery, retry and stop: a detector failure stops before any write. Keep
+the earliest typed category through recovery and cleanup. Any capture or
+serve start consumes the ordinal. Continue only under
+`docs/hardware/hardware-attempt-policy.md` with a fresh ordinal and verified
+progress; the same `(category, stage)` recurring after its targeted fix
+selects `stop_repeated_boundary`. A missing, stale or wrong-boot endpoint
+stops as `origin_unavailable` or `evidence_invalid`; it is never a reason to
+start discovery. A hidden Gate tab holds the run in its safe state without a
+deadline.
+
+Terminal categories: success, `package_invalid`, `process_failed`,
+`timeout`, `hardware_blocked`, `evidence_invalid`, `origin_unavailable`,
+`update_not_observed`, `asset_identity_mismatch`,
+`interruption_not_observed`, `recovery_not_observed`, `nvs_not_preserved`,
+`recovery_failed`.
+
+Acceptance: every stage postcondition holds, cleanup and modes pass, the
+projection validates, and an independent reviewer re-derives it before
+`OTA-002` moves to `verified` with evidence `hardware-regression` and notes
+naming the `interrupted-update` case.
+
+Attempt 001 log (2026-10-06): package `5241d2b90945-dev` built at the clean
+pushed contract commit. Step 1 admitted one Ultra 205 in the Serial/JTAG
+runtime profile. Step 2 installed the exact package (`complete`). Step 3's
+first preflight stopped with `repository_check_failed` before any device
+effect: under `bazel run` the relative `--gate-root` resolved inside the
+runfiles tree. Host-only fix: operator paths resolve against the workspace,
+with a regression test. The installed image and its manifest are unchanged
+(the package is not rebuilt); step 3 reruns under the same ordinal.
+Step 3 then passed. The extension could not see the old dedicated Gate tab,
+so with the owner's approval a new dedicated tab was opened in the session
+group; the owner brought its window forward. Step 4 served the handoff page,
+one Connect produced the endpoint and the closed Worker state, and the page
+left for `about:blank`. Step 5 proved the endpoint recorded, the page closed
+and the listener and serial port released.
+Step 6 stopped at the run baseline before any OTAWWW request, restart or
+recovery: the boot's one-time `safe_state` line had rotated out of the
+512 KiB retained log ring (about 1,770 periodic snapshot and health lines),
+so the earliest category is `hardware_blocked` at `baseline`; the CLI also
+misreported it as `process_failed` because the OTAWWW error type was not in
+the typed-failure mapping. The device holds the exact `5241d2b9` package,
+idle, with no lease. Outcome: `continue_after_verified_fix`.
+
+Verified fixes (host only): the CLI maps `OtawwwEvidenceError` to its
+category; the handoff server requires the Gate's closed state to show
+`deviceLeaseInactive` and records `worker_lease_inactive`, and the run's
+baseline uses that record for the same boot instead of the rotated log line
+(post-restart log checks remain, read seconds after each boot); regression
+tests cover each.
+
+Ordinal `002` is authorized under this contract: the six commands above with
+`W=$P/wrapper-002` and `A=$P/attempt-002`, after `just package` at the clean
+pushed HEAD that contains these fixes.
+
+Ordinal 002 (2026-10-06, package `96a7935e19a7-dev`): all six commands
+completed. Install `complete`; one Connect in the dedicated Gate tab handed
+off the endpoint with an inactive Worker lease and left for `about:blank`;
+the finish proof released listener and serial port; the run completed with
+three OTAWWW requests (probe, interrupted package, recovery package) and
+three `ready` restart sessions, no recovery flash. The supervisor validated
+the closed `bitaxe-otawww-evidence-v1` projection and `just
+verify-redaction` passes. Promotion waits on the independent review.
+
+Verification: ordinal 002 completed; projection validated, `just
+verify-redaction` passes, and an independent review re-derived every claim
+(supported with caveats). Transition `20261006T201441Z-OTA-002` moved
+`OTA-002` to `verified` with `unit,hardware-regression`; progress synchronized
+to 92 of 96.
+
+Completion review: OTAWWW update, interrupted-update and recovery are proven
+on one Ultra 205 with firmware and stored settings unchanged and no recovery
+flash. Caveats and non-claims are in
+`docs/parity/work-plans/20261006T185454Z-OTA-002/RESULT.md`. Lessons: the
+boot-time `safe_state` line rotates out of the 512 KiB retained log ring
+within minutes, and the device address now comes only from the authenticated
+Gate handoff.
