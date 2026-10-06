@@ -144,8 +144,8 @@ pub use system_info_contract::{
     SystemInfoSettingsSnapshot, SYSTEM_INFO_STATISTICS_LIMIT,
 };
 pub use telemetry::{
-    live_telemetry_update_envelope, maybe_live_telemetry_diff, LiveTelemetryPlanner,
-    LIVE_TELEMETRY_CADENCE_MS,
+    live_telemetry_update_envelope, maybe_live_telemetry_diff, websocket_ping_due,
+    LiveTelemetryPlanner, LIVE_TELEMETRY_CADENCE_MS, WEBSOCKET_PING_INTERVAL_MS,
 };
 pub use theme::{
     plan_theme_post, theme_settings_from_snapshot, ThemePostFailure, ThemePostPlan,

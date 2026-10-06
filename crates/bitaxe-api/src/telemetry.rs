@@ -10,6 +10,17 @@ use serde_json::{json, Map, Value};
 /// Upstream-compatible live telemetry cadence.
 pub const LIVE_TELEMETRY_CADENCE_MS: u64 = 500;
 
+/// Server liveness pings run on their own slower schedule. Pinging every client on every
+/// 500 ms cadence tick multiplied control frames tenfold and preceded the idle-reconnect signature.
+pub const WEBSOCKET_PING_INTERVAL_MS: u32 = 5_000;
+
+/// Whether a ping round is due at `now_ms`, given the previous round's uptime. Times are wrapping
+/// 32-bit milliseconds, because the ESP32-S3 has no 64-bit atomics to hold them.
+#[must_use]
+pub fn websocket_ping_due(maybe_last_ms: Option<u32>, now_ms: u32) -> bool {
+    maybe_last_ms.is_none_or(|last| now_ms.wrapping_sub(last) >= WEBSOCKET_PING_INTERVAL_MS)
+}
+
 /// Wraps telemetry data in the upstream `update` event envelope.
 #[must_use]
 pub fn live_telemetry_update_envelope(data: Value) -> Value {
@@ -115,6 +126,45 @@ fn maybe_object_diff(
     }
 
     Some(diff)
+}
+
+#[cfg(test)]
+mod ping_tests {
+    use super::{websocket_ping_due, WEBSOCKET_PING_INTERVAL_MS};
+
+    #[test]
+    fn the_first_round_is_due_immediately() {
+        // Arrange / Act / Assert
+        assert!(websocket_ping_due(None, 0));
+    }
+
+    #[test]
+    fn rounds_are_spaced_by_the_ping_interval_not_the_cadence() {
+        // Arrange
+        let last = 10_000;
+        // Act
+        let due = [
+            500,
+            WEBSOCKET_PING_INTERVAL_MS - 1,
+            WEBSOCKET_PING_INTERVAL_MS,
+        ]
+        .map(|elapsed| websocket_ping_due(Some(last), last + elapsed));
+        // Assert
+        assert_eq!(due, [false, false, true]);
+    }
+
+    #[test]
+    fn the_schedule_survives_the_32_bit_uptime_wrap() {
+        // Arrange
+        let last = u32::MAX - 1_000;
+        // Act
+        let due = [
+            websocket_ping_due(Some(last), 2_000),
+            websocket_ping_due(Some(last), 5_000),
+        ];
+        // Assert
+        assert_eq!(due, [false, true]);
+    }
 }
 
 #[cfg(test)]

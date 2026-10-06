@@ -142,3 +142,21 @@ fn activation_cannot_erase_an_earlier_required_owner_failure() {
             .contains("state=complete first_failure=statistics"));
     });
 }
+
+#[test]
+fn websocket_pings_run_on_their_own_schedule_and_backpressure_keeps_clients() {
+    // Arrange
+    let ping_route = WEBSOCKET_SOURCE
+        .split("pub(super) fn ping_websocket_route")
+        .nth(1)
+        .and_then(|rest| rest.split("\nfn ").next())
+        .expect("ping route");
+    let queued_send = WEBSOCKET_SOURCE
+        .split("unsafe extern \"C\" fn send_queued_websocket_frame")
+        .nth(1)
+        .expect("queued send");
+    // Act / Assert
+    assert!(WEBSOCKET_SOURCE.contains("bitaxe_api::websocket_ping_due("));
+    assert!(!ping_route.contains("unregister_if_current"));
+    assert!(queued_send.contains("httpd_sess_trigger_close"));
+}

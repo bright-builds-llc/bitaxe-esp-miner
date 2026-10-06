@@ -62,9 +62,12 @@ invalid watchdog continuity. That selected `stop_repeated_boundary`.
   - [x] Phase 3: firmware: the lease profile from the signed grant (fixed for
         the lease's life), the soak budget in revocation admission,
         `worker_soak_budget` with an NVS `soak_ledger`, and host tests.
-  - [ ] Phase 4: WebSocket hardening: a ping schedule instead of every 500 ms,
-        queue backpressure no longer drops clients, close sockets on send
-        failure, and align the socket budget, with regressions.
+  - [x] Phase 4: WebSocket hardening: pings run every 5 s instead of every
+        500 ms cadence tick; httpd work-queue backpressure no longer
+        unregisters clients; a real send failure now closes the session
+        instead of stranding its socket. The upstream 10-client cap is kept.
+        The hardware regression is the soak's idle WebSocket pre-phase
+        (Phase 6).
   - [ ] Phase 5: `tools/http-transport` `soak-observer` (separate HTTP and
         WebSocket threads, 900 s life) plus a pure `soak-judge` over twenty
         30-second windows, with the shared continuity helpers moved out of

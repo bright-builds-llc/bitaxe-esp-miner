@@ -5,6 +5,10 @@ use bitaxe_worker_control::cadence::{
 };
 
 const MAX_WEBSOCKET_CONTROL_PAYLOAD_BYTES: usize = 125;
+/// Wrapping uptime of the previous ping round, valid once `PING_ROUND_STARTED` is set.
+static LAST_PING_ROUND_MS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static PING_ROUND_STARTED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
 
 enum LiveCadenceIssueError {
     SerializeFrame,
@@ -108,6 +112,16 @@ pub(super) fn broadcast_raw_log_chunks(server: sys::httpd_handle_t) {
 }
 
 pub(super) fn prune_stale_websocket_sessions(server: sys::httpd_handle_t) {
+    use std::sync::atomic::Ordering;
+    let now_ms = crate::runtime_uptime::millis() as u32;
+    let maybe_last = PING_ROUND_STARTED
+        .load(Ordering::Acquire)
+        .then(|| LAST_PING_ROUND_MS.load(Ordering::Acquire));
+    if !bitaxe_api::websocket_ping_due(maybe_last, now_ms) {
+        return;
+    }
+    LAST_PING_ROUND_MS.store(now_ms, Ordering::Release);
+    PING_ROUND_STARTED.store(true, Ordering::Release);
     ping_websocket_route(server, WebSocketRouteKind::Logs);
     ping_websocket_route(server, WebSocketRouteKind::LiveTelemetry);
 }
@@ -118,12 +132,12 @@ pub(super) fn ping_websocket_route(server: sys::httpd_handle_t, route: WebSocket
         if result == sys::ESP_OK {
             continue;
         }
-
+        // Only the shared httpd work queue failed; that says nothing about this client, so it stays
+        // registered. A real send failure unregisters and closes the session in the queued send.
         log::warn!(
-            "axeos_websocket_ping=unregistering_stale route={route:?} session={} error={result}",
+            "axeos_websocket_ping=queue_backpressure route={route:?} session={} error={result}",
             lease.session()
         );
-        websocket_api::unregister_if_current(lease);
     }
 }
 
@@ -146,14 +160,15 @@ fn broadcast_websocket_text_frame(
     failures
 }
 
+/// Broadcast failures here are httpd work-queue backpressure, not client faults, so clients stay
+/// registered; `send_queued_websocket_frame` handles real send failures.
 fn handle_websocket_send_failures(route: WebSocketRouteKind, failures: Vec<WebSocketSendFailure>) {
     for failure in failures {
         log::warn!(
-            "axeos_websocket_broadcast=unregistering_stale route={route:?} session={} error={}",
+            "axeos_websocket_broadcast=queue_backpressure route={route:?} session={} error={}",
             failure.lease.session(),
             failure.error
         );
-        websocket_api::unregister_if_current(failure.lease);
     }
 }
 
@@ -570,5 +585,7 @@ unsafe extern "C" fn send_queued_websocket_frame(argument: *mut c_void) {
     }
     if result != sys::ESP_OK {
         websocket_api::unregister_if_current(queued.lease);
+        // Unregistering alone left the socket open, stranding one of the server's few sockets.
+        let _ = unsafe { sys::httpd_sess_trigger_close(queued.server, queued.lease.session()) };
     }
 }
