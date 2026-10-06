@@ -4527,8 +4527,16 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       safe stop complete, ledger 29/28/3,540,000 ms, no recovery errors,
       sealed `complete=true` (result `888069c1…`). Recorded as the
       lineage's latest Start.
-- [ ] Phase 4 post-shutdown idle captures (at least 60 minutes).
-- [ ] Phase 5 recovery019 (and recovery020 after a reproduced panic).
+- [x] Phase 4 post-shutdown idle captures: four 1,200-second windows, 81
+      samples over 80 minutes, no Worker connection. Free internal heap
+      holds flat at about 8.2 KB (about 1,069 blocks), about 3.3 KB below
+      the pre-Start baseline, with dips to 2.1–2.4 KB; the largest free
+      block stays at 1,536–1,792 bytes and the lifetime minimum is 1,295
+      bytes. No idle leak.
+- [x] Phase 5 recovery019 on boot 307: complete, the retained heartbeat009
+      record read by its attempt, ledger 29/28/3,540,000 ms, no failures,
+      no panic (this connection did not coincide with a dip). Result
+      `61de415c…`, seal `e72275dd…`.
 - [ ] Phase 5b: within recovery019's (or recovery020's) proof window, one
       read-only `just core-dump-read --board 205 --port <port>
       --expected-physical-sha256 <physical> --expected-installed-source
@@ -4539,16 +4547,27 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       the restart006 panic left a dump. ADR-0030 handling: private mode-0600
       root; decode only against the ELF that matches the dump's identity; no
       clearing. A missing or older dump is recorded, not retried.
-- [ ] Analyse the series, identify the allocator, fix with a regression.
+      Done: the read completed, but the partition still holds the archived
+      queue boot-loop dump (app `84d1cd51…`). With no-overwrite, the
+      restart006 panic left no dump, so its exact site stays unknown.
+- [x] Analysis: not a leak. Internal heap is persistently exhausted. Thread
+      stacks take about 230 KiB of internal RAM, and
+      `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048` keeps about 1,000 ordinary
+      small Rust allocations internal. Settings snapshots rebuilt on 100 ms
+      to 1 s loops cause the 6 KB dips. A Worker connection that lands in
+      a dip can exhaust internal RAM; restart006 fits that, recovery019 did
+      not coincide with one.
+- [ ] Fix with a regression: ordinary allocations prefer PSRAM, verified
+      by measured idle headroom on a new candidate.
 
 Stop on any detector failure, identity, ledger or baseline drift, a lost or
 ambiguous Start, a panic other than the Phase 5 reproduction, or unproven
 cleanup. No pool, no Wi-Fi provisioning, no NVS or factory reset, no
 core-dump clearing, at most five installs.
-Control diagnostic recovery hardware: enabled.
+Control diagnostic recovery hardware: disabled.
 Internal heap diagnostic install hardware: disabled.
 Heartbeat heap diagnosis hardware: disabled.
-Heap-loss core-dump acquisition: enabled (fresh recovery required).
+Heap-loss core-dump acquisition: disabled.
 
 Verification: pending. Completion review: pending.
 
