@@ -5,7 +5,7 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { HEAD } from '../str005-lineage/head.mjs';
 export const TASK = 'task-str005-renewal-window-current-image';
 export const ENABLED_LINE = 'Renewal window hardware: enabled.';
-export const ENABLED = false;
+export const ENABLED = true;
 export const CONTRACT = 'docs/hardware/str005-accepted-share-amendment.md';
 export const SCHEMA = 'str005-accepted-share-context-v1';
 export const ADMISSION = 'accepted-share-v1';
@@ -21,9 +21,9 @@ export const PINS = Object.freeze({ installationProfile: HEAD.install.profile,
   // Renew-current-001: the lineage head's latest Start on 2bff1004 (boot 320, ledger 32/31/4,080,000 ms).
   previousStartResult: '81ae7513e93a85c42c753a725356c0635176958203cdc63761a0fc26fc0fec89',
   previousStartSeal: '998da7e265215bc5004b2d46f4824ca69936e70a780dbedd91c1986c96f8f91d',
-  // Pinned once its sealed no-mining restart after renew-current-001 passes.
-  restartResult: null,
-  restartSeal: null,
+  // Restart009: one no-mining restart after renew-current-001 (boot 320 -> 321, ledger unchanged).
+  restartResult: 'f736af76046fb12a57777647cab3794d810540862f991ebecd1da667e1ee5451',
+  restartSeal: '6cee41efcdfd6492640a02fa75cc0e1e305e39c6a2b419a27e83d704b30538af',
   gate: HEAD.install.identity.gate_commit });
 /** The exact active task line and the compiled flag both admit effects; a restart must be pinned. */
 export function taskEnabled(tasks, compiled = ENABLED, pins = PINS) {

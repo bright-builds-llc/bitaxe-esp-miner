@@ -4399,10 +4399,11 @@ Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendme
       renewal page's constants are tested against the contract. A
       proofless share run supplies its generation to the restart owner
       from its in-run status read. Regressions cover each.
-- [ ] restart009: preflight with renew-current-001 as `--start-root`,
-      recovery stage, restart stage, finish. Expected boot 320 to 321,
-      ledger 32/31/4,080,000 ms unchanged. Then pin it and enable the
-      probe line.
+- [x] restart009: recovery stage read renew-current-001's record (its
+      generation from the in-run status read), then one software restart
+      took boot 320 to 321 with the ledger (32/31/4,080,000 ms) and budget
+      unchanged; no failures. Result `f736af76…`, seal `6cee41ef…`; pinned,
+      probe line enabled.
 - [ ] renew-current-002: detector, preflight, serve, baseline and
       candidate, startup detector, Run, fresh recovery, release, final
       detector, finish. Expected after ledger 33/32/4,260,000 ms.
@@ -4414,8 +4415,8 @@ ambiguous Start (never resend), a panic or unproven cleanup. Effects and
 prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
 firmware write. Retries need a regression-backed change, a fresh ordinal
 and a new restart.
-Renewal window restart hardware: enabled.
-Renewal window hardware: disabled.
+Renewal window restart hardware: disabled.
+Renewal window hardware: enabled.
 
 Verification: pending. Completion review: pending.
 
