@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261006T165530Z-OTA-002",
+  "predecessor_sha256": "b557852edf126c128e0ae6a383b6cec2b94ea1f4189508a2efdf1deb518c64a9",
+  "result_sha256": "a34e746b660724ade1294b8bc976bd70055867f1a45ee7af6b862505d2f7f2c1",
+  "row_id": "OTA-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261006T164502Z-OTA-002/PLAN.md",
+  "plan_sha256": "012ea7083d6e0730fe436427eb92a03a104190bb5bf65ee40e56ebe601d8ce3a",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-api/src/update_plan.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/http_api/updates.rs`, `docs/release/ultra-205.md`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/www_update.rs`, `crates/bitaxe-api/src/update_plan.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/www_update.rs`, `firmware/bitaxe/src/http_api/updates.rs`, `firmware/bitaxe/static/www/assets/app.js`, `docs/release/ultra-205.md`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit",
+  "before_notes": "Activated by explicit owner request on 2026-10-06 under the linked plan; software implementation of the upstream whole-www OTAWWW update is in progress and no device effect is authorized.",
+  "after_notes": "POST /api/system/OTAWWW follows upstream POST_WWW_update (network and AP gates, www partition lookup, oversize refusal, 64 KiB erase, ordered 1000-byte writes, upstream statuses and responses) with an owner-approved refusal of any body that is not exactly partition-sized before erase; see docs/parity/work-plans/20261006T164502Z-OTA-002/WORKLOG.md. Live update, reboot asset identity, interrupted-update recovery and hardware-regression evidence remain unclaimed."
+}

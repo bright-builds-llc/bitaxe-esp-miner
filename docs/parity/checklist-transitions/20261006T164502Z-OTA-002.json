@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261006T164502Z-OTA-002",
+  "predecessor_sha256": "5fd0bc9d8779d6563611e18139649505a97354863d612a09a3c0417f7f6c4d12",
+  "result_sha256": "b557852edf126c128e0ae6a383b6cec2b94ea1f4189508a2efdf1deb518c64a9",
+  "row_id": "OTA-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261006T164502Z-OTA-002/PLAN.md",
+  "plan_sha256": "012ea7083d6e0730fe436427eb92a03a104190bb5bf65ee40e56ebe601d8ce3a",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-api/src/update_plan.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/http_api/updates.rs`, `docs/release/ultra-205.md`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/update_plan.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/http_api/updates.rs`, `docs/release/ultra-205.md`",
+  "before_status": "deferred",
+  "after_status": "in-progress",
+  "before_evidence": "deferred",
+  "after_evidence": "pending",
+  "before_notes": "OTAWWW remains the explicit REL-03 gap for this release candidate: `/api/system/OTAWWW` stays fail-closed with public response `Wrong API input` and operator copy in `docs/release/ultra-205.md`. Phase 17 records live `POST /api/system/OTAWWW` fail-closed response evidence, but no hardware-regression or interrupted-update evidence exists for whole-`www` update behavior. Phase 19 records `rel_03_status: gap documented`, owner, blocker, operator impact, and follow-up path in `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/otawww.md`; `www.bin` package presence, static serving, route presence, and the `Wrong API input` response are explicitly not whole-`www` OTAWWW update proof.",
+  "after_notes": "Activated by explicit owner request on 2026-10-06 under the linked plan; software implementation of the upstream whole-www OTAWWW update is in progress and no device effect is authorized."
+}

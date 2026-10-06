@@ -48,7 +48,7 @@ reinstall, while firmware, NVS and OTA slots are untouched. The write offset
 places a short body at the end of the partition; upstream `www.bin` images are
 partition-sized, so undersized-body behavior needs an explicit parity decision.
 
-- [ ] Replace the `AxeOsStaticUpdateGap` decision in
+- [x] Replace the `AxeOsStaticUpdateGap` decision in
       `crates/bitaxe-api/src/update_plan.rs` and `route_shell.rs` with a pure
       core for admission order, size bound, erase plan, chunk offsets, status
       strings and response codes and bodies, with golden tests from the pinned
@@ -56,15 +56,15 @@ partition-sized, so undersized-body behavior needs an explicit parity decision.
 - [x] Decide and record undersized-body handling: the owner chose on
       2026-10-06 to refuse any body that is not exactly the partition size,
       before erasing; recorded in the plan and release guide.
-- [ ] Implement the firmware adapter behind `firmware/bitaxe/src/http_api.rs`
+- [x] Implement the firmware adapter behind `firmware/bitaxe/src/http_api.rs`
       over `esp_partition_*`: watchdog-safe bounded erase and write, mutual
       exclusion with app OTA and other update state, the mounted SPIFFS and
       installed-asset-version consequences until reboot, and no write outside
       `www`.
-- [ ] Update `firmware/bitaxe/static/recovery_page.html`, `release.json`,
+- [x] Update `firmware/bitaxe/static/recovery_page.html`, `release.json`,
       `docs/release/ultra-205.md` and operator copy; remove the REL-03 gap
       wiring and its fail-closed test expectations.
-- [ ] Host tests for every refusal and error path, including an interrupted
+- [x] Host tests for every refusal and error path, including an interrupted
       body; firmware build and package with a partition-sized `www.bin`.
 - [ ] Before any device effect, read ADR-0021, ADR-0023 and
       `docs/hardware/native-usb-ownership.md`, then add a complete contract
@@ -77,7 +77,15 @@ partition-sized, so undersized-body behavior needs an explicit parity decision.
 Authorization: software, tests and documentation only until the hardware
 contract above is committed. This block authorizes no flash, device OTAWWW
 request, erase or other device effect.
-Verification: pending. Completion review: pending.
+
+Software progress | 2026-10-06: implemented in `c03a4369` (plan `90231b06`).
+`OTA-002` moved `deferred` to `in-progress` (`20261006T164502Z-OTA-002`) and
+to `implemented` with `unit` evidence (`20261006T165530Z-OTA-002`); see the
+plan's WORKLOG for gates and residual risks. The recovery page and
+`release.json` needed no change: the page already posts to the route.
+
+Verification: software gates pass; hardware evidence pending.
+Completion review: pending. Next safe action: write the hardware contract.
 
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
 
