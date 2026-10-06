@@ -223,6 +223,15 @@ Ordinal `002` is authorized under this contract: the six commands above with
 `W=$P/wrapper-002` and `A=$P/attempt-002`, after `just package` at the clean
 pushed HEAD that contains these fixes.
 
+Ordinal 002 (2026-10-06, package `96a7935e19a7-dev`): all six commands
+completed. Install `complete`; one Connect in the dedicated Gate tab handed
+off the endpoint with an inactive Worker lease and left for `about:blank`;
+the finish proof released listener and serial port; the run completed with
+three OTAWWW requests (probe, interrupted package, recovery package) and
+three `ready` restart sessions, no recovery flash. The supervisor validated
+the closed `bitaxe-otawww-evidence-v1` projection and `just
+verify-redaction` passes. Promotion waits on the independent review.
+
 Verification: pending. Completion review: pending.
 
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
