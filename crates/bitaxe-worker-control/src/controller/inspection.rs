@@ -46,6 +46,25 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             .ok_or(WorkerControlError::InvalidRequest)
     }
 
+    pub(super) fn review_soak_allowance(
+        &self,
+        request: &ControllerRequest,
+        now: u64,
+    ) -> Result<Value, WorkerControlError> {
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Empty {}
+        let _: Empty = request.required_payload()?;
+        self.required_start_context(now)?;
+        if self.maybe_active.is_some() || self.effect_cleanup_required {
+            return Err(WorkerControlError::InvalidTransition);
+        }
+        self.session
+            .soak_allowance_review()
+            .map_err(|_| WorkerControlError::SessionFailed)?
+            .ok_or(WorkerControlError::InvalidRequest)
+    }
+
     pub(super) fn review_acceptance_budget(
         &self,
         request: &ControllerRequest,

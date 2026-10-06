@@ -45,6 +45,7 @@ impl ControllerRequest {
                 | "transport_probe"
                 | "acceptance_budget_review"
                 | "qualification_attempt_review"
+                | "soak_allowance_review"
                 | "serial_trace_review"
                 | "qualification_restart"
                 | "qualification_core_dump_self_test"

@@ -172,3 +172,38 @@ fn simultaneous_legacy_and_iterative_allowances_never_start() {
         .is_err());
     assert!(worker.session().events.is_empty());
 }
+
+fn soak_review() -> String {
+    format!(
+        "{}\n",
+        json!({"protocolVersion":"bwg-worker-controller/0.4","requestId":"serial_soak_review","command":"soak_allowance_review","payload":{}})
+    )
+}
+#[test]
+fn soak_ledger_review_is_fresh_possession_bound_and_readonly() {
+    // Arrange
+    let mut worker = admitted_worker();
+    // Act
+    let reply = worker
+        .prepare_frame(soak_review().as_bytes(), 1001)
+        .expect("review");
+    let value: serde_json::Value = serde_json::from_slice(reply.frame()).expect("json");
+    // Assert
+    assert_eq!(value["result"]["schema"], "worker-soak-ledger-v1");
+    assert!(worker.session().events.is_empty());
+    assert!(worker
+        .prepare_frame(soak_review().as_bytes(), 61001)
+        .is_err());
+}
+#[test]
+fn an_upstream_default_start_without_a_soak_never_starts() {
+    // Arrange
+    let mut worker = admitted_worker();
+    let mut frame: serde_json::Value = serde_json::from_str(&start_frame()).expect("frame");
+    frame["payload"]["hardwareProfile"] = json!("upstream-default");
+    // Act / Assert
+    assert!(worker
+        .prepare_frame(format!("{frame}\n").as_bytes(), 1001)
+        .is_err());
+    assert!(worker.session().events.is_empty());
+}

@@ -391,6 +391,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 probe::response(payload, &request.request_id)?
             }
             "qualification_attempt_review" => self.review_qualification_attempt(&request, now)?,
+            "soak_allowance_review" => self.review_soak_allowance(&request, now)?,
             "telemetry_cadence_arm" | "telemetry_cadence_review" | "telemetry_cadence_endpoint" => {
                 self.telemetry_cadence(&request, now)?
             }

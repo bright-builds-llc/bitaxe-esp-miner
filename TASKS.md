@@ -42,7 +42,37 @@ invalid watchdog continuity. That selected `stop_repeated_boundary`.
 - [x] Diagnose the idle-reconnect and marker boundaries on current firmware,
       which has since moved to the fixed Serial/JTAG baseline (ADR-0021), and
       decide whether the old soak observers still apply.
-- [ ] Land regression-backed fixes for each boundary that still reproduces.
+- [ ] Land regression-backed fixes for each boundary that still reproduces,
+      in these phases (plan of 2026-10-06):
+  - [x] Phase 0: ADR-0033 "Signed hardware profile and one-shot soak
+        allowance". The soak keeps the work gate open for 600,000 active ms
+        and signs and charges 615,550 ms, adding the 15,550 ms shutdown tail.
+        `soakAllowance` is a new grant field with its own `soak_ledger`.
+        Controller 0.4 stays (optional fields, fail-closed on old peers), and
+        renewals are pre-signed.
+  - [x] Phase 1: `crates/bitaxe-worker-control`: an optional signed
+        `hardwareProfile` (`conservative | upstream-default`) and
+        `soakAllowance` in the grant, with validation (`upstream-default` only
+        with a soak; a soak is Stratum V1 with a 60/20 s window), a `SoakLedger`
+        (reserve once, no refund) and a read-only `soak_allowance_review`.
+  - [ ] Phase 2: Gate repo: parse the new fields; a soak-only renewal bound
+        (36); soak stop ordering (refresh before renewing, let the device close
+        the gate, wait for safe-stop); `soakQualification` mode; conformance
+        vectors; push; bump the MODULE.bazel pin.
+  - [ ] Phase 3: firmware: the lease profile from the signed grant (fixed for
+        the lease's life), the soak budget in revocation admission,
+        `worker_soak_budget` with an NVS `soak_ledger`, and host tests.
+  - [ ] Phase 4: WebSocket hardening: a ping schedule instead of every 500 ms,
+        queue backpressure no longer drops clients, close sockets on send
+        failure, and align the socket budget, with regressions.
+  - [ ] Phase 5: `tools/http-transport` `soak-observer` (separate HTTP and
+        WebSocket threads, 900 s life) plus a pure `soak-judge` over twenty
+        30-second windows, with the shared continuity helpers moved out of
+        `tools/flash`.
+  - [ ] Phase 6: `scripts/fixed-usb-soak` owner (`just ultra205-soak`):
+        preflight/serve/finish, an idle WebSocket pre-phase proof, a
+        `signSoak` signer (34 renewals), and a terminal judge without serial
+        markers.
 - [ ] Write a complete hardware contract under the Effectful Hardware Task
       Gate for a fresh-ordinal soak at upstream defaults (485 MHz, 1200 mV,
       100% fan), with the original continuity, safety, safe-stop and

@@ -157,6 +157,11 @@ pub trait WorkerSession {
         Ok(None)
     }
 
+    /// Read-only soak ledger review (ADR-0033); sessions without a soak ledger return none.
+    fn soak_allowance_review(&self) -> Result<Option<serde_json::Value>, WorkerSessionError> {
+        Ok(None)
+    }
+
     /// Explicit read-only export of boot-local serial observations after fresh possession.
     fn serial_trace_review(
         &self,
