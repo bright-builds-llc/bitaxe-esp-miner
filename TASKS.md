@@ -4535,10 +4535,10 @@ Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendme
       regression. Done: exhaustion, not a leak; the PSRAM-first candidate
       `2bff1004` installed, kept 52 KB of internal headroom and passed
       heartbeat010.
-- [ ] restart007: preflight with heartbeat010 as `--start-root`, recovery
-      stage, restart stage, finish. Expected boot 318 to 319, ledger
-      30/29/3,720,000 ms unchanged. Then pin it in
-      `scripts/str005-accepted-share/contract.mjs` and enable the share line.
+- [x] restart007: recovery stage read heartbeat010's record, then one
+      software restart took boot 318 to 319 with the ledger
+      (30/29/3,720,000 ms) and budget unchanged; no failures. Result
+      `ef87f9a9…`, seal `b87302e9…`; pinned, share line enabled.
 - [ ] share-current-001: detector, preflight, serve, baseline and candidate,
       startup detector, Run, fresh recovery, release, final detector, finish.
       Expected after ledger 31/30/3,900,000 ms. Record confirmed renewals.
@@ -4550,8 +4550,8 @@ ambiguous Start (never resend), a panic or unproven cleanup. Effects and
 prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
 firmware write. Retries need a regression-backed fix, a fresh ordinal and a
 new restart.
-Share current image restart hardware: enabled.
-Share current image hardware: disabled.
+Share current image restart hardware: disabled.
+Share current image hardware: enabled.
 
 Verification: pending. Completion review: pending.
 
