@@ -253,6 +253,8 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
   },
   "capture-otawww-evidence": {
+    "--phase": value({ required: true, values: ["install", "run"] }),
+    "--endpoint-input": value(),
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),
     "--www-probe-manifest": value({ required: true }),

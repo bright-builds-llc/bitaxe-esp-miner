@@ -1736,3 +1736,22 @@ js_test(
     data = [":internal_heap_series_sources"],
     entry_point = "internal-heap-series/series.test.mjs",
 )
+
+js_library(
+    name = "otawww_endpoint_sources",
+    srcs = glob(["otawww-endpoint/*.mjs"]),
+    deps = [":str005_panic_probe_sources"],
+)
+
+js_binary(
+    name = "otawww_endpoint",
+    chdir = "..",
+    data = [":otawww_endpoint_sources"],
+    entry_point = "otawww-endpoint/main.mjs",
+)
+
+js_test(
+    name = "otawww_endpoint_test",
+    data = [":otawww_endpoint_sources"],
+    entry_point = "otawww-endpoint/endpoint.test.mjs",
+)

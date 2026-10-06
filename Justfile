@@ -327,7 +327,11 @@ capture-partition-layout-evidence *args:
 capture-sdkconfig-rollback-evidence *args:
     bazel run //tools/automation:capture_sdkconfig_rollback_evidence -- {{ args }}
 
-# One OTAWWW update, interrupted update and recovery on the admitted Ultra 205; task-gated.
+# Serve the pinned Gate to hand off the installed Worker's station endpoint (preflight|serve|finish); task-gated.
+otawww-endpoint action *args:
+    bazel run //scripts:otawww_endpoint -- {{ action }} {{ args }}
+
+# One OTAWWW update, interrupted update and recovery on the admitted Ultra 205 (--phase install|run); task-gated.
 capture-otawww-evidence *args:
     bazel run //tools/automation:capture_otawww_evidence -- {{ args }}
 

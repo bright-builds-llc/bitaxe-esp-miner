@@ -6,9 +6,11 @@ import path from "node:path";
 import test from "node:test";
 
 import {
-  captureOtawwwEvidence, OtawwwEvidenceError, postBinaryOnce, type OtawwwEvidenceOptions, type OtawwwTiming,
+  captureOtawwwEvidence, OtawwwEvidenceError, postBinaryOnce, type OtawwwEvidenceOptions, type OtawwwPhase, type OtawwwTiming,
 } from "./otawww-evidence.js";
-import { isRecoveryPage, parseOtawwwInputs, settingsDigest, sha256, OtawwwInputError } from "./otawww-evidence-model.js";
+import {
+  isRecoveryPage, parseOtawwwInputs, parseStationEndpoint, privateIpv4, settingsDigest, sha256, OtawwwInputError,
+} from "./otawww-evidence-model.js";
 import { createFakeProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 
@@ -22,7 +24,10 @@ const indexHtml = "<!doctype html><html><body>operator</body></html>";
 const recoveryHtml = "<!doctype html><html><body><script>post('/api/system/OTAWWW')</script></body></html>";
 const packageWww = Buffer.alloc(8_192, 0x11);
 const probeWww = Buffer.alloc(8_192, 0x22);
-const fastTiming: OtawwwTiming = { interruptionPollCount: 20, interruptionPollDelayMs: 25, baselineRetryDelayMs: 10 };
+const fastTiming: OtawwwTiming = {
+  interruptionPollCount: 20, interruptionPollDelayMs: 25, baselineRetryDelayMs: 10, now: Date.now,
+  admitAddress: (ipv4) => ipv4 === "127.0.0.1",
+};
 const ok = (): ProcessOutcome => ({ exitCode: 0, stdout: "", stderr: "", timedOut: false });
 
 type Assets = "package" | "probe" | "erased";
@@ -161,8 +166,10 @@ function probeMetadata(): Record<string, unknown> {
   };
 }
 
-function options(value: Fixture): OtawwwEvidenceOptions {
+function options(value: Fixture, phase: OtawwwPhase): OtawwwEvidenceOptions {
   return {
+    phase,
+    maybeEndpointInput: "scratch/attempt/endpoint.private.json",
     privateRoot: "scratch/attempt",
     packageManifest: value.manifest,
     wwwProbeManifest: value.probeManifest,
@@ -186,7 +193,7 @@ function readySession(): Record<string, unknown> {
   };
 }
 
-function fakePort(device: FakeDevice, origin: string, commands: string[], monitorOrigin = true): ProcessPort {
+function fakePort(device: FakeDevice, commands: string[]): ProcessPort {
   return createFakeProcessPort(async (spec) => {
     const command = spec.program === "validator" ? "validator" : String(spec.args[0]);
     commands.push(command);
@@ -200,12 +207,7 @@ function fakePort(device: FakeDevice, origin: string, commands: string[], monito
         factory_image_digest: spec.environment?.["PHASE36_EFFECT_FACTORY_IMAGE_DIGEST"],
       })}\n`, { mode: 0o600 });
       const root = String(spec.args[spec.args.indexOf("--evidence-dir") + 1]);
-      await writeFile(path.join(root, "flash-monitor.classifier-input.log"), [
-        `runtime_boot_identity session=${device.session} ordinal=${String(device.ordinal)}`,
-        safeState,
-        ...monitorOrigin ? [`runtime_origin session=${device.session} boot_ordinal=7 device_url=${origin}/ redacted=true`] : [],
-        "",
-      ].join("\n"), { mode: 0o600 });
+      await writeFile(path.join(root, "flash-monitor.classifier-input.log"), "usb_boot_profile\n", { mode: 0o600 });
       return ok();
     }
     if (command === "reboot-live") {
@@ -220,11 +222,26 @@ function fakePort(device: FakeDevice, origin: string, commands: string[], monito
   });
 }
 
-async function run(value: Fixture, device: FakeDevice, commands: string[], monitorOrigin = true) {
+async function phase(value: Fixture, device: FakeDevice, commands: string[], selected: OtawwwPhase) {
+  return captureOtawwwEvidence(value.root, options(value, selected), fakePort(device, commands),
+    "flash", "device-session", "validator", fastTiming);
+}
+
+/** Writes the Gate handoff the endpoint supervisor would produce for the installed boot. */
+async function handoff(value: Fixture, origin: string, bootOrdinal: number, receivedAtMs = Date.now()): Promise<void> {
+  const url = new URL(origin);
+  await writeFile(path.join(value.root, "scratch", "attempt", "endpoint.private.json"), JSON.stringify({
+    schema: "otawww-station-endpoint-v1", ipv4: url.hostname, httpPort: Number(url.port), bootOrdinal, generation: 3,
+    observedAtUs: 5_000_000, hostReceivedAtMs: receivedAtMs,
+  }), { mode: 0o600 });
+}
+
+async function run(value: Fixture, device: FakeDevice, commands: string[], withHandoff = true) {
   const origin = await device.listen();
   try {
-    return await captureOtawwwEvidence(value.root, options(value), fakePort(device, origin, commands, monitorOrigin),
-      "flash", "device-session", "validator", fastTiming);
+    await phase(value, device, commands, "install");
+    if (withHandoff) await handoff(value, origin, device.ordinal);
+    return await phase(value, device, commands, "run");
   } finally {
     await device.close();
   }
@@ -250,6 +267,7 @@ test("complete OTAWWW run publishes aggregate-only evidence", async () => {
   const evidence = await run(value, device, commands);
 
   // Assert
+  assert.ok("otawww" in evidence);
   const projection = await readFile(value.projection, "utf8");
   assert.equal(evidence.otawww.interruption_protocol_error_retained, true);
   assert.equal(device.uploads, 3);
@@ -259,7 +277,7 @@ test("complete OTAWWW run publishes aggregate-only evidence", async () => {
   assert.deepEqual(await verifySemanticEvidenceRedaction(path.dirname(value.projection)), { checked: 1 });
 });
 
-test("missing station origin stops before any OTAWWW request", async () => {
+test("missing station endpoint handoff stops before any OTAWWW request", async () => {
   // Arrange
   const value = await fixture();
   const device = new FakeDevice();
@@ -272,6 +290,46 @@ test("missing station origin stops before any OTAWWW request", async () => {
   assert.equal(error.category, "origin_unavailable");
   assert.equal(device.uploads, 0);
   assert.deepEqual(commands, ["flash-monitor"]);
+});
+
+test("a handoff from another boot is refused before any OTAWWW request", async () => {
+  // Arrange
+  const value = await fixture();
+  const device = new FakeDevice();
+  const commands: string[] = [];
+  const origin = await device.listen();
+
+  try {
+    await phase(value, device, commands, "install");
+    await handoff(value, origin, device.ordinal - 1);
+
+    // Act
+    const error = await captureError(phase(value, device, commands, "run"));
+
+    // Assert
+    assert.equal(error.category, "evidence_invalid");
+    assert.equal(device.uploads, 0);
+  } finally {
+    await device.close();
+  }
+});
+
+test("station endpoint admission requires a fresh private LAN address", () => {
+  // Arrange
+  const now = 1_000_000_000;
+  const endpoint = (ipv4: string, receivedAt: number) => JSON.stringify({
+    schema: "otawww-station-endpoint-v1", ipv4, httpPort: 80, bootOrdinal: 7, generation: 3, observedAtUs: 1, hostReceivedAtMs: receivedAt,
+  });
+
+  // Act
+  const admitted = parseStationEndpoint(endpoint("192.168.1.20", now - 1_000), now);
+
+  // Assert
+  assert.equal(admitted.origin.origin, "http://192.168.1.20");
+  assert.throws(() => parseStationEndpoint(endpoint("8.8.8.8", now), now), OtawwwInputError);
+  assert.throws(() => parseStationEndpoint(endpoint("192.168.1.20", now - 16 * 60_000), now), OtawwwInputError);
+  assert.equal(privateIpv4("172.32.0.1"), false);
+  assert.equal(privateIpv4("10.0.0.300"), false);
 });
 
 test("unretained interruption stops and restores the package with one flash", async () => {
@@ -329,6 +387,22 @@ test("an existing private root is refused before any device effect", async () =>
   // Assert
   assert.equal(error.category, "evidence_invalid");
   assert.deepEqual(commands, []);
+});
+
+test("install records the exact package and stops before any HTTP effect", async () => {
+  // Arrange
+  const value = await fixture();
+  const device = new FakeDevice();
+  const commands: string[] = [];
+
+  // Act
+  const result = await phase(value, device, commands, "install");
+
+  // Assert
+  assert.deepEqual(result, { phase: "install", installed: true });
+  assert.deepEqual(commands, ["flash-monitor"]);
+  const record = JSON.parse(await readFile(path.join(value.root, "scratch", "attempt", "install.private.json"), "utf8")) as Record<string, unknown>;
+  assert.equal(record["schema"], "bitaxe-otawww-install-v1");
 });
 
 test("probe metadata bound to another package is refused", () => {

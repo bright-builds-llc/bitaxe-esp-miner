@@ -120,3 +120,38 @@ export function retainedLine(logs: string, expected: string): boolean {
 export function isRecoveryPage(body: string): boolean {
   return body.includes(recoveryPageMarker) && body.toLowerCase().includes("<html");
 }
+
+export const stationEndpointSchema = "otawww-station-endpoint-v1";
+/** An endpoint older than this no longer counts as fresh runtime evidence for the run. */
+export const maxEndpointAgeMs = 15 * 60_000;
+
+export type StationEndpoint = { readonly origin: URL; readonly bootOrdinal: number };
+
+export function privateIpv4(value: unknown): value is string {
+  if (typeof value !== "string" || !/^(?:\d{1,3}\.){3}\d{1,3}$/u.test(value)) return false;
+  const [a = -1, b = -1, ...rest] = value.split(".").map(Number);
+  if ([a, b, ...rest].some((octet) => octet > 255)) return false;
+  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
+
+/** Admits the protected Gate handoff only while it is fresh and on a private LAN address. */
+export function parseStationEndpoint(document: string, nowMs: number, admit: (ipv4: unknown) => boolean = privateIpv4): StationEndpoint {
+  const value = JSON.parse(document) as Record<string, unknown>;
+  const keys = ["bootOrdinal", "generation", "hostReceivedAtMs", "httpPort", "ipv4", "observedAtUs", "schema"];
+  const { httpPort, bootOrdinal, generation, hostReceivedAtMs } = value;
+  if (
+    JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(keys)
+    || value["schema"] !== stationEndpointSchema
+    || typeof value["ipv4"] !== "string" || !admit(value["ipv4"])
+    || typeof httpPort !== "number" || !Number.isSafeInteger(httpPort) || httpPort < 1 || httpPort > 65_535
+    || typeof bootOrdinal !== "number" || !Number.isSafeInteger(bootOrdinal) || bootOrdinal < 1
+    || typeof generation !== "number" || !Number.isSafeInteger(generation) || generation < 1
+    || typeof hostReceivedAtMs !== "number" || !Number.isSafeInteger(hostReceivedAtMs)
+  ) {
+    throw new OtawwwInputError("station endpoint handoff is invalid");
+  }
+  if (hostReceivedAtMs > nowMs || nowMs - hostReceivedAtMs > maxEndpointAgeMs) {
+    throw new OtawwwInputError("station endpoint handoff is stale");
+  }
+  return { origin: new URL(`http://${value["ipv4"] as string}:${String(httpPort)}/`), bootOrdinal };
+}
