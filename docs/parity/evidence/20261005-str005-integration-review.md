@@ -124,12 +124,12 @@ history. Must stay private: Channel006, every failed or unverified raw root
    could not establish normal Stop, the checkpoint or the minimum. Accepting
    this as renewal coverage is an owner decision. The alternative is a new
    bounded probe with a longer window under its own contract.
-2. **Share002 retained resource proof.** It cannot be supplied: the device
-   reports idle status with no retained record.
-   `task-str005-failure-recovery-accounting` stays blocked, and this
-   integration task depends on it. ADR-0031 admits new diagnostics despite
-   the gap but does not complete that task or promote parity. Closing it
-   needs an owner decision or ADR amendment accepting a permanent non-claim.
+2. **Share002 retained resource proof.** Resolved 2026-10-05: the owner
+   accepted it as a permanent non-claim
+   ([ADR-0032](../../adr/0032-share002-resource-proof-non-claim.md)).
+   `task-str005-failure-recovery-accounting` is complete and archived on what
+   it measured; nothing about Share002's pre-reset resource release is
+   claimed.
 3. **Evidence class.** Promotion would add `hardware-regression`, but the
    evidence is one run per checkpoint, on one board, against a local
    fixture. Whether that meets the class is an owner decision.

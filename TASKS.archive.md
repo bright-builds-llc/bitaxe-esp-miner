@@ -22933,3 +22933,119 @@ the window. The share is proven separately by share-current-001. Residual
 risk: the 45-second window makes a combined run a coin toss at this hash
 rate; a future combined proof needs a longer bounded window under its own
 contract.
+
+### task-str005-failure-recovery-accounting | 2026-09-27 | Collect failure recovery and durable accounting independently
+
+Status: Complete 2026-10-05 with an owner-accepted non-claim (ADR-0032); archived. Software and fresh collection verified.
+Objective: collect authenticated ledgers and retained status after a failed attempt,
+prove restoration and release, and resolve Share002's reservation uncertainty.
+Depends on: no unfinished implementation task; preserve the archived qualification's evidence.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
+
+- [x] Publish a narrow recovery-only command contract; permit no Start, issuance,
+      flash or implicit retry. Make native collection usable after the failure latch.
+- [x] Reuse possession/identity and cleanup components; collect both ledgers,
+      retained diagnostic/resource status and restoration in separate successor evidence.
+- [x] Test failure-latched UI, stale sessions, partial collection, privacy and
+      actual release through production seams; run applicable software/native checks.
+- [x] After verified publication, collect the installed device's actual accounting
+      and recovery proof. Report an unresolved result if proof is unavailable;
+      do not infer or reuse ordinal18, assume next19, or modify Share002's seal.
+- [x] Supply authenticated retained Share002 resource proof. Fresh current status
+      is idle with no retained record; restoration/host cleanup cannot replace it.
+      Closed 2026-10-05 by owner decision, not by evidence: a permanent
+      non-claim under [ADR-0032](docs/adr/0032-share002-resource-proof-non-claim.md).
+
+Evidence: [Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md);
+private `scratch/str005-v2-serial/share-002`. Prior tested pair: `cf7a3f03` / `e20c0fd5`;
+final successor host `ea11eec9`, result/report below. Complete only with authenticated accounting,
+retained status/resource proof, confirmed restoration and actual host release.
+Invalidation: changes to accounting, possession, diagnostic projection or cleanup
+require affected checks again. Current durable accounting is now measured; transient pre-panic preparation remains unproved.
+Execution contract: [failure-only recovery](docs/hardware/str005-failure-recovery-accounting.md).
+Command: `just str005-failure-recovery preflight|serve|finish --private-root <fresh-child>`;
+run `just detect-ultra205` only after this implementation/contract is committed,
+pushed and preflight passes. The contract fixes the installed pair, no-Start
+capabilities, privacy, one collection, bounds, restoration/cleanup and stop rules.
+No authority files, grants, pool connection, flash or replay are admitted.
+Plan (2026-09-27):
+- [x] Implement a separate failure-only collector and closed evidence projection.
+- [x] Exercise stale sessions, partial failure, privacy and unconditional release;
+      run canonical/native and ordered pre-commit checks.
+- [x] Publish and verify the narrow execution contract before detection/access.
+- [x] Collect fresh device facts once, then record exact proof or blocker, seal
+      successor evidence, and commit/push. Archive only on all criteria passing.
+
+Guidance: local AGENTS, Bright Builds sidecar/overrides, architecture, code-shape,
+verification/testing, language rules, ADR-0021/0023/0029, fixed USB ownership and
+privacy policy govern this work. Active lessons total 37,860 bytes (12,621 estimated
+tokens), above the startup budget; priority blocks were loaded. Audit baseline
+2026-08-30 has four subsequent repository lessons, no current audit trigger.
+Budget omissions: global reproduce-ci, zsh-path, macos-stalls, small-dedup;
+repository frontmatter, espflash-passivity, boot-replay-lifetime, manual-removal,
+cold-observer, HTTP-readiness, flash-versus-monitor, physical-checkpoint,
+ready-before-live, telemetry-ranges, wire-units, and plan-per-iteration blocks.
+Their applicable safety constraints remain supplied by AGENTS and USB policy.
+
+Verification before publication: 27 new collector/projection/real-HTTP tests;
+five affected Bazel targets; Gate's 18 production controller/page tests and type
+check; ordered Cargo format/Clippy/build/tests (2,366 passed, three existing
+ignores); native USB ownership/symbol checks; reference, redaction, Bright Builds,
+Markdown contract check and diff check. Parity remains 90/95. Simplification review:
+reuse the pinned Gate page, accounting/state parsers and host-resource checks;
+no new general campaign harness, signer or fixture.
+Published host contract: `51358c61`; preflight passed before detection.
+Collection001 stopped before browser/device control: inspection of successful
+detector output exposed a colon-versus-equals parser mismatch. New regression
+uses the production colon format, rejects duplicate/stale/changed-device facts,
+and permits a fresh collection only after this fix is verified and published.
+No Start, reservation, reset or flash occurred; device consumption remains unknown.
+Collection002 on `e5164371` passed preflight/detection but the pinned Gate
+rejected initial candidate configuration before Connect. No serial connection or
+device command occurred. Its separate result is sealed unverified, with actual
+supervisor/listener/serial-holder release confirmed and all device criteria absent.
+Correction: establish the required same-pair before-session baseline, close,
+configure candidate, then reconnect natively; no flash or continuity credit.
+The production Gate configuration parser/transition is the regression boundary.
+All 32 focused tests and five recovery Bazel targets pass, including the actual
+Gate transition fixture; ordered Cargo checks, standards, redaction, Markdown
+and diff checks pass again. Native firmware/USB implementation is unchanged.
+Collection003 on `9c4d2b68` measured authenticated next18/last17/1,560,000ms/
+pendingfalse and original campaign masks7/7/240,000ms/pendingfalse. Restoration
+was confirmed; no ordinal was issued or reused. Native foreground permission was
+required after background browser automation failed before serial opening.
+Separate result `2bc370e7338b08abf4be0d5862ea966bcd691eb3f427d5d83c781d893c96d50c`
+and seal `41532af9328f103b63969012c87be59f5dffd1a3044be1aad049089c82fc4c09`
+remain unverified: diagnostics/status/closed parts absent; actual supervisor,
+listener and serial-holder release confirmed after owned page closure.
+Targeted continuation: production Gate regressions now cover boot diagnostics'
+`authoritative:false`, current-idle discovery before exact retained lookup, and
+preserving observed Close state despite rejection. This changes the failed
+collection boundary; it never repairs sealed evidence or grants Work authority.
+The new boundary checks pass with all 35 focused tests, five recovery Bazel
+targets, ordered Cargo checks, redaction, Bright Builds, Markdown and diff checks.
+Read-only review confirmed exact typed fallback and fail-closed conclusions.
+Fresh collection remains task-gated by clean publication and preflight.
+Final collection004 on `ea11eec9` passed all collection operations and again
+measured next18/last17/1,560,000ms/pendingfalse; original campaign remains exhausted.
+Diagnostic export captured; authenticated status is idle with `record:null`.
+Restoration, leases inactive, mining disabled, same-page preservation and native
+Close all confirmed. Owned page closed; finish independently proved supervisor,
+listener and both serial-node holders absent. Result and inventory sealed and
+independently verified; Share002's original seal is unchanged.
+
+Outcome: `stop_hardware_blocker`; boundary `recovery_retained_record_unavailable`;
+no unchanged retry. Result:
+`cf5fbd71bb377e1c540605d8ebea8a7ea5d5bd0f07b582c351dfe97a525d38dd`; seal:
+`61a06aac4a2a1782b01471ae84da911d2723b7066e69b8784981bdda9a4ef01b`.
+Evidence: [failure-recovery report](docs/parity/evidence/20260927-str005-failure-recovery-accounting.md).
+Completion review: collector, accounting and restoration/host release are verified,
+but the device supplies no retained Share002 resource record. Do not infer old
+socket/worker/fence release from current idle state or reconstruct missing proof.
+Task remains blocked and unarchived; no Start/grants/mining/flash/replay occurred,
+no next mining ordinal is authorized, and parity remains 90/95.
+Closure review | 2026-10-05: the owner accepted Share002's retained resource
+proof as a permanent non-claim (ADR-0032). Authenticated accounting,
+restoration and host release stand as measured; nothing about Share002's
+pre-reset resource release is claimed. Share002's seal, outcome and
+Channel006's private status are unchanged.

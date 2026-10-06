@@ -1,5 +1,8 @@
 # ADR-0029: Qualify STR-005 through independent checkpoints
 
+Share002's retained resource proof is a permanent non-claim under
+[ADR-0032](0032-share002-resource-proof-non-claim.md).
+
 Prospective diagnostic admission is clarified by
 [ADR-0031](0031-prospective-panic-diagnostics.md): fresh current-state safety,
 accounting and release proof can admit new diagnostics while the historical
@@ -51,16 +54,16 @@ The four unchecked items in the original task remain unchecked in its archive.
 Their obligations move as follows; earlier completed work and failed outcomes are
 preserved rather than reclassified.
 
-| Original outstanding obligation | Successor ownership |
-| --- | --- |
-| Fresh share baseline, continuity, accounting and normal reservation | Recovery resolves actual ledgers; startup/share tasks own fresh admission and accounting; integration reviews continuity applicability. Share002's four passed cycles remain observations on their tested pair, not proof of reservation consumption. |
-| Actual ASIC result, encrypted submission and accepted device acknowledgement | `task-str005-v2-accepted-share-probe`, after independently verified startup and applicable channel evidence. |
-| Heartbeat revocation, shutdown, ordered stop and cooling | `task-str005-heartbeat-shutdown-probe`; startup separately proves normal stop. Both require their own accounting, restoration and cleanup. |
-| Identity/settings preservation, authorization checkpoint and charged ledger completion | Recovery collector plus each effectful probe; integration rejects missing joins and never refunds or resets accounting. |
-| Seal/review both stages, actual cleanup, permitted publication and promotion handoff | Each successor retains its scoped result; `task-str005-piecewise-integration-review` reconciles it; existing `task-str005-evidence-promotion` owns any parity transition. |
-| Same-pair share admission, live safety testing and truthful combined outcome (successor-plan checkbox) | Split across startup, accepted-share, shutdown and integration; recovery and panic correction are prerequisites. No single-run completion is inferred. |
-| Software/native verification and fixture correctness | Each changed probe/correction owns production-seam regressions, applicable Gate/canonical/native checks and exact build identities. Share owns fixture target/header/nonce/submission/ack verification; integration audits compatibility and negative-test coverage. |
-| Privacy, failure handling, bounded authority and host/device cleanup | Mandatory in every successor contract and result; recovery owns failure-only collection, integration audits gaps. No arbitrary logs, endpoints, credentials or grants enter public evidence. |
+| Original outstanding obligation                                                                        | Successor ownership                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fresh share baseline, continuity, accounting and normal reservation                                    | Recovery resolves actual ledgers; startup/share tasks own fresh admission and accounting; integration reviews continuity applicability. Share002's four passed cycles remain observations on their tested pair, not proof of reservation consumption.                |
+| Actual ASIC result, encrypted submission and accepted device acknowledgement                           | `task-str005-v2-accepted-share-probe`, after independently verified startup and applicable channel evidence.                                                                                                                                                         |
+| Heartbeat revocation, shutdown, ordered stop and cooling                                               | `task-str005-heartbeat-shutdown-probe`; startup separately proves normal stop. Both require their own accounting, restoration and cleanup.                                                                                                                           |
+| Identity/settings preservation, authorization checkpoint and charged ledger completion                 | Recovery collector plus each effectful probe; integration rejects missing joins and never refunds or resets accounting.                                                                                                                                              |
+| Seal/review both stages, actual cleanup, permitted publication and promotion handoff                   | Each successor retains its scoped result; `task-str005-piecewise-integration-review` reconciles it; existing `task-str005-evidence-promotion` owns any parity transition.                                                                                            |
+| Same-pair share admission, live safety testing and truthful combined outcome (successor-plan checkbox) | Split across startup, accepted-share, shutdown and integration; recovery and panic correction are prerequisites. No single-run completion is inferred.                                                                                                               |
+| Software/native verification and fixture correctness                                                   | Each changed probe/correction owns production-seam regressions, applicable Gate/canonical/native checks and exact build identities. Share owns fixture target/header/nonce/submission/ack verification; integration audits compatibility and negative-test coverage. |
+| Privacy, failure handling, bounded authority and host/device cleanup                                   | Mandatory in every successor contract and result; recovery owns failure-only collection, integration audits gaps. No arbitrary logs, endpoints, credentials or grants enter public evidence.                                                                         |
 
 ## Task graph and persistent records
 
