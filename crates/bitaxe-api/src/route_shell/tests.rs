@@ -249,7 +249,7 @@ fn phase07_routes_assign_update_recovery_and_static_owners() {
     assert_eq!(firmware_ota.method, RouteMethod::Post);
     assert_eq!(firmware_ota.kind, RouteKind::FirmwareUpdate);
     assert_eq!(otawww.method, RouteMethod::Post);
-    assert_eq!(otawww.kind, RouteKind::AxeOsStaticUpdateGap);
+    assert_eq!(otawww.kind, RouteKind::AxeOsStaticUpdate);
     assert_eq!(recovery.method, RouteMethod::Get);
     assert_eq!(recovery.kind, RouteKind::Recovery);
     assert_eq!(static_files.method, RouteMethod::Get);
@@ -269,7 +269,7 @@ fn phase07_route_report_counts_manifest_and_phase7_owned_routes() {
     // Assert
     assert_eq!(report.total_routes, routes.len());
     assert_eq!(report.firmware_update_routes, 1);
-    assert_eq!(report.otawww_gap_routes, 1);
+    assert_eq!(report.static_update_routes, 1);
     assert_eq!(report.recovery_routes, 1);
     assert_eq!(report.static_file_routes, 1);
 }

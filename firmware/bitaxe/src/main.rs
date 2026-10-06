@@ -62,6 +62,7 @@ mod websocket_api;
 mod wifi_adapter;
 mod worker_acceptance_budget;
 mod worker_qualification_budget;
+mod www_update;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";

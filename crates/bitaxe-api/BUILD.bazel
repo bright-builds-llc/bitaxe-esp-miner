@@ -184,6 +184,8 @@ rust_library(
         "src/wire.rs",
         "src/wire/runtime_health.rs",
         "src/wire/tests.rs",
+        "src/www_update.rs",
+        "src/www_update/tests.rs",
     ],
     compile_data = glob(["fixtures/**"], allow_empty = True),
     crate_name = "bitaxe_api",

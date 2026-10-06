@@ -71,7 +71,7 @@ const PHASE07_ROUTES: &[AxeosRoute] = &[
     axeos_route!("/api/system/identify", Post, RouteKind::Http),
     axeos_route!("/api/system/blockFound/dismiss", Post, RouteKind::Http),
     axeos_route!("/api/system/OTA", Post, RouteKind::FirmwareUpdate),
-    axeos_route!("/api/system/OTAWWW", Post, RouteKind::AxeOsStaticUpdateGap),
+    axeos_route!("/api/system/OTAWWW", Post, RouteKind::AxeOsStaticUpdate),
     axeos_route!("/api/theme", Get, RouteKind::Http),
     axeos_route!("/api/theme", Post, RouteKind::Http),
     axeos_route!(
@@ -110,8 +110,8 @@ pub enum RouteKind {
     SafeUnsupportedUpdate,
     /// Phase 7 firmware OTA route owner.
     FirmwareUpdate,
-    /// Phase 7 AxeOS static OTAWWW gap owner.
-    AxeOsStaticUpdateGap,
+    /// Phase 7 AxeOS static OTAWWW update owner.
+    AxeOsStaticUpdate,
     /// Phase 7 embedded recovery route owner.
     Recovery,
     /// Phase 7 static wildcard route owner.
@@ -145,8 +145,8 @@ pub struct Phase07RouteReport {
     pub total_routes: usize,
     /// Number of firmware OTA routes declared in the Phase 7 route manifest.
     pub firmware_update_routes: usize,
-    /// Number of OTAWWW static update gap routes declared in the Phase 7 route manifest.
-    pub otawww_gap_routes: usize,
+    /// Number of OTAWWW static update routes declared in the Phase 7 route manifest.
+    pub static_update_routes: usize,
     /// Number of recovery routes declared in the Phase 7 route manifest.
     pub recovery_routes: usize,
     /// Number of static file wildcard routes declared in the Phase 7 route manifest.
@@ -263,7 +263,7 @@ pub fn phase07_route_report() -> Phase07RouteReport {
     let mut report = Phase07RouteReport {
         total_routes: phase07_routes().len(),
         firmware_update_routes: 0,
-        otawww_gap_routes: 0,
+        static_update_routes: 0,
         recovery_routes: 0,
         static_file_routes: 0,
     };
@@ -271,7 +271,7 @@ pub fn phase07_route_report() -> Phase07RouteReport {
     for route in phase07_routes() {
         match route.kind {
             RouteKind::FirmwareUpdate => report.firmware_update_routes += 1,
-            RouteKind::AxeOsStaticUpdateGap => report.otawww_gap_routes += 1,
+            RouteKind::AxeOsStaticUpdate => report.static_update_routes += 1,
             RouteKind::Recovery => report.recovery_routes += 1,
             RouteKind::StaticFiles => report.static_file_routes += 1,
             RouteKind::Http | RouteKind::SafeUnsupportedUpdate | RouteKind::WebSocket(_) => {}

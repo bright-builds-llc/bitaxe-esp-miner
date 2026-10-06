@@ -277,7 +277,7 @@ fn api_compare_fails_when_otawww_route_kind_is_downgraded() {
         &report,
         &[
             "POST /api/system/OTAWWW",
-            "expected RouteKind::AxeOsStaticUpdateGap",
+            "expected RouteKind::AxeOsStaticUpdate",
         ],
     );
 }

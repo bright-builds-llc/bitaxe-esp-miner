@@ -306,7 +306,7 @@ const REQUIRED_PHASE07_ROUTE_POLICY: &[Phase07RoutePolicy] = &[
     Phase07RoutePolicy {
         method: RouteMethod::Post,
         path: "/api/system/OTAWWW",
-        kind: RouteKind::AxeOsStaticUpdateGap,
+        kind: RouteKind::AxeOsStaticUpdate,
     },
     Phase07RoutePolicy {
         method: RouteMethod::Get,
@@ -516,7 +516,7 @@ fn route_kind_label(kind: RouteKind) -> &'static str {
         RouteKind::WebSocket(_) => "RouteKind::WebSocket",
         RouteKind::SafeUnsupportedUpdate => "RouteKind::SafeUnsupportedUpdate",
         RouteKind::FirmwareUpdate => "RouteKind::FirmwareUpdate",
-        RouteKind::AxeOsStaticUpdateGap => "RouteKind::AxeOsStaticUpdateGap",
+        RouteKind::AxeOsStaticUpdate => "RouteKind::AxeOsStaticUpdate",
         RouteKind::Recovery => "RouteKind::Recovery",
         RouteKind::StaticFiles => "RouteKind::StaticFiles",
     }

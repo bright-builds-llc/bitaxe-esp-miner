@@ -108,6 +108,14 @@
     });
   }
 
+  async function uploadWww(file) {
+    return request("/api/system/OTAWWW", {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: file,
+    });
+  }
+
   function openLogStream(onText, onState) {
     if (typeof global.WebSocket !== "function") {
       onState("unavailable");
@@ -138,5 +146,6 @@
     retainedLogs,
     saveTheme,
     uploadFirmware,
+    uploadWww,
   });
 })(globalThis);

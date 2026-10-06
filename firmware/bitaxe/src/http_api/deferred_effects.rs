@@ -189,6 +189,12 @@ pub(super) fn record_firmware_ota_status(status: FirmwareOtaStatus) {
     log_buffer::append_runtime_log_line(&format!("firmware_ota_status={text}"));
 }
 
+pub(super) fn record_www_update_status(status: WwwUpdateStatus) {
+    let text = status.status_text();
+    log::info!("www_update_status={text}");
+    log_buffer::append_runtime_log_line(&format!("www_update_status={text}"));
+}
+
 pub(super) fn schedule_firmware_ota_restart(guard: crate::noise_serial_runtime::MutationGuard) {
     let guard = std::sync::Arc::new(guard);
     let worker_guard = std::sync::Arc::clone(&guard);

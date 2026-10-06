@@ -12,8 +12,9 @@ use esp_idf_svc::sys;
 mod installed_asset_version;
 use installed_asset_version::InstalledAssetVersion;
 
-// Current WWW updates require reboot; live OTAWWW remains unsupported. This
-// successful file-derived identity is not a probe of subsequent filesystem health.
+// Read once per boot, like upstream's boot-time `axeOSVersion`: after an OTAWWW
+// it reports the previous image until reboot. This successful file-derived
+// identity is not a probe of subsequent filesystem health.
 static INSTALLED_ASSET_VERSION: InstalledAssetVersion = InstalledAssetVersion::new();
 const STATIC_ASSET_VERSION_PATH: &str = "/www/version.txt";
 

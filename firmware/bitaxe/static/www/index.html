@@ -182,11 +182,13 @@
               <button id="firmware-upload" class="button danger" type="submit" disabled>Upload firmware</button>
               <p class="form-status" data-status="update" role="status"></p>
             </form>
-            <article class="card callout warning">
-              <h2>AxeOS image update unavailable</h2>
-              <p>Whole-<code>www.bin</code> OTA remains fail-closed. Use a verified full package and recovery procedure instead.</p>
-              <a class="button secondary" href="/recovery">Open recovery</a>
-            </article>
+            <form id="www-update-form" class="card form-card">
+              <h2>AxeOS image</h2>
+              <p class="muted">Choose an exact <code>www.bin</code>. The web interface is erased and rewritten, so an interrupted upload leaves it unavailable until you upload again from <a href="/recovery">recovery</a>.</p>
+              <label>AxeOS file<input id="www-file" name="www" type="file" accept=".bin,application/octet-stream"></label>
+              <button id="www-upload" class="button danger" type="submit" disabled>Upload AxeOS</button>
+              <p class="form-status" data-status="www-update" role="status"></p>
+            </form>
           </div>
         </section>
 

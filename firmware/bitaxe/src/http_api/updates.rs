@@ -11,8 +11,9 @@ pub(super) fn handle_firmware_ota_update<'request, 'connection>(
     let plan = match decision {
         UpdateRequestDecision::AcceptFirmwareOta(plan) => plan,
         UpdateRequestDecision::Reject(response) => return send_public_response(request, response),
-        UpdateRequestDecision::OtaWwwGap(gap) => {
-            return send_public_response(request, gap.public_response);
+        UpdateRequestDecision::AcceptOtaWww(_) => {
+            log::warn!("firmware_ota_update=rejected reason=unexpected_otawww_decision");
+            return send_public_response(request, unsupported_update_response());
         }
     };
 
@@ -52,30 +53,49 @@ pub(super) fn handle_firmware_ota_update<'request, 'connection>(
     }
 }
 
-pub(super) fn handle_otawww_update_gap<'request, 'connection>(
+pub(super) fn handle_otawww_update<'request, 'connection>(
     mut request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
-    match plan_update_request(UpdateRequestInput {
+    let plan = match plan_update_request(UpdateRequestInput {
         route: UpdateRouteKind::AxeOsStaticOtaWww,
         access: access_input(&mut request),
     }) {
+        UpdateRequestDecision::AcceptOtaWww(plan) => plan,
         UpdateRequestDecision::Reject(response) => {
             if response.body == UPDATE_AP_MODE_REJECTION_BODY {
                 log::warn!("otawww_update=rejected reason=ap_mode");
             }
-            send_public_response(request, response)
-        }
-        UpdateRequestDecision::OtaWwwGap(gap) => {
-            debug_assert_eq!(gap.public_response.body, "Wrong API input");
-            log::warn!(
-                "otawww_update=gap reason=interruption_evidence_missing owner={}",
-                gap.owner
-            );
-            send_public_response(request, gap.public_response)
+            return send_public_response(request, response);
         }
         UpdateRequestDecision::AcceptFirmwareOta(_) => {
-            log::warn!("otawww_update=gap reason=unexpected_firmware_ota_decision");
-            send_public_response(request, unsupported_update_response())
+            log::warn!("otawww_update=rejected reason=unexpected_firmware_ota_decision");
+            return send_public_response(request, unsupported_update_response());
+        }
+    };
+
+    let Some(_mutation_guard) = crate::noise_serial_runtime::MutationGuard::acquire() else {
+        return send_text_error(request, 409, "Diagnostic owns configuration");
+    };
+    log::info!("otawww_update=start filename={}", plan.filename);
+    let raw_request = (*request.connection()).handle();
+    match crate::www_update::stream_www_update(raw_request, record_www_update_status) {
+        WwwUpdateResult::Rejected(response) => {
+            log::warn!("otawww_update=rejected status={}", response.status);
+            send_public_response(request, response)
+        }
+        WwwUpdateResult::Complete { bytes_written } => {
+            log::info!("otawww_update=complete bytes_written={bytes_written}");
+            send_public_response(request, www_success_response())?;
+            record_www_update_status(WwwUpdateStatus::Finished);
+            Ok(())
+        }
+        WwwUpdateResult::ProtocolError { code } => {
+            log::warn!("otawww_update=protocol_error code={code}");
+            send_public_response(request, www_protocol_error_response())
+        }
+        WwwUpdateResult::WriteError { esp_err } => {
+            log::warn!("otawww_update=write_error esp_err={esp_err}");
+            send_public_response(request, www_write_error_response())
         }
     }
 }

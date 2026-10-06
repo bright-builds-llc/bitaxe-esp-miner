@@ -41,6 +41,7 @@ pub mod usb_boot_profile;
 pub mod v12_settings;
 pub mod websocket_state;
 pub mod wire;
+pub mod www_update;
 
 pub use asic::asic_settings_from_snapshot;
 pub use build_identity::{
@@ -151,7 +152,7 @@ pub use theme::{
     ThemePostResponse, ThemeSettings, MAX_THEME_POST_BODY_BYTES,
 };
 pub use update_plan::{
-    plan_update_request, FirmwareOtaDecision, OtaWwwGapDecision, UpdateRequestDecision,
+    plan_update_request, FirmwareOtaDecision, OtaWwwDecision, UpdateRequestDecision,
     UpdateRequestInput, UpdateRouteKind, UpdateStatusLabel,
 };
 pub use usb_boot_profile::{

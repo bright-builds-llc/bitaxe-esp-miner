@@ -5,9 +5,9 @@
 //! - `.planning/milestones/v1.0-phases/07-ota-filesystem-and-release-packaging/07-CONTEXT.md`
 
 use crate::route_shell::{
-    plan_http_access, unsupported_update_response, HttpAccessDecision, PublicHttpResponse,
-    RouteAccessInput,
+    plan_http_access, HttpAccessDecision, PublicHttpResponse, RouteAccessInput,
 };
+use crate::www_update::WwwUpdateStatus;
 
 const TEXT_PLAIN: &str = "text/plain";
 
@@ -72,17 +72,13 @@ pub struct FirmwareOtaDecision {
     pub validation_error_response: PublicHttpResponse,
 }
 
-/// Explicit REL-03 gap for OTAWWW/static partition updates.
+/// OTAWWW accept plan; body admission happens in [`crate::www_update`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct OtaWwwGapDecision {
-    /// Public fail-closed response.
-    pub public_response: PublicHttpResponse,
-    /// Gap owner.
-    pub owner: &'static str,
-    /// Release impact statement.
-    pub release_impact: &'static str,
-    /// Follow-up implementation path.
-    pub follow_up: &'static str,
+pub struct OtaWwwDecision {
+    /// Upload filename recorded for the update state surface.
+    pub filename: &'static str,
+    /// Initial public status label.
+    pub start_status: WwwUpdateStatus,
 }
 
 /// Pure update route decision.
@@ -92,8 +88,8 @@ pub enum UpdateRequestDecision {
     Reject(PublicHttpResponse),
     /// Firmware OTA upload may proceed in the firmware adapter.
     AcceptFirmwareOta(FirmwareOtaDecision),
-    /// OTAWWW remains fail-closed with an explicit REL-03 gap.
-    OtaWwwGap(OtaWwwGapDecision),
+    /// OTAWWW upload may proceed to body admission in the firmware adapter.
+    AcceptOtaWww(OtaWwwDecision),
 }
 
 /// Plans an update request before firmware upload effects run.
@@ -116,7 +112,10 @@ pub fn plan_update_request(input: UpdateRequestInput) -> UpdateRequestDecision {
         UpdateRouteKind::FirmwareOta => {
             UpdateRequestDecision::AcceptFirmwareOta(firmware_ota_decision())
         }
-        UpdateRouteKind::AxeOsStaticOtaWww => UpdateRequestDecision::OtaWwwGap(otawww_gap()),
+        UpdateRouteKind::AxeOsStaticOtaWww => UpdateRequestDecision::AcceptOtaWww(OtaWwwDecision {
+            filename: "www.bin",
+            start_status: WwwUpdateStatus::Starting,
+        }),
     }
 }
 
@@ -136,15 +135,6 @@ const fn firmware_ota_decision() -> FirmwareOtaDecision {
             body: "Validation / Activation Error",
             content_type: Some(TEXT_PLAIN),
         },
-    }
-}
-
-const fn otawww_gap() -> OtaWwwGapDecision {
-    OtaWwwGapDecision {
-        public_response: unsupported_update_response(),
-        owner: "phase-07-release",
-        release_impact: "AxeOS static update unavailable until interruption evidence exists",
-        follow_up: "implement whole-www partition update with interruption/recovery evidence",
     }
 }
 
@@ -229,7 +219,7 @@ mod tests {
     }
 
     #[test]
-    fn ap_mode_otawww_is_rejected_before_gap_or_upload_work() {
+    fn ap_mode_otawww_is_rejected_before_upload_work() {
         // Arrange
         let input = ap_mode_update_input(UpdateRouteKind::AxeOsStaticOtaWww);
 
@@ -278,7 +268,7 @@ mod tests {
     }
 
     #[test]
-    fn otawww_defaults_to_explicit_rel03_gap() {
+    fn private_otawww_is_accepted_for_body_admission() {
         // Arrange
         let input = private_update_input(UpdateRouteKind::AxeOsStaticOtaWww);
 
@@ -286,19 +276,32 @@ mod tests {
         let decision = plan_update_request(input);
 
         // Assert
-        let UpdateRequestDecision::OtaWwwGap(gap) = decision else {
-            panic!("OTAWWW must remain a typed REL-03 gap");
+        let UpdateRequestDecision::AcceptOtaWww(plan) = decision else {
+            panic!("private OTAWWW should be accepted");
         };
-        assert_eq!(gap.public_response.status, 400);
-        assert_eq!(gap.public_response.body, "Wrong API input");
-        assert_eq!(gap.owner, "phase-07-release");
-        assert_eq!(
-            gap.release_impact,
-            "AxeOS static update unavailable until interruption evidence exists"
-        );
-        assert_eq!(
-            gap.follow_up,
-            "implement whole-www partition update with interruption/recovery evidence"
-        );
+        assert_eq!(plan.filename, "www.bin");
+        assert_eq!(plan.start_status.status_text(), "Starting...");
+    }
+
+    #[test]
+    fn public_network_otawww_is_denied_before_upload_work() {
+        // Arrange
+        let input = UpdateRequestInput {
+            route: UpdateRouteKind::AxeOsStaticOtaWww,
+            access: crate::RouteAccessInput {
+                ap_mode_enabled: false,
+                request_ip: Ipv4Addr::new(8, 8, 8, 8),
+                origin: OriginGate::Parsed(Ipv4Addr::new(203, 0, 113, 10)),
+            },
+        };
+
+        // Act
+        let decision = plan_update_request(input);
+
+        // Assert
+        let UpdateRequestDecision::Reject(response) = decision else {
+            panic!("public OTAWWW request must be rejected");
+        };
+        assert_eq!(response.status, 401);
     }
 }

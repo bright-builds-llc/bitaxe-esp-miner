@@ -38,8 +38,12 @@ use crate::runtime_snapshot::{
     publish_projected_system_info, record_restart_command,
 };
 use crate::storage_http_diagnostics::{self, Phase as StartupPhase};
+use crate::www_update::WwwUpdateResult;
 use crate::{
     log_buffer, network_stack, settings_adapter, static_files, websocket_api, wifi_adapter,
+};
+use bitaxe_api::www_update::{
+    www_protocol_error_response, www_success_response, www_write_error_response, WwwUpdateStatus,
 };
 
 mod access;
@@ -125,10 +129,10 @@ fn start_http_api_inner(
     )?;
     let route_report = phase07_route_report();
     log::info!(
-        "axeos_api_route_shell=started manifest_routes={} firmware_update_routes={} otawww_gap_routes={} recovery_routes={} static_file_routes={}",
+        "axeos_api_route_shell=started manifest_routes={} firmware_update_routes={} static_update_routes={} recovery_routes={} static_file_routes={}",
         route_report.total_routes,
         route_report.firmware_update_routes,
-        route_report.otawww_gap_routes,
+        route_report.static_update_routes,
         route_report.recovery_routes,
         route_report.static_file_routes
     );
@@ -164,7 +168,7 @@ fn register_http_handlers(
         handle_block_found_dismiss,
     )?;
     server.fn_handler("/api/system/OTA", Method::Post, handle_firmware_ota_update)?;
-    server.fn_handler("/api/system/OTAWWW", Method::Post, handle_otawww_update_gap)?;
+    server.fn_handler("/api/system/OTAWWW", Method::Post, handle_otawww_update)?;
     server.fn_handler("/api/theme", Method::Get, handle_theme_get)?;
     server.fn_handler("/api/theme", Method::Post, handle_theme_post)?;
     register_websocket_handlers(server)?;

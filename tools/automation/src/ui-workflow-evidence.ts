@@ -115,7 +115,7 @@ const joinedSources = [
 const implementationResult = "docs/parity/work-plans/20260804T190000Z-UI-004/RESULT.md";
 const implementationResultSha256 = "efefe5870656dba5b6d6eecf507826ff7bff7bb6ede5c3fdc21b926148fa668e";
 const staticUiContract = "tools/automation/src/static-ui.test.ts";
-const staticUiContractSha256 = "14e7afb073a39ef4e4cf2b4ea242e0b9e2d87b89d5218c9996ba2155faa520b9";
+const staticUiContractSha256 = "b9a261af8343f7ae4f7ef95e680fcd26bf0f22fc018b6071fa382ed381bdfc25";
 
 export class UiWorkflowEvidenceError extends Error {
   public constructor(

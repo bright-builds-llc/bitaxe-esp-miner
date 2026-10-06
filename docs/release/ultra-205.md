@@ -178,3 +178,23 @@ The browser uses Web Serial directly and must release its streams/port before
 flashing. Shared Serial/JTAG descriptors never prove application identity;
 verify the exact running source/ELF after every update. Qualification uses the
 new safe baseline, not recovery-006 or historical TinyUSB evidence.
+
+## AxeOS image update over HTTP
+
+`POST /api/system/OTAWWW` (the AxeOS **Update** page's `www.bin` upload)
+replaces the 3 MiB `www` SPIFFS partition in place, as upstream does. It is
+refused from the configuration AP and from public networks. Unlike upstream,
+it accepts only a body exactly the size of the partition; anything else is
+refused before the partition is erased (`File provided is too small for
+device` or `File provided is too large for device`). Packaged `www.bin` images
+are always exactly partition-sized.
+
+There is no staging copy. Once the erase starts, an interrupted upload leaves
+the web interface unavailable. The embedded `/recovery` page keeps working and
+can upload `www.bin` again, and an ordinary state-preserving `just flash`
+also rewrites the web image without touching NVS. The reported AxeOS version
+refreshes after the next reboot, and browsers may serve cached assets until
+they are reloaded without cache.
+
+Live OTAWWW behavior on an Ultra 205, including an interrupted upload, is not
+yet verified; see `OTA-002` in the parity checklist.

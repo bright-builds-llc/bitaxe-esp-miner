@@ -283,6 +283,28 @@
     }
   }
 
+  async function uploadWww(form) {
+    const input = element("#www-file");
+    const file = input.files?.[0];
+    if (!file || file.name !== "www.bin") {
+      setStatus("www-update", "Choose a file named www.bin.", "error");
+      return;
+    }
+    if (!global.confirm("Erase and replace the AxeOS web interface with this image?")) {
+      return;
+    }
+    setStatus("www-update", "Uploading AxeOS. Do not disconnect power.");
+    try {
+      await api.uploadWww(file);
+      setStatus("www-update", "AxeOS updated. The page will reload in a few seconds.", "success");
+      form.reset();
+      element("#www-upload").disabled = true;
+      global.setTimeout(() => global.location.reload(), 2000);
+    } catch (error) {
+      setStatus("www-update", core.publicError(error), "error");
+    }
+  }
+
   function installEvents() {
     documentRef.addEventListener("click", (event) => {
       const route = event.target.closest?.("[data-route]");
@@ -330,6 +352,14 @@
     element("#firmware-update-form").addEventListener("submit", (event) => {
       event.preventDefault();
       void uploadFirmware(event.currentTarget);
+    });
+    element("#www-file").addEventListener("change", (event) => {
+      const file = event.currentTarget.files?.[0];
+      element("#www-upload").disabled = !file || file.name !== "www.bin";
+    });
+    element("#www-update-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      void uploadWww(event.currentTarget);
     });
   }
 

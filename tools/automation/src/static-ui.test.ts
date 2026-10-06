@@ -108,7 +108,7 @@ test("operator UI theme contract remains bounded and dark by default", async () 
   assert.equal(invalid["colorScheme"], "dark");
 });
 
-test("production static UI exposes scoped workflows without browser persistence or OTAWWW", async () => {
+test("production static UI exposes scoped workflows and both update routes without browser persistence", async () => {
   // Arrange
   const assets = await staticAssets();
   const combinedScripts = [
@@ -127,12 +127,13 @@ test("production static UI exposes scoped workflows without browser persistence 
   assert.match(index, /autocomplete="new-password"/u);
   assert.match(index, /Source on GitHub/u);
   assert.match(index, /https:\/\/openlinks\.us\//u);
-  assert.match(index, /AxeOS image update unavailable/u);
+  assert.match(index, /id="www-update-form"/u);
+  assert.doesNotMatch(index, /AxeOS image update unavailable/u);
   assert.match(combinedScripts, /\/api\/system\/info/u);
   assert.match(combinedScripts, /\/api\/system\/logs/u);
   assert.match(combinedScripts, /\/api\/system\/scoreboard/u);
   assert.match(combinedScripts, /\/api\/system\/OTA/u);
-  assert.doesNotMatch(combinedScripts, /OTAWWW/u);
+  assert.match(combinedScripts, /\/api\/system\/OTAWWW/u);
   assert.doesNotMatch(combinedScripts, /localStorage|sessionStorage|innerHTML|eval\(/u);
   assert.match(combinedScripts, /global\.confirm/u);
   assert.match(combinedScripts, /navigation\.inert/u);
