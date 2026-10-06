@@ -4509,10 +4509,10 @@ Contract: [accepted-share amendment](docs/hardware/str005-accepted-share-amendme
       owner serves `renewal-page.mjs` for a renewal context and refuses a
       context whose minimum differs from its contract. Regressions cover
       the wait, the deadline failure, the judge and the page selection.
-- [ ] restart008: preflight with share-current-001 as `--start-root`,
-      recovery stage, restart stage, finish. Expected boot 319 to 320,
-      ledger 31/30/3,900,000 ms unchanged. Then pin it and enable the
-      renewal line.
+- [x] restart008: recovery stage read share-current-001's record, then one
+      software restart took boot 319 to 320 with the ledger
+      (31/30/3,900,000 ms) and budget unchanged; no failures. Result
+      `003683ef…`, seal `764cbaa7…`; pinned, renewal line enabled.
 - [ ] renew-current-001: detector, preflight, serve, baseline and
       candidate, startup detector, Run, fresh recovery, release, final
       detector, finish. Expected after ledger 32/31/4,080,000 ms and at
@@ -4525,8 +4525,8 @@ ambiguous Start (never resend), a panic or unproven cleanup. Effects and
 prohibitions are the amendment's; no pool, no Wi-Fi provisioning, no
 firmware write. Retries need a regression-backed fix, a fresh ordinal and a
 new restart.
-Renewal current image restart hardware: enabled.
-Renewal current image hardware: disabled.
+Renewal current image restart hardware: disabled.
+Renewal current image hardware: enabled.
 
 Verification: pending. Completion review: pending.
 
