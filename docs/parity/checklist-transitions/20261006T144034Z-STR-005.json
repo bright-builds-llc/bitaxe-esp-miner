@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261006T144034Z-STR-005",
+  "predecessor_sha256": "b8803fc06ae3057869f7dea41696cd0aea3d557734144532ca3b25a9e4a82603",
+  "result_sha256": "5fd0bc9d8779d6563611e18139649505a97354863d612a09a3c0417f7f6c4d12",
+  "row_id": "STR-005",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261006T144034Z-STR-005/PLAN.md",
+  "plan_sha256": "d653390eb79356ef396b6797c311ed65269fe87c4674ef94c18035f19b46ec5f",
+  "result_path": "docs/parity/work-plans/20261006T144034Z-STR-005/RESULT.md",
+  "result_document_sha256": "9518955532209613a1c3b3bcd7d1af1c70392830723addf548d91edfc5210183",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v2`, `firmware/bitaxe/src/stratum_v2_session.rs`, `firmware/bitaxe/src/stratum_v2_session/transport.rs`, `firmware/bitaxe/src/settings_adapter/stratum_v2.rs`, `tools/stratum-v2-fixture/src/main.rs`, `tools/flash/src/campaign/serial/stratum_v2.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v2`, `firmware/bitaxe/src/stratum_v2_session.rs`, `firmware/bitaxe/src/stratum_v2_session/transport.rs`, `firmware/bitaxe/src/settings_adapter/stratum_v2.rs`, `tools/stratum-v2-fixture/src/main.rs`, `tools/flash/src/campaign/serial/stratum_v2.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden,workflow",
+  "after_evidence": "unit,golden,workflow,hardware-regression",
+  "before_notes": "Implemented at abf6c1bd with bounded pinned-reference frames/messages, official SRI Noise NX, standard and extended channel/job/share state, sole campaign-gated firmware ownership, real TCP fixture, canonical package, redaction, and software evidence in docs/parity/evidence/str005-stratum-v2/summary.md. Exact-restoration outer campaign, Ultra 205 hardware regression, external production pools, mixed-protocol live fallback, arbitrary pools, other boards, unbounded mining, OTA, and release readiness remain non-claims.",
+  "after_notes": "Verified on final candidate 2bff1004 (ELF 9783dc74) with Gate 86fc62d7 on one Ultra 205 against the local V2 fixture, under the ADR-0029 piecewise checkpoints: install/update continuity and Noise authentication, signed Start and charged ledger, an accepted encrypted V2 share with two lease renewals and a Worker-requested normal Stop in one run, heartbeat-loss revocation and bounded shutdown, internal-memory headroom, ELF-bound native audits and host-side negative tests; see docs/parity/work-plans/20261006T144034Z-STR-005/RESULT.md and docs/parity/evidence/20261005-str005-integration-review.md. External or production pools, arbitrary pools, mixed-protocol live fallback, sustained or unbounded mining, other boards, OTA, release readiness, Channel006 publication and Share002 pre-reset resource release (ADR-0032) remain non-claims."
+}

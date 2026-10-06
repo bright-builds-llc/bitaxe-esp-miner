@@ -1,6 +1,9 @@
 use crate::*;
 
 pub(crate) fn validate_deferred_scope_verified_row(row: &ChecklistRow) -> Vec<ValidationError> {
+    if normalize(&row.id) == "str-005" {
+        return validate_str005_ultra205_evidence(row);
+    }
     if !is_deferred_or_non_205_scope(row) || !uses_ultra_205_evidence(row) {
         return Vec::new();
     }
@@ -112,4 +115,20 @@ pub(crate) fn is_phase26_telemetry_row(row: &ChecklistRow) -> bool {
     ]
     .iter()
     .any(|term| row_identity.contains(term))
+}
+
+/// STR-005 left deferred scope when Stratum V2 was taken on for the Ultra 205 (ADR-0029). It may verify on
+/// Ultra 205 evidence only through its Stratum V2 integration review, never by reusing Stratum v1 evidence.
+fn validate_str005_ultra205_evidence(row: &ChecklistRow) -> Vec<ValidationError> {
+    let haystack = row_haystack(row);
+    if !uses_ultra_205_evidence(row)
+        || (haystack.contains("str005-integration-review.md")
+            && !haystack.contains("stratum v1 evidence"))
+    {
+        return Vec::new();
+    }
+    vec![ValidationError {
+        id: row.id.clone(),
+        message: "STR-005 may cite Ultra 205 evidence only through its Stratum V2 integration review, not reused Stratum v1 evidence".to_owned(),
+    }]
 }

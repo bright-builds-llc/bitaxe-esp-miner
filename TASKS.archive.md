@@ -23171,3 +23171,47 @@ permanent non-claim (ADR-0032), and single-run, single-board, local-fixture
 evidence qualifies as `hardware-regression`. Residual risks: negative tests
 are host-side only; no pool, sustained or multi-board mining is claimed;
 Channel006 stays private. Next: `task-str005-evidence-promotion`.
+
+### task-str005-evidence-promotion | 2026-08-28 | Compose evidence and promote STR-005
+
+Status: Complete 2026-10-06; archived. Owner-requested ("run the promotion").
+Plan: [20261006T144034Z-STR-005](docs/parity/work-plans/20261006T144034Z-STR-005/PLAN.md).
+
+- [x] Validate every accepted child projection and provenance relationship.
+- [x] Require independently reviewed cumulative coverage and final-candidate
+      compatibility from the piecewise integration review; diagnostics alone
+      do not substitute for acceptance evidence. No single cumulative run is required.
+- [x] Create `RESULT.md`, transition only STR-005 to `verified` with
+      `unit,golden,workflow,hardware-regression`, synchronize progress, and
+      archive only finalized active native records in their completion commits;
+      preserve already archived child records unchanged.
+
+Depends on: completed `task-str005-piecewise-integration-review` under
+[ADR-0029](docs/adr/0029-piecewise-str005-qualification.md), including applicable
+channel, startup, accepted-share, shutdown, restoration, accounting and cleanup
+evidence. The superseded qualification/channel/share IDs supply history only. Deferred
+cooperative crypto cancellation is not a promotion prerequisite; protocol,
+authentication, work/share, safety and evidence requirements remain unchanged.
+
+Authorization: repository evidence validation, documentation, checklist
+transition, task archival, commit, and push only. No hardware, network, flash,
+NVS, mining, or other device effect is permitted.
+
+Verification: [RESULT.md](docs/parity/work-plans/20261006T144034Z-STR-005/RESULT.md)
+and [WORKLOG.md](docs/parity/work-plans/20261006T144034Z-STR-005/WORKLOG.md):
+every sealed final-candidate root re-verified (inventory, result and seal
+digests, complete), the lineage head and install review pass again, and
+nine native audits are bound to ELF `9783dc74…`. Transition
+`20261006T144034Z-STR-005`; progress synchronized from source commit
+`3f4845a0` to 91 of 95 verified. The parity validator's June guard listed
+STR-005 as deferred scope; STR-005 now has its own rule (Ultra 205
+evidence only through its Stratum V2 integration review, never reused
+Stratum v1 evidence), with tests, and `just parity` validates.
+
+Completion review: STR-005 is `verified` with
+`unit,golden,workflow,hardware-regression` on final candidate `2bff1004`. The
+superseded 2026-08-29 Noise-auth plan was closed without a verification
+claim. Archived child records are unchanged. Residual risks and non-claims
+are in RESULT.md: one run per checkpoint on one board against a local
+fixture, no pool or sustained mining, host-only negative tests except
+heartbeat loss, Channel006 private, Share002 per ADR-0032.

@@ -28,3 +28,21 @@
 - Evidence: see `RESULT.md`.
 - Outcome: eligible for `verified`.
 - Blocker or next safe action: none; transition STR-005.
+
+## 2026-10-06T16:30:00Z | Transition and validator correction
+
+- Source commit: `3f4845a0` (RESULT.md).
+- Actions: `transition-item` moved STR-005 to `verified` with
+  `unit,golden,workflow,hardware-regression`; `sync-progress` appended
+  progress and updated the README to 91 of 95.
+- Verification: `just parity` then failed with "deferred or non-205
+  verified rows cannot reuse Ultra 205 evidence". The guard dated from
+  June 2026, when STR-005 was `deferred` and only Stratum v1 was in scope;
+  its test pinned the case of Stratum v2 verified on reused Ultra 205
+  Stratum v1 evidence. STR-005 left the hard-coded deferred list and gained
+  its own rule: Ultra 205 evidence is admitted only through its Stratum V2
+  integration review, and never when the row cites reused Stratum v1
+  evidence. The original test still rejects its v1 case; two new tests
+  cover acceptance through the review and rejection of v1 reuse beside it.
+  `just parity` then reported `validation_errors: none`.
+- Outcome: verified.

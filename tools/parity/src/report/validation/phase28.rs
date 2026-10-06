@@ -150,7 +150,7 @@ pub(crate) fn is_deferred_or_non_205_scope(row: &ChecklistRow) -> bool {
 
     matches!(
         row_id.as_str(),
-        "cfg-002" | "asic-008" | "asic-009" | "asic-010" | "str-005"
+        "cfg-002" | "asic-008" | "asic-009" | "asic-010"
     ) || row_id.starts_with("bap-")
         || scope_identity.contains("bap")
         || scope_identity.contains("all-board")

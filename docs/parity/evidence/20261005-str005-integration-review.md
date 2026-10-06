@@ -2,8 +2,9 @@
 
 Status: complete 2026-10-06. Every obligation has applicable evidence on the
 final candidate (`2bff1004`) or a recorded owner decision, and every
-promotion blocker below is resolved. The STR-005 row's transition belongs
-to `task-str005-evidence-promotion`; parity stays 90/95 until it runs.
+promotion blocker below is resolved. STR-005 was promoted to `verified` on
+2026-10-06 ([result](../work-plans/20261006T144034Z-STR-005/RESULT.md));
+parity is 91 of 95.
 
 Policy: [ADR-0029](../../adr/0029-piecewise-str005-qualification.md), with
 prospective diagnostics under

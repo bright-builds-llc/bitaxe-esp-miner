@@ -240,6 +240,43 @@ fn deferred_scope_verified_rows_reject_ultra205_evidence() {
 }
 
 #[test]
+fn str005_verifies_on_ultra205_only_through_its_stratum_v2_integration_review() {
+    // Arrange
+    let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-005 | Stratum v2 protocol | `reference/esp-miner/components/stratum_v2/*.c` | `crates/bitaxe-stratum` | verified | unit,golden,workflow,hardware-regression | Verified on one Ultra 205; see docs/parity/evidence/20261005-str005-integration-review.md. |
+"#;
+    let rows = parse_checklist(checklist).expect("checklist should parse");
+
+    // Act
+    let errors = validate_rows(&rows);
+
+    // Assert
+    assert!(
+        errors.iter().all(|error| error.id != "STR-005"),
+        "{errors:?}"
+    );
+}
+
+#[test]
+fn str005_cannot_verify_on_reused_stratum_v1_evidence_even_beside_the_review() {
+    // Arrange
+    let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STR-005 | Stratum v2 protocol | `reference/esp-miner/components/stratum_v2/*.c` | `crates/bitaxe-stratum` | verified | hardware-regression | Ultra 205 Stratum v1 evidence was reused; str005-integration-review.md. |
+"#;
+    let rows = parse_checklist(checklist).expect("checklist should parse");
+
+    // Act
+    let errors = validate_rows(&rows);
+
+    // Assert
+    assert_validation_error_contains(&errors, "STR-005", "Ultra 205 evidence");
+}
+
+#[test]
 fn release_ota_verified_guard_allows_implemented_package_evidence_below_verified() {
     // Arrange
     let checklist = r#"
