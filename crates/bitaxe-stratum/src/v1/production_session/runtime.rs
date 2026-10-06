@@ -198,7 +198,9 @@ impl ProductionMiningSession {
                 self.apply_recovery_actions(recovery_actions, &mut effects)?;
             }
             ProductionSessionEvent::CampaignLeaseRenewed { lease, now_ms } => {
+                // A renewal never changes the hardware profile its Start prepared (ADR-0033).
                 if self.maybe_lease.map(MiningCampaignLease::id) != Some(lease.id())
+                    || self.maybe_lease.map(MiningCampaignLease::profile) != Some(lease.profile())
                     || !matches!(
                         self.campaign_state,
                         MiningCampaignState::Armed | MiningCampaignState::Active

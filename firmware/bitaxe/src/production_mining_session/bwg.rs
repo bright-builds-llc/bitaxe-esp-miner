@@ -3,10 +3,13 @@ use bitaxe_runtime::reply::ReplySender;
 use bitaxe_stratum::v1::production_session::{
     LivePoolCredentials, LiveRuntimeConfig, MiningCampaignLease, MiningCampaignLeaseId,
     MiningCampaignMonotonicDeadline, MiningCampaignState, MiningCampaignStopCondition,
-    MiningHardwareProfilePreset, MiningHardwareState, ProductionPoolConfiguration,
-    ProductionPoolEndpoint, ProductionPoolSet, ProductionProtocolConfig, V2PoolConfig,
+    MiningHardwareProfile, MiningHardwareProfilePreset, MiningHardwareState,
+    ProductionPoolConfiguration, ProductionPoolEndpoint, ProductionPoolSet,
+    ProductionProtocolConfig, V2PoolConfig,
 };
-use bitaxe_worker_control::{LeaseDeadlines, WorkerLeaseGrant, WorkerLeaseRenewal};
+use bitaxe_worker_control::{
+    HardwareProfile, LeaseDeadlines, WorkerLeaseGrant, WorkerLeaseRenewal,
+};
 
 pub(super) struct OwnerSession {
     pub(super) generation: revocation::WorkerGeneration,
@@ -48,6 +51,7 @@ pub(super) enum OwnerCommand {
     Start {
         generation: revocation::WorkerGeneration,
         worker_lease_id: String,
+        profile: MiningHardwareProfile,
         deadline: MiningCampaignMonotonicDeadline,
         pools: ProductionPoolSet,
         reply: ReplySender<Result<(), Error>>,
@@ -89,10 +93,12 @@ pub(crate) fn start(
         return Err(Error::Rejected);
     }
     let pools = pool_set(grant)?;
+    let profile = signed_profile(grant.hardware_profile());
     request(
         |reply| OwnerCommand::Start {
             generation,
             worker_lease_id: grant.lease_id().to_owned(),
+            profile,
             deadline,
             pools,
             reply,
@@ -177,13 +183,24 @@ fn deadline(deadlines: LeaseDeadlines) -> Result<MiningCampaignMonotonicDeadline
         .map_err(|_| Error::Rejected)
 }
 
+/// ADR-0033: the signed grant selects the preset; the grant's validation already admits
+/// upstream-default only with a soak allowance.
+fn signed_profile(profile: HardwareProfile) -> MiningHardwareProfile {
+    match profile {
+        HardwareProfile::Conservative => MiningHardwareProfilePreset::Conservative,
+        HardwareProfile::UpstreamDefault => MiningHardwareProfilePreset::UpstreamDefault,
+    }
+    .profile()
+}
+
 fn lease(
     id: MiningCampaignLeaseId,
+    profile: MiningHardwareProfile,
     deadline: MiningCampaignMonotonicDeadline,
 ) -> MiningCampaignLease {
     MiningCampaignLease::new(
         id,
-        MiningHardwareProfilePreset::Conservative.profile(),
+        profile,
         MiningCampaignStopCondition::MonotonicDeadline { deadline },
     )
 }
@@ -250,6 +267,7 @@ impl OrdinaryEspProductionSessionAdapter {
             OwnerCommand::Start {
                 generation,
                 worker_lease_id,
+                profile,
                 deadline,
                 pools,
                 reply,
@@ -284,7 +302,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 let session = OwnerSession {
                     generation,
                     worker_lease_id,
-                    lease: lease(id, deadline),
+                    lease: lease(id, profile, deadline),
                     pools,
                     accepted_baseline: snapshot.lifetime_share_counters.accepted,
                     rejected_baseline: snapshot.lifetime_share_counters.rejected,
@@ -317,15 +335,16 @@ impl OrdinaryEspProductionSessionAdapter {
                     let _ = reply.send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
                 }
-                let Some(id) = self
+                // A renewal carries no profile, so the lease keeps the profile its signed Start chose.
+                let Some((id, profile)) = self
                     .maybe_bwg_session
                     .as_ref()
-                    .map(|session| session.lease.id())
+                    .map(|session| (session.lease.id(), session.lease.profile()))
                 else {
                     let _ = reply.send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
                 };
-                let lease = lease(id, deadline);
+                let lease = lease(id, profile, deadline);
                 if let Some(session) = self.maybe_bwg_session.as_mut() {
                     session.lease = lease;
                 }

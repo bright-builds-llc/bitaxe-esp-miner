@@ -25,6 +25,11 @@ mod worker_qualification_budget {
         None
     }
 }
+mod worker_soak_budget {
+    pub fn observation(_: u32, _: u64) -> Option<serde_json::Value> {
+        None
+    }
+}
 mod owner_resources {
     pub fn observation(_: u32) -> Option<serde_json::Value> {
         None

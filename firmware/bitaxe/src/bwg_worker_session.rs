@@ -208,6 +208,12 @@ impl WorkerSession for ProductionWorkerSession {
             .map_err(|_| WorkerSessionError::Rejected)
     }
 
+    fn soak_allowance_review(&self) -> Result<Option<serde_json::Value>, WorkerSessionError> {
+        crate::worker_soak_budget::review()
+            .map(Some)
+            .map_err(|_| WorkerSessionError::Rejected)
+    }
+
     fn acceptance_budget_review(
         &self,
         expected_campaign: &str,

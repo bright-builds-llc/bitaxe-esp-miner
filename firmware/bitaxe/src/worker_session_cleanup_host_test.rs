@@ -12,6 +12,8 @@ mod shutdown_budget;
 mod worker_acceptance_budget;
 #[path = "worker_qualification_budget.rs"]
 mod worker_qualification_budget;
+#[path = "worker_soak_budget.rs"]
+mod worker_soak_budget;
 
 mod panic_evidence {
     pub fn enter_control_phase(_phase: u32) {}
@@ -26,6 +28,7 @@ use std::sync::{Mutex, MutexGuard};
 static TEST_LOCK: Mutex<()> = Mutex::new(());
 static LEDGER: Mutex<Option<AcceptanceBudget>> = Mutex::new(None);
 static QUAL_LEDGER: Mutex<Option<bitaxe_worker_control::QualificationLedger>> = Mutex::new(None);
+static SOAK_LEDGER: Mutex<Option<bitaxe_worker_control::SoakLedger>> = Mutex::new(None);
 static FAIL_WRITE: AtomicBool = AtomicBool::new(false);
 static INTERRUPT_WRITE: AtomicBool = AtomicBool::new(false);
 static CLEANUP_WAS_BUSY: AtomicBool = AtomicBool::new(false);
@@ -160,6 +163,37 @@ mod bwg_worker_nvs {
             }
             Ok(())
         }
+        pub fn soak_ledger(&self) -> anyhow::Result<bitaxe_worker_control::SoakLedger> {
+            Ok(SOAK_LEDGER
+                .lock()
+                .expect("test ledger")
+                .clone()
+                .unwrap_or_default())
+        }
+        pub fn store_soak_ledger(
+            &mut self,
+            ledger: &bitaxe_worker_control::SoakLedger,
+        ) -> anyhow::Result<()> {
+            if FAIL_WRITE.load(Ordering::SeqCst) {
+                anyhow::bail!("synthetic write failure");
+            }
+            if INTERRUPT_WRITE.swap(false, Ordering::SeqCst) {
+                let generation = WRITE_GENERATION
+                    .lock()
+                    .expect("test generation")
+                    .expect("generation");
+                revocation::revoke_at(generation, 1000);
+                CLEANUP_WAS_BUSY.store(
+                    worker_acceptance_budget::finish(generation).is_err(),
+                    Ordering::SeqCst,
+                );
+            }
+            *SOAK_LEDGER.lock().expect("test ledger") = Some(ledger.clone());
+            if FAIL_AFTER_WRITE.load(Ordering::SeqCst) {
+                anyhow::bail!("synthetic readback failure");
+            }
+            Ok(())
+        }
         pub fn maybe_acceptance_budget(&self) -> anyhow::Result<Option<AcceptanceBudget>> {
             Ok(LEDGER.lock().expect("test ledger").clone())
         }
@@ -232,6 +266,7 @@ impl Scope {
         FAIL_OWNER_STOP.store(false, Ordering::SeqCst);
         *LEDGER.lock().expect("test ledger") = None;
         *QUAL_LEDGER.lock().expect("test ledger") = None;
+        *SOAK_LEDGER.lock().expect("test ledger") = None;
         let generation = revocation::begin_link(1_000).expect("previous test cleaned up");
         *WRITE_GENERATION.lock().expect("test generation") = Some(generation);
         INTERRUPT_WRITE.store(false, Ordering::SeqCst);
@@ -508,6 +543,8 @@ fn budget_review_rejects_malformed_ledger_without_repair() {
 
 #[path = "worker_session_cleanup_host_test/qualification.rs"]
 mod qualification_tests;
+#[path = "worker_session_cleanup_host_test/soak.rs"]
+mod soak_tests;
 
 // Diagnostics remain unavailable in this cleanup fixture. Real budget/NVS
 // transitions above are exercised without fabricating native V2 observations.

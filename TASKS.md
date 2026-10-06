@@ -55,11 +55,11 @@ invalid watchdog continuity. That selected `stop_repeated_boundary`.
         `soakAllowance` in the grant, with validation (`upstream-default` only
         with a soak; a soak is Stratum V1 with a 60/20 s window), a `SoakLedger`
         (reserve once, no refund) and a read-only `soak_allowance_review`.
-  - [ ] Phase 2: Gate repo: parse the new fields; a soak-only renewal bound
+  - [x] Phase 2: Gate repo: parse the new fields; a soak-only renewal bound
         (36); soak stop ordering (refresh before renewing, let the device close
         the gate, wait for safe-stop); `soakQualification` mode; conformance
         vectors; push; bump the MODULE.bazel pin.
-  - [ ] Phase 3: firmware: the lease profile from the signed grant (fixed for
+  - [x] Phase 3: firmware: the lease profile from the signed grant (fixed for
         the lease's life), the soak budget in revocation admission,
         `worker_soak_budget` with an NVS `soak_ledger`, and host tests.
   - [ ] Phase 4: WebSocket hardening: a ping schedule instead of every 500 ms,

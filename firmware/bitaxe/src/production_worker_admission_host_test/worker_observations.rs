@@ -56,6 +56,7 @@ fn new_owner_first_accepted_share_is_not_hidden_by_previous_pool_baseline() {
         bwg::OwnerCommand::Start {
             generation,
             worker_lease_id: "synthetic-next-lease".to_owned(),
+            profile: MiningHardwareProfilePreset::Conservative.profile(),
             deadline: MiningCampaignMonotonicDeadline::new(61_000).expect("deadline"),
             pools: ProductionPoolSet {
                 primary: None,

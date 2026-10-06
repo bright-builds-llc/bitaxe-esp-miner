@@ -64,6 +64,11 @@ pub(crate) fn status_evidence(
     ) {
         value["attempt"] = attempt;
     }
+    if let Some(soak) =
+        crate::worker_soak_budget::observation(timing.generation, u64::from(timing.active_ms))
+    {
+        value["soak"] = soak;
+    }
     if let Some(resources) = super::owner_resources::observation(timing.generation) {
         value["owner_resources"] = resources;
     }

@@ -29,6 +29,9 @@ fn acquire() -> anyhow::Result<Guard> {
 
 /// Called after full Start authorization, before activation or hardware preparation.
 pub(crate) fn admit(generation: WorkerGeneration, grant: &WorkerLeaseGrant) -> anyhow::Result<()> {
+    if let Some(allowance) = grant.maybe_soak_allowance() {
+        return crate::worker_soak_budget::admit(generation, allowance);
+    }
     if let Some(allowance) = grant.maybe_qualification_attempt() {
         return crate::worker_qualification_budget::admit(generation, allowance);
     }
@@ -77,6 +80,7 @@ pub(crate) fn admit(generation: WorkerGeneration, grant: &WorkerLeaseGrant) -> a
 
 /// Qualified stop completes a reserved window; repeated completion is idempotent.
 pub(crate) fn finish(generation: WorkerGeneration) -> anyhow::Result<()> {
+    crate::worker_soak_budget::finish(generation)?;
     crate::worker_qualification_budget::finish(generation)?;
     let _guard = acquire()?;
     if ACCEPTANCE_GENERATION.load(Ordering::Acquire) != generation.raw() {
@@ -111,6 +115,7 @@ pub(crate) fn finish(generation: WorkerGeneration) -> anyhow::Result<()> {
 pub(crate) fn recover_after_boot(
     proof: &crate::startup::BootMiningBaselineConfirmed,
 ) -> anyhow::Result<()> {
+    crate::worker_soak_budget::recover_after_boot(proof)?;
     crate::worker_qualification_budget::recover_after_boot(proof)?;
     let _guard = acquire()?;
     let mut store =

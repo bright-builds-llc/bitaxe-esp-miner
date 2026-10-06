@@ -154,35 +154,12 @@ fn start(
     revocation::WorkerGeneration,
     bitaxe_runtime::reply::ReplyReceiver<Result<(), bwg::Error>>,
 ) {
-    let generation = scope.link();
-    assert!(revocation::admit_budget(generation, 180_000));
-    let (reply, receiver) = bitaxe_runtime::reply::reply();
-    let event = adapter.event(
-        bwg::OwnerCommand::Start {
-            generation,
-            worker_lease_id: "synthetic-lease".to_owned(),
-            deadline: MiningCampaignMonotonicDeadline::new(61_000).expect("valid deadline"),
-            pools: ProductionPoolSet {
-                primary: None,
-                fallback: None,
-                prefer_fallback: false,
-            },
-            reply,
-        },
-        1_000,
-        &core.snapshot(),
-        core.next_campaign_lease_id(),
+    let (generation, receiver, _) = soak_profile::start_with_profile(
+        scope,
+        adapter,
+        core,
+        MiningHardwareProfilePreset::Conservative,
     );
-    let effects = core.handle(event).expect("synthetic readiness event");
-    for effect in effects {
-        if matches!(
-            effect,
-            bitaxe_stratum::v1::production_session::ProductionSessionEffect::PrepareHardware { .. }
-        ) {
-            adapter.note_worker_preparation_started();
-        }
-    }
-    adapter.complete_reply(&core.snapshot());
     (generation, receiver)
 }
 
@@ -621,3 +598,5 @@ mod worker_observations;
 mod v2_serial_runtime {
     pub(crate) fn restoration_completed(_generation: crate::revocation::WorkerGeneration) {}
 }
+#[path = "production_worker_admission_host_test/soak_profile.rs"]
+mod soak_profile;

@@ -3,6 +3,9 @@
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 pub const HEARTBEAT_CUTOFF_MS: u32 = 2_800;
+/// The one-shot soak budget: 600,000 ms of admitted work plus the 15,550 ms pre-reset shutdown
+/// tail (ADR-0033). Must equal `bitaxe_worker_control::SOAK_MAXIMUM_ACTIVE_MS`.
+pub const SOAK_ACTIVE_LIMIT_MS: u64 = 600_000 + super::shutdown_budget::PRE_RESET_BOUND_MS as u64;
 const LIVE: u32 = 1;
 const ACTIVE: u32 = 2;
 const RESERVED: u32 = 3;
@@ -259,11 +262,12 @@ impl GenerationGate {
         self.is_live(generation)
     }
 
-    /// Called once only after the persistent campaign reservation is committed.
+    /// Called once only after the persistent campaign reservation is committed. Limited budgets
+    /// are at most 240,000 ms, except the one exact soak budget (ADR-0033).
     pub fn admit_budget(&self, generation: WorkerGeneration, active_limit_ms: u64) -> bool {
         if active_limit_ms != u64::MAX
             && (active_limit_ms <= u64::from(super::shutdown_budget::PRE_RESET_BOUND_MS)
-                || active_limit_ms > 240_000)
+                || (active_limit_ms > 240_000 && active_limit_ms != SOAK_ACTIVE_LIMIT_MS))
         {
             return false;
         }
@@ -589,3 +593,7 @@ impl GenerationGate {
 #[cfg(test)]
 #[path = "revocation/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "revocation/soak_tests.rs"]
+mod soak_tests;

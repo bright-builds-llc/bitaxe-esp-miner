@@ -15,6 +15,8 @@ mod campaign;
 mod difficulty_hint;
 #[path = "authorization/qualification.rs"]
 mod qualification;
+#[path = "authorization/soak.rs"]
+mod soak;
 
 const TRUST: &str = r#"{
   "profile": "bwg-worker-deployment-trust/0.2",

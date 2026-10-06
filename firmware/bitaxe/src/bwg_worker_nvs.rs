@@ -14,6 +14,7 @@ use crate::startup::BootMiningBaselineConfirmed;
 
 mod acceptance;
 mod qualification;
+mod soak;
 
 const NAMESPACE: &str = "bwg_worker";
 const IDENTITY_KEY: &str = "device_seed";
