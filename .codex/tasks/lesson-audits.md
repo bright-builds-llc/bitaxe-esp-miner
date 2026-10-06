@@ -86,3 +86,25 @@
   - Bytes and estimates: global `5,230` / `1,744`, repository `38,145` / `12,715`, combined `43,375` / `14,459`
   - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `fe5aec699f43ff1d3fb37b5cb1c12ec5e35091d6286cd002a12aa1295479a1b6`
   - Threshold state: above both hard loading limits; startup loading uses the priority-ordered whole-block rule, and this trigger is consumed
+
+## audit-ota002-promotion-lessons | 2026-10-06T21:29:59Z
+
+- Audit timestamp: `2026-10-06T21:29:59Z`
+- Trigger: a proposed append of three lessons from the OTA-002 hardware verification, with the combined active total already above the 24,000-byte and 8,000-token limits (owner-requested on 2026-10-06)
+- Active source paths:
+  - Global: `/Users/peterryszkiewicz/.codex/tasks/lessons.md`
+  - Repository: `/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/.codex/tasks/lessons.md`
+- Review: every active block in both files was read in full. Global lessons are unrelated to this repository's evidence boundaries and none is obsolete.
+- Retained lesson IDs: every active lesson except the one archived below
+- Consolidated lesson IDs: none. The closest pairs differ in cause or trigger: `lesson-native-usb-capture-needs-prearmed-observation-or-replay` and `lesson-manual-removal-needs-owner-observation` (byte capture versus token acceptance); `lesson-hardware-retries-require-new-information`, `lesson-standing-task-authorization-avoids-confirmation-churn` and `lesson-hardware-fixes-do-not-require-plan-per-iteration` (retry evidence, confirmation churn and plan churn).
+- Recurrence noted without a new lesson: attempt 001's endpoint preflight resolved a relative path inside the Bazel runfiles tree, which `lesson-cross-process-tests-use-real-boundaries` already covers.
+- Archived lesson IDs:
+  - `lesson-visible-cdc-is-not-flash-admission`: obsolete; the TinyUSB application CDC profile no longer exists (ADR-0021, ADR-0023), and its lasting rule is enforced by AGENTS.md and `just detect-ultra205`
+- Archive files changed: `.codex/tasks/lessons.archive.md`
+- Added lesson IDs: `lesson-retained-log-ring-loses-boot-lines`, `lesson-fixed-serial-jtag-drops-runtime-log-markers`, `lesson-register-new-evidence-errors-in-typed-failure`
+- Next baseline:
+  - Timestamp: `2026-10-06T21:29:59Z`; the 90-day changed-lessons trigger becomes eligible on `2027-01-04T21:29:59Z`
+  - Counts: global `7`, repository `43`, combined `50`, with `0` new active lessons accumulated
+  - Bytes and estimates: global `5,230` / `1,744`, repository `39,922` / `13,308`, combined `45,152` / `15,052`
+  - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `88feb1d9bcc0fd68c50687f8f5b80368e3cd46238a7a51a93fbfeb6c97bc29f6`
+  - Threshold state: above both hard loading limits; startup loading uses the priority-ordered whole-block rule, and this trigger is consumed

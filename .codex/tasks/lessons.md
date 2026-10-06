@@ -200,13 +200,6 @@
 3. Preventive rule: Within a complete active hardware task contract, diagnose, fix, regression-test, verify, commit/push, select a fresh ordinal, and retry autonomously. Create a new plan only when an explicitly invoked skill requires one, authority or effects materially expand, the safety/recovery contract changes, or no active task covers the effect.
 4. Trigger signal: The next action is a targeted fix or fresh ordinal for the same admitted hardware boundary, and work is about to pause solely to create another plan rather than because scope, authority, safety, recovery, or evidence requirements changed.
 
-## lesson-visible-cdc-is-not-flash-admission | 2026-08-29 20:10
-
-1. Date: 2026-08-29
-2. What went wrong: Enabling the ESP32-S3 TinyUSB application profile produced a visible CDC node, but the existing flash path treated every serial node as an admitted ROM downloader and sent bootloader synchronization traffic to the Worker runtime.
-3. Preventive rule: Treat physical identity, USB profile, and enumeration identity separately. Any application profile that owns the internal USB PHY must retain a tested, repo-owned handoff to ROM; require successful ROM `board-info` before writes and never infer flash compatibility from CDC visibility.
-4. Trigger signal: TinyUSB descriptors, USB sdkconfig, or startup ownership changes while flash/recovery tests still identify targets only by a `/dev/cu.*` node or VID/PID and do not prove a profile transition plus ROM admission.
-
 ## lesson-development-ip-needs-share-redaction-not-interactive-secrecy | 2026-08-30 16:17
 
 1. Date: 2026-08-30 16:17 CDT
@@ -283,3 +276,24 @@
 2. What went wrong: A June parity guard hard-coded STR-005 as deferred scope, from when only Stratum v1 was planned. After STR-005 became an active Ultra 205 row, the guard blocked its own promotion at the final `just parity` check.
 3. Preventive rule: When a row's scope or deferral changes, search the parity tool for hard-coded row lists and update them in the same change, replacing a blanket exclusion with the precise rule it protected and keeping its original test case.
 4. Trigger signal to catch it earlier: A validation error cites deferred or non-205 scope for an active row, or a checklist row's status leaves `deferred` without a parity-tool diff.
+
+## lesson-retained-log-ring-loses-boot-lines | 2026-10-06 21:30
+
+1. Date: 2026-10-06
+2. What went wrong: OTA-002 attempt 001 checked the installed boot's one-time `safe_state` line through `/api/system/logs` more than 20 minutes after boot. The 512 KiB retained log ring held only about 1,770 periodic snapshot and health lines by then, so the line had rotated out and the run stopped at its baseline.
+3. Preventive rule: Read a boot's one-time retained lines only shortly after that boot is proven (for example right after a restart session). To prove the state of an older boot, use evidence bound to that boot, such as an authenticated session's Worker lease state, not the retained log.
+4. Trigger signal to catch it earlier: A check searches `/api/system/logs` for a boot-time marker minutes after the boot, or the retained log is at its byte cap with only periodic records.
+
+## lesson-fixed-serial-jtag-drops-runtime-log-markers | 2026-10-06 21:30
+
+1. Date: 2026-10-06
+2. What went wrong: The OTAWWW supervisor took its device origin, boot session and safe state from `runtime_origin`, `runtime_boot_identity` and `safe_state` lines in the flash-monitor capture. Since the fixed Serial/JTAG migration the USB writer forwards only allowlisted `usb_*` records, so real captures contain none of those lines; host tests passed because the fake device emitted them.
+3. Preventive rule: Take the station address from the authenticated Gate endpoint handoff (`just otawww-endpoint`) and identity and safe state from HTTP or session state. Build fake-device fixtures from what a recent real capture actually contains, not from what the firmware logs.
+4. Trigger signal to catch it earlier: A host workflow parses `runtime_origin`, `runtime_boot_identity` or `safe_state` from a USB capture, or a fixture emits serial lines absent from recent post-migration captures.
+
+## lesson-register-new-evidence-errors-in-typed-failure | 2026-10-06 21:30
+
+1. Date: 2026-10-06
+2. What went wrong: The new OTAWWW supervisor's error class was not added to `tools/automation/src/typed-failure.ts`, so a typed `hardware_blocked` stop was reported as `process_failed`, the wrong category for the attempt policy.
+3. Preventive rule: When adding an automation command with its own typed error class, register that class in the typed-failure mapping in the same change and test that a typed failure surfaces with its own category through the CLI result.
+4. Trigger signal to catch it earlier: A new `*EvidenceError` class exists without an `instanceof` entry in `typed-failure.ts`, or a supervisor failure prints `process_failed` while its stderr names a specific stage.

@@ -23,3 +23,14 @@ Archived by lesson audits; each block keeps its original text.
 - Archive date: 2026-10-06
 - Archive reason: Obsolete: the TinyUSB CDC maintenance protocol (1200-baud arm, DTR commit edge) no longer exists in the firmware or host tools; USB Serial/JTAG is the sole controller under ADR-0021 and ADR-0023.
 - Replacement ID: none
+
+## lesson-visible-cdc-is-not-flash-admission | 2026-08-29 20:10
+
+1. Date: 2026-08-29
+2. What went wrong: Enabling the ESP32-S3 TinyUSB application profile produced a visible CDC node, but the existing flash path treated every serial node as an admitted ROM downloader and sent bootloader synchronization traffic to the Worker runtime.
+3. Preventive rule: Treat physical identity, USB profile, and enumeration identity separately. Any application profile that owns the internal USB PHY must retain a tested, repo-owned handoff to ROM; require successful ROM `board-info` before writes and never infer flash compatibility from CDC visibility.
+4. Trigger signal: TinyUSB descriptors, USB sdkconfig, or startup ownership changes while flash/recovery tests still identify targets only by a `/dev/cu.*` node or VID/PID and do not prove a profile transition plus ROM admission.
+
+- Archive date: 2026-10-06
+- Archive reason: Obsolete: the TinyUSB application CDC profile it describes no longer exists; USB Serial/JTAG is the sole controller under ADR-0021 and ADR-0023. Its lasting rule (ROM `board-info` before any write, profile-classified detection) is enforced by AGENTS.md "Autonomous Ultra 205 Hardware Verification" and `just detect-ultra205`.
+- Replacement ID: none
