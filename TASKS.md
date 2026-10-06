@@ -68,7 +68,7 @@ invalid watchdog continuity. That selected `stop_repeated_boundary`.
         instead of stranding its socket. The upstream 10-client cap is kept.
         The hardware regression is the soak's idle WebSocket pre-phase
         (Phase 6).
-  - [ ] Phase 5: `tools/http-transport` `soak-observer` (separate HTTP and
+  - [x] Phase 5: `tools/http-transport` `soak-observer` (separate HTTP and
         WebSocket threads, 900 s life) plus a pure `soak-judge` over twenty
         30-second windows, with the shared continuity helpers moved out of
         `tools/flash`.

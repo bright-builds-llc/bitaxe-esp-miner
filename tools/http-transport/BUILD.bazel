@@ -8,15 +8,23 @@ rust_library(
         "src/cadence.rs",
         "src/cadence/input.rs",
         "src/cadence/tests.rs",
+        "src/continuity.rs",
+        "src/continuity/tests.rs",
         "src/commands.rs",
         "src/observation.rs",
         "src/recovery.rs",
+        "src/soak.rs",
+        "src/soak/judge.rs",
+        "src/soak/observer.rs",
+        "src/soak/sample.rs",
+        "src/soak/tests.rs",
         "src/tests.rs",
         "src/websocket.rs",
     ],
     crate_name = "bitaxe_http_transport",
     edition = "2021",
     deps = [
+        "//crates/bitaxe-api:bitaxe_api",
         "@crates//:anyhow",
         "@crates//:libc",
         "@crates//:serde",
@@ -39,6 +47,24 @@ rust_binary(
     name = "cadence_observer",
     srcs = ["src/bin/cadence-observer.rs"],
     crate_name = "cadence_observer",
+    edition = "2021",
+    deps = [":http_transport"],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "soak_observer",
+    srcs = ["src/bin/soak-observer.rs"],
+    crate_name = "soak_observer",
+    edition = "2021",
+    deps = [":http_transport"],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "soak_judge",
+    srcs = ["src/bin/soak-judge.rs"],
+    crate_name = "soak_judge",
     edition = "2021",
     deps = [":http_transport"],
     visibility = ["//visibility:public"],

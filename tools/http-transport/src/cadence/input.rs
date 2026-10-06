@@ -2,20 +2,20 @@
 use std::time::Instant;
 use zeroize::Zeroizing;
 
-pub(super) struct PrivateInput {
+pub(crate) struct PrivateInput {
     fd: i32,
     bytes: Zeroizing<Vec<u8>>,
 }
 
 impl PrivateInput {
-    pub(super) fn new(fd: i32) -> Self {
+    pub(crate) fn new(fd: i32) -> Self {
         Self {
             fd,
             bytes: Zeroizing::new(Vec::with_capacity(1024)),
         }
     }
 
-    pub(super) fn initial_line(
+    pub(crate) fn initial_line(
         &mut self,
         deadline: Instant,
     ) -> Result<Zeroizing<Vec<u8>>, &'static str> {
@@ -37,7 +37,7 @@ impl PrivateInput {
         }
     }
 
-    pub(super) fn stop_requested(&mut self) -> Result<bool, &'static str> {
+    pub(crate) fn stop_requested(&mut self) -> Result<bool, &'static str> {
         while let Some(maybe_byte) = self.read_byte(0)? {
             match maybe_byte {
                 None => {

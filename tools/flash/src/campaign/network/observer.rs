@@ -2,8 +2,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use bitaxe_api::SystemInfoWire;
+use bitaxe_http_transport::continuity::{apply_live_frame, ReconnectBackoff};
 use bitaxe_http_transport::{PlainWebSocket, StrictHttpClient, WebSocketRead};
-use serde_json::Value;
 
 use super::super::CampaignTerminalCategory;
 use super::model::{
@@ -18,32 +18,6 @@ const HTTP_POLL_INTERVAL: Duration = Duration::from_secs(5);
 const HTTP_DEADLINE: Duration = Duration::from_secs(3);
 const WEBSOCKET_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 const WEBSOCKET_IO_TIMEOUT: Duration = Duration::from_millis(250);
-const RECONNECT_BACKOFF_MIN: Duration = Duration::from_secs(1);
-const RECONNECT_BACKOFF_MAX: Duration = Duration::from_secs(5);
-
-#[derive(Debug, Clone, Copy)]
-struct ReconnectBackoff {
-    next_delay: Duration,
-}
-
-impl ReconnectBackoff {
-    fn new() -> Self {
-        Self {
-            next_delay: RECONNECT_BACKOFF_MIN,
-        }
-    }
-
-    fn reset(&mut self) {
-        self.next_delay = RECONNECT_BACKOFF_MIN;
-    }
-
-    fn take_delay(&mut self) -> Duration {
-        let delay = self.next_delay;
-        self.next_delay = (self.next_delay * 2).min(RECONNECT_BACKOFF_MAX);
-        delay
-    }
-}
-
 pub(super) fn observe_network(
     target: TrustedNetworkTarget,
     shared: Arc<Mutex<SharedSerialState>>,
@@ -206,34 +180,6 @@ fn observe_http(
     }
 }
 
-fn apply_live_frame(bytes: &[u8], projection: &mut Option<Value>) -> Option<SystemInfoWire> {
-    let frame: Value = serde_json::from_slice(bytes).ok()?;
-    if frame.get("event")?.as_str()? != "update" {
-        return None;
-    }
-    let update = frame.get("data")?.as_object()?;
-    match projection {
-        Some(current) => merge_object(current.as_object_mut()?, update),
-        None => *projection = Some(Value::Object(update.clone())),
-    }
-    serde_json::from_value(projection.as_ref()?.clone()).ok()
-}
-
-fn merge_object(
-    current: &mut serde_json::Map<String, Value>,
-    update: &serde_json::Map<String, Value>,
-) {
-    for (key, value) in update {
-        if let (Some(Value::Object(current_nested)), Value::Object(update_nested)) =
-            (current.get_mut(key), value)
-        {
-            merge_object(current_nested, update_nested);
-        } else {
-            current.insert(key.clone(), value.clone());
-        }
-    }
-}
-
 fn shared_snapshot(shared: &Arc<Mutex<SharedSerialState>>) -> SharedSerialState {
     shared.lock().map_or_else(
         |_| SharedSerialState {
@@ -253,104 +199,4 @@ fn request_serial_close(shared: &Arc<Mutex<SharedSerialState>>) {
 
 fn elapsed_millis(started: Instant) -> u64 {
     u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
-}
-
-#[cfg(test)]
-mod tests {
-    use std::time::Duration;
-
-    use bitaxe_api::{ApiSnapshot, OperatorSnapshotRevision, SystemInfoWire};
-    use serde_json::json;
-
-    use super::{apply_live_frame, ReconnectBackoff};
-
-    #[test]
-    fn reconnect_backoff_is_one_two_four_then_five_seconds() {
-        // Arrange
-        let mut backoff = ReconnectBackoff::new();
-
-        // Act
-        let delays = [(); 6].map(|()| backoff.take_delay());
-
-        // Assert
-        assert_eq!(
-            delays,
-            [
-                Duration::from_secs(1),
-                Duration::from_secs(2),
-                Duration::from_secs(4),
-                Duration::from_secs(5),
-                Duration::from_secs(5),
-                Duration::from_secs(5),
-            ]
-        );
-    }
-
-    #[test]
-    fn successful_connection_resets_reconnect_backoff() {
-        // Arrange
-        let mut backoff = ReconnectBackoff::new();
-        assert_eq!(backoff.take_delay(), Duration::from_secs(1));
-        assert_eq!(backoff.take_delay(), Duration::from_secs(2));
-
-        // Act
-        backoff.reset();
-
-        // Assert
-        assert_eq!(backoff.take_delay(), Duration::from_secs(1));
-    }
-
-    #[test]
-    fn full_connect_frame_and_nested_diff_reconstruct_one_coherent_snapshot() {
-        // Arrange
-        let mut full = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
-        full.operator_snapshot_revision =
-            OperatorSnapshotRevision::new(1).expect("nonzero revision");
-        full.runtime_health.maybe_task_watchdog_feed_sequence = Some(10);
-        let full_frame = serde_json::to_vec(&json!({
-            "event": "update",
-            "data": full,
-        }))
-        .expect("full frame");
-        let diff_frame = serde_json::to_vec(&json!({
-            "event": "update",
-            "data": {
-                "operatorSnapshotRevision": 2,
-                "runtimeHealth": {
-                    "taskWatchdogFeedSequence": 11,
-                },
-            },
-        }))
-        .expect("diff frame");
-        let mut projection = None;
-
-        // Act
-        let first = apply_live_frame(&full_frame, &mut projection).expect("full snapshot");
-        let second = apply_live_frame(&diff_frame, &mut projection).expect("merged snapshot");
-
-        // Assert
-        assert_eq!(first.operator_snapshot_revision.get(), 1);
-        assert_eq!(second.operator_snapshot_revision.get(), 2);
-        assert_eq!(
-            second.runtime_health.maybe_task_watchdog_feed_sequence,
-            Some(11)
-        );
-    }
-
-    #[test]
-    fn partial_first_frame_is_rejected_without_a_projection() {
-        // Arrange
-        let frame = serde_json::to_vec(&json!({
-            "event": "update",
-            "data": { "operatorSnapshotRevision": 2 },
-        }))
-        .expect("partial frame");
-        let mut projection = None;
-
-        // Act
-        let maybe_sample = apply_live_frame(&frame, &mut projection);
-
-        // Assert
-        assert!(maybe_sample.is_none());
-    }
 }

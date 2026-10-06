@@ -298,6 +298,7 @@ name = "bitaxe-http-transport"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitaxe-api",
  "libc",
  "rustls",
  "serde",

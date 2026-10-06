@@ -12,8 +12,10 @@ use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 
 pub mod cadence;
 mod commands;
+pub mod continuity;
 mod observation;
 mod recovery;
+pub mod soak;
 mod websocket;
 
 pub use observation::{

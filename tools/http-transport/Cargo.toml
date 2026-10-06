@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+bitaxe-api = { path = "../../crates/bitaxe-api" }
 anyhow.workspace = true
 libc.workspace = true
 serde.workspace = true
@@ -18,3 +19,11 @@ webpki-roots.workspace = true
 [[bin]]
 name = "cadence-observer"
 path = "src/bin/cadence-observer.rs"
+
+[[bin]]
+name = "soak-observer"
+path = "src/bin/soak-observer.rs"
+
+[[bin]]
+name = "soak-judge"
+path = "src/bin/soak-judge.rs"

@@ -1,4 +1,5 @@
 use bitaxe_api::{ObservationStateWire, SystemInfoWire};
+pub(super) use bitaxe_http_transport::continuity::{advances, regresses, update_gap};
 
 use super::model::{TrustedNetworkTarget, REQUIRED_WINDOWS, WINDOW_MILLIS};
 
@@ -95,22 +96,4 @@ pub(super) fn window_index(active_ms: u64) -> usize {
     usize::try_from(active_ms / WINDOW_MILLIS)
         .unwrap_or(REQUIRED_WINDOWS - 1)
         .min(REQUIRED_WINDOWS - 1)
-}
-
-pub(super) fn advances(first: Option<u64>, last: Option<u64>) -> bool {
-    match (first, last) {
-        (None, Some(_)) => true,
-        (Some(first), Some(last)) => last > first,
-        _ => false,
-    }
-}
-
-pub(super) fn regresses(previous: Option<(u64, u64)>, current: (u64, u64)) -> bool {
-    previous.is_some_and(|previous| current.0 < previous.0 || current.1 < previous.1)
-}
-
-pub(super) fn update_gap(maximum: &mut u64, previous: &mut Option<u64>, current: u64) {
-    if let Some(previous) = previous.replace(current) {
-        *maximum = (*maximum).max(current.saturating_sub(previous));
-    }
 }

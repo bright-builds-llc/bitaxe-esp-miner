@@ -6,7 +6,7 @@ use serde::Deserialize;
 use zeroize::Zeroizing;
 
 use crate::{PlainWebSocket, WebSocketRead};
-mod input;
+pub(crate) mod input;
 #[cfg(test)]
 mod tests;
 
