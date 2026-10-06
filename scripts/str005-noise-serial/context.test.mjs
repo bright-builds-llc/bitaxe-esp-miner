@@ -348,3 +348,20 @@ test("internal heap diagnostic install refuses an earlier image's recovery basis
     const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "queue_reinstall_current_recovery" } };
   } }), { code: "noise_predecessor" });
 });
+test("PSRAM default install binds recovery019 and its own publication", async (t) => {
+  // Arrange / Act
+  const f = await fixture(t, { profile: "psram-default-install" });
+  // Assert
+  assert.equal(f.context.profile, "psram-default-install");
+  assert.deepEqual(f.context.expected_ledger, { next_ordinal: 29, last_ordinal: 28, total_charged_ms: 3540000 });
+  assert.equal(publicationPath(f.context), resolve(f.options.firmwareRoot, "docs/parity/evidence/psram-default-install/attempt-001.json"));
+});
+test("PSRAM default install refuses the earlier diagnosis recovery basis", async (t) => {
+  // Arrange
+  const f = await fixture(t, { prepare: false, profile: "psram-default-install" });
+  const inspect = f.operations.inspectPredecessor;
+  // Act / Assert
+  await assert.rejects(preflight(f.options, { ...f.operations, inspectPredecessor: async (path) => {
+    const value = await inspect(path); return { ...value, previous: { ...value.previous, basis: "heap_loss_current_recovery" } };
+  } }), { code: "noise_predecessor" });
+});

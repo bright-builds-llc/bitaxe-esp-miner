@@ -5,7 +5,7 @@ import { rejectUnknownKconfigWarnings, requireResolvedUsbMemoryContract, require
 
 const resolved = [
   "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
-  "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048",
+  "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0",
   "CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384",
   "CONFIG_ESP_MAIN_TASK_AFFINITY=0x0",
   "CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5",
@@ -143,9 +143,9 @@ test("Rust release DWARF cannot silently switch ESP-IDF to debug optimization", 
   assert.doesNotThrow(() => requireResolvedCoreDumpContract(captureConfig));
 });
 
-test("resolved default-allocation policy keeps 2 KiB cutoff and explicit internal reserve", () => {
+test("resolved default-allocation policy prefers PSRAM at every size and keeps the internal reserve", () => {
   // Arrange: only default malloc placement changes, not required internal task stacks.
-  const stale = resolved.replace("MALLOC_ALWAYSINTERNAL=2048", "MALLOC_ALWAYSINTERNAL=16384");
+  const stale = resolved.replace("MALLOC_ALWAYSINTERNAL=0", "MALLOC_ALWAYSINTERNAL=2048");
   const reducedReserve = resolved.replace("MALLOC_RESERVE_INTERNAL=98304", "MALLOC_RESERVE_INTERNAL=32768");
   // Act / Assert
   assert.throws(() => requireResolvedUsbMemoryContract(stale), /MALLOC_ALWAYSINTERNAL/u);

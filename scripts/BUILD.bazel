@@ -1718,3 +1718,21 @@ js_test(
     entry_point = "virtual-emulator/noise-debugger.test.mjs",
     data = [":virtual_emulator_sources", ":core_dump_sources"],
 )
+
+js_library(
+    name = "internal_heap_series_sources",
+    srcs = glob(["internal-heap-series/*.mjs"]),
+)
+
+js_binary(
+    name = "internal_heap_series",
+    chdir = "..",
+    data = [":internal_heap_series_sources"],
+    entry_point = "internal-heap-series/main.mjs",
+)
+
+js_test(
+    name = "internal_heap_series_test",
+    data = [":internal_heap_series_sources"],
+    entry_point = "internal-heap-series/series.test.mjs",
+)

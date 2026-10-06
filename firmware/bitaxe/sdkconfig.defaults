@@ -29,8 +29,10 @@ CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_USE_MALLOC=y
-# Prefer PSRAM for ordinary allocations above 2 KiB; explicit internal/DMA caps remain authoritative.
-CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048
+# Ordinary allocations prefer PSRAM at every size; explicit internal/DMA caps (task stacks, FreeRTOS
+# objects, DMA, mbedTLS) remain authoritative. A 2 KiB cutoff kept ~1,000 small Rust allocations and
+# their periodic churn in internal RAM, leaving under 2 KiB free blocks at idle (heap-loss diagnosis).
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0
 CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
 # ESP-IDF 5.5.4 Wi-Fi memory-saving buffer profile; see docs/hardware/fixed-usb-memory-profile.md.
 CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=6

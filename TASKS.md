@@ -4557,8 +4557,20 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       to 1 s loops cause the 6 KB dips. A Worker connection that lands in
       a dip can exhaust internal RAM; restart006 fits that, recovery019 did
       not coincide with one.
-- [ ] Fix with a regression: ordinary allocations prefer PSRAM, verified
-      by measured idle headroom on a new candidate.
+- [x] Fix: `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0`, so ordinary allocations
+      prefer PSRAM at every size; explicit internal/DMA requests and the
+      96 KiB reserve are unchanged. The resolved-config contract, its test
+      and the emulator configs require the new value.
+      `just internal-heap-series` judges captures against fixed minimums;
+      it fails all 101 diagnosis samples (least free 2,103 bytes, least
+      largest block 1,536 bytes).
+- [ ] Candidate Phase A: `psram-default-install` from recovery019
+      ([PSRAM-first amendment](docs/hardware/str005-psram-default-allocation-amendment.md)).
+- [ ] Phase B: 1,200 s idle capture keeps at least 16,384 free bytes and
+      an 8,192-byte largest block in every sample.
+- [ ] Phase C: heartbeat010 at ordinal 29 (after ledger 30/29/3,720,000 ms).
+- [ ] Phase D: three 1,200 s post-shutdown captures meet the same minimums.
+- [ ] Phase E: hand the candidate to the share check and integration review.
 
 Stop on any detector failure, identity, ledger or baseline drift, a lost or
 ambiguous Start, a panic other than the Phase 5 reproduction, or unproven
@@ -4568,6 +4580,8 @@ Control diagnostic recovery hardware: disabled.
 Internal heap diagnostic install hardware: disabled.
 Heartbeat heap diagnosis hardware: disabled.
 Heap-loss core-dump acquisition: disabled.
+PSRAM default install hardware: enabled.
+Heartbeat PSRAM candidate hardware: disabled.
 
 Verification: pending. Completion review: pending.
 

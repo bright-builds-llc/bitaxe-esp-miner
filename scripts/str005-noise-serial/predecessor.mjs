@@ -173,3 +173,11 @@ export const inspectHeapLossRecoveryPredecessor = currentRecoveryPredecessor({
   basis: "heap_loss_current_recovery",
   maybeIdentity: { firmware_commit: "60e344e21a89acab13c108311d315417c0704eba",
     app_elf_sha256: "3f01a5f4dea1676b505ea686a58d16f1bd2122138556b7ac1a1bbb4c43f4ac3d" } });
+// Recovery019: the sealed current recovery on the internal-heap diagnostic image after heartbeat009, with that
+// Start's terminal record read by its device attempt and its resources released.
+export const inspectHeapDiagnosticRecoveryPredecessor = currentRecoveryPredecessor({
+  resultSha256: "61de415cd13b20503d1f27bffc45c00498d83dbf0f80ec2352458960ad58f2c8",
+  sealSha256: "e72275ddee05d350f4cfdc4923de4e554f3c15d67fff99dab0d5eb49ff1b2e52",
+  basis: "heap_diagnostic_current_recovery", allowRetainedRecord: true,
+  maybeIdentity: { firmware_commit: "31fa72385660075ab699759a5df7dae73c75b34e",
+    app_elf_sha256: "15c4c14067d1435c5d1f9e175660cd429dd4dbadb4e766876220edb5e9404e55" } });

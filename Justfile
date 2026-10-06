@@ -26,6 +26,10 @@ str005-panic-recovery action *args:
 str005-lineage *args:
     bazel run //scripts:str005_lineage -- {{ args }}
 
+# Judge receive-only `internal_heap_sample` captures against minimum free bytes and largest free block.
+internal-heap-series *args:
+    bazel run //scripts:internal_heap_series -- {{ args }}
+
 str005-control-diagnostic-recovery action *args:
     bazel run //scripts:str005_control_diagnostic_recovery -- {{ action }} {{ args }}
 

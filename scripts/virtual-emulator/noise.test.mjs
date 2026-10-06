@@ -9,7 +9,7 @@ import { auditNoiseStack, noiseAuditIdentity } from './noise-stack-audit.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const source = 'a'.repeat(64);
-const config = ['CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384', 'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048',
+const config = ['CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384', 'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0',
   'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304', 'CONFIG_SPIRAM_MODE_OCT=y', 'CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y',
   'CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y', 'CONFIG_FREERTOS_TASK_FUNCTION_WRAPPER=y', '# CONFIG_LIBC_NEWLIB_NANO_FORMAT is not set'].join('\n');
 // Corrected helper topology; synthetic 64-byte frames test admission only.
@@ -66,7 +66,7 @@ async function fixture(root) {
 for (const [name, mutate, pattern] of [
   ['physical package substitution', async (root, data) => { data.manifest.execution_profile = 'production'; await writeFile(data.manifestPath, JSON.stringify(data.manifest)); }, /noise_package_profile/],
   ['virtual ELF byte mutation', async root => { const path = join(root, 'guest.elf'), bytes = await readFile(path); bytes[200] ^= 1; await writeFile(path, bytes); }, /noise_package_digest/],
-  ['resolved SDK routing mutation', async root => { await writeFile(join(root, 'virtual-ultra205.sdkconfig'), config.replace('=2048', '=4096')); }, /noise_package_digest/],
+  ['resolved SDK routing mutation', async root => { await writeFile(join(root, 'virtual-ultra205.sdkconfig'), config.replace('CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0', 'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096')); }, /noise_package_digest/],
   ['stale audit native ELF binding', async (root, data) => { data.audit.bindings.elf_sha256 = '0'.repeat(64); await writeFile(data.auditPath, JSON.stringify(data.audit)); }, /noise_audit_binding/],
   ['current objdump byte substitution', async root => { await writeFile(join(root, 'objdump'), 'changed-tool'); }, /noise_objdump_identity/],
   ['mutated disassembly proof', async (root, data) => { await writeFile(`${data.auditPath}.disassembly.private`, disassembly.replace('entry a1, 64', 'entry a1, 16000')); }, /noise_audit_native_proof/],

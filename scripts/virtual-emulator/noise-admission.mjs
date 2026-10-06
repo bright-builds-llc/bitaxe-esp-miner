@@ -5,7 +5,7 @@ import { MARKER, PROFILE } from './build.mjs';
 import { validateNoiseAudit } from './noise-stack-audit.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
-const configRequired = ['CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384', 'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048',
+const configRequired = ['CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384', 'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0',
   'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304', 'CONFIG_SPIRAM_MODE_OCT=y', 'CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y'];
 
 /** Read-only admission binds actual bytes and the current auditor, before any emulator effect. */
