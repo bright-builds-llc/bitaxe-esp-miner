@@ -24,26 +24,36 @@ Share-current-001 confirmed no renewal, so a renewal probe
 (renew-current-001, ordinal 31, after restart008: boot 319 to 320) held its
 generation for the Gate's renewals:
 
-- **Renewals.** The Gate confirmed 2 renewals. It counts a renewal only
-  after the device's validated, signed renewal acknowledgement, so the
-  firmware's Renew path ran twice on `2bff1004`.
+- **Renewals.** The Gate confirmed 2 renewals, at about 30 s and 51 s of
+  generation time. It counts a renewal only after a session- and
+  sequence-matched device reply whose mining status shows the recomputed
+  lease (exact renew and expiry offsets). The reply is not itself signed;
+  the renewal grant is. So the firmware's Renew path ran twice on
+  `2bff1004`.
 - **No share.** The ASIC returned 10 nonces at its own difficulty, but none
-  met the fixture's 1024 target before the 45-second deadline (roughly an
-  8% outcome at this rate). The probe therefore sealed `unverified` with
-  first failure `share`. The contract allows no retry of a share timeout
-  without a regression-backed change, so none was made.
-- **Stop and accounting.** Normal Stop (`restoration_requested`,
-  `fan_paused`); the device record admitted, dispatched, revoked, shut down
-  and cooled; fresh recovery with no failures; ledger 32/31/4,080,000 ms;
-  the final detector admitted one Ultra 205.
+  met the fixture's 1024 target before the 45-second deadline (about a 6%
+  outcome: 0.75^10). The probe therefore sealed `unverified` with first
+  failure `share`. Without a share the run has no proof, so its judge also
+  reported normal Stop, the authorization checkpoint and the renewal
+  minimum as unproven, and the owner recorded a cleanup failure because the
+  fixture could not complete naturally. The contract allows no retry of a
+  share timeout without a regression-backed change, so none was made.
+- **Stop and accounting.** The recovered state shows `restoration_requested`
+  and `fan_paused`, the device record admitted, dispatched, revoked, shut
+  down and cooled, the fresh recovery collection had no failures, the ledger
+  is 32/31/4,080,000 ms and the final detector admitted one Ultra 205. An
+  independent reviewer re-derived normal Stop and the checkpoint for
+  generation 3; the sealed judge did not.
 - **Seal.** Result `81ae7513e93a85c42c753a725356c0635176958203cdc63761a0fc26fc0fec89`,
   seal `998da7e265215bc5004b2d46f4824ca69936e70a780dbedd91c1986c96f8f91d`.
 
-The share and the renewal are therefore proven on the candidate in two
-separate runs, not in one.
+The share is proven by a complete seal. The renewal evidence comes from a
+run sealed `unverified`; whether it counts as renewal coverage is an owner
+decision recorded in the integration review.
 
 ## Non-claims
 
 One generation on a local fixture. Not pool, sustained-mining or
 parity-promotion evidence. Raw evidence stays in protected private roots
-under `scratch/str005-accepted-share/share-current-001`.
+under `scratch/str005-accepted-share/share-current-001` and
+`scratch/str005-accepted-share/renew-current-001`.

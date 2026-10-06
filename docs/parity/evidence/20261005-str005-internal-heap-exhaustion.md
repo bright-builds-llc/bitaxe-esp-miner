@@ -23,6 +23,7 @@ sample must keep 16,384 free bytes and an 8,192-byte largest free block.
 | Diagnostic `31fa7238`, idle, no Start            | 20      | 2,631      | 1,728               | 1,039–1,236      | fails   |
 | Diagnostic `31fa7238`, 80 min after heartbeat009 | 81      | 2,103      | 1,536               | 1,065–1,302      | fails   |
 | Candidate `2bff1004`, idle, no Start             | 20      | 53,271     | 31,744              | 251, constant    | passes  |
+| Candidate `2bff1004`, 59 min after heartbeat010  | 60      | 52,707     | 31,744              | 257–258          | passes  |
 
 - The diagnostic image idled at about 11.5 KB free with dips to 2.6 KB.
   After one heartbeat-loss session the baseline settled about 3.3 KB lower
@@ -49,8 +50,10 @@ The candidate (`2bff1004`, ELF `9783dc74…`) passed:
 - the idle-headroom capture (table above);
 - heartbeat010: `heartbeat_timeout`, gate closed 2,808 ms and shutdown
   started 2,813 ms after the last heartbeat, safe stop complete, ledger
-  30/29/3,720,000 ms. Internal heap during its recovery was 52,743 bytes
-  free.
+  30/29/3,720,000 ms. Internal heap sampled at `shutdown_complete` and read
+  during its recovery was 52,743 bytes free. Result
+  `8fc48d2f283b10aef8f6ceca0d3d284ac9170a44d834426c263702a8283049de`, seal
+  `0e23e10f91fb539e433a0204ee841cd410674b01aceaad544d2bddf4d0d8c958`.
 
 Attempt-001 of that install also exposed a host fixture defect, now fixed: a
 random attempt id beginning with `-` was read as a flag.

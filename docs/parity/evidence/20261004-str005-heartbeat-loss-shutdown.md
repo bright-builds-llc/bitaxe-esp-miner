@@ -1,6 +1,11 @@
 # Heartbeat-loss revocation and bounded shutdown: verified
 
-Heartbeat008 sealed `complete=true` on the current lineage image `60e344e2`,
+> Superseded as candidate evidence: `60e344e2` failed the internal-heap
+> check after this run. Heartbeat010 repeated the check on the final
+> candidate `2bff1004` ([evidence](20261005-str005-internal-heap-exhaustion.md)).
+> This record stays as history for its own image.
+
+Heartbeat008 sealed `complete=true` on the then-current lineage image `60e344e2`,
 which includes the movsp-safe queue workaround and the BBPLL setting. The
 Worker suppressed heartbeats once during a live, dispatching generation. The
 device then revoked authority on its own, shut down within the native bounds,
