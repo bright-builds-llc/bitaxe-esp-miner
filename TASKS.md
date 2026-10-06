@@ -4564,7 +4564,7 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       `just internal-heap-series` judges captures against fixed minimums;
       it fails all 101 diagnosis samples (least free 2,103 bytes, least
       largest block 1,536 bytes).
-- [ ] Candidate Phase A: `psram-default-install` from recovery019
+- [x] Candidate Phase A: `psram-default-install` from recovery019
       ([PSRAM-first amendment](docs/hardware/str005-psram-default-allocation-amendment.md)).
       Attempt-001 (`92f58abb`, ELF `5ea7fa56…`, both audits passed):
       five installs and four verified cycles passed, then the Noise
@@ -4575,6 +4575,10 @@ Contract: [heap-loss diagnosis amendment](docs/hardware/str005-heap-loss-diagnos
       owner passes `--attempt-id=<id>`; regressions on the real fixture
       parser and on the argv. Attempt-002 continues from attempt-001's
       verified install.
+      Attempt-002 (`2bff1004`, ELF `9783dc74…`, both audits passed):
+      five installs, four verified cycles, the Noise exchange, restoration
+      and cleanup; passed, `hardware_qualified`. Result `45db405c…`, seal
+      `3998bc37…`. The lineage head now names it.
 - [ ] Phase B: 1,200 s idle capture keeps at least 16,384 free bytes and
       an 8,192-byte largest block in every sample.
 - [ ] Phase C: heartbeat010 at ordinal 29 (after ledger 30/29/3,720,000 ms).
@@ -4589,7 +4593,7 @@ Control diagnostic recovery hardware: disabled.
 Internal heap diagnostic install hardware: disabled.
 Heartbeat heap diagnosis hardware: disabled.
 Heap-loss core-dump acquisition: disabled.
-PSRAM default install hardware: enabled.
+PSRAM default install hardware: disabled.
 Heartbeat PSRAM candidate hardware: disabled.
 
 Verification: pending. Completion review: pending.

@@ -1,19 +1,15 @@
 {
   "schema": "str005-lineage-head-v1",
   "install": {
-    "profile": "internal-heap-diagnostic-install",
-    "path": "scratch/internal-heap-diagnostic-install/attempt-001",
-    "result": "cad353200577164d25339b89e0e5f648ede256198d5f06698d28d91dfbe41368",
-    "seal": "a0f3312efe68088c7473215341584db1a3e229cd2ff794e7e22054f54c197396",
+    "profile": "psram-default-install",
+    "path": "scratch/psram-default-install/attempt-002",
+    "result": "45db405cf1ad54e6fb9a75dff3c92cc2b46e7a8c41ac61027f9d741a504b38c8",
+    "seal": "3998bc370ec653be0cbf943808b0ad3052d7762885eb94b80ba58588e08cb035",
     "identity": {
-      "firmware_commit": "31fa72385660075ab699759a5df7dae73c75b34e",
-      "app_elf_sha256": "15c4c14067d1435c5d1f9e175660cd429dd4dbadb4e766876220edb5e9404e55",
+      "firmware_commit": "2bff100442a7c5cbd4b806bdbbceff00f0c06a79",
+      "app_elf_sha256": "9783dc74dfb369e633f9f3295021c34eefbd36fb50859a0d58a235447189b33a",
       "gate_commit": "86fc62d7a9d75da1affa2d51bc3b9eab41d86031"
     }
   },
-  "latestStart": {
-    "path": "scratch/str005-heartbeat-shutdown/heartbeat009/attempt",
-    "result": "888069c102c4c4d2a9d2c805bd6dbac0d9576a5340871f3bdfa758472358b342",
-    "seal": "289a23ae78bd638f044b70eab4ba555cc7c75dae049768224d22495b0096d26f"
-  }
+  "latestStart": null
 }
