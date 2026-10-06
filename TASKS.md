@@ -1504,6 +1504,64 @@ Authorization: software and documentation only; using these commands on
 hardware still needs an active task contract.
 Verification: pending. Completion review: pending.
 
+### task-ultra205-default-profile-soak-reverification | 2026-10-06 | Fully verify the upstream-default mining soak
+
+Status: Future. Owner-requested 2026-10-06 to reopen the soak for full
+verification. Successor to the Active terminal-blocker records
+`task-ultra205-default-profile-soak` and
+`task-ultra205-default-profile-soak-attempt-004`; those records stay unchanged
+and their consumed authorization is not revived. STR-007 is verified through
+its separate criteria promotion; this task owns the soak itself.
+
+Recorded boundary: attempt-004 kept the earliest `marker_invalid`
+(`marker_json_invalid`) failure and then repeated the idle-reconnect signature
+after its targeted fix: 116 WebSocket reconnects, a 6,455 ms maximum WebSocket
+gap against the 5,000 ms continuity ceiling, a 20,872 ms maximum HTTP gap and
+invalid watchdog continuity. That selected `stop_repeated_boundary`.
+
+- [ ] Diagnose the idle-reconnect and marker boundaries on current firmware,
+      which has since moved to the fixed Serial/JTAG baseline (ADR-0021), and
+      decide whether the old soak observers still apply.
+- [ ] Land regression-backed fixes for each boundary that still reproduces.
+- [ ] Write a complete hardware contract under the Effectful Hardware Task
+      Gate for a fresh-ordinal soak at upstream defaults (485 MHz, 1200 mV,
+      100% fan), with the original continuity, safety, safe-stop and
+      persistence criteria.
+- [ ] Run the soak, review the evidence independently, and close the two
+      predecessor records as superseded when it verifies.
+
+Authorization: software diagnosis and contract work only until the hardware
+contract is committed.
+Verification: pending. Completion review: pending.
+
+### task-parity-bap-live-accessory-verification | 2026-10-06 | Verify BAP over a USB-to-UART adapter
+
+Status: Future, owner-gated. The owner has USB-to-UART adapters for
+development (recorded in `AGENTS.md` under Direct UART And Pin-Manipulation
+Authorization) and asked to revisit this later. Do not select it
+automatically: it starts only when the owner explicitly activates it, and the
+direct-UART rule still requires fresh explicit authorization before any
+connection guidance or hardware use.
+
+Scope: promote `BAP-001` and `BAP-002` from `implemented` with live evidence
+for the Ultra 205 accessory port, using a host-side adapter in place of an
+accessory.
+
+- [ ] With the owner, identify the Ultra 205 BAP connector, its pinout and
+      logic level from the pinned reference and board documentation, and the
+      owner's adapter model; write connection guidance for the board and the
+      macOS host.
+- [ ] Add a repo-owned host BAP client for request, subscribe, unsubscribe and
+      set, with privacy rules for the Wi-Fi `ssid` and `password` parameters.
+- [ ] Write a complete hardware contract covering electrical safety, allowed
+      settings, restoration of changed settings, evidence and stop conditions.
+- [ ] Run it, review independently and promote the BAP rows if the evidence
+      holds.
+
+Authorization: none until owner activation and explicit direct-UART
+authorization.
+Verification: pending. Completion review: pending.
+
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 
 - [ ] Implement Linux physical/enumeration identity, exclusive ownership,

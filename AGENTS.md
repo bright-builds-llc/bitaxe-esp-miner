@@ -352,6 +352,7 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - Do not assume, recommend, request, instruct, or perform direct external UART attachment or physical electrical manipulation of pins, pads, headers, GPIO, test points, solder joints, probes, jumpers, or injected signals.
 - A direct UART or pin-manipulation path may be considered only when the user explicitly requests that specific path, or when a permanent blocker has been documented after non-invasive USB, firmware, host-tool, and software-observability paths are exhausted. Either case still requires fresh explicit user authorization before giving physical connection instructions or touching hardware.
 - The existing external-UART reader, commands, lifecycle, tests, and documentation are dormant software. Preserve them for history and possible future authorization, but do not invoke, surface, resume, or treat them as the next task action without satisfying the authorization rule above.
+- Development equipment, recorded 2026-10-06: the owner has USB-to-UART adapters available for development, intended first for BAP accessory-port verification (`task-parity-bap-live-accessory-verification`). Availability is not authorization. The owner asked to revisit this later together with guidance on connecting an adapter to the board and the host; until that task is explicitly activated, do not give connection instructions or use an adapter.
 
 ### Archived Phase 28.1.1 Terminal Closure
 
