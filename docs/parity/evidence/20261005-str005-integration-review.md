@@ -1,14 +1,9 @@
 # STR-005 integration review
 
-Status: in progress. The obligation map and change-impact review are
-complete. The first candidate (`60e344e2`) failed: its restart before the
-share check found internal-heap exhaustion. The corrected PSRAM-first
-candidate (`2bff1004`) has passed install continuity, idle and
-post-shutdown headroom, heartbeat-loss shutdown, an accepted share with a
-normal Stop, and an accepted share with two renewals in one complete run.
-The independent evidence review found the numbers correct; the remaining
-promotion blockers are listed below. Parity stays 90/95; any transition belongs to
-`task-str005-evidence-promotion`.
+Status: complete 2026-10-06. Every obligation has applicable evidence on the
+final candidate (`2bff1004`) or a recorded owner decision, and every
+promotion blocker below is resolved. The STR-005 row's transition belongs
+to `task-str005-evidence-promotion`; parity stays 90/95 until it runs.
 
 Policy: [ADR-0029](../../adr/0029-piecewise-str005-qualification.md), with
 prospective diagnostics under
@@ -49,7 +44,7 @@ candidate and would reopen this review.
 | Host, serial, signer and fixture cleanup        | Heartbeat010; psram-default-install attempt-002                                                                                          | every complete result                                      |
 | Privacy                                         | `just verify-redaction` (JSON only) plus a manual review of the Markdown summaries                                                       | —                                                          |
 | Fixture correctness                             | Share-current-001's independent header, target, nonce and ACK joins (`accepted_share_verified=true`)                                     | Share001 (`654338d0`)                                      |
-| Negative tests                                  | **Not yet audited:** software tests exist per probe (share, heartbeat, normal stop, recovery), without an inventory                      | not hardware evidence                                      |
+| Negative tests                                  | [Inventory](20261006-str005-negative-and-native-coverage.md): host-side, about 480 across the checkpoints                                | not hardware evidence                                      |
 
 ## Change impact since each result
 
@@ -128,9 +123,10 @@ history. Must stay private: Channel006, every failed or unverified raw root
    checkpoint, on one board, against a local fixture, as qualifying for
    `hardware-regression` on the STR-005 row. Pool, sustained-mining and
    multi-board claims stay non-claims.
-4. **Negative-test and native-coverage audit.** ADR-0029 requires an
-   inventory of the negative tests and native resource checks behind each
-   probe; it is not done yet.
+4. **Negative-test and native-coverage audit.** Resolved 2026-10-06: the
+   [inventory](20261006-str005-negative-and-native-coverage.md) lists the
+   host-side negative tests per checkpoint, adds the three missing renewal
+   refusal tests, and binds every native audit to the candidate ELF.
 
 ## Open items
 

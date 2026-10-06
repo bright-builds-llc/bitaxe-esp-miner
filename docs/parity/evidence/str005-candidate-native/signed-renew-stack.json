@@ -1,0 +1,203 @@
+{
+  "schema": "signed-renew-stack-audit-v1",
+  "result": "selected_path_with_headroom",
+  "control_stack_bytes": 16384,
+  "selected_fixed_entry_bytes": 11776,
+  "unclaimed_headroom_bytes": 4608,
+  "required_headroom_bytes": 2048,
+  "renew_dispatch_isolated": true,
+  "platform_edges_native_resolved": false,
+  "complete_callgraph_bound": false,
+  "observed_fault_trace": false,
+  "hardware_verified": false,
+  "nodes": [
+    {
+      "symbol": "pthread_task_func",
+      "address": "421a0cf0",
+      "entry_bytes": 32
+    },
+    {
+      "symbol": "std::sys::pal::unix::thread::Thread::new::thread_start",
+      "address": "42167c04",
+      "entry_bytes": 32
+    },
+    {
+      "symbol": "core::ops::function::FnOnce::call_once{{vtable.shim}}",
+      "address": "42011110",
+      "entry_bytes": 1856
+    },
+    {
+      "symbol": "std::sys::backtrace::__rust_begin_short_backtrace",
+      "address": "42048970",
+      "entry_bytes": 32
+    },
+    {
+      "symbol": "bitaxe_firmware::bwg_worker_usb::run_owner",
+      "address": "42055ad8",
+      "entry_bytes": 688
+    },
+    {
+      "symbol": "bitaxe_worker_control::controller::frame::<impl bitaxe_worker_control::controller::WorkerControl<V,S>>::prepare_frame",
+      "address": "420181a0",
+      "entry_bytes": 448
+    },
+    {
+      "symbol": "bitaxe_worker_control::controller::renew_dispatch::<impl bitaxe_worker_control::controller::WorkerControl<V,S>>::prepare_renew_controller",
+      "address": "420151a8",
+      "entry_bytes": 320
+    },
+    {
+      "symbol": "<bitaxe_worker_control::authorization::WorkLeaseAuthorizationVerifier<S> as bitaxe_worker_control::session::LeaseAuthorizationVerifier>::verify_renewal",
+      "address": "42060750",
+      "entry_bytes": 544
+    },
+    {
+      "symbol": "ed25519_dalek::verifying::VerifyingKey::verify_strict",
+      "address": "420ab4dc",
+      "entry_bytes": 608
+    },
+    {
+      "symbol": "ed25519_dalek::verifying::RCompute<CtxDigest>::compute",
+      "address": "420ab92c",
+      "entry_bytes": 1472
+    },
+    {
+      "symbol": "curve25519_dalek::edwards::EdwardsPoint::vartime_double_scalar_mul_basepoint",
+      "address": "420ac3c0",
+      "entry_bytes": 32
+    },
+    {
+      "symbol": "curve25519_dalek::backend::vartime_double_base_mul",
+      "address": "420b6d68",
+      "entry_bytes": 2688
+    },
+    {
+      "symbol": "<curve25519_dalek::window::NafLookupTable5<curve25519_dalek::backend::serial::curve_models::ProjectiveNielsPoint> as core::convert::From<&curve25519_dalek::edwards::EdwardsPoint>>::from",
+      "address": "420b46c0",
+      "entry_bytes": 2096
+    },
+    {
+      "symbol": "curve25519_dalek::backend::serial::curve_models::ProjectivePoint::double",
+      "address": "420b648c",
+      "entry_bytes": 544
+    },
+    {
+      "symbol": "curve25519_dalek::backend::serial::u32::field::FieldElement2625::square_inner",
+      "address": "4222a7d8",
+      "entry_bytes": 384
+    }
+  ],
+  "edges": [
+    {
+      "caller": "421a0cf0",
+      "callee": "42167c04",
+      "evidence": "source_abi_supported_dynamic_function_pointer"
+    },
+    {
+      "caller": "42167c04",
+      "callee": "42011110",
+      "evidence": "source_abi_supported_dynamic_vtable"
+    },
+    {
+      "caller": "42011110",
+      "callee": "42048970",
+      "call_addresses": [
+        "4201119c"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "42048970",
+      "callee": "42055ad8",
+      "call_addresses": [
+        "4204897b"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "42055ad8",
+      "callee": "420181a0",
+      "call_addresses": [
+        "42055cbf"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "420181a0",
+      "callee": "420151a8",
+      "call_addresses": [
+        "4201832e"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "420151a8",
+      "callee": "42060750",
+      "call_addresses": [
+        "42015312"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "42060750",
+      "callee": "420ab4dc",
+      "call_addresses": [
+        "42060ee6"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "420ab4dc",
+      "callee": "420ab92c",
+      "call_addresses": [
+        "420ab8e4"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "420ab92c",
+      "callee": "420ac3c0",
+      "call_addresses": [
+        "420abca5"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "420ac3c0",
+      "callee": "420b6d68",
+      "call_addresses": [
+        "420ac3ce"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "420b6d68",
+      "callee": "420b46c0",
+      "call_addresses": [
+        "420b6dc0"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "420b46c0",
+      "callee": "420b648c",
+      "call_addresses": [
+        "420b4869"
+      ],
+      "evidence": "compiled_call"
+    },
+    {
+      "caller": "420b648c",
+      "callee": "4222a7d8",
+      "call_addresses": [
+        "420b64a2",
+        "420b6683",
+        "420b6847",
+        "420b6aef"
+      ],
+      "evidence": "compiled_call"
+    }
+  ],
+  "elf_sha256": "9783dc74dfb369e633f9f3295021c34eefbd36fb50859a0d58a235447189b33a",
+  "objdump_sha256": "eb7d7ae55b196d7eee4bdb3152e83b7aa2c7c822ab39e454d80a8b24bb405d89"
+}

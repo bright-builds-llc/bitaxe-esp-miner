@@ -4382,63 +4382,6 @@ from context rejection, and that seam is outside the standing authorization.
 
 Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md) proves real shares/renewal and foreground/heartbeat safe-stop on the exact fixed-USB pair. This broader task remains open: its Pause, independent expiry, USB-only disconnect, reboot/uncertain-time, negative authorization and credential-absence matrix still requires its own complete successor contract and evidence.
 
-### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
-
-Status: Active 2026-10-05; awaiting owner decisions. Map, impact review,
-current-candidate share and renewal runs, and the independent evidence
-review are done.
-Objective: establish cumulative requirement coverage and compatibility for the
-final candidate with only the additional integration measurement actually needed.
-Depends on: `task-str005-failure-recovery-accounting`, `task-str005-start-panic-diagnosis`,
-`task-str005-mining-startup-probe`, `task-str005-v2-accepted-share-probe`,
-`task-str005-heartbeat-shutdown-probe` and applicable channel/continuity evidence.
-Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
-
-- [x] Map every protocol/authentication/work/share/safety/restoration/accounting
-      and cleanup obligation to its independent result and actual tested identities.
-- [x] Review intervening changes and negative-test/native resource coverage;
-      document reuse rationale, invalidated checks and precise remaining gaps.
-      [Integration review](docs/parity/evidence/20261005-str005-integration-review.md):
-      the candidate is now `2bff1004`/`9783dc74`/Gate `86fc62d7` after the
-      `60e344e2` heap-exhaustion defect. Heartbeat010 and
-      psram-default-install attempt-002 cover it except share, renewal and
-      a Worker-requested Stop while mining; that impact is uncertain.
-- [x] Reuse a qualifying final-candidate probe as integration smoke evidence.
-      Only for a concrete uncovered interaction, publish a narrow bounded contract,
-      verify its implementation and execute that missing check; no mandatory big-bang run.
-      Done: the uncovered interaction (share, acknowledgement, normal Stop)
-      ran as share-current-001 on `2bff1004` and passed; it is also the
-      final-candidate integration smoke. Renewal remains unexercised there.
-- [x] Independently review evidence and publication eligibility. Keep failed roots
-      sealed and Channel006 private until its applicable recovery/cleanup and
-      prospective publication gates pass; hand eligible evidence to promotion.
-      Done 2026-10-05: every digest, ordinal, ledger, timing, heap figure and
-      identity re-derived correctly from the sealed roots; no private values
-      in committed evidence. Wording fixes applied: renewal caveats, the Gate
-      renewal reply is matched but not signed, the fixture-correctness row,
-      the post-shutdown heap row, stale change-impact text, heartbeat008
-      superseded, provenance digests. Correction to the archived
-      `task-str005-renewal-current-image` record: it does not by itself close
-      the renewal gap (its seal is `unverified`), and "validated, signed
-      renewal acknowledgement" should read "matched renewal reply".
-- [ ] Owner decisions before promotion (see the review's "Promotion
-      blockers"). Resolved 2026-10-05: renewal coverage (renew-current-002
-      complete under an 80-second window), Share002 (permanent non-claim,
-      ADR-0032) and, 2026-10-06, the evidence class: the owner accepted
-      single-run, single-board, local-fixture evidence as qualifying for
-      `hardware-regression`.
-- [ ] Negative-test and native-coverage inventory (ADR-0029).
-
-Evidence: all named successors, private Channel006 and sealed Share002, and
-[failed successor report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md).
-Final candidate/result/limitations pending. Close only when every substantive
-requirement has applicable evidence; unmet joins remain explicit blockers.
-Invalidation: any final-candidate or material fixture/validator change reopens the
-impact review for affected claims, not every completed task automatically.
-Authorization: evidence/software review now; no hardware merely from dependency
-edits. Any missing smoke requires its own published bounds. No parity transition.
-Verification: Pending. Completion review: Pending.
-
 ### task-ultra205-virtual-board-validation | 2026-09-30 | Full functional virtual Ultra 205 and pre-flash validation
 
 Status: Verified software milestone; full qualification blocked by corrected-target

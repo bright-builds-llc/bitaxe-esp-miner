@@ -1,0 +1,47 @@
+{
+  "schema": "control-stack-audit-v1",
+  "control_stack_bytes": 16384,
+  "budget_bytes": 14336,
+  "thread_entry_allowance_bytes": 256,
+  "deepest_normal_path_bytes": 10080,
+  "headroom_bytes": 4256,
+  "deepest_symbols": [
+    "bitaxe_firmware::bwg_worker_usb::run_owner",
+    "bitaxe_worker_control::controller::frame::<impl bitaxe_worker_control::controller::WorkerControl<V,S>>::prepare_frame",
+    "bitaxe_worker_control::controller::renew_dispatch::<impl bitaxe_worker_control::controller::WorkerControl<V,S>>::prepare_renew_controller",
+    "<bitaxe_worker_control::authorization::WorkLeaseAuthorizationVerifier<S> as bitaxe_worker_control::session::LeaseAuthorizationVerifier>::verify_renewal",
+    "ed25519_dalek::verifying::VerifyingKey::verify_strict",
+    "ed25519_dalek::verifying::RCompute<CtxDigest>::compute",
+    "curve25519_dalek::edwards::EdwardsPoint::vartime_double_scalar_mul_basepoint",
+    "curve25519_dalek::backend::vartime_double_base_mul",
+    "<curve25519_dalek::window::NafLookupTable5<curve25519_dalek::backend::serial::curve_models::ProjectiveNielsPoint> as core::convert::From<&curve25519_dalek::edwards::EdwardsPoint>>::from",
+    "curve25519_dalek::backend::serial::curve_models::ProjectivePoint::double",
+    "curve25519_dalek::backend::serial::u32::field::FieldElement2625::square_inner"
+  ],
+  "unresolved_targets": 370,
+  "routing": [
+    {
+      "symbol": "bitaxe_worker_control::controller::frame::<impl bitaxe_worker_control::controller::WorkerControl<V,S>>::prepare_frame",
+      "frame_bytes": 448,
+      "cap_bytes": 1024,
+      "fit": true
+    },
+    {
+      "symbol": "bitaxe_worker_control::controller::WorkerControl<V,S>::prepare_controller",
+      "frame_bytes": 96,
+      "cap_bytes": 512,
+      "fit": true
+    },
+    {
+      "symbol": "bitaxe_worker_control::controller::v2::<impl bitaxe_worker_control::controller::WorkerControl<V,S>>::prepare_v2",
+      "frame_bytes": 32,
+      "cap_bytes": 256,
+      "fit": true
+    }
+  ],
+  "complete_callgraph_bound": false,
+  "excluded_edges": "panic_abort_logging",
+  "result": "selected_path_with_headroom",
+  "elf_sha256": "9783dc74dfb369e633f9f3295021c34eefbd36fb50859a0d58a235447189b33a",
+  "objdump_sha256": "eb7d7ae55b196d7eee4bdb3152e83b7aa2c7c822ab39e454d80a8b24bb405d89"
+}

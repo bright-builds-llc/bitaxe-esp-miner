@@ -1,0 +1,117 @@
+{
+  "schema": "bitaxe-device-noise-stack-audit-v1",
+  "completion_only_on_helper": true,
+  "helper_stack_placement": "psram",
+  "helper_entry_frames_bounded": false,
+  "complete_callgraph_bound": false,
+  "paths": [
+    {
+      "id": "helper_completion",
+      "stack_bytes": 16384,
+      "budget_bytes": 14336,
+      "frame_bytes": 10656,
+      "fit": true,
+      "native_symbols": [
+        "bitaxe_firmware::noise_completion_stack::complete_in_helper",
+        "bitaxe_stratum::v2::noise::completion::<impl bitaxe_stratum::v2::noise::NoiseInitiator>::complete_diagnostic_into",
+        "noise_sv2::initiator::Initiator::step_2_with_now",
+        "rustsecp256k1_v0_9_2_schnorrsig_verify",
+        "rustsecp256k1_v0_9_2_ecmult_strauss_wnaf$constprop$0",
+        "rustsecp256k1_v0_9_2_ecmult_odd_multiples_table$constprop$0",
+        "rustsecp256k1_v0_9_2_gej_add_ge_var",
+        "rustsecp256k1_v0_9_2_gej_double",
+        "rustsecp256k1_v0_9_2_fe_mul_inner"
+      ],
+      "unresolved_call_edges": 68,
+      "outside_crypto_family_edges": 30
+    },
+    {
+      "id": "helper_certificate",
+      "stack_bytes": 16384,
+      "budget_bytes": 14336,
+      "frame_bytes": 10656,
+      "fit": true,
+      "native_symbols": [
+        "bitaxe_firmware::noise_completion_stack::complete_in_helper",
+        "bitaxe_stratum::v2::noise::completion::<impl bitaxe_stratum::v2::noise::NoiseInitiator>::complete_diagnostic_into",
+        "noise_sv2::initiator::Initiator::step_2_with_now",
+        "rustsecp256k1_v0_9_2_schnorrsig_verify",
+        "rustsecp256k1_v0_9_2_ecmult_strauss_wnaf$constprop$0",
+        "rustsecp256k1_v0_9_2_ecmult_odd_multiples_table$constprop$0",
+        "rustsecp256k1_v0_9_2_gej_add_ge_var",
+        "rustsecp256k1_v0_9_2_gej_double",
+        "rustsecp256k1_v0_9_2_fe_mul_inner"
+      ],
+      "unresolved_call_edges": 68,
+      "outside_crypto_family_edges": 11
+    },
+    {
+      "id": "worker_share_crypto",
+      "stack_bytes": 12288,
+      "budget_bytes": 10240,
+      "frame_bytes": 5008,
+      "fit": true,
+      "native_symbols": [
+        "bitaxe_firmware::production_mining_session::transport::run_worker",
+        "bitaxe_firmware::production_mining_session::transport::v2::run",
+        "bitaxe_firmware::v2_serial_runtime::run_share_transport",
+        "bitaxe_firmware::v2_serial_runtime::observer::run_share",
+        "bitaxe_stratum::v2::noise::diagnostic::run",
+        "bitaxe_stratum::v2::noise::diagnostic::prepare_connected",
+        "bitaxe_stratum::v2::noise::NoiseInitiator::new",
+        "noise_sv2::initiator::Initiator::new_with_rng",
+        "secp256k1::context::alloc_only::<impl core::default::Default for secp256k1::Secp256k1<secp256k1::context::alloc_only::All>>::default",
+        "rustsecp256k1_v0_9_2_context_preallocated_create",
+        "rustsecp256k1_v0_9_2_ecmult_gen_blind",
+        "rustsecp256k1_v0_9_2_ecmult_gen",
+        "rustsecp256k1_v0_9_2_gej_add_ge",
+        "rustsecp256k1_v0_9_2_fe_mul_inner"
+      ],
+      "unresolved_call_edges": 86,
+      "outside_crypto_family_edges": 60
+    },
+    {
+      "id": "worker_channel_crypto",
+      "stack_bytes": 12288,
+      "budget_bytes": 10240,
+      "frame_bytes": 4784,
+      "fit": true,
+      "native_symbols": [
+        "bitaxe_v2_channel_owner_entry",
+        "bitaxe_firmware::v2_serial_runtime::observer::run_channel",
+        "bitaxe_stratum::v2::noise::diagnostic::run",
+        "bitaxe_stratum::v2::noise::diagnostic::prepare_connected",
+        "bitaxe_stratum::v2::noise::NoiseInitiator::new",
+        "noise_sv2::initiator::Initiator::new_with_rng",
+        "secp256k1::context::alloc_only::<impl core::default::Default for secp256k1::Secp256k1<secp256k1::context::alloc_only::All>>::default",
+        "rustsecp256k1_v0_9_2_context_preallocated_create",
+        "rustsecp256k1_v0_9_2_ecmult_gen_blind",
+        "rustsecp256k1_v0_9_2_ecmult_gen",
+        "rustsecp256k1_v0_9_2_gej_add_ge",
+        "rustsecp256k1_v0_9_2_fe_mul_inner"
+      ],
+      "unresolved_call_edges": 76,
+      "outside_crypto_family_edges": 60
+    },
+    {
+      "id": "worker_share_helper_spawn",
+      "stack_bytes": 12288,
+      "budget_bytes": 10240,
+      "frame_bytes": 1184,
+      "fit": true,
+      "native_symbols": [
+        "bitaxe_firmware::production_mining_session::transport::run_worker",
+        "bitaxe_firmware::production_mining_session::transport::v2::run",
+        "bitaxe_firmware::v2_serial_runtime::run_share_transport",
+        "bitaxe_firmware::v2_serial_runtime::observer::run_share",
+        "bitaxe_stratum::v2::noise::diagnostic::run",
+        "bitaxe_firmware::noise_completion_stack::authenticate_on_psram_stack"
+      ],
+      "unresolved_call_edges": 53,
+      "outside_crypto_family_edges": null
+    }
+  ],
+  "result": "selected_path_with_headroom",
+  "elf_sha256": "9783dc74dfb369e633f9f3295021c34eefbd36fb50859a0d58a235447189b33a",
+  "objdump_sha256": "eb7d7ae55b196d7eee4bdb3152e83b7aa2c7c822ab39e454d80a8b24bb405d89"
+}

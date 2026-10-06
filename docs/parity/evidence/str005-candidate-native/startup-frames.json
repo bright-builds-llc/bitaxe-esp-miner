@@ -1,0 +1,14 @@
+{
+  "schema": "startup-frame-audit-v1",
+  "frames": [
+    {
+      "symbol": "bitaxe_firmware::startup::run_startup",
+      "max_bytes": 2048,
+      "bytes": 1072
+    }
+  ],
+  "violations": [],
+  "result": "startup_frames_within_budget",
+  "elf_sha256": "9783dc74dfb369e633f9f3295021c34eefbd36fb50859a0d58a235447189b33a",
+  "objdump_sha256": "eb7d7ae55b196d7eee4bdb3152e83b7aa2c7c822ab39e454d80a8b24bb405d89"
+}
