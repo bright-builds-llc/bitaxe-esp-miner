@@ -87,6 +87,11 @@ Effects observed this session:
 The owner-side remedy, and how to confirm it, is in
 [the guide](host-stall-diagnostics.md#first-exec-of-a-new-executable).
 
+Remedy confirmed, 2026-10-07: the owner added Claude, the app that launches
+agent commands, to Developer Tools. Three fresh one-line scripts then reached
+first stdout in 244, 151 and 148 ms under the same recorder, against 71,580 ms
+before. `syspolicyd` and `fseventsd` fell to about 0% CPU.
+
 Private evidence: `scratch/host-stalls-20261006/`. Summary SHA-256
 `ad7e16f92579a055e0d183fdf5de9e5eab8421c67092a532124807f00d8876cf`; capture
 SHA-256 `b0ee118315d2cbc540ede7fa6fe2a6369c94052c9b75b5cca66729b41e134d52`.

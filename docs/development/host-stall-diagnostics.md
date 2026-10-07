@@ -158,6 +158,9 @@ Developer Tools. That list exists to let local software skip the system's
 security-policy checks; `spctl developer-mode enable-terminal` shows the pane
 if it is missing. It is a security setting, so agents must not change it. After
 enabling it, confirm the effect with a fresh `run` over a just-written script.
+On 2026-10-07 that brought first output down from 71.6 s to about 150 ms. The
+setting covers only processes launched from the listed apps, so list each app
+you run repository commands from.
 
 ## Reclaim leaked test directories
 

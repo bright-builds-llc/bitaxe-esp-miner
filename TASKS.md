@@ -24,6 +24,57 @@ new work.
 
 ## Active
 
+### task-web-ui-variants-and-size-budget | 2026-10-06 | Add a SolidJS web UI variant with feature parity and a size audit
+
+Status: Active, owner-approved 2026-10-07. Requested 2026-10-06, revised the same day. Keep two
+interchangeable web UI implementations for comparison and debugging, choose
+one per build with a build flag, and audit bundle sizes, since small images
+suit the 3 MiB `www` partition and OTAWWW uploads.
+
+Variants:
+
+- `current` (default): today's handwritten HTML, CSS and plain-JavaScript
+  operator UI in `firmware/bitaxe/static/www` (about 50 KB raw, no build
+  step). UI-004 and OTA-002 evidence bind this variant, so it stays the
+  default until another variant is verified on its own.
+- `solid`: a SolidJS port that first matches the current UI's pages
+  one-to-one (dashboard, network, pool, settings, scoreboard, logs, update,
+  theme) and the same API calls, before growing.
+
+Upstream's Angular AxeOS (`reference/esp-miner/main/http_server/axe-os`) is a
+feature reference only. It is never built, bundled or copied into this
+repository; both variants reach feature parity with it through independent
+implementations, with breadcrumbs to the upstream sources they follow.
+
+- [ ] Decide the selector: one Bazel build setting (for example
+      `--//firmware/bitaxe:web_ui=current|solid`) surfaced through
+      `just build`, `just package` and `just flash`, and record the chosen
+      variant and its asset digests in the package manifest so hardware
+      evidence binds the exact variant.
+- [ ] Add locked, hermetic JavaScript build tooling for SolidJS and its
+      bundler; the repo has no root `package.json` today and imports npm
+      packages individually in `MODULE.bazel` (for example a pnpm lockfile
+      through `aspect_rules_js`).
+- [ ] Port the current UI to SolidJS, sharing `api-client.js` behavior and
+      the static UI test contract, so `solid` passes the same workflow tests
+      as `current`.
+- [ ] Inventory upstream AxeOS features (pages, settings, charts, swarm,
+      update flows) against both variants and the firmware API, and plan the
+      parity work for each variant from that list.
+- [ ] Add a repo-owned size report (for example `just web-ui-sizes`) giving
+      raw and gzip bytes per file, per-variant totals, and SPIFFS bytes used
+      in the generated `www.bin`; run it in CI and keep a checked-in history
+      to show trends.
+- [ ] After the first `solid` build, set a hard gzip budget per variant from
+      the measurements and fail the build when it is exceeded.
+- [ ] Keep every variant fitting the partition, and keep the static file
+      server's `.gz` handling and cache headers working for each.
+
+Authorization: software and documentation only. Installing a non-default
+variant on hardware needs its own task contract, and promoting any UI row
+for a new variant needs its own evidence.
+Verification: pending. Completion review: pending.
+
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
 
 Status: Blocked historical evidence. The consumed commands/plans below are historical, not current execution authority. ADR-0021 and `task-fixed-usb-serial-qualification` own the replacement transport/baseline; missing historical evidence is not promoted or erased.
@@ -529,6 +580,19 @@ also prohibits fault injection and ad hoc control writes. Therefore the
 campaign command fails before effects for `monotonic_uncertainty` until a
 separate bounded stimulus seam is explicitly designed and authorized; reboot
 cannot be relabeled as monotonic-reset evidence.
+
+Owner decision (2026-10-07): design and run a bounded, test-only, in-process
+clock-reset stimulus for the `monotonic_reset` path. The owner authorizes it.
+This covers the stimulus only, and only once an active contract records its
+exact bounds, recovery and evidence. It does not authorize general fault
+injection or ad hoc control writes.
+
+Owner decisions (2026-10-07, later the same day):
+
+- Rebuild the complete serial successor campaign now, covering all eight
+  scenarios, rather than the clock reset alone.
+- Authorize the metadata-only, non-signing durable-replay diagnostic seam
+  described below.
 
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
@@ -1112,57 +1176,6 @@ calibration remains an explicit fidelity non-claim. Accepted-share stays active,
 all physical-effect gates stay disabled and parity remains90/95.
 
 ## Future
-
-### task-web-ui-variants-and-size-budget | 2026-10-06 | Add a SolidJS web UI variant with feature parity and a size audit
-
-Status: Future. Owner-requested 2026-10-06, revised the same day. Keep two
-interchangeable web UI implementations for comparison and debugging, choose
-one per build with a build flag, and audit bundle sizes, since small images
-suit the 3 MiB `www` partition and OTAWWW uploads.
-
-Variants:
-
-- `current` (default): today's handwritten HTML, CSS and plain-JavaScript
-  operator UI in `firmware/bitaxe/static/www` (about 50 KB raw, no build
-  step). UI-004 and OTA-002 evidence bind this variant, so it stays the
-  default until another variant is verified on its own.
-- `solid`: a SolidJS port that first matches the current UI's pages
-  one-to-one (dashboard, network, pool, settings, scoreboard, logs, update,
-  theme) and the same API calls, before growing.
-
-Upstream's Angular AxeOS (`reference/esp-miner/main/http_server/axe-os`) is a
-feature reference only. It is never built, bundled or copied into this
-repository; both variants reach feature parity with it through independent
-implementations, with breadcrumbs to the upstream sources they follow.
-
-- [ ] Decide the selector: one Bazel build setting (for example
-      `--//firmware/bitaxe:web_ui=current|solid`) surfaced through
-      `just build`, `just package` and `just flash`, and record the chosen
-      variant and its asset digests in the package manifest so hardware
-      evidence binds the exact variant.
-- [ ] Add locked, hermetic JavaScript build tooling for SolidJS and its
-      bundler; the repo has no root `package.json` today and imports npm
-      packages individually in `MODULE.bazel` (for example a pnpm lockfile
-      through `aspect_rules_js`).
-- [ ] Port the current UI to SolidJS, sharing `api-client.js` behavior and
-      the static UI test contract, so `solid` passes the same workflow tests
-      as `current`.
-- [ ] Inventory upstream AxeOS features (pages, settings, charts, swarm,
-      update flows) against both variants and the firmware API, and plan the
-      parity work for each variant from that list.
-- [ ] Add a repo-owned size report (for example `just web-ui-sizes`) giving
-      raw and gzip bytes per file, per-variant totals, and SPIFFS bytes used
-      in the generated `www.bin`; run it in CI and keep a checked-in history
-      to show trends.
-- [ ] After the first `solid` build, set a hard gzip budget per variant from
-      the measurements and fail the build when it is exceeded.
-- [ ] Keep every variant fitting the partition, and keep the static file
-      server's `.gz` handling and cache headers working for each.
-
-Authorization: software and documentation only. Installing a non-default
-variant on hardware needs its own task contract, and promoting any UI row
-for a new variant needs its own evidence.
-Verification: pending. Completion review: pending.
 
 ### task-parity-bap-live-accessory-verification | 2026-10-06 | Verify BAP over a USB-to-UART adapter
 
