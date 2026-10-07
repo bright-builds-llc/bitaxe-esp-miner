@@ -17,6 +17,7 @@ mod reset_endurance;
 mod transaction;
 mod usb;
 mod usb_ownership;
+mod usb_presence;
 
 pub use display_uat::{
     finalize_display_uat, run_display_uat_live, DisplayUatIntent, DisplayUatProjection,
@@ -66,6 +67,7 @@ pub use usb_ownership::{
     ProfileObservationCounts, UsbExecutionOwner, UsbIntent, UsbOperationPlan, UsbOwnershipIdentity,
     UsbProfile, UsbProfileInspection,
 };
+pub use usb_presence::{sample_usb_presence, UsbPresenceSample};
 
 #[cfg(test)]
 mod reader_correction_identity {

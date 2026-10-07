@@ -1811,3 +1811,36 @@ js_binary(
     "server",
     "soak",
 ]]
+
+js_library(
+    name = "bwg_restoration_sources",
+    srcs = glob(["bwg-restoration/*.mjs"]),
+    deps = [
+        ":fixed_usb_qualification_sources",
+        ":fixed_usb_soak_sources",
+        ":hardware_operator_sources",
+        ":str005_noise_serial_sources",
+    ],
+    data = [":host_stall_sources"],
+)
+
+js_binary(
+    name = "bwg_restoration",
+    data = [":bwg_restoration_sources"],
+    entry_point = "bwg-restoration/main.mjs",
+)
+
+[js_test(
+    name = "bwg_restoration_%s_test" % name,
+    data = [":bwg_restoration_sources"],
+    entry_point = "bwg-restoration/%s.test.mjs" % name,
+) for name in [
+    "campaign",
+    "checkpoint",
+    "contract",
+    "judge",
+    "main",
+    "projection",
+    "server",
+    "watcher",
+]]

@@ -45,6 +45,12 @@ ultra205-soak action *args:
     bazel build //tools/http-transport:soak_observer //tools/http-transport:soak_judge
     bazel run //scripts:ultra205_soak -- "$@"
 
+# One task-gated BWG-007 serial restoration attempt through the Gate (ADR-0035). See scripts/bwg-restoration/README.md.
+[positional-arguments]
+bwg-restoration action *args:
+    bazel build //tools/flash:flash
+    bazel run //scripts:bwg_restoration -- "$@"
+
 # Repo-owned operator sequencing for task-gated hardware runs; adds no authority. See scripts/hardware-operator/README.md.
 [positional-arguments]
 hardware-operator action *args:

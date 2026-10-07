@@ -74,6 +74,7 @@ mod self_test_intent;
 mod support;
 mod tcp_payload_diagnostic;
 mod thermal_fault_intent;
+mod usb_presence_watch;
 mod usb_stability;
 mod web_ui;
 mod wifi;
@@ -139,6 +140,9 @@ fn main() -> Result<()> {
     if let CliCommand::DrainWorkerSerial(command) = &cli.command {
         return drain_worker_serial::run(command);
     }
+    if let CliCommand::UsbPresenceWatch(command) = &cli.command {
+        return usb_presence_watch::run(command);
+    }
     match &cli.command {
         CliCommand::CoreDumpRead(command) => core_dump::preflight(command, false)?,
         CliCommand::CoreDumpClear(command) => {
@@ -172,6 +176,7 @@ fn main() -> Result<()> {
 
         match cli.command {
             CliCommand::DrainWorkerSerial(command) => drain_worker_serial::run(&command),
+            CliCommand::UsbPresenceWatch(command) => usb_presence_watch::run(&command),
             CliCommand::CoreDumpClear(command) => core_dump::clearing::run(&command, &environment),
             CliCommand::CoreDumpRead(command) => core_dump::run(&command, &environment),
             CliCommand::Detect(command) => run_detect(&command, &environment),
