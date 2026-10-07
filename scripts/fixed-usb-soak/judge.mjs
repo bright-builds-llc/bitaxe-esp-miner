@@ -11,10 +11,17 @@ export function unsafeSample(q) {
     (q.fan_fresh && !(q.fan_rpm > 0)) || !q.watchdog_alive;
 }
 
-/** Gate status observations that map device active time onto host time for the window judge. */
+/**
+ * Gate status observations that map device active time onto host time for the window judge. Only those
+ * taken while the work gate is open count: after the ASIC halts the device freezes active time while the
+ * Gate keeps recording through safe-stop.
+ */
 export function clockObservations(records) {
   return records
-    .filter((record) => record.state.running && record.state.qualification?.soak && record.state.qualification.active_ms > 0)
+    .filter((record) => {
+      const q = record.state.qualification;
+      return record.state.running && q?.soak && q.active_ms > 0 && q.revocation_reason === "none" && Number.isSafeInteger(q.work_gate_remaining_ms) && q.work_gate_remaining_ms > 0;
+    })
     .map((record) => ({ observedUnixMs: record.receivedAtUnixMs, activeMs: record.state.qualification.active_ms }));
 }
 

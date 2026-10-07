@@ -24,6 +24,8 @@ const CHALLENGE_TTL_MS = 45000;
 /** Terminal samples after the gate closes that the window judge requires before the observer stops. */
 const TERMINAL_OBSERVATION_MS = 20000;
 const TERMINAL_WAIT_LIMIT_MS = 120000;
+/** At least two HTTP polls after the restored state is reported. */
+const POST_RESTORATION_OBSERVATION_MS = 5000;
 
 export async function createSoakSupervisor(options, operations = {}) {
   const root = resolve(options.privateRoot), context = options.context, now = operations.now ?? Date.now;
@@ -102,7 +104,8 @@ export async function createSoakSupervisor(options, operations = {}) {
     consumeChallenge("completion", input.nonce);
     const issuance = await readJson(resolve(root, "issued.json"));
     const origin = Math.min(...clockObservations(records).map((value) => value.observedUnixMs - value.activeMs));
-    const until = Number.isFinite(origin) ? origin + SOAK_WORK_GATE_MS + TERMINAL_OBSERVATION_MS : now();
+    // Keep observing past restoration too, so each transport's last sample shows the restored baseline.
+    const until = Math.max(Number.isFinite(origin) ? origin + SOAK_WORK_GATE_MS + TERMINAL_OBSERVATION_MS : 0, now() + POST_RESTORATION_OBSERVATION_MS);
     const deadline = now() + TERMINAL_WAIT_LIMIT_MS;
     while (now() < until && now() < deadline) await new Promise((done) => setTimeout(done, 250));
     const observerClean = await observer.stop().then(() => true, () => false);

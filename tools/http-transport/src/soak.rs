@@ -18,8 +18,9 @@ mod tests;
 
 pub const JOURNAL_SCHEMA: &str = "soak-observer-v1";
 const INPUT_SCHEMA: &str = "soak-observer-input-v1";
-/// Covers preparation, the 600-second gate, safe-stop and terminal checks with margin.
-const OBSERVATION_LIMIT: Duration = Duration::from_secs(900);
+/// No elapsed deadline: an owner-held stdin bounds the observer (AGENTS.md "Asynchronous Human
+/// Checkpoints"). A stop request or stdin EOF, including the owner's exit, ends it.
+const OBSERVATION_LIMIT: Duration = Duration::MAX;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -101,7 +102,11 @@ fn judge_files(arguments: &[String]) -> Result<judge::SoakJudgement, &'static st
         .map(std::path::PathBuf::from)
         .unwrap_or_default();
     let text = std::fs::read_to_string(base.join(journal)).map_err(|_| "journal_unreadable")?;
-    let lines: Vec<judge::JournalLine> = text
+    // A journal cut by a killed observer may end mid-line; only complete lines are judged.
+    let complete = text
+        .rsplit_once('\n')
+        .map_or("", |(complete, _partial)| complete);
+    let lines: Vec<judge::JournalLine> = complete
         .lines()
         .map(|line| serde_json::from_str(line).map_err(|_| "journal_invalid"))
         .collect::<Result<_, _>>()?;

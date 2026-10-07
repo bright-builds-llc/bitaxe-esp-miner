@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { digest } from "../fixed-usb-qualification/contract.mjs";
 import { signSoak } from "./authority.mjs";
 import { requireIdleSoakLedger, requireSoakTask, soakAllowance, SOAK_MAXIMUM_ACTIVE_MS, SOAK_RENEWALS, SOAK_TASK, SOAK_TASK_LINE } from "./contract.mjs";
-import { judgeSoak, unsafeSample } from "./judge.mjs";
+import { clockObservations, judgeSoak, unsafeSample } from "./judge.mjs";
 import { createSoakObserver, idleProof } from "./observer.mjs";
 
 const rejectsWith = (promise, code) => assert.rejects(promise, (error) => error.code === code);
@@ -174,4 +174,14 @@ test("fresh readings outside the live stop limits are unsafe", () => {
   assert.equal(unsafeSample(qualification({ power_watts: 15.5 })), true);
   assert.equal(unsafeSample(qualification({ chip_temp_celsius: 75 })), true);
   assert.equal(unsafeSample(qualification({ voltage_volts: 4.4 })), true);
+});
+
+test("clock observations stop at the halt, before the device freezes active time", () => {
+  // Arrange
+  const open = { receivedAtUnixMs: 1000, state: { running: true, qualification: qualification({ work_gate_remaining_ms: 400000 }) } };
+  const halted = { receivedAtUnixMs: 9000, state: { running: true, qualification: qualification({ active_ms: 600010, work_gate_remaining_ms: 0, revocation_reason: "lease_or_budget_expired", safe_stop_stage: "cooling_proof" }) } };
+  // Act
+  const observations = clockObservations([open, halted]);
+  // Assert
+  assert.deepEqual(observations, [{ observedUnixMs: 1000, activeMs: 100000 }]);
 });

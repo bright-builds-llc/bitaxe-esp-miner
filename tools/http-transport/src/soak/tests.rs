@@ -344,3 +344,80 @@ fn real_sockets_journal_http_and_websocket_samples_without_pool_values() {
         == Some(true)));
     assert!(!text.contains("private-pool-fixture"));
 }
+
+#[test]
+fn frozen_active_time_after_the_halt_does_not_break_clock_correlation() {
+    // Arrange: through safe-stop the Gate keeps reporting the frozen ~600 s active time.
+    let mut observations = clock();
+    observations.extend((1..30).map(|seconds| ClockObservation {
+        observed_unix_ms: ORIGIN + 600_000 + seconds * 1_000,
+        active_ms: 600_010,
+    }));
+    // Act
+    let judgement = judge(&complete(), &observations, &expected());
+    // Assert
+    assert!(judgement.passed, "{:?}", judgement.failures);
+}
+
+#[test]
+fn an_inactive_sample_inside_the_edge_guard_does_not_uncredit_the_last_window() {
+    // Arrange: a frame produced as the gate closes maps just before the edge.
+    let mut lines = complete();
+    let mut late = sample(599_600, 640);
+    late.mining_active = false;
+    lines.push(line(SoakTransport::Websocket, 599_600, late));
+    lines.sort_by_key(|line| line.host_unix_ms);
+    // Act
+    let judgement = judge(&lines, &clock(), &expected());
+    // Assert
+    assert!(judgement.windows[19].websocket.credited);
+}
+
+#[test]
+fn a_final_state_that_is_not_paused_fails() {
+    // Arrange
+    let mut lines = complete();
+    for line in lines.iter_mut().rev().take(4) {
+        line.sample.as_mut().expect("sample").mining_paused = false;
+    }
+    // Act
+    let judgement = judge(&lines, &clock(), &expected());
+    // Assert
+    assert!(judgement.failures.contains(&"final_state_not_paused"));
+}
+
+#[test]
+fn a_pool_change_reverted_before_the_end_still_fails() {
+    // Arrange
+    let mut lines = complete();
+    let middle = lines
+        .iter_mut()
+        .filter(|line| line.maybe_transport == Some(SoakTransport::Http))
+        .nth(100)
+        .expect("http");
+    middle
+        .sample
+        .as_mut()
+        .expect("sample")
+        .maybe_pool_matches_initial = Some(false);
+    // Act
+    let judgement = judge(&lines, &clock(), &expected());
+    // Assert
+    assert!(judgement.failures.contains(&"pool_settings_changed"));
+}
+
+#[test]
+fn mining_observed_stopped_only_after_ten_seconds_fails_the_terminal_check() {
+    // Arrange
+    let mut lines = complete();
+    for line in &mut lines {
+        let active = line.host_unix_ms as i64 - ORIGIN as i64;
+        if (600_000..610_000).contains(&active) {
+            line.sample.as_mut().expect("sample").mining_active = true;
+        }
+    }
+    // Act
+    let judgement = judge(&lines, &clock(), &expected());
+    // Assert
+    assert!(judgement.failures.contains(&"terminal_http_unconfirmed"));
+}
