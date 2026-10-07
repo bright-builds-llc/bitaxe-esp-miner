@@ -85,6 +85,7 @@ pub(crate) fn run_noise_diagnostic_command(
         image: None,
         manifest: Some(command.manifest.clone()),
         wifi_credentials: Some(command.wifi_credentials.clone()),
+        maybe_web_ui: None,
     };
     run_flash_with_wifi_mode(&flash, WifiNvsSeedMode::NoiseDiagnostic(seed), environment)?;
     run_monitor(

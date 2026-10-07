@@ -24,6 +24,7 @@ fn identity_admission_rejects_digest_rewritten_factory_app_tamper_before_effects
         image: None,
         manifest: Some(manifest),
         wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::with_ports(
         "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
@@ -315,6 +316,7 @@ fn admitted_execution_uses_original_bytes_after_package_replacement() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::default()
         .with_source_replacement(factory_path.clone(), b"replaced package bytes".to_vec());
@@ -352,6 +354,7 @@ fn admitted_execution_child_failure_cleans_private_snapshot() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::default().with_execute_failure();
 
@@ -385,6 +388,7 @@ fn admitted_execution_snapshot_write_failure_precedes_later_effects() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::with_ports(
         "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
@@ -416,6 +420,7 @@ fn admitted_execution_later_preparation_failure_cleans_private_snapshot() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::default();
 

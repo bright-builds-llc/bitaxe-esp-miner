@@ -163,8 +163,9 @@ pub(crate) fn resolve_flash_image(
         bail!("identity_admission=blocked reason=explicit_image_requires_package_manifest");
     }
 
-    if command.manifest.is_none() {
-        environment.build_package()?;
+    let builds_package = command.manifest.is_none();
+    if builds_package {
+        environment.build_package(command.maybe_web_ui.unwrap_or(WebUiVariant::Current))?;
     }
     let manifest = match &command.manifest {
         Some(path) => environment.workspace_path(path),
@@ -175,6 +176,10 @@ pub(crate) fn resolve_flash_image(
     let manifest_contents = environment.read_to_string(&manifest)?;
     let package_manifest: PackageManifest = serde_json::from_str(&manifest_contents)
         .with_context(|| format!("failed to parse package manifest {manifest}"))?;
+    validate_manifest_web_ui_variant(
+        package_manifest.maybe_web_ui_variant.as_deref(),
+        expected_web_ui_variant(command.maybe_web_ui, builds_package),
+    )?;
     let current_provenance = environment.current_provenance()?;
     let admitted_factory = validate_identity_admission(
         &manifest,

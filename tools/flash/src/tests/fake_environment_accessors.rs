@@ -48,6 +48,7 @@ impl FakeFlashEnvironment {
             installed_session_calls: Cell::new(0),
             maybe_installed_bytes: None,
             last_usb_command_diagnostic: RefCell::new(None),
+            built_web_ui_variants: RefCell::new(Vec::new()),
         }
     }
 

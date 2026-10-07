@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
-import { copyFile, cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { internalCommandSpec } from "./contracts.generated.js";
 import type { ProcessPort, ProcessOutcome } from "./process.js";
+import { readStage, readTree } from "./web-ui-files.js";
+import { verifyGzipSiblings, type StagedFile, type WebUiVariant } from "./web-ui-stage.js";
 
 export type PackageFirmwareRequest = {
   readonly firmwareElf: string;
@@ -15,7 +17,16 @@ export type PackageFirmwareRequest = {
   readonly otadataInitialBin: string;
   readonly outDir: string;
   readonly manifest: string;
+  readonly webUi: WebUiSource;
 };
+
+/**
+ * Where the `www` files come from. `stage` is a staged variant
+ * (`//firmware/bitaxe:web_ui_staged`). `legacy-tree` copies a historical
+ * `firmware/bitaxe/static/www` tree byte-for-byte, as packages were built
+ * before ADR-0034; only the `current` variant existed then.
+ */
+export type WebUiSource = { readonly kind: "stage" | "legacy-tree"; readonly path: string };
 
 const otaPartitionBytes = 0x400000;
 const wwwPartitionSize = "0x300000";
@@ -54,7 +65,8 @@ export async function packageFirmware(
   xtaskProgram: string,
 ): Promise<void> {
   const input = resolveRequest(workspaceRoot, request);
-  await Promise.all(Object.values(input).map((file) => file === input.outDir || file === input.manifest ? undefined : readFile(file)));
+  const { webUi: webUiSource, ...paths } = input;
+  await Promise.all(Object.values(paths).map((file) => file === input.outDir || file === input.manifest ? undefined : readFile(file)));
   await requireSuccess(
     processPort.run(internalCommandSpec(xtaskProgram, ["verify-reference"], (value) => value)),
     "reference verification",
@@ -74,7 +86,8 @@ export async function packageFirmware(
   const buildLabel = await requiredStampField(input.buildProvenanceStamp, "build_label");
   const staging = await mkdtemp(path.join(tmpdir(), "bitaxe-www-"));
   try {
-    await cp(path.join(workspaceRoot, "firmware/bitaxe/static/www"), staging, { recursive: true });
+    const webUi = await loadWebUi(webUiSource);
+    await writeStagedFiles(staging, webUi.files);
     await writeFile(path.join(staging, "version.txt"), `${buildLabel}\n`, { mode: 0o600 });
     const sdkconfig = await readFile(input.espIdfSdkconfig, "utf8");
     if (
@@ -110,6 +123,8 @@ export async function packageFirmware(
       ),
       "SPIFFS probe image generation",
     );
+    // The manifest digests the package tree, so restore the package label first.
+    await writeFile(path.join(staging, "version.txt"), `${buildLabel}\n`, { mode: 0o600 });
     await copyFile(input.otadataInitialBin, otadata);
     await requireSuccess(
       processPort.run(
@@ -167,6 +182,7 @@ export async function packageFirmware(
             "--license-inventory", "docs/release/license-inventory.md",
             "--provenance-manifest", "docs/release/provenance-manifest.md",
             "--otadata-source", input.otadataInitialBin,
+            "--web-ui-variant", webUi.variant, "--www-dir", staging,
           ],
           (value) => value,
         ),
@@ -207,7 +223,24 @@ function resolveRequest(workspaceRoot: string, request: PackageFirmwareRequest):
     otadataInitialBin: path.resolve(workspaceRoot, request.otadataInitialBin),
     outDir: path.resolve(workspaceRoot, request.outDir),
     manifest: path.resolve(workspaceRoot, request.manifest),
+    webUi: { kind: request.webUi.kind, path: path.resolve(workspaceRoot, request.webUi.path) },
   };
+}
+
+async function loadWebUi(source: WebUiSource): Promise<{ variant: WebUiVariant; files: StagedFile[] }> {
+  if (source.kind === "legacy-tree") return { variant: "current", files: await readTree(source.path) };
+  const stage = await readStage(source.path);
+  verifyGzipSiblings(stage.files);
+  return { variant: stage.metadata.variant, files: stage.files };
+}
+
+/** Copies staged files as owner-writable files so the temporary staging tree can be removed. */
+async function writeStagedFiles(root: string, files: readonly StagedFile[]): Promise<void> {
+  for (const file of files) {
+    const target = path.join(root, ...file.path.split("/"));
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, file.bytes, { mode: 0o600 });
+  }
 }
 
 export async function requiredStampField(file: string, key: string): Promise<string> {

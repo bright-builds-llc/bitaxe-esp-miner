@@ -10,6 +10,7 @@ fn update_command(dir: &TempDir) -> FlashCommand {
         image: None,
         manifest: Some(write_manifest_v4(dir, DEFAULT_ELF_NAME)),
         wifi_credentials: None,
+        maybe_web_ui: None,
     }
 }
 

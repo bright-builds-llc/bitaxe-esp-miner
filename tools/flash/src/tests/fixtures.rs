@@ -50,6 +50,7 @@ fn flash_monitor_fixture(dir: &TempDir, evidence_dir: Utf8PathBuf) -> FlashMonit
         thermal_fault_stimulus_intent: None,
         self_test_intent: None,
         capture_timeout_seconds: DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS,
+        maybe_web_ui: None,
     }
 }
 
@@ -167,6 +168,7 @@ fn write_manifest_v4_contents(
             "release_tag": null
         },
         "default_flash_image": default_flash_image,
+        "web_ui_variant": "current",
         "artifacts": artifact_values,
         "update_segments": [
             {"artifact_kind":"bootloader", "offset":0, "length":bootloader.len()},
@@ -289,6 +291,7 @@ fn run_explicit_image_admission(manifest: &Utf8Path, image: Utf8PathBuf) -> Resu
         image: Some(image),
         manifest: Some(manifest.to_owned()),
         wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::with_ports(
         "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",

@@ -47,6 +47,7 @@ struct FakeFlashEnvironment {
     installed_session_calls: Cell<usize>,
     maybe_installed_bytes: Option<Vec<u8>>,
     last_usb_command_diagnostic: RefCell<Option<UsbCommandDiagnostic>>,
+    built_web_ui_variants: RefCell<Vec<WebUiVariant>>,
 }
 
 impl Default for FakeFlashEnvironment {
@@ -58,7 +59,8 @@ impl Default for FakeFlashEnvironment {
 include!("fake_environment_accessors.rs");
 
 impl FlashEnvironment for FakeFlashEnvironment {
-    fn build_package(&self) -> Result<()> {
+    fn build_package(&self, web_ui: WebUiVariant) -> Result<()> {
+        self.built_web_ui_variants.borrow_mut().push(web_ui);
         Ok(())
     }
 

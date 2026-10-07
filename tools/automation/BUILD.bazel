@@ -165,6 +165,41 @@ js_binary(
     entry_point = "dist/cli.js",
 )
 
+# Web UI variants (ADR-0034): staging action tool, size report and budget test.
+js_binary(
+    name = "stage_web_ui",
+    data = [":automation_ts"],
+    entry_point = "dist/web-ui-stage-cli.js",
+    visibility = ["//firmware/bitaxe:__pkg__"],
+)
+
+js_binary(
+    name = "web_ui_sizes",
+    args = [
+        "--stage",
+        "$(rootpath //firmware/bitaxe:web_ui_current_staged)",
+        "--stage",
+        "$(rootpath //firmware/bitaxe:web_ui_solid_staged)",
+    ],
+    data = [
+        ":automation_ts",
+        "//firmware/bitaxe:web_ui_current_staged",
+        "//firmware/bitaxe:web_ui_solid_staged",
+    ],
+    entry_point = "dist/web-ui-sizes-cli.js",
+)
+
+js_test(
+    name = "web_ui_budget_test",
+    data = [
+        ":automation_tests_ts",
+        "//firmware/bitaxe:web_ui_budget",
+        "//firmware/bitaxe:web_ui_current_staged",
+        "//firmware/bitaxe:web_ui_solid_staged",
+    ],
+    entry_point = "test-dist/web-ui-budget.test.js",
+)
+
 js_binary(
     name = "recheck_scoreboard_evidence_v2",
     chdir = "../../../..",

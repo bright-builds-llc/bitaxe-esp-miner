@@ -326,6 +326,9 @@ pub(crate) struct PackageManifest {
     pub(crate) artifacts: Vec<PackageArtifact>,
     #[serde(default)]
     pub(crate) update_segments: Vec<bitaxe_api::update_segments::UpdateSegment>,
+    /// Web UI variant packed into `www.bin` (ADR-0034); absent in historical packages.
+    #[serde(default, rename = "web_ui_variant")]
+    pub(crate) maybe_web_ui_variant: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

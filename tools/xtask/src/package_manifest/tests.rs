@@ -1,4 +1,5 @@
 use super::*;
+use crate::web_ui::WebUiVariant;
 use crate::{
     BoardId, PackageEnvironment, PackageRequest, DEFAULT_ELF_NAME, EXPECTED_REFERENCE_COMMIT,
     FACTORY_IMAGE_NAME, RUST_TARGET,
@@ -26,6 +27,8 @@ fn package_manifest_v3_requires_identity_and_release_artifact_kinds() {
     let manifest = PackageManifestV3 {
         schema_version: 3,
         update_segments: Vec::new(),
+        web_ui_variant: None,
+        web_ui_assets: Vec::new(),
         release_name: "bitaxe-ultra205-v1".to_owned(),
         semantic_version: "0.1.0".to_owned(),
         source_commit: SOURCE_COMMIT.to_owned(),
@@ -187,6 +190,41 @@ fn package_manifest_canonicalizes_workspace_partition_table_path() {
 }
 
 #[test]
+fn package_manifest_records_the_web_ui_variant_and_asset_digests() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let request = package_request_fixture(&dir, APP_ELF_SHA256);
+
+    // Act
+    let manifest = build_manifest(&request, &FakePackageEnvironment).expect("manifest");
+    let encoded = serde_json::to_value(&manifest).expect("encode manifest");
+
+    // Assert
+    assert_eq!(encoded["web_ui_variant"], "solid");
+    let paths: Vec<&str> = manifest
+        .web_ui_assets
+        .iter()
+        .map(|asset| asset.path.as_str())
+        .collect();
+    assert_eq!(paths, ["/index.html", "/version.txt"]);
+    assert_eq!(manifest.web_ui_assets[0].bytes, 15);
+}
+
+#[test]
+fn historical_manifest_without_web_ui_fields_stays_valid() {
+    // Arrange
+    let manifest = valid_manifest_v3();
+
+    // Act
+    let encoded = serde_json::to_value(&manifest).expect("encode manifest");
+
+    // Assert
+    assert!(validate_package_manifest_v3(&manifest).is_ok());
+    assert!(encoded.get("web_ui_variant").is_none());
+    assert!(encoded.get("web_ui_assets").is_none());
+}
+
+#[test]
 fn build_manifest_rejects_firmware_elf_app_sha_mismatch_before_output() {
     // Arrange
     let dir = tempdir().expect("tempdir");
@@ -310,6 +348,8 @@ fn valid_manifest_v3() -> PackageManifestV3 {
     PackageManifestV3 {
         schema_version: 3,
         update_segments: Vec::new(),
+        web_ui_variant: None,
+        web_ui_assets: Vec::new(),
         release_name: "bitaxe-ultra205-v1".to_owned(),
         semantic_version: "0.1.0".to_owned(),
         source_commit: SOURCE_COMMIT.to_owned(),
@@ -382,7 +422,22 @@ fn package_request_fixture(dir: &TempDir, app_elf_sha256: &str) -> PackageReques
         license_inventory,
         provenance_manifest,
         otadata_source: "generated-erased-flash".to_owned(),
+        web_ui_variant: WebUiVariant::Solid,
+        www_dir: write_www_fixture(dir),
     }
+}
+
+fn write_www_fixture(dir: &TempDir) -> Utf8PathBuf {
+    let www_dir = dir_path(dir).join("www");
+    std::fs::create_dir_all(www_dir.as_std_path()).expect("create www fixture");
+    std::fs::write(www_dir.join("index.html").as_std_path(), b"<!doctype html>")
+        .expect("write index");
+    std::fs::write(
+        www_dir.join("version.txt").as_std_path(),
+        b"0123456789ab-dev\n",
+    )
+    .expect("write version");
+    www_dir
 }
 
 fn write_fixture(dir: &TempDir, file_name: &str, contents: &[u8]) -> Utf8PathBuf {

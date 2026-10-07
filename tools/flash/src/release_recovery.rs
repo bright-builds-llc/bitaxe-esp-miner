@@ -216,6 +216,7 @@ fn release_restore_flash_command(command: &ReleaseRecoveryCommand, port: &str) -
         image: None,
         manifest: Some(command.package_manifest.clone()),
         wifi_credentials: Some(command.wifi_credentials.clone()),
+        maybe_web_ui: None,
     }
 }
 

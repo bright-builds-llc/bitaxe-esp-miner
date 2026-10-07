@@ -37,6 +37,7 @@ mod redaction;
 mod release_recovery;
 mod restore_installed;
 mod segmented_updates;
+mod web_ui;
 mod workflow;
 
 #[path = "core_dump/run_tests.rs"]

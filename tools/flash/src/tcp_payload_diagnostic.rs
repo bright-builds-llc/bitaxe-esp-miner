@@ -53,6 +53,7 @@ pub(crate) fn run_tcp_payload_diagnostic_command(
         image: None,
         manifest: Some(command.manifest.clone()),
         wifi_credentials: Some(command.wifi_credentials.clone()),
+        maybe_web_ui: None,
     };
     let flash_result = run_flash_with_wifi_mode(
         &flash,

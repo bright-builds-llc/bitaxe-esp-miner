@@ -46,6 +46,7 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--otadata-initial-bin": value({ required: true }),
     "--out-dir": value({ required: true }),
     "--manifest": value({ required: true }),
+    "--web-ui-stage": value({ required: true }),
   },
   "verify-reference": {},
   "verify-redaction": {

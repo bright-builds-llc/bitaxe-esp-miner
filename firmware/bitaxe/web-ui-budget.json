@@ -1,0 +1,7 @@
+{
+  "schema_version": "bitaxe-web-ui-budget-v1",
+  "max_gzip_bytes": {
+    "current": 15700,
+    "solid": 19500
+  }
+}

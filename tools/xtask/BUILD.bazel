@@ -18,6 +18,7 @@ rust_binary(
         "src/package_manifest/tests.rs",
         "src/tests.rs",
         "src/partition_contract.rs",
+        "src/web_ui.rs",
         "src/workspace.rs",
     ],
     crate_name = "xtask",

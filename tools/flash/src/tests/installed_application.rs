@@ -223,6 +223,7 @@ fn failed_factory_write_does_not_start_the_application() {
         image: None,
         manifest: Some(write_manifest_v4(&directory, DEFAULT_ELF_NAME)),
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment {
         execute_failure: true,

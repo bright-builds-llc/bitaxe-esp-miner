@@ -11,6 +11,7 @@ fn dry_run_flash_resolves_admitted_factory_artifact() {
         image: None,
         manifest: Some(manifest.clone()),
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::default();
 
@@ -49,6 +50,7 @@ fn relative_image_argument_resolves_under_workspace_dir() {
         image: Some(Utf8PathBuf::from("docs/evidence/bitaxe-ultra205.elf")),
         manifest: None,
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::default().with_workspace_dir(workspace_dir.clone());
 
@@ -80,6 +82,7 @@ fn relative_manifest_argument_resolves_under_workspace_dir() {
             "docs/evidence/package/bitaxe-ultra205-package.json",
         )),
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::default().with_workspace_dir(workspace_dir.clone());
 
@@ -107,6 +110,7 @@ fn rejects_manifest_default_factory_bin() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::default();
 
@@ -128,6 +132,7 @@ fn manifest_v4_renders_only_state_preserving_execution_snapshots() {
         image: None,
         manifest: Some(manifest.clone()),
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::default();
 
@@ -186,6 +191,7 @@ fn identity_admission_accepts_clean_dev_and_release_builds() {
             image: None,
             manifest: Some(manifest),
             wifi_credentials: None,
+            maybe_web_ui: None,
         };
         let environment =
             FakeFlashEnvironment::default().with_current_provenance(provenance.clone());
@@ -217,6 +223,7 @@ fn identity_admission_rejects_dirty_package_before_port_or_credentials() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::with_ports(
         "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
@@ -250,6 +257,7 @@ fn identity_admission_rejects_dirty_current_workspace_before_port() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::with_ports(
         "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
@@ -278,6 +286,7 @@ fn identity_admission_rejects_unmanifested_explicit_image_before_port() {
         image: Some(Utf8PathBuf::from("/tmp/firmware.bin")),
         manifest: None,
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::with_ports(
         "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
@@ -309,6 +318,7 @@ fn identity_admission_rejects_package_digest_mismatch() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: None,
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::default();
 
@@ -336,6 +346,7 @@ fn identity_admission_rejects_duplicate_ota_before_port_or_credentials() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::with_ports(
         "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",
@@ -369,6 +380,7 @@ fn identity_admission_rejects_duplicate_factory_before_port_or_credentials() {
         image: None,
         manifest: Some(manifest),
         wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
+        maybe_web_ui: None,
     };
     let environment = FakeFlashEnvironment::with_ports(
         "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",

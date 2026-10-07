@@ -10,6 +10,7 @@ use clap::{Parser, Subcommand};
 
 mod package_manifest;
 mod partition_contract;
+mod web_ui;
 mod workspace;
 
 use package_manifest::{
@@ -122,6 +123,14 @@ struct PackageArgs {
 
     #[arg(long = "otadata-source", default_value = UNAVAILABLE)]
     otadata_source: String,
+
+    /// Web UI variant packed into `www.bin` (ADR-0034).
+    #[arg(long = "web-ui-variant", value_enum)]
+    web_ui_variant: web_ui::WebUiVariant,
+
+    /// The exact `www` tree packed into `www.bin`, digested into the manifest.
+    #[arg(long = "www-dir", value_parser = parse_utf8_path)]
+    www_dir: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -153,6 +162,8 @@ struct PackageRequest {
     license_inventory: Utf8PathBuf,
     provenance_manifest: Utf8PathBuf,
     otadata_source: String,
+    web_ui_variant: web_ui::WebUiVariant,
+    www_dir: Utf8PathBuf,
 }
 
 impl From<PackageArgs> for PackageRequest {
@@ -176,6 +187,8 @@ impl From<PackageArgs> for PackageRequest {
             license_inventory: args.license_inventory,
             provenance_manifest: args.provenance_manifest,
             otadata_source: args.otadata_source,
+            web_ui_variant: args.web_ui_variant,
+            www_dir: args.www_dir,
         }
     }
 }
@@ -449,6 +462,10 @@ fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
 
     if !package_request.www_bin.is_file() {
         bail!("www.bin does not exist: {}", package_request.www_bin);
+    }
+
+    if !package_request.www_dir.is_dir() {
+        bail!("www directory does not exist: {}", package_request.www_dir);
     }
 
     if !package_request.partition_table.is_file() {
