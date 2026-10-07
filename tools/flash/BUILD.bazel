@@ -179,6 +179,7 @@ rust_binary(
         "src/core_dump/run_tests.rs",
         "src/core_dump/replay_tests.rs",
         "src/drain_worker_serial.rs",
+        "src/usb_presence_watch.rs",
         "src/bootstrap_timing.rs",
         "src/cli.rs",
         "src/campaign.rs",

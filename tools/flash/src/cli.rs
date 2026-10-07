@@ -17,6 +17,8 @@ pub(crate) enum CliCommand {
     CoreDumpRead(crate::core_dump::CoreDumpReadCommand),
     #[command(name = "drain-worker-serial")]
     DrainWorkerSerial(crate::drain_worker_serial::DrainWorkerSerialCommand),
+    #[command(name = "usb-presence-watch")]
+    UsbPresenceWatch(crate::usb_presence_watch::UsbPresenceWatchCommand),
     Detect(DetectCommand),
     Flash(FlashCommand),
     Monitor(MonitorCommand),
