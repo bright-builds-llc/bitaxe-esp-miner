@@ -191,3 +191,34 @@ test("the stimulus counter must stay unchanged before monotonic_uncertainty", ()
   // Assert
   assert.ok(judgement.failures.includes("fact_stimulusCounterConsistent"));
 });
+
+test("N1 replayed before a same-connection reboot status fails the negatives", () => {
+  // Arrange
+  const input = passingInput("authorization_negatives");
+  const entries = input.finalState.journal.entries.filter((entry) => !(entry.event === "status_reviewed" && entry.category === "reboot"));
+  input.finalState = pageState({ entries, device: baseline("control_failed") });
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(judgement.failures.includes("fact_rebootReportedBeforeN1"));
+});
+
+test("an expired-context replay must carry the device's admission_required category", () => {
+  // Arrange
+  const input = passingInput("authorization_negatives");
+  input.legs.n2.replay = { ...input.legs.n2.replay, category: "authentication_failed" };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(judgement.failures.includes("fact_expiredContextAttributed"));
+});
+
+test("a stimulus that expired instead of firing is not monotonic evidence", () => {
+  // Arrange
+  const input = passingInput("monotonic_uncertainty");
+  input.reviews = { ...input.reviews, stimulus: stimulusReview("expired", 1) };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(judgement.failures.includes("fact_monotonicDetectionCounted"));
+});

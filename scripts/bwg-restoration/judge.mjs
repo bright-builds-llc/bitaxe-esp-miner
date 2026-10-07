@@ -126,25 +126,37 @@ function reboot(input) {
 }
 
 const ATTRIBUTION = {
-  n1: { operation: "start", signature: "valid", context: "mismatch", replayGuard: "at_or_below_durable_high_water", advanced: false },
-  n2: { operation: "start", signature: "not_evaluated", context: "expired", replayGuard: "not_evaluated", advanced: false },
-  n3: { operation: "start", signature: "valid", context: "mismatch", replayGuard: "fresh", advanced: false },
-  n4: { operation: "renew", signature: "valid", context: "current", replayGuard: "at_or_below_durable_high_water", advanced: true },
+  n1: { operation: "start", signature: "valid", context: "mismatch", replayGuard: "at_or_below_durable_high_water", advanced: false, wire: "authentication_failed" },
+  n2: { operation: "start", signature: "not_evaluated", context: "expired", replayGuard: "not_evaluated", advanced: false, wire: "admission_required" },
+  n3: { operation: "start", signature: "valid", context: "mismatch", replayGuard: "fresh", advanced: false, wire: "authentication_failed" },
+  n4: { operation: "renew", signature: "valid", context: "current", replayGuard: "at_or_below_durable_high_water", advanced: true, wire: "authentication_failed" },
 };
 
 /** One negative leg: the device rejected the replay and its own review attributes it exactly. */
 export function legAttributed(leg, name, ordinal) {
   const expected = ATTRIBUTION[name], last = leg?.review?.last;
-  return leg?.replay?.operation === expected.operation && leg.replay.outcome === "rejected" && last !== null && last !== undefined &&
+  return leg?.replay?.operation === expected.operation && leg.replay.outcome === "rejected" && leg.replay.category === expected.wire &&
+    last !== null && last !== undefined &&
     last.operation === expected.operation && last.signature === expected.signature && last.context === expected.context &&
     last.replayGuard === expected.replayGuard && last.ordinal === ordinal && leg.review.bootRejections === ordinal &&
     leg.review.highWater.advancedThisBoot === expected.advanced;
+}
+
+/** The device refuses N1 until a status in the same connection has reported the reboot (firmware P2). */
+function rebootReportedBeforeN1(entries) {
+  const replay = indexOf(entries, "replay_rejected");
+  if (replay < 0) return false;
+  const before = entries.slice(0, replay);
+  const connected = before.findLastIndex((entry) => entry.event === "connected");
+  return connected >= 0 && before.findLastIndex((entry) => entry.event === "status_reviewed" && entry.category === "reboot") > connected &&
+    before.findLastIndex((entry) => entry.event === "disconnected") < connected;
 }
 
 function negatives(input, entries) {
   const legs = input.legs ?? {}, base = input.carry.rebootRejections ?? 0;
   const n1 = legs.n1?.review?.highWater;
   return {
+    rebootReportedBeforeN1: rebootReportedBeforeN1(entries),
     durableReplayAttributed: legAttributed(legs.n1, "n1", base + 1),
     expiredContextAttributed: legAttributed(legs.n2, "n2", base + 2),
     crossContextAttributed: legAttributed(legs.n3, "n3", base + 3),

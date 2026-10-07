@@ -16,7 +16,8 @@ const PAGE_STEPS = {
     "then poll statusReview at most every 2 s until the device reports monotonic_reset, submitCompletion",
 };
 const LEG_STEPS = {
-  n1: "connect, replayArtifact (the reboot Start); after the device rejection the page disconnects: connect, authorizationRejectionReview",
+  n1: "connect, statusReview (the device refuses a Start until a status in this connection reports the reboot), replayArtifact " +
+    "(the reboot Start); after the device rejection the page disconnects: connect, authorizationRejectionReview",
   n1_review: "connect, authorizationRejectionReview",
   n2_sign: "prepareStart (the server signs one Start for this possession and holds it)",
   n2_wait: `keep the page connected for ${EXPIRED_START_WAIT_MS} ms after signing, then replayArtifact; connect, authorizationRejectionReview`,

@@ -101,9 +101,11 @@ mode 0600. Preflight and finish refuse other modes.
    1. `disconnect` and `reboot` (physical checkpoints, below).
    1. `authorization_negatives`, run right after the reboot and before any
       Start:
-      - N1: connect, `replayArtifact` (the pre-reboot Start). After the
-        device's rejection the page disconnects. Connect, then
-        `authorizationRejectionReview`.
+      - N1: connect, `statusReview`, then `replayArtifact` (the pre-reboot
+        Start). The device refuses a Start until a status in the same
+        connection has reported the reboot, so serve withholds the replay
+        until it has recorded that status. After the device's rejection the
+        page disconnects. Connect, then `authorizationRejectionReview`.
       - N2: `prepareStart` (the server signs one Start and holds it). Keep the
         page connected for 61 s, then `replayArtifact`. Connect, then
         `authorizationRejectionReview`.
@@ -204,8 +206,10 @@ Each scenario must also prove its own facts:
   → connected → terminal status. `reboot` also requires the stimulus reset to
   idle with count 0, no rejection and no high-water advance since boot, and a
   pre-reboot mining status.
-- `authorization_negatives`: four device-attributed rejections, with
-  rejection ordinals 1–4 since the reboot:
+- `authorization_negatives`: a same-connection status reporting the reboot
+  before N1, then four device-attributed rejections, with rejection ordinals
+  1–4 since the reboot and the device's wire categories
+  (`authentication_failed`, except `admission_required` for N2):
   - N1: Start, signature valid, context mismatch, replay guard at or below the
     durable high-water, not advanced this boot. Its fingerprint was first
     observed no later than the pre-reboot epoch.

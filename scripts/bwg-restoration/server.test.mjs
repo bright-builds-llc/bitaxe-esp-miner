@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { digest } from "../fixed-usb-qualification/contract.mjs";
 import { finishScenario } from "./campaign.mjs";
 import { BUNDLE, SCENARIOS } from "./contract.mjs";
-import { context, fakeWatcherOperations, passingInput, privateDirectory } from "./fixtures.test-helper.mjs";
+import { baseline, context, fakeWatcherOperations, journal, pageState, passingInput, privateDirectory } from "./fixtures.test-helper.mjs";
 import { parseActivation, parseCheckpoint, parseCompletion, parseCompletionNonce, parseReplay, parseRestorationConfiguration, parseWindow } from "./gate-shapes.test-helper.mjs";
 import { createRestorationSupervisor } from "./server.mjs";
 
@@ -152,10 +152,16 @@ test("N1 replays the reboot Start once under the persistent scope", async (t) =>
   const rebootStart = (await call("/scenario-artifacts")).value.grant;
   finishScenario(server.campaign, passed("reboot"));
   const scope = (await call("/activate", {})).value;
+  const status = { operation: "statusReview", outcome: "ok", result: baseline("reboot"),
+    state: pageState({ entries: journal(["connected", "status_reviewed:reboot"]), connected: true, status: "ready", device: baseline("reboot") }) };
   // Act
+  const early = await call("/replay-artifact");
+  const recorded = await call("/record", status);
   const first = await call("/replay-artifact");
   const second = await call("/replay-artifact");
   // Assert
+  assert.equal(early.value.error, "n1_status_required");
+  assert.deepEqual(recorded.value, { recorded: true });
   parseReplay(first.value);
   assert.deepEqual(first.value, { operation: "start", grant: rebootStart });
   assert.equal(rebootStart.challengeId, scope.challengeId);

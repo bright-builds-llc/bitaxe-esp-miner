@@ -24,7 +24,7 @@ export const FACT_ALLOWLIST = Object.freeze({
     "monotonicDetectionCounted", "stimulusCounterConsistent"],
   disconnect: [...PHYSICAL_FACTS, "stimulusCounterConsistent"],
   reboot: [...PHYSICAL_FACTS, "rebootClearedStimulus", "highWaterNotAdvancedAfterReboot", "preRebootStatusObserved", "stimulusCounterConsistent"],
-  authorization_negatives: ["durableReplayAttributed", "expiredContextAttributed", "crossContextAttributed", "renewalReplayAttributed",
+  authorization_negatives: ["rebootReportedBeforeN1", "durableReplayAttributed", "expiredContextAttributed", "crossContextAttributed", "renewalReplayAttributed",
     "highWaterUnchangedAcrossReboot", "rejectedStartsNeverStarted", "stimulusCounterConsistent"],
 });
 

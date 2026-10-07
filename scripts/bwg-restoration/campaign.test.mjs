@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { activate, admitSigning, createCampaign, deliverWindow, finishScenario, markSegment, observeRecord, recordSigned, replayArtifact } from "./campaign.mjs";
 import { operatorReady } from "./checkpoint.mjs";
 import { SCENARIOS } from "./contract.mjs";
-import { pageState, rejectionReview } from "./fixtures.test-helper.mjs";
+import { baseline, journal, pageState, rejectionReview } from "./fixtures.test-helper.mjs";
 
 const throwsWith = (operation, code) => assert.throws(operation, (error) => error.code === code);
 let scopes = 0;
@@ -29,7 +29,10 @@ function advanceTo(campaign, name) {
   }
 }
 
-const reviewRecord = (operation, result) => ({ operation, outcome: "ok", result, state: pageState() });
+const reviewRecord = (operation, result) => ({ operation, outcome: "ok", result, state: pageState({ entries: journal(["closed"], 100) }) });
+/** The post-reboot status in the same connection that the firmware requires before N1. */
+const reportReboot = (campaign, events = ["connected", "status_reviewed:reboot"]) =>
+  observeRecord(campaign, { operation: "statusReview", outcome: "ok", result: baseline("reboot"), state: pageState({ entries: journal(events) }) }, 0);
 
 test("one scope serves every reconnect within a scenario and a new scenario gets a new one", () => {
   // Arrange
@@ -99,6 +102,7 @@ test("the reboot Start is replayed once for N1 and then burned", () => {
   const campaign = createCampaign();
   advanceTo(campaign, "authorization_negatives");
   activate(campaign, newScope);
+  reportReboot(campaign);
   // Act
   const first = replayArtifact(campaign, 0);
   // Assert
@@ -112,6 +116,7 @@ test("the negative legs advance only on the page's replay and review records", (
   const campaign = createCampaign();
   advanceTo(campaign, "authorization_negatives");
   activate(campaign, newScope);
+  reportReboot(campaign);
   replayArtifact(campaign, 0);
   // Act
   observeRecord(campaign, reviewRecord("authorizationRejectionReview", rejectionReview()), 10);
@@ -175,4 +180,17 @@ test("a scenario's closing journal entries stay out of the next scenario's segme
   finishScenario(campaign, passed("completion"), 17);
   // Assert
   assert.deepEqual([campaign.scenario.name, campaign.scenario.segmentStartOrdinal], ["pause", 17]);
+});
+
+test("N1 waits for a status that reported the reboot in the same connection", () => {
+  // Arrange
+  const campaign = createCampaign();
+  advanceTo(campaign, "authorization_negatives");
+  activate(campaign, newScope);
+  // Act / Assert
+  throwsWith(() => replayArtifact(campaign, 0), "n1_status_required");
+  reportReboot(campaign, ["connected", "status_reviewed:reboot", "disconnected", "connected"]);
+  throwsWith(() => replayArtifact(campaign, 0), "n1_status_required");
+  reportReboot(campaign, ["connected", "status_reviewed:reboot", "disconnected", "connected", "status_reviewed:reboot"]);
+  assert.equal(replayArtifact(campaign, 0).operation, "start");
 });

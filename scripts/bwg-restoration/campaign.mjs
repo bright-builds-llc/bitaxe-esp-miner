@@ -9,7 +9,7 @@ function freshScenario(name) {
   return { name, signed: 0, signedSinceReady: 0, maybePending: null, records: [], segmentStartOrdinal: 0, segmentStartAt: 0,
     maybeCheckpoint: PHYSICAL_PLANS[name] ? createCheckpoint(name) : null,
     leg: name === "authorization_negatives" ? "n1" : null, legs: {}, maybeExpiredStart: null, maybeReplayRenewal: null,
-    maybeReplayDelivered: null, maybeLastReviewAt: null };
+    maybeReplayDelivered: null, maybeLastReviewAt: null, n1StatusReported: false };
 }
 
 export function createCampaign() {
@@ -91,6 +91,8 @@ export function replayArtifact(campaign, now) {
   const deliver = (leg, artifact, next) => { scenario.leg = next; scenario.maybeReplayDelivered = leg; return artifact; };
   if (scenario.leg === "n1") {
     requireCondition(campaign.maybeRebootStart !== null, "replay_unavailable");
+    // The device refuses a Start until a status in the same connection has reported the reboot.
+    requireCondition(scenario.n1StatusReported, "n1_status_required");
     const grant = campaign.maybeRebootStart; campaign.maybeRebootStart = null;
     return deliver("n1", { operation: "start", grant }, "n1_review");
   }
@@ -110,8 +112,20 @@ export function replayArtifact(campaign, now) {
 
 const NEXT_LEG = { n1_review: "n2_sign", n2_review: "n3_replay", n3_review: "n4_sign", n4_review: "complete" };
 
+/**
+ * True when the page's latest connection has reviewed a status reporting the reboot: the last `connected`
+ * precedes a `status_reviewed:reboot` and no `disconnected` follows that connection.
+ */
+export function rebootReportedInConnection(entries) {
+  const connected = entries.findLastIndex((entry) => entry.event === "connected");
+  const reported = entries.findLastIndex((entry) => entry.event === "status_reviewed" && entry.category === "reboot");
+  const lost = entries.findLastIndex((entry) => entry.event === "disconnected");
+  return connected >= 0 && reported > connected && lost < connected;
+}
+
 /** Advance the negative legs from the page's own recorded results; a review only counts after its replay. */
 function observeNegativeLeg(scenario, record, now) {
+  if (scenario.leg === "n1") scenario.n1StatusReported = rebootReportedInConnection(record.state.journal.entries);
   const leg = scenario.maybeReplayDelivered;
   if (record.operation === "renewOnce" && record.outcome === "ok" && scenario.leg === "n4_renew") { scenario.leg = "n4_replay"; return; }
   if (!leg || !scenario.leg.endsWith("_review") || record.outcome !== "ok") return;

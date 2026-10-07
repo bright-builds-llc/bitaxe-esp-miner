@@ -48,8 +48,8 @@ function physicalJournal(remove, restore, terminal) {
     `status_reviewed:${terminal}`, "stimulus_reviewed:idle", "rejection_reviewed:none", "closed"]);
 }
 
-const leg = (operation, signature, context, replayGuard, ordinal, advancedThisBoot) => ({
-  replay: { operation, outcome: "rejected", category: "authentication_failed" },
+const leg = (operation, signature, context, replayGuard, ordinal, advancedThisBoot, category = "authentication_failed") => ({
+  replay: { operation, outcome: "rejected", category },
   review: rejectionReview({ bootRejections: ordinal, last: { ordinal, operation, signature, context, replayGuard }, advancedThisBoot, epoch: 3 }),
 });
 
@@ -80,11 +80,11 @@ export function passingInput(scenario) {
       okRecord("beginPhysicalWindow", { checkpoint: "remove_power" }, 3000, pageState({ highWaterEpoch: 3 }))], checkpoint: { ...PHYSICAL_FACTS },
     finalState: pageState({ entries: physicalJournal("remove_power", "restore_power", "reboot"), device: baseline("reboot") }) },
     authorization_negatives: { records: [], carry: { stimulusBaseline: 0, preRebootEpoch: 3, rebootRejections: 0 },
-      legs: { n1: leg("start", "valid", "mismatch", "at_or_below_durable_high_water", 1, false), n2: leg("start", "not_evaluated", "expired", "not_evaluated", 2, false),
+      legs: { n1: leg("start", "valid", "mismatch", "at_or_below_durable_high_water", 1, false), n2: leg("start", "not_evaluated", "expired", "not_evaluated", 2, false, "admission_required"),
         n3: leg("start", "valid", "mismatch", "fresh", 3, false), n4: leg("renew", "valid", "current", "at_or_below_durable_high_water", 4, true) },
       reviews: { stimulus: stimulusReview("idle", 0), rejection: rejectionReview({ bootRejections: 4, advancedThisBoot: true, epoch: 3,
         last: { ordinal: 4, operation: "renew", signature: "valid", context: "current", replayGuard: "at_or_below_durable_high_water" } }) },
-      finalState: pageState({ entries: journal(["connected", "replay_rejected:authentication_failed", "disconnected", "connected", "rejection_reviewed:mismatch",
+      finalState: pageState({ entries: journal(["connected", "status_reviewed:reboot", "replay_rejected:authentication_failed", "disconnected", "connected", "rejection_reviewed:mismatch",
         "start_prepared", "replay_rejected:admission_required", "disconnected", "connected", "rejection_reviewed:expired", "replay_rejected:authentication_failed",
         "disconnected", "connected", "rejection_reviewed:mismatch", "start_prepared", "lease_loaded:one_renewal", "lease_started", "renewed",
         "replay_rejected:authentication_failed", "disconnected", "connected", "rejection_reviewed:current", "status_reviewed:control_failed",
