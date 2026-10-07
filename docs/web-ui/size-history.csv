@@ -1,0 +1,3 @@
+date_utc,source_commit,source_dirty,variant,files,raw_bytes,gzip_bytes,served_bytes,spiffs_used_bytes
+2026-10-07T19:12:26.355Z,47568195fe67,false,current,7,49706,13998,42063,57600
+2026-10-07T19:12:26.355Z,47568195fe67,false,solid,4,49186,17339,17981,69888
