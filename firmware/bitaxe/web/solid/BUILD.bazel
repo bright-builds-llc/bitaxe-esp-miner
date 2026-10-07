@@ -1,0 +1,62 @@
+load("@aspect_rules_js//js:defs.bzl", "js_test")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@npm_web_ui//:defs.bzl", "npm_link_all_packages")
+load("@npm_web_ui//firmware/bitaxe/web/solid:vite/package_json.bzl", vite_bin = "bin")
+
+# SolidJS variant of the operator web UI (ADR-0034). Select it for a package
+# with `--//firmware/bitaxe:web_ui=solid`; `current` stays the default.
+npm_link_all_packages(name = "node_modules")
+
+APP_SOURCES = glob(["src/**/*.ts", "src/**/*.tsx"])
+
+vite_bin.vite(
+    name = "dist",
+    srcs = APP_SOURCES + [
+        "index.html",
+        "package.json",
+        "public/assets/release.json",
+        "vite.config.mjs",
+        ":node_modules/solid-js",
+        ":node_modules/vite",
+        ":node_modules/vite-plugin-solid",
+        # The stylesheet is shared with the `current` variant.
+        "//firmware/bitaxe:current_ui_shared_sources",
+    ],
+    args = [
+        "build",
+        "--logLevel",
+        "warn",
+    ],
+    chdir = package_name(),
+    out_dirs = ["dist"],
+    visibility = ["//firmware/bitaxe:__pkg__"],
+)
+
+# Typechecks the whole app and emits the pure modules and tests for node:test.
+ts_project(
+    name = "solid_ui_ts",
+    srcs = APP_SOURCES + glob(["test/**/*.ts"]),
+    data = ["package.json"],
+    declaration = False,
+    out_dir = "test-dist",
+    preserve_jsx = True,
+    root_dir = ".",
+    transpiler = "tsc",
+    tsconfig = "tsconfig.json",
+    deps = [
+        ":node_modules/@types/node",
+        ":node_modules/solid-js",
+    ],
+)
+
+js_test(
+    name = "solid_ui_test",
+    data = [
+        "package.json",
+        ":dist",
+        ":solid_ui_ts",
+        "//crates/bitaxe-api:ui_workflow_compatibility_sources",
+        "//firmware/bitaxe:current_ui_shared_sources",
+    ] + APP_SOURCES,
+    entry_point = "test-dist/test/all.test.js",
+)

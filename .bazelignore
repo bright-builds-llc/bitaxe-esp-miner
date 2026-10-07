@@ -5,3 +5,4 @@ hardware-runs
 output
 scratch
 target
+firmware/bitaxe/web/solid/node_modules

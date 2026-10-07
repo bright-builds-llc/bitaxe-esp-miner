@@ -1,6 +1,7 @@
 load("//scripts:build_identity.bzl", "build_provenance")
 load("@rules_rust//rust:defs.bzl", "rust_test")
 load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary")
+load("@bazel_lib//lib:copy_to_bin.bzl", "copy_to_bin")
 
 js_library(
     name = "tcp_payload_evaluator_sources",
@@ -49,6 +50,18 @@ exports_files([
     "static/www/assets/release.json",
     "static/www/assets/ui-core.js",
 ])
+
+# Files the SolidJS variant shares with `current`: the stylesheet it bundles and
+# the `current` modules its contract tests run against.
+copy_to_bin(
+    name = "current_ui_shared_sources",
+    srcs = [
+        "static/www/assets/api-client.js",
+        "static/www/assets/app.css",
+        "static/www/assets/ui-core.js",
+    ],
+    visibility = ["//firmware/bitaxe/web/solid:__pkg__"],
+)
 
 filegroup(
     name = "bwg_usb_runtime_source",

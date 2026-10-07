@@ -1,0 +1,10 @@
+{
+  "schema": "bitaxe-rust-static-release-v1",
+  "name": "bitaxe-rust-operator-ui-solid",
+  "board": "Ultra 205",
+  "asset_scope": "Scoped AxeOS-compatible operator workflows (SolidJS variant) and recovery source",
+  "provenance": "Rust-owned static asset; not copied from upstream ESP-Miner.",
+  "source_url": "https://github.com/bright-builds-llc/bitaxe-esp-miner",
+  "ota_www_route": "/api/system/OTAWWW",
+  "recovery_route": "/recovery"
+}
