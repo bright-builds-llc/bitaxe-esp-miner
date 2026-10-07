@@ -567,12 +567,14 @@ Plan (2026-10-07), recorded in [ADR-0035](docs/adr/0035-serial-bwg-restoration-c
   - preflight, serve with a persistent scenario scope, presence watcher,
     per-scenario judges, seal, and all-or-nothing projection publication;
   - registration in `owners.mjs`, a Bazel target and a `just` recipe.
-- [ ] P5 hardware contract (below), written while disabled; verify and push.
+- [x] P5 hardware contract (below), written while disabled; verified and pushed (c18f177b).
 - [ ] P6 add the enabling line, run the attempt, have the evidence reviewed
       independently, and publish all eight projections together.
 
-Serial successor hardware contract (attempt ordinals 001 onward). The run is
-disabled until the enabling line below is added; the line does not exist yet.
+Serial successor hardware contract (attempt ordinals 001 onward), enabled
+2026-10-07 under the owner's authorization:
+
+BWG-007 serial restoration hardware: enabled.
 
 - Objective: on one detector-admitted Ultra 205, through the production Web
   Serial Gate and the owner's Stratum V1 pool, prove each of the following:
