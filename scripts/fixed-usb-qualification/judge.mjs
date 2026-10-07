@@ -17,6 +17,8 @@ const COUNTS = ["generation", "active_ms", "generation_elapsed_ms", "budget_rese
   "nonce_work_correlations", "work_dispatched", "last_valid_heartbeat_ms"];
 const BOOLEANS = ["budget_complete", "safe_stop_complete", "voltage_fresh", "power_fresh", "temperature_fresh", "fan_fresh", "watchdog_alive", "mine_on_boot"];
 const NUMBERS = ["voltage_volts", "power_watts", "chip_temp_celsius", "fan_rpm"];
+/** Soak contexts alone admit the Gate's soak renewal bound (firmware ADR-0033). */
+export const SOAK_CONTEXT_SCHEMA = "fixed-usb-soak-context-v1";
 export const u32 = (value) => Number.isInteger(value) && value >= 0 && value <= 0xffffffff;
 
 function validateOwnerResources(resource) {
@@ -27,12 +29,25 @@ function validateOwnerResources(resource) {
       ["heap_free_bytes", "heap_largest_bytes", "stack_free_bytes"].every((key) => u32(resource[key])), "owner_resources_shape");
 }
 
+/** One-shot soak budget: 600,000 ms of work plus the 15,550 ms shutdown tail (firmware ADR-0033). */
+export const SOAK_MAXIMUM_ACTIVE_MS = 615550;
+
+function validateSoakObservation(soak, activeMs) {
+  exactObject(soak, ["schema", "ordinal", "maximum_active_ms", "reserved_ms", "complete", "active_ms"]);
+  requireCondition(soak.schema === "worker-soak-observation-v1" && u32(soak.ordinal) && soak.ordinal > 0 &&
+    soak.maximum_active_ms === SOAK_MAXIMUM_ACTIVE_MS && soak.reserved_ms === SOAK_MAXIMUM_ACTIVE_MS &&
+    typeof soak.complete === "boolean" && soak.active_ms === activeMs, "soak_observation_shape");
+}
+
 export function validateQualification(value) {
   exactObject(value, ["schema", ...COUNTS, ...BOOLEANS, ...NUMBERS, "gate_closed_ms", "shutdown_started_ms", "safe_stop_stage", "revocation_reason",
-    "active_limit_ms", "shutdown_budget_ms", "work_gate_remaining_ms"], ["attempt", "owner_resources", "mining_progress"]);
+    "active_limit_ms", "shutdown_budget_ms", "work_gate_remaining_ms"], ["attempt", "owner_resources", "mining_progress", "soak"]);
+  // Only a soak observation admits the larger soak reservation, and never beside an iterative attempt.
   requireCondition(value.schema === "worker-qualification-v1" && COUNTS.every((key) => u32(value[key])) &&
-    BOOLEANS.every((key) => typeof value[key] === "boolean") && value.budget_reserved_ms <= 240000 &&
-    STAGES.includes(value.safe_stop_stage), "qualification_shape");
+    BOOLEANS.every((key) => typeof value[key] === "boolean") &&
+    value.budget_reserved_ms <= (value.soak === undefined ? 240000 : SOAK_MAXIMUM_ACTIVE_MS) &&
+    !(value.soak !== undefined && value.attempt !== undefined) && STAGES.includes(value.safe_stop_stage), "qualification_shape");
+  if (value.soak !== undefined) validateSoakObservation(value.soak, value.active_ms);
   for (const key of ["gate_closed_ms", "shutdown_started_ms"]) requireCondition(value[key] === null || u32(value[key]), "timing_shape");
   requireCondition(u32(value.shutdown_budget_ms) && ["active_limit_ms", "work_gate_remaining_ms"].every((key) => value[key] === null || u32(value[key])), "budget_timing_shape");
   requireCondition(["none", "heartbeat_timeout", "lease_or_budget_expired", "restoration_requested", "unsafe_observation", "link_closed", "control_failed"].includes(value.revocation_reason), "revocation_reason_shape");
@@ -70,7 +85,7 @@ export function validateState(value, context) {
     ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory", "ownerResourceFailure", "helloRecovery", "deviceBaselineConfirmed", "authorizationRecovery", "cadence"]);
   requireCondition(value.schema === "worker-serial-acceptance-v1" && value.gateCommit === context.gate_commit &&
     value.expectedFirmwareSourceCommit === context.firmware_commit && value.expectedAppElfSha256 === context.app_elf_sha256 &&
-    STATUSES.includes(value.status) && u32(value.renewalsConfirmed) && value.renewalsConfirmed <= 16 &&
+    STATUSES.includes(value.status) && u32(value.renewalsConfirmed) && value.renewalsConfirmed <= (context.schema === SOAK_CONTEXT_SCHEMA ? 36 : 16) &&
     ["connected", "running", "heartbeatSuppressed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"].every((key) => typeof value[key] === "boolean"), "browser_state_identity");
   if (value.cadence !== undefined) {
     requireCondition(context.schema === CADENCE_SCHEMA, "cadence_context_required");

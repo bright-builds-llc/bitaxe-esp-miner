@@ -72,11 +72,11 @@ invalid watchdog continuity. That selected `stop_repeated_boundary`.
         WebSocket threads, 900 s life) plus a pure `soak-judge` over twenty
         30-second windows, with the shared continuity helpers moved out of
         `tools/flash`.
-  - [ ] Phase 6: `scripts/fixed-usb-soak` owner (`just ultra205-soak`):
+  - [x] Phase 6: `scripts/fixed-usb-soak` owner (`just ultra205-soak`):
         preflight/serve/finish, an idle WebSocket pre-phase proof, a
         `signSoak` signer (34 renewals), and a terminal judge without serial
         markers.
-- [ ] Write a complete hardware contract under the Effectful Hardware Task
+- [x] Write a complete hardware contract under the Effectful Hardware Task
       Gate for a fresh-ordinal soak at upstream defaults (485 MHz, 1200 mV,
       100% fan), with the original continuity, safety, safe-stop and
       persistence criteria.
@@ -118,8 +118,69 @@ pin bumped here, for the renewal bound and soak/profile handling. The soak
 mines Stratum V1 against the owner's real pool, using the ignored local pool
 credentials under the existing privacy rules.
 
-Authorization: software diagnosis and contract work only until the hardware
-contract is committed.
+Ultra 205 upstream-default soak hardware: enabled.
+
+Hardware contract (soak attempt ordinals 001 onward):
+
+- Objective: one 600-active-second Ultra 205 soak at upstream defaults
+  (485 MHz, 1200 mV, 100% fan) through the Gate, mining Stratum V1 against the
+  owner's pool. It must prove continuous HTTP and WebSocket state, safety,
+  watchdog and work progress, accepted shares, device-local safe-stop,
+  `mineonboot=false`, retained pool settings and a single soak charge.
+- Private inputs, used at run time and never printed, recorded or committed:
+  - the existing protected authority directory;
+  - the ignored `pool-credentials.json` (`pool_config: local-owner-supplied`).
+- Permitted commands, in order:
+  1. `just package` at a clean, pushed HEAD, and `bun run build:browser` in the
+     Gate checkout at the exact pinned Gate commit.
+  1. `just detect-ultra205 > P/detector.stdout.log`, with `P` a new mode-0700
+     parent under `scratch/ultra205-soak/`.
+  1. `espflash board-info --chip esp32s3 --port <detector-port> --non-interactive`,
+     then the state-preserving install
+     `just flash-monitor --board 205 --port <detector-port> --expected-physical-sha256 <detected> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --evidence-dir P/install --capture-timeout-seconds 360 --redact-evidence`.
+     Skip both when the device already runs the exact package.
+  1. A fresh detector, then `just ultra205-soak preflight` for
+     `R=P/attempt-NNN`, as in `scripts/fixed-usb-soak/README.md`.
+  1. `just ultra205-soak serve`, detached under `nohup`, with separate mode-0600
+     stdout and stderr files in `P`.
+  1. In the dedicated Gate tab: open `http://127.0.0.1:48765/`, Connect, and run
+     the README's page sequence. Check `document.visibilityState` before each
+     step, and hold in the idle safe state while the tab is hidden.
+  1. Navigate the tab to `about:blank`, stop the server, and seal with
+     `just hardware-operator owner-finish --owner ultra205-soak --private-root R`.
+- Allowed effects:
+  - the exact package install above;
+  - Gate Web Serial admission and the fan cooling proof;
+  - one signed soak grant with up to 34 renewals;
+  - BM1366 initialization and work at upstream defaults;
+  - Stratum V1 to the owner's pool;
+  - HTTP and WebSocket observation of the station endpoint handed off in the
+    same session;
+  - device-local safe-stop and restoration.
+- Prohibited effects: TLS, Stratum V2, automatic fan mode, mining beyond the
+  signed budget, factory reset or credential injection, erase-flash, raw writes,
+  OTA, network discovery, non-205 hardware, direct UART or pins, fault
+  injection, voltage or fan stress, parity promotion, and raw secret output.
+- Live stop limits, enforced by firmware revocation and judged on every
+  sample: input 4.5–5.5 V, at most 15 W, ASIC below 75 C, fresh nonzero fan,
+  watchdog alive, and the 2.8 s heartbeat deadline.
+- Evidence: `R` is a private `ProtectedOperational` root with mode-0600 files.
+  Committed summaries may hold only numeric categories from `result.json` and
+  `soak-judge`, after `just verify-redaction`.
+- Recovery: firmware revokes and safe-stops on any fault, and the Gate
+  restores the baseline. If restoration or the final state cannot be confirmed,
+  hold the device idle and stop with `stop_hardware_blocker`. No reflash beyond
+  the install above and no power action is taken without the owner.
+- Retry bound: `docs/hardware/hardware-attempt-policy.md`. Each ordinal needs
+  verified progress, and a recurrence of the same boundary after its targeted
+  fix selects `stop_repeated_boundary`.
+- Accepted outcomes: `complete` only when `result.json` is `passed` and an
+  independent review agrees. Otherwise `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary` or
+  `stop_impossible_contract`.
+
+Authorization: the contract above. Software work continues as ordinary task
+work.
 Verification: pending. Completion review: pending.
 
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection

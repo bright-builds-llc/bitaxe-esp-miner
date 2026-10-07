@@ -87,6 +87,7 @@ The owners are a closed table in `owners.mjs`:
 - recovery: `str005-share-recovery`, `str005-control-diagnostic-recovery`, `str005-panic-recovery`
 - restart, which needs `--stage recovery|restart`: `str005-step5-restart`,
   `str005-startup-preparation`, `str005-heartbeat-preparation`
+- soak: `ultra205-soak` ([upstream-default soak](../fixed-usb-soak/README.md))
 
 The action reads `server-owner.json`, or `<stage>/server-owner.json` for a
 staged owner. It sends SIGTERM only to the recorded process, and only while that

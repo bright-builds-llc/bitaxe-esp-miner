@@ -1785,3 +1785,29 @@ js_binary(
     "owner-finish",
     "sequences",
 ]]
+
+js_library(
+    name = "fixed_usb_soak_sources",
+    srcs = glob(["fixed-usb-soak/*.mjs"]),
+    deps = [
+        ":fixed_usb_qualification_sources",
+        ":hardware_operator_sources",
+        ":str005_noise_serial_sources",
+    ],
+    data = [":host_stall_sources"],
+)
+
+js_binary(
+    name = "ultra205_soak",
+    data = [":fixed_usb_soak_sources"],
+    entry_point = "fixed-usb-soak/main.mjs",
+)
+
+[js_test(
+    name = "fixed_usb_soak_%s_test" % name,
+    data = [":fixed_usb_soak_sources"],
+    entry_point = "fixed-usb-soak/%s.test.mjs" % name,
+) for name in [
+    "server",
+    "soak",
+]]
