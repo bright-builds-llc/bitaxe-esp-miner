@@ -27783,3 +27783,78 @@ Residual risks:
 - One soak on one board; drift over longer runs or other boards is unmeasured.
 - This host's Bazel analysis-cache churn makes each `just` command take
   minutes. Owner commands with short freshness windows remain sensitive to it.
+
+### task-test-temp-hygiene-and-exec-stall | 2026-10-06 | Stop tests leaking temp directories and explain slow host commands
+
+Status: Active, owner-requested 2026-10-06. Follow-up to the 2026-09-10
+`task-host-stall-diagnostics`, whose intermittent native-loader stall stayed
+unexplained.
+
+Observed, 2026-10-06:
+
+- The user temp directory held about 76,800 entries (14 GB). About 13,000
+  distinct leaked prefixes are this repository's tests, each repeated
+  180–2,400 times. `fseventsd` ran near 100% CPU and `syspolicyd` near 54%.
+- Bazel passes the user's `TMPDIR` to tests on macOS. Only `TEST_TMPDIR` is
+  sandboxed and cleaned, and most tests use `os.tmpdir()` or
+  `std::env::temp_dir()`.
+- `cargo test` also leaks, for example `phase29-generation-*`.
+- `just` commands took 60–110 s. The time was spent in
+  `BazelWorkspaceStatusAction`, not in analysis.
+- The first exec of a freshly written script or binary stalled 5–93 s, while
+  repeats were instant. The repo stall recorder captured a one-line script at
+  71.6 s; a sample taken 33 s in showed `/bin/sh` at `_dyld_start + 0` and 0%
+  CPU. That is macOS holding a new executable at launch. Tests that exec
+  freshly written fakes with short bounds fail.
+
+- [x] Run every Bazel test with a private, socket-safe `TMPDIR` that is
+      removed afterwards, through a test-only `--run_under` wrapper.
+- [x] Make the Rust tests that leak under `cargo test` remove their
+      directories.
+- [x] Record the stall evidence and the owner-side remedy in the host-stall
+      guide. Delete nothing in the user's temp directory.
+- [x] Verify: a full `bazel test //...` and a full `cargo test` each add no
+      repository temp entries; then run the standard gates.
+
+Scope: host-only. No device, network, credential, test-deadline or
+security-setting changes.
+Verification (2026-10-07): the temp directory was snapshotted around a
+complete gate run:
+
+- the Bright Builds checks;
+- `cargo fmt`, Clippy, build and `cargo test`;
+- `bazel test //...` (305 targets);
+- `just verify-redaction`.
+
+The run added two entries, both ESP-IDF `kconfgen_tmp*.old` files from the
+firmware build. Neither came from a test; before the fix, each run left
+hundreds of directories.
+
+- With the new wrapper, 304 of 305 Bazel targets passed.
+  `//scripts:virtual_emulator_test` failed once in a descendant-listener check
+  and then passed 5 of 5 reruns.
+- The first wrapper design set `TMPDIR` to `TEST_TMPDIR`. Three Unix-socket
+  tests failed, because socket paths are limited to 103 bytes. The final
+  wrapper uses a short private `bzt.*` directory and removes it when the test
+  exits.
+- `//tools/test-tmpdir:test_tmpdir_test` covers privacy, length, removal and
+  exit status. It fails against a wrapper without the cleanup trap.
+- Isolated `cargo test` left five `phase29-generation-*` directories before
+  the parity test-workspace guard. The 87 parity generation tests now leave
+  none.
+
+Report: `docs/development/host-stall-results-20261006.md`. The guide has new
+sections on first-exec holds and on reclaiming leaked directories.
+
+Completion review: test temp hygiene is fixed at the Bazel boundary for every
+test language, plus the one leaking cargo test. The long-standing native-launch
+stall is now captured: macOS holds the first exec of new executables at
+`_dyld_start`. Its remedy is an owner-side Developer Tools setting, which
+agents must not change. No existing temp contents were deleted.
+
+Residual risks:
+- A test killed with `SIGKILL`, or a child spawned with an emptied
+  environment, can still leave a directory.
+- The 23–33 s workspace-status runs without a relink remain unattributed.
+- Tests that exec freshly written fakes under short bounds stay flaky on this
+  host until the owner setting is applied.

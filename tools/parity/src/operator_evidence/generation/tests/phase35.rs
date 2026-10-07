@@ -1,9 +1,9 @@
 use std::fs;
 
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8Path;
 
 use super::super::*;
-use super::support::{create_workspace, snapshot};
+use super::support::{create_workspace, snapshot, TestWorkspace};
 use crate::phase35_evidence::tests::EligibleFixture;
 use crate::phase35_promotion::{
     evaluate_phase35_promotion, ChecklistSnapshot, Phase35LiveRechecks, PHASE35_PROMOTABLE_ROWS,
@@ -154,7 +154,7 @@ fn phase35_documents() -> Phase35GenerationDocuments {
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-fn phase35_publication_workspace(name: &str) -> Utf8PathBuf {
+fn phase35_publication_workspace(name: &str) -> TestWorkspace {
     let workspace = create_workspace(&format!("phase35-{name}"));
     fs::write(
         workspace.join("checklist.md").as_std_path(),

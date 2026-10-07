@@ -1,0 +1,16 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+# `.bazelrc` runs every test under this wrapper; see test-tmpdir.sh.
+sh_binary(
+    name = "test_tmpdir",
+    srcs = ["test-tmpdir.sh"],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "test_tmpdir_test",
+    srcs = ["test-tmpdir.test.sh"],
+    args = ["$(rootpath test-tmpdir.sh)"],
+    data = ["test-tmpdir.sh"],
+)

@@ -7,7 +7,28 @@ use std::fs;
 
 static WORKSPACE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-pub(super) fn create_workspace(name: &str) -> Utf8PathBuf {
+/// A private test workspace removed when dropped, so repeated runs leave nothing in the temp directory.
+pub(super) struct TestWorkspace(Utf8PathBuf);
+
+impl std::ops::Deref for TestWorkspace {
+    type Target = Utf8Path;
+
+    fn deref(&self) -> &Utf8Path {
+        &self.0
+    }
+}
+
+impl Drop for TestWorkspace {
+    fn drop(&mut self) {
+        if let Err(error) = fs::remove_dir_all(self.0.as_std_path()) {
+            if !std::thread::panicking() {
+                panic!("test workspace {} should be removed: {error}", self.0);
+            }
+        }
+    }
+}
+
+pub(super) fn create_workspace(name: &str) -> TestWorkspace {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("clock should be valid")
@@ -18,7 +39,7 @@ pub(super) fn create_workspace(name: &str) -> Utf8PathBuf {
         "phase29-generation-{name}-{timestamp}-{process_id}-{sequence}"
     ));
     fs::create_dir_all(&root).expect("workspace should be created");
-    Utf8PathBuf::from_path_buf(root).expect("temp path should be UTF-8")
+    TestWorkspace(Utf8PathBuf::from_path_buf(root).expect("temp path should be UTF-8"))
 }
 
 pub(super) fn snapshot(root: &Utf8Path) -> String {

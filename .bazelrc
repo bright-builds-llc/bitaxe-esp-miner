@@ -1,1 +1,3 @@
 build --workspace_status_command="cargo +stable run --quiet -p xtask --target-dir .bazel-workspace-status-target -- build-identity-status"
+# Give each test a private TMPDIR that is removed after it exits (tools/test-tmpdir).
+test --run_under=//tools/test-tmpdir:test_tmpdir

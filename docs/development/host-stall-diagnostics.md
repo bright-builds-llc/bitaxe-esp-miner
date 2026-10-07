@@ -133,6 +133,47 @@ intermittent loader stalls or justify reducing build concurrency globally.
 | Cargo reports waiting for a build-directory lock                        | Another Cargo owner is delaying this command.                                         |
 | Child timestamps show prompt completion but the tool returns much later | Investigate result delivery separately from child execution.                          |
 
+## First exec of a new executable
+
+On 2026-10-06 the recorder captured the long-unexplained stall
+([results](host-stall-results-20261006.md)). The first exec of a freshly written
+script or ad-hoc-signed binary was held for 5–93 s; repeats of the same file ran
+at once. Sampled 33 s into a 71.6 s hold, `/bin/sh` sat at `_dyld_start + 0` with
+0% CPU: macOS had mapped the process but not let it run. Apple-signed copies and
+scripts read through `/bin/sh <file>` were not held.
+
+This hits anything that runs a just-written executable:
+
+- Cargo build scripts and relinked binaries, including the workspace-status
+  `xtask`. `BazelWorkspaceStatusAction` was the step that took 60–110 s in
+  slow `just` commands. Separately, two status runs took 23–33 s with no
+  relink, and six recorded runs did not recur, so that part remains
+  unattributed;
+- Bazel outputs on their first run;
+- tests that write and exec fake tools under short bounds.
+
+The owner-side remedy is to list the app that launches these commands
+(Terminal, iTerm, Cursor, Claude) under System Settings → Privacy & Security →
+Developer Tools. That list exists to let local software skip the system's
+security-policy checks; `spctl developer-mode enable-terminal` shows the pane
+if it is missing. It is a security setting, so agents must not change it. After
+enabling it, confirm the effect with a fresh `run` over a just-written script.
+
+## Reclaim leaked test directories
+
+Bazel tests now get a private `TMPDIR` that is removed afterwards (`tools/test-tmpdir`),
+but older runs left this repository's directories in the user temp directory.
+macOS normally prunes old entries there when it restarts. To clear
+them sooner, list the main prefixes first, then delete the same set; nothing
+newer than a day is touched:
+
+```sh
+find "$TMPDIR" -mindepth 1 -maxdepth 1 -user "$USER" -mtime +1 \( -name 'bitaxe-*' -o -name 'api-command-*' -o -name 'command-effects-*' -o -name 'phase29-*' -o -name 'restore-*' -o -name 'host-stalls-*' \) -print | wc -l
+find "$TMPDIR" -mindepth 1 -maxdepth 1 -user "$USER" -mtime +1 \( -name 'bitaxe-*' -o -name 'api-command-*' -o -name 'command-effects-*' -o -name 'phase29-*' -o -name 'restore-*' -o -name 'host-stalls-*' \) -exec rm -rf {} +
+```
+
+This is an owner action; agents never delete the user's temp contents.
+
 Change one variable per experiment. Use `--timings` for Cargo build scheduling;
 it does not replace process traces or measure test-body execution. If repeated
 samples identify file operations, capture a short, process-filtered `fs_usage`
