@@ -39,13 +39,13 @@ str005-review-loop action *args:
 str005-share-crash action *args:
     bazel run //scripts:str005_share_crash -- {{ action }} {{ args }}
 
-# Repo-owned operator sequencing for task-gated hardware runs; adds no authority. See scripts/hardware-operator/README.md.
 # One task-gated upstream-default soak through the Gate (ADR-0033). See scripts/fixed-usb-soak/README.md.
 [positional-arguments]
 ultra205-soak action *args:
     bazel build //tools/http-transport:soak_observer //tools/http-transport:soak_judge
     bazel run //scripts:ultra205_soak -- "$@"
 
+# Repo-owned operator sequencing for task-gated hardware runs; adds no authority. See scripts/hardware-operator/README.md.
 [positional-arguments]
 hardware-operator action *args:
     bazel run //scripts:hardware_operator -- "$@"

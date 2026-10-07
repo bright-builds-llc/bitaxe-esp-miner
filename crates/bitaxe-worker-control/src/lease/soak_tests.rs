@@ -11,7 +11,7 @@ fn v1() -> serde_json::Value {
 fn soak() -> serde_json::Value {
     let mut value = v1();
     value["hardwareProfile"] = json!("upstream-default");
-    value["soakAllowance"] = json!({"id": URL_SAFE_NO_PAD.encode([3; 16]), "maximumActiveMilliseconds": 615_550,
+    value["soakAllowance"] = json!({"id": URL_SAFE_NO_PAD.encode([3; 16]), "maximumActiveMilliseconds": 619_050,
         "ordinal": 1, "schema": "worker-soak-allowance-v1"});
     value
 }
@@ -54,7 +54,7 @@ fn an_upstream_default_soak_grant_is_valid_and_signs_both_fields_in_canonical_or
     assert_eq!(value["hardwareProfile"], json!("upstream-default"));
     assert_eq!(
         value["soakAllowance"]["maximumActiveMilliseconds"],
-        json!(615_550)
+        json!(619_050)
     );
 }
 

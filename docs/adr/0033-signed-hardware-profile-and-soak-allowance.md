@@ -38,15 +38,20 @@ Gate accepts at most 16 renewal artifacts.
    exactly once and is never refunded (ADR-0024). Replays, gaps and a pending
    reservation fail closed.
 4. **Budget includes the shutdown tail.** The work gate closes at the budget
-   minus the 15,550 ms pre-reset shutdown bound. A soak therefore signs and
-   charges `maximumActiveMilliseconds = 615,550`, which keeps work admitted for
-   exactly 600,000 active ms with the shutdown still inside the budget.
+   minus the reserved pre-reset shutdown tail. The upstream-default plan ramps
+   down from 485 MHz and needs 19,050 ms, against 15,550 ms for Conservative.
+   A soak budget therefore reserves the upstream tail, checked at admission
+   against the closed plan, and signs and charges
+   `maximumActiveMilliseconds = 619,050`. That keeps work admitted for exactly
+   600,000 active ms with the shutdown inside the budget.
 5. **Controller 0.4 stays.** Both fields are optional and omitted when absent.
    Older firmware (`deny_unknown_fields`) and the older Gate (`exactRecord`)
    reject them, so mismatched peers fail closed without a protocol bump.
 6. **Pre-signed renewals.** The host signs the grant and its renewals in one
    batch, as for qualification attempts. Only soak leases may carry more than
-   16 renewals, up to 36. The Gate lets the device close the work gate. It
+   16 renewals, up to 36; the host signs 36, enough for 120 s of preparation
+   before the 600 s gate. The Gate does not renew within 5 s of the gate
+   closing. The Gate lets the device close the work gate. It
    refreshes status before each renewal and stops renewing once the gate is
    closed.
 

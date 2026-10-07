@@ -21,7 +21,7 @@ fn only_the_exact_soak_budget_exceeds_the_limited_ceiling() {
         .collect();
     // Assert
     assert_eq!(admitted, [false, false, false, true]);
-    assert_eq!(SOAK_ACTIVE_LIMIT_MS, 615_550);
+    assert_eq!(SOAK_ACTIVE_LIMIT_MS, 619_050);
 }
 
 #[test]
@@ -36,6 +36,6 @@ fn a_soak_keeps_its_work_gate_open_for_exactly_600_seconds_after_first_work() {
     assert!(gate.begin_dispatch(gate.stamp(Some(worker)), 1_000));
     // Assert
     let timing = gate.timing(1_000).expect("first work");
-    assert_eq!(timing.active_limit_ms, Some(615_550));
+    assert_eq!(timing.active_limit_ms, Some(619_050));
     assert_eq!(timing.work_gate_remaining_ms, Some(600_000));
 }

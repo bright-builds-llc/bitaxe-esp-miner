@@ -84,6 +84,8 @@ pub(crate) fn begin_reservation(generation: WorkerGeneration) -> bool {
 }
 pub(crate) fn admit_budget(generation: WorkerGeneration, active_limit_ms: u64) -> bool {
     super::super::shutdown_budget::conservative_plan_is_bounded()
+        && (active_limit_ms != bitaxe_runtime::revocation::SOAK_ACTIVE_LIMIT_MS
+            || super::super::shutdown_budget::upstream_plan_is_bounded())
         && GATE.admit_budget(generation, active_limit_ms)
 }
 pub(crate) fn activate(generation: WorkerGeneration, now_ms: u64) -> bool {

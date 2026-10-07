@@ -407,12 +407,12 @@ fn a_pool_change_reverted_before_the_end_still_fails() {
 }
 
 #[test]
-fn mining_observed_stopped_only_after_ten_seconds_fails_the_terminal_check() {
+fn mining_never_observed_stopped_within_safe_stop_fails_the_terminal_check() {
     // Arrange
     let mut lines = complete();
     for line in &mut lines {
         let active = line.host_unix_ms as i64 - ORIGIN as i64;
-        if (600_000..610_000).contains(&active) {
+        if (600_000..760_000).contains(&active) {
             line.sample.as_mut().expect("sample").mining_active = true;
         }
     }

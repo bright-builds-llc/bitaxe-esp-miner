@@ -46,7 +46,8 @@ invalid watchdog continuity. That selected `stop_repeated_boundary`.
       in these phases (plan of 2026-10-06):
   - [x] Phase 0: ADR-0033 "Signed hardware profile and one-shot soak
         allowance". The soak keeps the work gate open for 600,000 active ms
-        and signs and charges 615,550 ms, adding the 15,550 ms shutdown tail.
+        and signs and charges 619,050 ms, adding the 19,050 ms upstream-default
+        shutdown tail (review correction; the Conservative tail is 15,550 ms).
         `soakAllowance` is a new grant field with its own `soak_ledger`.
         Controller 0.4 stays (optional fields, fail-closed on old peers), and
         renewals are pre-signed.
@@ -134,7 +135,7 @@ Hardware contract (soak attempt ordinals 001 onward):
   1. `just package` at a clean, pushed HEAD, and `bun run build:browser` in the
      Gate checkout at the exact pinned Gate commit.
   1. `just detect-ultra205 > P/detector.stdout.log`, with `P` a new mode-0700
-     parent under `scratch/ultra205-soak/`.
+     parent under `scratch/ultra205-soak/`, in a shell with `umask 077`.
   1. `espflash board-info --chip esp32s3 --port <detector-port> --non-interactive`,
      then the state-preserving install
      `just flash-monitor --board 205 --port <detector-port> --expected-physical-sha256 <detected> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --evidence-dir P/install --capture-timeout-seconds 360 --redact-evidence`.
@@ -151,7 +152,7 @@ Hardware contract (soak attempt ordinals 001 onward):
 - Allowed effects:
   - the exact package install above;
   - Gate Web Serial admission and the fan cooling proof;
-  - one signed soak grant with up to 34 renewals;
+  - one signed soak grant with 36 renewals;
   - BM1366 initialization and work at upstream defaults;
   - Stratum V1 to the owner's pool;
   - HTTP and WebSocket observation of the station endpoint handed off in the
@@ -161,6 +162,11 @@ Hardware contract (soak attempt ordinals 001 onward):
   signed budget, factory reset or credential injection, erase-flash, raw writes,
   OTA, network discovery, non-205 hardware, direct UART or pins, fault
   injection, voltage or fan stress, parity promotion, and raw secret output.
+- Terminal criterion (deliberate deviation): mining observed stopped on HTTP
+  and WebSocket by the end of the ordered safe-stop (160 s after the gate
+  closes), and the paused baseline with `mineonboot=false` after restoration.
+  The legacy 10 s rule measured from a serial marker that no longer reaches
+  USB, and safe-stop now includes an up-to-120-s cooling proof.
 - Live stop limits, enforced by firmware revocation and judged on every
   sample: input 4.5–5.5 V, at most 15 W, ASIC below 75 C, fresh nonzero fan,
   watchdog alive, and the 2.8 s heartbeat deadline.

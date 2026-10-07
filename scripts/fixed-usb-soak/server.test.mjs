@@ -66,9 +66,9 @@ test("a reviewed, cooled, idle-proven soak is signed once from the device ledger
   // Assert
   assert.deepEqual(authorized.value, { ready: true });
   assert.equal(first.value.grant.soakAllowance.ordinal, 1);
-  assert.equal(first.value.renewals.length, 34);
+  assert.equal(first.value.renewals.length, 36);
   assert.equal(second.value.error, "soak_artifacts_unavailable");
-  assert.equal(signed.length, 35);
+  assert.equal(signed.length, 37);
   const issued = JSON.parse(await readFile(resolve(root, "issued.json"), "utf8"));
   assert.deepEqual([issued.ordinal, issued.private_payload_persisted], [1, false]);
 });

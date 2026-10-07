@@ -3,9 +3,20 @@
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 pub const HEARTBEAT_CUTOFF_MS: u32 = 2_800;
-/// The one-shot soak budget: 600,000 ms of admitted work plus the 15,550 ms pre-reset shutdown
-/// tail (ADR-0033). Must equal `bitaxe_worker_control::SOAK_MAXIMUM_ACTIVE_MS`.
-pub const SOAK_ACTIVE_LIMIT_MS: u64 = 600_000 + super::shutdown_budget::PRE_RESET_BOUND_MS as u64;
+/// The one-shot soak budget: 600,000 ms of admitted work plus the upstream-default pre-reset
+/// shutdown tail (ADR-0033). Must equal `bitaxe_worker_control::SOAK_MAXIMUM_ACTIVE_MS`.
+pub const SOAK_ACTIVE_LIMIT_MS: u64 =
+    600_000 + super::shutdown_budget::UPSTREAM_PRE_RESET_BOUND_MS as u64;
+
+/// The pre-reset tail a budget reserves: a soak may run upstream-default, which ramps down longer.
+#[must_use]
+pub const fn shutdown_tail_ms(active_limit_ms: u32) -> u32 {
+    if active_limit_ms as u64 == SOAK_ACTIVE_LIMIT_MS {
+        super::shutdown_budget::UPSTREAM_PRE_RESET_BOUND_MS
+    } else {
+        super::shutdown_budget::PRE_RESET_BOUND_MS
+    }
+}
 const LIVE: u32 = 1;
 const ACTIVE: u32 = 2;
 const RESERVED: u32 = 3;
@@ -538,7 +549,7 @@ impl GenerationGate {
         }
         if self.budget_limited.load(Ordering::Acquire) {
             let limit = self.budget_limit_ms.load(Ordering::Acquire);
-            let Some(window) = limit.checked_sub(super::shutdown_budget::PRE_RESET_BOUND_MS) else {
+            let Some(window) = limit.checked_sub(shutdown_tail_ms(limit)) else {
                 return false;
             };
             self.budget_deadline_ms

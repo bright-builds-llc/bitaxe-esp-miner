@@ -14,9 +14,13 @@ conditions.
 ## Sequence
 
 `P` is a new mode-0700 ignored parent and `R=P/attempt-NNN` must not exist yet.
+Run every command in a shell with `umask 077`, so redirected outputs are
+mode 0600; preflight and finish refuse other modes.
 
-1. `just package`, then `just detect-ultra205 > P/detector.stdout.log`.
-1. Run preflight within 60 s of that detector output:
+1. `just package`, then install the exact package as the task contract
+   specifies.
+1. `just detect-ultra205 > P/detector.stdout.log`, then run preflight within
+   60 s of that detector output:
 
    ```sh
    just ultra205-soak preflight --private-root R --firmware-root <repo> \
@@ -29,7 +33,6 @@ conditions.
    admitted trust, the pinned Gate bundle and the canonical `soak_observer` and
    `soak_judge` binaries. It records the detected physical identity and writes
    `R/context.json`.
-1. Install the exact package as the task contract specifies.
 1. Start `just ultra205-soak serve --private-root R --authority-directory <protected authority> --pool-credentials <ignored pool file>`
    detached, with separate mode-0600 stdout and stderr files. It listens on the
    Gate origin `127.0.0.1:48765` and writes `R/server-owner.json`.
@@ -67,7 +70,7 @@ conditions.
 
 `R/result.json` is `passed` only when every one of these holds:
 
-- The device ends the soak by its budget, with work admitted for 600–615.55 active seconds.
+- The device ends the soak by its budget, with work admitted for 600–619.05 active seconds.
 - Safe-stop completes at `fan_paused`.
 - `mineonboot` stays false and the soak ledger is charged exactly once.
 - Pool settings are retained.
@@ -77,6 +80,10 @@ conditions.
 - At least one accepted share.
 - `soak_judge` credits all twenty 30-second HTTP and WebSocket windows, with no
   WebSocket gap over 5 s.
+- Each transport sees mining stopped by the end of the ordered safe-stop
+  (160 s after the gate closes), and shows the paused baseline after
+  restoration. The legacy 10 s rule measured from a serial marker that no
+  longer reaches USB, and safe-stop now includes an up-to-120-s cooling proof.
 
 The journal and records hold no pool, endpoint or credential values. The result
 never promotes parity.

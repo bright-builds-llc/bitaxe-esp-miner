@@ -18,7 +18,7 @@ fn a_soak_allowance_must_carry_exactly_the_work_gate_plus_shutdown_tail() {
     // Assert
     assert!(allowance(1).validate());
     assert!(!short.validate());
-    assert_eq!(SOAK_MAXIMUM_ACTIVE_MS - SOAK_WORK_GATE_MS, 15_550);
+    assert_eq!(SOAK_MAXIMUM_ACTIVE_MS - SOAK_WORK_GATE_MS, 19_050);
 }
 
 #[test]
@@ -35,7 +35,7 @@ fn reserving_charges_the_whole_allowance_before_preparation() {
             reserved.next_ordinal(),
             reserved.last_completed_ordinal()
         ),
-        (615_550, 2, 0)
+        (619_050, 2, 0)
     );
 }
 
@@ -79,7 +79,7 @@ fn finishing_is_idempotent_and_never_refunds() {
             twice.pending(),
             twice.last_completed_ordinal()
         ),
-        (615_550, false, 1)
+        (619_050, false, 1)
     );
 }
 

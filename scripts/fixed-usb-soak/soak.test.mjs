@@ -54,7 +54,7 @@ test("a soak allowance carries the exact budget and a fresh id", () => {
   // Arrange / Act
   const [first, second] = [soakAllowance(1), soakAllowance(1)];
   // Assert
-  assert.equal(first.maximumActiveMilliseconds, 615550);
+  assert.equal(first.maximumActiveMilliseconds, 619050);
   assert.notEqual(first.id, second.id);
 });
 
@@ -123,7 +123,7 @@ test("the observer refuses a public endpoint", async () => {
 });
 
 function qualification(overrides = {}) {
-  return { schema: "worker-qualification-v1", revocation_reason: "none", active_limit_ms: SOAK_MAXIMUM_ACTIVE_MS, budget_reserved_ms: SOAK_MAXIMUM_ACTIVE_MS,
+  return { schema: "worker-qualification-v1", revocation_reason: "none", active_limit_ms: SOAK_MAXIMUM_ACTIVE_MS, budget_reserved_ms: 240000,
     active_ms: 100000, accepted: 30, rejected: 0, work_dispatched: 500, nonce_work_correlations: 40, mine_on_boot: false,
     safe_stop_complete: false, safe_stop_stage: "not_started", voltage_volts: 5.0, power_watts: 12.5, chip_temp_celsius: 60, fan_rpm: 5000,
     voltage_fresh: true, power_fresh: true, temperature_fresh: true, fan_fresh: true, watchdog_alive: true,
@@ -174,6 +174,7 @@ test("fresh readings outside the live stop limits are unsafe", () => {
   assert.equal(unsafeSample(qualification({ power_watts: 15.5 })), true);
   assert.equal(unsafeSample(qualification({ chip_temp_celsius: 75 })), true);
   assert.equal(unsafeSample(qualification({ voltage_volts: 4.4 })), true);
+  assert.equal(unsafeSample(qualification({ fan_fresh: false })), true);
 });
 
 test("clock observations stop at the halt, before the device freezes active time", () => {

@@ -8,7 +8,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { authorityCall, readPoolForSigning } from "../fixed-usb-qualification/authority.mjs";
-import { BUNDLE, canonicalBase64, digest, exactObject, missing, nonce, QualificationError, readJson, requireCondition, writeNew } from "../fixed-usb-qualification/contract.mjs";
+import { BUNDLE, canonicalBase64, digest, exactObject, fileDigest, missing, nonce, QualificationError, readJson, requireCondition, writeNew } from "../fixed-usb-qualification/contract.mjs";
 import { body, send } from "../fixed-usb-qualification/http.mjs";
 import { validateCooling } from "../fixed-usb-qualification/iterative-contract.mjs";
 import { validateState } from "../fixed-usb-qualification/judge.mjs";
@@ -89,6 +89,7 @@ export async function createSoakSupervisor(options, operations = {}) {
   async function runWindowJudge() {
     const clockPath = resolve(root, "gate-clock.json");
     await writeNew(clockPath, { schema: "soak-gate-clock-v1", observations: clockObservations(records) });
+    if (await fileDigest(context.soak_judge.path).catch(() => null) !== context.soak_judge.sha256) return null;
     try {
       const { stdout } = await promisify(execFile)(context.soak_judge.path,
         [observer.journalPath, clockPath, context.firmware_commit, context.app_elf_sha256], { env: {}, maxBuffer: 1048576 });
@@ -120,7 +121,8 @@ export async function createSoakSupervisor(options, operations = {}) {
     "POST /activate": async (input) => {
       exactObject(input, []); requireCondition(!pending, "soak_pending");
       scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
-      review = undefined; challenge = undefined; return scope;
+      // A new scope needs its own cooling proof; an earlier session's proof never authorizes signing.
+      review = undefined; challenge = undefined; cooling = false; return scope;
     },
     "POST /cooling-review-context": async (input) => { exactObject(input, []); return { nonce: challengeFor("cooling-review"), mode: "iterative" }; },
     "POST /budget-review-context": async (input) => { exactObject(input, []); return { nonce: challengeFor("budget-review"), mode: "soak" }; },

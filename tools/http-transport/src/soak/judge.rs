@@ -13,8 +13,10 @@ pub const WINDOWS: usize = 20;
 pub const WORK_GATE_MS: u64 = 600_000;
 pub const WEBSOCKET_GAP_LIMIT_MS: u64 = 5_000;
 pub const CLOCK_RESIDUAL_LIMIT_MS: u64 = 1_000;
-/// Mining must be observed stopped on each transport within this bound after the gate closes.
-pub const TERMINAL_WINDOW_MS: u64 = 10_000;
+/// Mining must be observed stopped on each transport by the end of the ordered safe-stop: the
+/// up-to-19,050 ms upstream-default tail plus the up-to-120 s cooling proof, with margin. The legacy
+/// 10 s rule measured from a serial marker that no longer reaches USB.
+pub const TERMINAL_WINDOW_MS: u64 = 160_000;
 /// Samples this close to an active edge, beyond the clock spread, are not credited to a window:
 /// transport and Gate record delays bias their mapping by up to the spread.
 pub const EDGE_GUARD_MS: u64 = 1_000;

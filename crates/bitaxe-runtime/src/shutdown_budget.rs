@@ -9,6 +9,10 @@ pub const UART_WRITE_BOUND_MS: u32 = 100;
 pub const POLL_ALLOWANCE_MS: u32 = 50;
 pub const OWNER_AND_GPIO_MARGIN_MS: u32 = 400;
 pub const PRE_RESET_BOUND_MS: u32 = 15_550;
+/// Upstream-default ramps down from 485 MHz, so its closed plan needs a longer tail (ADR-0033).
+pub const UPSTREAM_PRE_RESET_BOUND_MS: u32 = 19_050;
+// A soak reserves the longer tail; it may never be shorter than the Conservative one.
+const _: () = assert!(UPSTREAM_PRE_RESET_BOUND_MS >= PRE_RESET_BOUND_MS);
 
 /// Rejects changed or unsupported shutdown actions before any hardware admission.
 pub fn conservative_plan_is_bounded() -> bool {
@@ -20,6 +24,18 @@ pub fn conservative_plan_is_bounded() -> bool {
         .ok()
         .and_then(|actions| maximum_pre_reset_ms(&actions))
         == Some(PRE_RESET_BOUND_MS)
+}
+
+/// The same admission check for the upstream-default plan that soak leases may run.
+pub fn upstream_plan_is_bounded() -> bool {
+    if option_env!("BITAXE_ASIC_UART_TRACE") == Some("1") {
+        return false;
+    }
+    let config = MiningReadyConfig::ultra_205_profile(1, Bm1366MiningProfile::UpstreamDefault);
+    safe_shutdown_command_actions(config)
+        .ok()
+        .and_then(|actions| maximum_pre_reset_ms(&actions))
+        == Some(UPSTREAM_PRE_RESET_BOUND_MS)
 }
 
 fn maximum_pre_reset_ms(actions: &[Bm1366AdapterAction]) -> Option<u32> {
@@ -53,6 +69,22 @@ mod tests {
         ))
         .expect("closed shutdown plan");
         assert!(maximum_pre_reset_ms(&actions).expect("bounded plan") < 30_000);
+    }
+
+    #[test]
+    fn closed_upstream_default_plan_reserves_its_longer_tail() {
+        // Arrange / Act
+        let actions = safe_shutdown_command_actions(MiningReadyConfig::ultra_205_profile(
+            1,
+            Bm1366MiningProfile::UpstreamDefault,
+        ))
+        .expect("closed shutdown plan");
+        // Assert
+        assert!(upstream_plan_is_bounded());
+        assert_eq!(
+            maximum_pre_reset_ms(&actions),
+            Some(UPSTREAM_PRE_RESET_BOUND_MS)
+        );
     }
 
     #[test]

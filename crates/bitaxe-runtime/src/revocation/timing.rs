@@ -43,7 +43,7 @@ impl GenerationGate {
             },
             generation_elapsed_ms: end_ms.wrapping_sub(self.activated_ms.load(Ordering::Acquire)),
             active_limit_ms: (active_limit != 0).then_some(active_limit),
-            shutdown_budget_ms: super::super::shutdown_budget::PRE_RESET_BOUND_MS,
+            shutdown_budget_ms: super::shutdown_tail_ms(active_limit),
             work_gate_remaining_ms: if active_limit == 0 || !started {
                 None
             } else if closed_for_generation {

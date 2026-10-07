@@ -9,8 +9,8 @@ export { SOAK_CONTEXT_SCHEMA, SOAK_MAXIMUM_ACTIVE_MS };
 export const SOAK_TASK = "task-ultra205-default-profile-soak-reverification";
 export const SOAK_TASK_LINE = "Ultra 205 upstream-default soak hardware: enabled.";
 export const SOAK_WORK_GATE_MS = 600000;
-/** 34 renewals at 20 s cover up to 80 s of preparation plus the 600 s gate. */
-export const SOAK_RENEWALS = 34;
+/** 36 renewals at 20 s, the Gate's soak bound, cover up to 120 s of preparation plus the 600 s gate. */
+export const SOAK_RENEWALS = 36;
 export const SOAK_SUGGESTED_DIFFICULTY = 1000;
 /** Fixed origin that holds the Ultra 205 Web Serial grant (AGENTS.md, Persistent Gate Browser Tab). */
 export const SOAK_PORT = 48765;

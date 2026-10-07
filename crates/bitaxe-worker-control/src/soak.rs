@@ -5,9 +5,9 @@ use thiserror::Error;
 
 const PROFILE: &str = "worker-soak-allowance-v1";
 const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
-/// Work stays admitted for 600,000 active ms; the budget adds the 15,550 ms pre-reset shutdown tail.
+/// Work stays admitted for 600,000 active ms; the budget adds the 19,050 ms upstream-default pre-reset shutdown tail.
 pub const SOAK_WORK_GATE_MS: u64 = 600_000;
-pub const SOAK_MAXIMUM_ACTIVE_MS: u64 = 615_550;
+pub const SOAK_MAXIMUM_ACTIVE_MS: u64 = 619_050;
 
 /// Signed mining hardware profile. Absent on a grant means `Conservative`.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]

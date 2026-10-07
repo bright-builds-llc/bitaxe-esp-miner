@@ -29,8 +29,8 @@ function validateOwnerResources(resource) {
       ["heap_free_bytes", "heap_largest_bytes", "stack_free_bytes"].every((key) => u32(resource[key])), "owner_resources_shape");
 }
 
-/** One-shot soak budget: 600,000 ms of work plus the 15,550 ms shutdown tail (firmware ADR-0033). */
-export const SOAK_MAXIMUM_ACTIVE_MS = 615550;
+/** One-shot soak budget: 600,000 ms of work plus the 19,050 ms upstream-default shutdown tail (firmware ADR-0033). */
+export const SOAK_MAXIMUM_ACTIVE_MS = 619050;
 
 function validateSoakObservation(soak, activeMs) {
   exactObject(soak, ["schema", "ordinal", "maximum_active_ms", "reserved_ms", "complete", "active_ms"]);

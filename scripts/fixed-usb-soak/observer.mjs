@@ -40,10 +40,12 @@ export function createSoakObserver(root, context, operations = {}) {
   const journalPath = resolve(root, "soak-observer.jsonl");
 
   async function start(endpoint) {
-    requireCondition(!used, "observer_already_used"); used = true;
+    requireCondition(!used, "observer_already_used");
     exactObject(endpoint, ["ipv4", "httpPort"]);
     requireCondition(isIP(endpoint.ipv4) === 4 && PRIVATE_FIRST_OCTETS(endpoint.ipv4.split(".").map(Number)) &&
       Number.isInteger(endpoint.httpPort) && endpoint.httpPort > 0 && endpoint.httpPort <= 65535, "observer_endpoint");
+    // Marked used only once the input is valid, so a malformed handoff does not consume the attempt root.
+    used = true;
     const binary = context.soak_observer, info = await lstat(binary.path);
     requireCondition(info.isFile() && !info.isSymbolicLink() && (info.mode & 0o111) !== 0 && await fileDigest(binary.path) === binary.sha256, "observer_binary");
     const stdout = await open(journalPath, "wx", 0o600), stderr = await open(resolve(root, "soak-observer.stderr.log"), "wx", 0o600);

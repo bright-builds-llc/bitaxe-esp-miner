@@ -3,12 +3,11 @@
 import { requireReleasedState } from "../fixed-usb-qualification/iterative-preflight.mjs";
 import { SOAK_MAXIMUM_ACTIVE_MS, SOAK_RENEWALS, SOAK_WORK_GATE_MS } from "./contract.mjs";
 
-/** The soak's live stop limits on every fresh running sample (the same bounds the firmware revokes on). */
+/** The soak's live stop limits on every running sample: fresh readings inside the firmware's revocation bounds. */
 export function unsafeSample(q) {
-  return (q.voltage_fresh && !(q.voltage_volts >= 4.5 && q.voltage_volts <= 5.5)) ||
-    (q.power_fresh && !(q.power_watts >= 0 && q.power_watts <= 15)) ||
-    (q.temperature_fresh && !(q.chip_temp_celsius < 75)) ||
-    (q.fan_fresh && !(q.fan_rpm > 0)) || !q.watchdog_alive;
+  return !(q.voltage_fresh && q.power_fresh && q.temperature_fresh && q.fan_fresh) ||
+    !(q.voltage_volts >= 4.5 && q.voltage_volts <= 5.5) || !(q.power_watts >= 0 && q.power_watts <= 15) ||
+    !(q.chip_temp_celsius < 75) || !(q.fan_rpm > 0) || !q.watchdog_alive;
 }
 
 /**
@@ -33,7 +32,9 @@ function terminalFailures(records, ordinal) {
   const check = (failed, category) => { if (failed) failures.push(category); };
   check(last.revocation_reason !== "lease_or_budget_expired", "soak_not_ended_by_budget");
   check(!last.safe_stop_complete || last.safe_stop_stage !== "fan_paused", "safe_stop_unconfirmed");
-  check(last.active_limit_ms !== SOAK_MAXIMUM_ACTIVE_MS || last.budget_reserved_ms !== SOAK_MAXIMUM_ACTIVE_MS, "soak_budget_mismatch");
+  // `budget_reserved_ms` reports the legacy campaign; the soak's own observation carries its reservation.
+  check(last.active_limit_ms !== SOAK_MAXIMUM_ACTIVE_MS || last.soak.reserved_ms !== SOAK_MAXIMUM_ACTIVE_MS ||
+    last.soak.maximum_active_ms !== SOAK_MAXIMUM_ACTIVE_MS, "soak_budget_mismatch");
   check(!(last.active_ms >= SOAK_WORK_GATE_MS && last.active_ms <= SOAK_MAXIMUM_ACTIVE_MS), "soak_active_time");
   check(last.accepted < 1, "no_accepted_share");
   check(last.work_dispatched < 1 || last.nonce_work_correlations < 1, "no_correlated_work");

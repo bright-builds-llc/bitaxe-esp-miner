@@ -16,7 +16,7 @@ fn soak_grant(ordinal: u32) -> WorkerLeaseGrant {
         "authorization":"synthetic","durationMilliseconds":60000,"renewAfterMilliseconds":20000,
         "stratum":{"endpoint":"stratum+tcp://example.invalid:3333/","username":"fixture","password":"fixture"},
         "hardwareProfile":"upstream-default",
-        "soakAllowance":{"schema":"worker-soak-allowance-v1","id":"AAAAAAAAAAAAAAAAAAAAAA","ordinal":ordinal,"maximumActiveMilliseconds":615550}}))
+        "soakAllowance":{"schema":"worker-soak-allowance-v1","id":"AAAAAAAAAAAAAAAAAAAAAA","ordinal":ordinal,"maximumActiveMilliseconds":619050}}))
     .expect("fixture")
 }
 fn soak_report() -> serde_json::Value {
@@ -36,7 +36,7 @@ fn a_soak_charges_its_own_ledger_once_and_leaves_the_others_unchanged() {
     assert_eq!(worker_qualification_budget::review().expect("review")["total_charged_ms"], 0);
     let report = soak_report();
     assert_eq!((report["total_charged_ms"].clone(), report["next_ordinal"].clone(), report["pending"].clone()),
-        (serde_json::json!(615550), serde_json::json!(2), serde_json::json!(false)));
+        (serde_json::json!(619050), serde_json::json!(2), serde_json::json!(false)));
 }
 #[test]
 fn a_replayed_soak_ordinal_is_rejected() {
@@ -59,7 +59,7 @@ fn a_failed_soak_write_never_activates_but_still_charges_during_cleanup() {
     FAIL_WRITE.store(false, Ordering::SeqCst);
     worker_acceptance_budget::finish(scope.generation).expect("finish");
     // Assert
-    assert_eq!(soak_report()["total_charged_ms"], 615550);
+    assert_eq!(soak_report()["total_charged_ms"], 619050);
     assert!(!revocation::activate(scope.generation, 1_000));
 }
 #[test]
@@ -72,7 +72,7 @@ fn boot_recovery_completes_a_pending_soak_without_refund() {
     worker_acceptance_budget::recover_after_boot(&startup::BootMiningBaselineConfirmed).expect("recover");
     // Assert
     let report = soak_report();
-    assert_eq!((report["total_charged_ms"].clone(), report["pending"].clone()), (serde_json::json!(615550), serde_json::json!(false)));
+    assert_eq!((report["total_charged_ms"].clone(), report["pending"].clone()), (serde_json::json!(619050), serde_json::json!(false)));
 }
 #[test]
 fn a_soak_needs_the_exhausted_original_campaign() {
@@ -91,6 +91,6 @@ fn the_soak_observation_reports_the_full_reservation_for_its_generation_only() {
     // Act
     let observed = worker_soak_budget::observation(scope.generation.raw(), 1_000).expect("observation");
     // Assert
-    assert_eq!(observed["reserved_ms"], 615550);
+    assert_eq!(observed["reserved_ms"], 619050);
     assert!(worker_soak_budget::observation(scope.generation.raw().wrapping_add(8), 1_000).is_none());
 }
