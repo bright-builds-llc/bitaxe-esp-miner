@@ -216,8 +216,9 @@ fn run_owner<V>(
                 crate::panic_evidence::enter_control_phase(
                     bitaxe_worker_control::ControlDiagnosticPhase::Cleanup as u32,
                 );
-                if worker.tick(now).is_err() {
-                    diagnostic("bwg_worker event=restoration_pending");
+                // Name the typed cause: a decreasing clock must read `monotonic_reset`.
+                if let Err(error) = worker.tick(now) {
+                    diagnostic(error.category());
                 }
                 continue;
             }

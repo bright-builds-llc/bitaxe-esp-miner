@@ -416,6 +416,27 @@ rust_test(
 )
 
 rust_test(
+    name = "bwg_restoration_seam_source_ownership_tests",
+    srcs = ["src/bwg_restoration_seam_source_ownership_test.rs"],
+    compile_data = [
+        "src/bwg_worker_usb.rs",
+        "src/bwg_worker_usb/link.rs",
+        "src/bwg_worker_usb/writer.rs",
+        "src/bwg_worker_session.rs",
+        "src/bwg_worker_nvs.rs",
+        "src/production_mining_session/bwg.rs",
+        "src/production_mining_session/owner_loop.rs",
+        "src/production_mining_session/revocation.rs",
+        "src/production_mining_session/revocation/global.rs",
+        "src/main.rs",
+        "//crates/bitaxe-worker-control:compiler_inputs",
+    ],
+    crate_name = "bwg_restoration_seam_source_ownership_tests",
+    crate_root = "src/bwg_restoration_seam_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "self_test_source_ownership_tests",
     srcs = [
         "src/boot_evidence.rs",
