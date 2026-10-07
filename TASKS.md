@@ -594,6 +594,34 @@ Owner decisions (2026-10-07, later the same day):
 - Authorize the metadata-only, non-signing durable-replay diagnostic seam
   described below.
 
+Plan (2026-10-07), recorded in [ADR-0035](docs/adr/0035-serial-bwg-restoration-campaign.md):
+
+- [x] P1 pure crate (872b5898, ae46184e):
+  - the clock-discontinuity stimulus, armed on send confirmation, consumed
+    once per boot on an idle tick;
+  - a detection counter only in `enforce_clock`;
+  - the stimulus and rejection reviews;
+  - read-only replay attribution in the verifier;
+  - tests, including a decreasing tick during an active lease.
+- [x] P2 firmware (c92462c1): the tick-error diagnostic carries the error category; a
+      source-ownership test pins native deadlines to the real clock; the
+      signed Start and Renew stack audits pass.
+- [ ] P3 Gate:
+  - a `restorationQualification` mode with a restoration page that does not
+    auto-renew;
+  - the stimulus and review operations;
+  - replay of server-held artifacts;
+  - a fix so `close()` no longer overwrites a device-ended restoration reason.
+
+  Push, then bump the pin here.
+- [ ] P4 host owner `scripts/bwg-restoration/`:
+  - preflight, serve with a persistent scenario scope, presence watcher,
+    per-scenario judges, seal, and all-or-nothing projection publication;
+  - registration in `owners.mjs`, a Bazel target and a `just` recipe.
+- [ ] P5 hardware contract (below), written while disabled; verify and push.
+- [ ] P6 add the enabling line, run the attempt, have the evidence reviewed
+      independently, and publish all eight projections together.
+
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
 also advances the current high-water. A generic rejection therefore cannot
