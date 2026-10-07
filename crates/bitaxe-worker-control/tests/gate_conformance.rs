@@ -305,3 +305,97 @@ fn gate_payload_integrity_vectors_match_exact_rust_lexical_bytes() {
         ));
     }
 }
+
+#[test]
+fn gate_authorization_vectors_keep_their_exact_acceptance_categories() {
+    // Arrange: the pinned Gate artifacts plus deterministic mutations of them.
+    if env::var("BWG_DEPLOYMENT_FIXTURES").is_err() {
+        assert_ne!(
+            env::var("BWG_REQUIRE_PINNED_FIXTURES").ok().as_deref(),
+            Some("1"),
+            "required deployment fixtures are absent"
+        );
+        return;
+    }
+    let deployment = required_fixture("BWG_DEPLOYMENT_FIXTURES");
+    let trust = || {
+        WorkLeaseAuthorityTrust::from_deployment_json(&deployment["trust"].to_string())
+            .expect("pinned deployment trust must parse")
+    };
+    let context = |binding: &str| {
+        bitaxe_worker_control::WorkerLeaseAuthorizationContext::parse(binding)
+            .expect("fixture binding")
+    };
+    let gate_context = context(text(
+        &deployment["start"]["input"],
+        "controlSessionBindingSha256",
+    ));
+    let other_context = context(&"T".repeat(43));
+    let challenge = text(&deployment["renew"]["input"], "activeChallengeId");
+    let grant = |request: Value| -> WorkerLeaseGrant {
+        serde_json::from_value(request).expect("Gate grant parses")
+    };
+    let renewal = |request: Value| -> WorkerLeaseRenewal {
+        serde_json::from_value(request).expect("Gate renewal parses")
+    };
+    let start = authorized_request(&deployment, "start");
+    let renew = authorized_request(&deployment, "renew");
+    let mut changed_terms = start.clone();
+    changed_terms["stratum"]["password"] = "changed".into();
+    let mut tampered = start.clone();
+    let compact = text(&start, "authorization");
+    let flipped = if compact.ends_with('A') { "B" } else { "A" };
+    tampered["authorization"] = format!("{}{flipped}", &compact[..compact.len() - 1]).into();
+    let mut oversized = start.clone();
+    oversized["authorization"] = "a".repeat(513).into();
+    let category = |result: Result<(), LeaseAuthorizationError>| match result {
+        Ok(()) => "accepted",
+        Err(error) => error.category(),
+    };
+
+    // Act
+    let mut accepted = WorkLeaseAuthorizationVerifier::new(trust(), MemorySequenceStore::default());
+    let accepted_start = category(accepted.verify_start(&grant(start.clone()), &gate_context));
+    let accepted_renew =
+        category(accepted.verify_renewal(&renewal(renew.clone()), challenge, &gate_context));
+    let replayed_start = category(accepted.verify_start(&grant(start.clone()), &gate_context));
+    let replayed_renew =
+        category(accepted.verify_renewal(&renewal(renew.clone()), challenge, &gate_context));
+    let cross_context_replay =
+        category(accepted.verify_start(&grant(start.clone()), &other_context));
+    let mut fresh = WorkLeaseAuthorizationVerifier::new(trust(), MemorySequenceStore::default());
+    let changed_request = category(fresh.verify_start(&grant(changed_terms), &gate_context));
+    let changed_context = category(fresh.verify_start(&grant(start.clone()), &other_context));
+    let changed_signature = category(fresh.verify_start(&grant(tampered), &gate_context));
+    let oversized_authorization = category(fresh.verify_start(&grant(oversized), &gate_context));
+    let renew_after_rejections =
+        category(fresh.verify_renewal(&renewal(renew), challenge, &gate_context));
+
+    // Assert
+    assert_eq!(
+        [
+            accepted_start,
+            accepted_renew,
+            replayed_start,
+            replayed_renew,
+            cross_context_replay,
+            changed_request,
+            changed_context,
+            changed_signature,
+            oversized_authorization,
+            renew_after_rejections,
+        ],
+        [
+            "accepted",
+            "accepted",
+            "replay",
+            "replay",
+            "invalid_authorization",
+            "invalid_authorization",
+            "invalid_authorization",
+            "invalid_authorization",
+            "invalid_authorization",
+            "accepted",
+        ]
+    );
+}
