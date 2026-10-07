@@ -127,3 +127,18 @@ test("positional recipes are read from the Justfile", () => {
   // Assert
   assert.deepEqual([...names].sort(), ["diagnose", "hardware-operator"]);
 });
+
+test("the restoration owner is finished through its positional recipe without a stage", async (t) => {
+  // Arrange
+  const fixture = await workspaceFixture();
+  await writeFile(resolve(fixture.base, "Justfile"), "[positional-arguments]\nbwg-restoration action *args:\n    true\n");
+  const owner = await detachedOwner();
+  t.after(() => kill(owner));
+  await writeServerOwner(fixture.root, owner);
+  // Act
+  await stopAndFinish({ name: "bwg-restoration", root: fixture.root }, fixture.operations);
+  // Assert
+  const raw = (await readFile(resolve(fixture.env.FAKE_JUST_DIR, "raw-calls.jsonl"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+  assert.deepEqual(raw.at(-1), ["bwg-restoration", "finish", "--private-root", fixture.root]);
+  assert.equal(ownerLayout("bwg-restoration", fixture.root).owner.staged, false);
+});

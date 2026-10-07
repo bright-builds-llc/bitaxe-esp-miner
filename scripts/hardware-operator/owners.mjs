@@ -27,6 +27,7 @@ export const OWNERS = Object.freeze(Object.fromEntries([
   family("str005-startup-preparation", "restart"),
   family("str005-heartbeat-preparation", "restart"),
   family("ultra205-soak", "soak"),
+  family("bwg-restoration", "restoration"),
 ].map((owner) => [owner.name, Object.freeze(owner)])));
 
 /** Resolve an owner name and stage into the exact files its serve and finish use. */
