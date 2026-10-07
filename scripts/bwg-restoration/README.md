@@ -46,7 +46,7 @@ mode 0600. Preflight and finish refuse other modes.
 1. Install the exact package as the task contract specifies. Then run
    `bazel build //tools/flash:flash`, which the recipe also runs.
 1. Run `just detect-ultra205 > P/detector.stdout.log`. Then run preflight within
-   60 s of that detector output:
+   300 s of that detector output:
 
    ```sh
    just bwg-restoration preflight --private-root R --firmware-root <repo> \

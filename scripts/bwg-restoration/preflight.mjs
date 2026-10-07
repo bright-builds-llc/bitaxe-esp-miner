@@ -11,7 +11,9 @@ import { parseDetector } from "../hardware-operator/detector.mjs";
 import { ATTEMPT_PATTERN, BUNDLE, CONTEXT_SCHEMA, PAGE, pinnedGateCommit, requireRestorationTask } from "./contract.mjs";
 
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
-const DETECTOR_FRESH_MS = 60000;
+// `just` runs through `bazel run`, and on this host a held binary launch can take minutes; a 60 s bound left the
+// soak seal stale twice. Same-device identity is proved again by the watcher and by Gate possession.
+const DETECTOR_FRESH_MS = 300000;
 const WATCHER_RELATIVE_PATH = "bazel-bin/tools/flash/flash";
 
 async function canonicalWatcher(firmwareRoot) {

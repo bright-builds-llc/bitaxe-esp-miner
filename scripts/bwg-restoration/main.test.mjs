@@ -78,10 +78,10 @@ test("preflight refuses a Gate commit other than the pinned one", async () => {
   await rejectsWith(main(argv(), operations), "gate_commit_not_pinned");
 });
 
-test("preflight refuses a detector output older than 60 s", async () => {
+test("preflight refuses a detector output older than 300 s", async () => {
   // Arrange
   const { detector, argv, operations } = await fixture();
-  const old = new Date(Date.now() - 61000);
+  const old = new Date(Date.now() - 301000);
   await utimes(detector, old, old);
   // Act / Assert
   await rejectsWith(main(argv(), operations), "restoration_detector_stale");

@@ -27858,3 +27858,127 @@ Residual risks:
 - The 23–33 s workspace-status runs without a relink remain unattributed.
 - Tests that exec freshly written fakes under short bounds stay flaky on this
   host until the owner setting is applied.
+
+### task-web-ui-variants-and-size-budget | 2026-10-06 | Add a SolidJS web UI variant with feature parity and a size audit
+
+Status: Active, owner-approved 2026-10-07. Requested 2026-10-06, revised the same day. Keep two
+interchangeable web UI implementations for comparison and debugging, choose
+one per build with a build flag, and audit bundle sizes, since small images
+suit the 3 MiB `www` partition and OTAWWW uploads.
+
+Variants:
+
+- `current` (default): today's handwritten HTML, CSS and plain-JavaScript
+  operator UI in `firmware/bitaxe/static/www` (about 50 KB raw, no build
+  step). UI-004 and OTA-002 evidence bind this variant, so it stays the
+  default until another variant is verified on its own.
+- `solid`: a SolidJS port that first matches the current UI's pages
+  one-to-one (dashboard, network, pool, settings, scoreboard, logs, update,
+  theme) and the same API calls, before growing.
+
+Upstream's Angular AxeOS (`reference/esp-miner/main/http_server/axe-os`) is a
+feature reference only. It is never built, bundled or copied into this
+repository; both variants reach feature parity with it through independent
+implementations, with breadcrumbs to the upstream sources they follow.
+
+- [x] Decide the selector: one Bazel build setting (for example
+      `--//firmware/bitaxe:web_ui=current|solid`) surfaced through
+      `just build`, `just package` and `just flash`, and record the chosen
+      variant and its asset digests in the package manifest so hardware
+      evidence binds the exact variant. Done: `string_flag`
+      `//firmware/bitaxe:web_ui` (default `current`) selects
+      `:web_ui_staged`; `--web-ui <variant>` on `just build|package|flash|
+      flash-monitor`; manifest fields `web_ui_variant` and `web_ui_assets`
+      (xtask); the flash tool builds the requested variant and refuses a
+      missing or mismatched manifest variant.
+- [x] Add locked, hermetic JavaScript build tooling for SolidJS and its
+      bundler; the repo has no root `package.json` today and imports npm
+      packages individually in `MODULE.bazel` (for example a pnpm lockfile
+      through `aspect_rules_js`). Done: `firmware/bitaxe/web/solid`
+      `pnpm-lock.yaml` (pnpm 10, exact pins, `allowBuilds: {}`) through
+      `npm_translate_lock` hub `npm_web_ui`; Vite 8.3.3 and
+      `vite-plugin-solid` 2.11.14 run as `//firmware/bitaxe/web/solid:dist`.
+- [x] Port the current UI to SolidJS, sharing `api-client.js` behavior and
+      the static UI test contract, so `solid` passes the same workflow tests
+      as `current`. Done: same eight pages, routes, requests and
+      affordances; shared stylesheet; `//firmware/bitaxe/web/solid:solid_ui_test`
+      runs the pure-core and API request-shape contracts against both
+      implementations.
+- [x] Inventory upstream AxeOS features (pages, settings, charts, swarm,
+      update flows) against both variants and the firmware API, and plan the
+      parity work for each variant from that list. Done:
+      `docs/web-ui/axeos-feature-inventory.md`.
+- [x] Add a repo-owned size report (for example `just web-ui-sizes`) giving
+      raw and gzip bytes per file, per-variant totals, and SPIFFS bytes used
+      in the generated `www.bin`; run it in CI and keep a checked-in history
+      to show trends. Done locally: `just web-ui-sizes` and
+      `docs/web-ui/size-history.csv` (`--append-history`). CI is pending:
+      there is no Bazel CI workflow, and the managed CI must not be edited.
+- [x] After the first `solid` build, set a hard gzip budget per variant from
+      the measurements and fail the build when it is exceeded. Done:
+      `firmware/bitaxe/web-ui-budget.json` (current 15,700, solid 19,500
+      gzip bytes) enforced by `//tools/automation:web_ui_budget_test`.
+- [x] Keep every variant fitting the partition, and keep the static file
+      server's `.gz` handling and cache headers working for each. Done: the
+      budget test checks partition fit and that every `.gz` decompresses to
+      its source; solid script and style names are content-hashed.
+
+Authorization: software and documentation only. Installing a non-default
+variant on hardware needs its own task contract, and promoting any UI row
+for a new variant needs its own evidence.
+
+Verification (2026-10-07, worktree branch before merge):
+
+- `bun scripts/bright-builds-check.ts all`: findings=0.
+- `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`
+  and `cargo build --all-targets --all-features`: clean.
+- `cargo test --all-features`: 59 suites, 2,739 passed, 0 failed.
+- `just test`: 305 of 308 passed on the first run.
+  - `automation_test` failed on a real drift: `static-ui.test.ts` is
+    digest-bound UI-004 evidence. The comment edit was reverted.
+  - `usb_bootstrap_measure_composition_test` and
+    `virtual_emulator_process_test` were load flakes.
+  - All three, plus `web_ui_budget_test` and `solid_ui_test`, then passed.
+- `just verify-redaction`: succeeded.
+- `just package` recorded `web_ui_variant: current` with 9 asset digests,
+  including the generated `/assets/app.css.gz` and `/version.txt`.
+- `just package --web-ui solid` recorded `web_ui_variant: solid` with 7
+  asset digests and hashed `assets/index-*.js|css` plus gzip siblings.
+- The firmware ELF was reused from cache, so only `www.bin` changed.
+- `just web-ui-sizes` ran.
+- A browser check of the solid build against a scratch mock API covered
+  navigation, history, prefill, write-only password clearing, logs, theme,
+  the scoreboard and the mobile `inert` drawer.
+- No hardware was touched.
+
+Lead review (2026-10-07, after merge 57a1ba78 into main):
+
+- The flash variant check, flag plumbing and packaging change were reviewed.
+- Passing the explicit default flag (`--//firmware/bitaxe:web_ui=current`)
+  does not discard the analysis cache; switching to `solid` does, as expected.
+- Integrated main gates passed: Bright Builds, fmt, clippy, build,
+  `cargo test` and redaction.
+- `just test` passed 317 of 318. The failure was a load timeout in
+  `str005_v2_serial_operator_private_output_test`, which passes alone.
+
+Completion review: ADR-0034 records the design and updates ADR-0010.
+
+- Live bug fixed: the committed `assets/app.css.gz` was stale (it lacked the
+  `.scoreboard-*` rules), and the server always prefers a `.gz` sibling, so
+  devices served old CSS. The file is deleted. Staging now generates it
+  deterministically from `app.css`, and the package refuses committed `.gz`
+  sources. For `current`, only `/assets/app.css.gz` keeps a gzip sibling, as
+  before.
+- Evidence consequence: the bytes served at `/assets/app.css.gz` change. Any
+  re-projection of UI-004, API-008 or FS-001 evidence needs a new package
+  identity. Archived evidence is not altered.
+- Measured gzip totals: current 13,998 and solid 17,339 bytes. Measured
+  SPIFFS use: 225 and 273 of 11,520 pages, 1.95% and 2.37%.
+- Residual risks:
+  - The size report and budget run locally only, since there is no Bazel CI
+    workflow.
+  - Distributing a solid package needs the solid-js MIT notice to ship with
+    it.
+  - The solid variant has no hardware evidence.
+  - `stratum-v2-restore-rebuild` keeps a byte-for-byte legacy-tree path for
+    historical commits.

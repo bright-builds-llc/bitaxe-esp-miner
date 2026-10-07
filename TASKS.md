@@ -24,120 +24,6 @@ new work.
 
 ## Active
 
-### task-web-ui-variants-and-size-budget | 2026-10-06 | Add a SolidJS web UI variant with feature parity and a size audit
-
-Status: Active, owner-approved 2026-10-07. Requested 2026-10-06, revised the same day. Keep two
-interchangeable web UI implementations for comparison and debugging, choose
-one per build with a build flag, and audit bundle sizes, since small images
-suit the 3 MiB `www` partition and OTAWWW uploads.
-
-Variants:
-
-- `current` (default): today's handwritten HTML, CSS and plain-JavaScript
-  operator UI in `firmware/bitaxe/static/www` (about 50 KB raw, no build
-  step). UI-004 and OTA-002 evidence bind this variant, so it stays the
-  default until another variant is verified on its own.
-- `solid`: a SolidJS port that first matches the current UI's pages
-  one-to-one (dashboard, network, pool, settings, scoreboard, logs, update,
-  theme) and the same API calls, before growing.
-
-Upstream's Angular AxeOS (`reference/esp-miner/main/http_server/axe-os`) is a
-feature reference only. It is never built, bundled or copied into this
-repository; both variants reach feature parity with it through independent
-implementations, with breadcrumbs to the upstream sources they follow.
-
-- [x] Decide the selector: one Bazel build setting (for example
-      `--//firmware/bitaxe:web_ui=current|solid`) surfaced through
-      `just build`, `just package` and `just flash`, and record the chosen
-      variant and its asset digests in the package manifest so hardware
-      evidence binds the exact variant. Done: `string_flag`
-      `//firmware/bitaxe:web_ui` (default `current`) selects
-      `:web_ui_staged`; `--web-ui <variant>` on `just build|package|flash|
-      flash-monitor`; manifest fields `web_ui_variant` and `web_ui_assets`
-      (xtask); the flash tool builds the requested variant and refuses a
-      missing or mismatched manifest variant.
-- [x] Add locked, hermetic JavaScript build tooling for SolidJS and its
-      bundler; the repo has no root `package.json` today and imports npm
-      packages individually in `MODULE.bazel` (for example a pnpm lockfile
-      through `aspect_rules_js`). Done: `firmware/bitaxe/web/solid`
-      `pnpm-lock.yaml` (pnpm 10, exact pins, `allowBuilds: {}`) through
-      `npm_translate_lock` hub `npm_web_ui`; Vite 8.3.3 and
-      `vite-plugin-solid` 2.11.14 run as `//firmware/bitaxe/web/solid:dist`.
-- [x] Port the current UI to SolidJS, sharing `api-client.js` behavior and
-      the static UI test contract, so `solid` passes the same workflow tests
-      as `current`. Done: same eight pages, routes, requests and
-      affordances; shared stylesheet; `//firmware/bitaxe/web/solid:solid_ui_test`
-      runs the pure-core and API request-shape contracts against both
-      implementations.
-- [x] Inventory upstream AxeOS features (pages, settings, charts, swarm,
-      update flows) against both variants and the firmware API, and plan the
-      parity work for each variant from that list. Done:
-      `docs/web-ui/axeos-feature-inventory.md`.
-- [x] Add a repo-owned size report (for example `just web-ui-sizes`) giving
-      raw and gzip bytes per file, per-variant totals, and SPIFFS bytes used
-      in the generated `www.bin`; run it in CI and keep a checked-in history
-      to show trends. Done locally: `just web-ui-sizes` and
-      `docs/web-ui/size-history.csv` (`--append-history`). CI is pending:
-      there is no Bazel CI workflow, and the managed CI must not be edited.
-- [x] After the first `solid` build, set a hard gzip budget per variant from
-      the measurements and fail the build when it is exceeded. Done:
-      `firmware/bitaxe/web-ui-budget.json` (current 15,700, solid 19,500
-      gzip bytes) enforced by `//tools/automation:web_ui_budget_test`.
-- [x] Keep every variant fitting the partition, and keep the static file
-      server's `.gz` handling and cache headers working for each. Done: the
-      budget test checks partition fit and that every `.gz` decompresses to
-      its source; solid script and style names are content-hashed.
-
-Authorization: software and documentation only. Installing a non-default
-variant on hardware needs its own task contract, and promoting any UI row
-for a new variant needs its own evidence.
-
-Verification (2026-10-07, worktree branch before merge):
-
-- `bun scripts/bright-builds-check.ts all`: findings=0.
-- `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`
-  and `cargo build --all-targets --all-features`: clean.
-- `cargo test --all-features`: 59 suites, 2,739 passed, 0 failed.
-- `just test`: 305 of 308 passed on the first run.
-  - `automation_test` failed on a real drift: `static-ui.test.ts` is
-    digest-bound UI-004 evidence. The comment edit was reverted.
-  - `usb_bootstrap_measure_composition_test` and
-    `virtual_emulator_process_test` were load flakes.
-  - All three, plus `web_ui_budget_test` and `solid_ui_test`, then passed.
-- `just verify-redaction`: succeeded.
-- `just package` recorded `web_ui_variant: current` with 9 asset digests,
-  including the generated `/assets/app.css.gz` and `/version.txt`.
-- `just package --web-ui solid` recorded `web_ui_variant: solid` with 7
-  asset digests and hashed `assets/index-*.js|css` plus gzip siblings.
-- The firmware ELF was reused from cache, so only `www.bin` changed.
-- `just web-ui-sizes` ran.
-- A browser check of the solid build against a scratch mock API covered
-  navigation, history, prefill, write-only password clearing, logs, theme,
-  the scoreboard and the mobile `inert` drawer.
-- No hardware was touched.
-
-Completion review: ADR-0034 records the design and updates ADR-0010.
-
-- Live bug fixed: the committed `assets/app.css.gz` was stale (it lacked the
-  `.scoreboard-*` rules), and the server always prefers a `.gz` sibling, so
-  devices served old CSS. The file is deleted. Staging now generates it
-  deterministically from `app.css`, and the package refuses committed `.gz`
-  sources. For `current`, only `/assets/app.css.gz` keeps a gzip sibling, as
-  before.
-- Evidence consequence: the bytes served at `/assets/app.css.gz` change. Any
-  re-projection of UI-004, API-008 or FS-001 evidence needs a new package
-  identity. Archived evidence is not altered.
-- Measured gzip totals: current 13,998 and solid 17,339 bytes. Measured
-  SPIFFS use: 225 and 273 of 11,520 pages, 1.95% and 2.37%.
-- Residual risks:
-  - The size report and budget run locally only, since there is no Bazel CI
-    workflow.
-  - Distributing a solid package needs the solid-js MIT notice to ship with
-    it.
-  - The solid variant has no hardware evidence.
-  - `stratum-v2-restore-rebuild` keeps a byte-for-byte legacy-tree path for
-    historical commits.
-
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
 
 Status: Blocked historical evidence. The consumed commands/plans below are historical, not current execution authority. ADR-0021 and `task-fixed-usb-serial-qualification` own the replacement transport/baseline; missing historical evidence is not promoted or erased.
@@ -574,7 +460,7 @@ Migration dependency satisfied: completed `task-fixed-usb-serial-qualification`,
       Gate child evidence, and close BWG Core Ticket 23 only when every
       acceptance link resolves.
 
-Status: Blocked pending a serial successor effect contract; historical commands below are not active authority.
+Status: Active (2026-10-07). The serial successor contract below replaces the historical commands, which are not active authority. Hardware stays disabled until its enabling line is added.
 
 Depends on: completed `task-fixed-usb-serial-qualification`; historical firmware commits
 `aa973c43`, `5ddcad17`, `cc13193c`, and `616cc489`;
@@ -677,13 +563,95 @@ Plan (2026-10-07), recorded in [ADR-0035](docs/adr/0035-serial-bwg-restoration-c
   - a fix so `close()` no longer overwrites a device-ended restoration reason.
 
   Push, then bump the pin here.
-- [ ] P4 host owner `scripts/bwg-restoration/`:
+- [x] P4 host owner `scripts/bwg-restoration/` (merged 96898f9c):
   - preflight, serve with a persistent scenario scope, presence watcher,
     per-scenario judges, seal, and all-or-nothing projection publication;
   - registration in `owners.mjs`, a Bazel target and a `just` recipe.
 - [ ] P5 hardware contract (below), written while disabled; verify and push.
 - [ ] P6 add the enabling line, run the attempt, have the evidence reviewed
       independently, and publish all eight projections together.
+
+Serial successor hardware contract (attempt ordinals 001 onward). The run is
+disabled until the enabling line below is added; the line does not exist yet.
+
+- Objective: on one detector-admitted Ultra 205, through the production Web
+  Serial Gate and the owner's Stratum V1 pool, prove each of the following:
+  - the eight scenarios in ADR-0035's order: completion, pause, terminal
+    cancel, exclusive expiry, in-process monotonic reset, USB-only disconnect,
+    both-power reboot, and the N1–N4 authorization negatives;
+  - safe stop, credential absence and same-key reacquisition;
+  - journal and high-water durability;
+  - cleanup.
+- Private inputs, used at run time and never printed, recorded or committed:
+  - the existing protected authority directory;
+  - the ignored `pool-credentials.json` (`pool_config: local-owner-supplied`).
+- Permitted commands, in order (detail in `scripts/bwg-restoration/README.md`):
+  1. At a clean, pushed HEAD whose Gate pin carries the restoration page, run
+     `just package`. In the Gate checkout at that exact pinned commit, run
+     `bun run build:browser`.
+  1. In a shell with `umask 077`, create a new mode-0700 parent `P` under
+     `scratch/bwg-restoration/`. Run `just detect-ultra205 > P/detector.stdout.log`.
+  1. Run `espflash board-info --chip esp32s3 --port <detector-port> --non-interactive`,
+     then the state-preserving install
+     `just flash-monitor --board 205 --port <detector-port> --expected-physical-sha256 <detected> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --evidence-dir P/install --capture-timeout-seconds 360 --redact-evidence`.
+     Skip both when the device already runs the exact package.
+  1. Run a fresh detector, then `just bwg-restoration preflight` for
+     `R=P/attempt-NNN`.
+  1. Run `just bwg-restoration serve` detached under `nohup`, with separate
+     mode-0600 stdout and stderr files in `P`.
+  1. In the dedicated Gate tab, open `http://127.0.0.1:48765/` and run the
+     README's per-scenario operations through `restorationSupervisor.run`.
+     Check `document.visibilityState` before each journaled click. At the
+     physical checkpoints, relay the supervisor's instruction to the owner:
+     remove USB only, or remove barrel power and USB, then restore barrel
+     before USB. No human wait has a deadline.
+  1. Navigate the tab to `about:blank` with the page's own `location.replace`.
+     Stop serve, then seal with
+     `just hardware-operator owner-finish --owner bwg-restoration --private-root R`.
+  1. Publish only after all eight scenarios pass and an independent review
+     agrees: `just bwg-restoration publish --private-root R`, then
+     `just verify-redaction`.
+- Allowed effects:
+  - the exact install above;
+  - Gate Web Serial admission and possession;
+  - unbudgeted Conservative Stratum V1 signed grants: at most 10 Starts and 2
+    renewals per attempt, each lease at most 60 s, plus at most 2 re-arms per
+    physical scenario;
+  - BM1366 work at the Conservative preset;
+  - one `clock_discontinuity_stimulus` per device boot;
+  - the read-only stimulus, rejection and status reviews;
+  - replay of this attempt's own signed artifacts in N1–N4;
+  - owner-performed USB and barrel removal and restoration, only at armed
+    checkpoints;
+  - device safe stop and restoration.
+- Prohibited effects:
+  - general fault injection, ad hoc control writes, and using
+    `restore{monotonic_reset}` as evidence;
+  - direct UART or pins, erase, factory reset, credential injection or OTA;
+  - other devices or pools, the upstream-default profile, Stratum V2, and
+    voltage or fan stress;
+  - network discovery;
+  - parity promotion, raw secret output, and publishing before all eight pass.
+- Live limits: firmware-enforced revocation at input 4.5–5.5 V, at most 15 W,
+  ASIC below 75 C, a fresh nonzero fan reading, watchdog alive, the 2.8 s
+  heartbeat and the 60 s lease. The restoration page exposes no live samples,
+  so these limits are enforced but not separately judged. That is a recorded
+  non-claim.
+- Evidence: `R` is a private `ProtectedOperational` root with mode-0600 files.
+  Committed projections hold only allowlisted digests, closed categories and
+  `true` facts, published as one all-or-nothing batch.
+- Recovery: firmware revokes and safe-stops on any fault, and the Gate restores
+  the baseline. A failed physical window becomes `rearm_required`. If
+  restoration or the final state cannot be confirmed, hold the device idle and
+  stop with `stop_hardware_blocker`. No reflash beyond step 3, and no power
+  action outside an armed checkpoint.
+- Retry bound: `docs/hardware/hardware-attempt-policy.md`. The authoritative
+  signature is (scenario, stage, category, discriminator). Each new ordinal
+  reruns all eight scenarios and needs verified progress.
+- Accepted outcomes: `complete` only when all eight pass in one attempt and an
+  independent review agrees. Otherwise `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary` or
+  `stop_impossible_contract`.
 
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
