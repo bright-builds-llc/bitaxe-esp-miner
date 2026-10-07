@@ -158,9 +158,11 @@ Developer Tools. That list exists to let local software skip the system's
 security-policy checks; `spctl developer-mode enable-terminal` shows the pane
 if it is missing. It is a security setting, so agents must not change it. After
 enabling it, confirm the effect with a fresh `run` over a just-written script.
-On 2026-10-07 that brought first output down from 71.6 s to about 150 ms. The
-setting covers only processes launched from the listed apps, so list each app
-you run repository commands from.
+On 2026-10-07, fresh scripts started in about 150 ms right after a restart.
+Later, under heavy parallel builds, a fresh binary was again held for 208 s and
+an existing one for 235 s, so the setting alone is not a confirmed fix. Fewer
+concurrent builds, which means fewer new executables for `syspolicyd` to
+assess, is the other lever. Record the before and after with the recorder.
 
 ## Reclaim leaked test directories
 

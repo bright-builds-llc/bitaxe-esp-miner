@@ -87,10 +87,20 @@ Effects observed this session:
 The owner-side remedy, and how to confirm it, is in
 [the guide](host-stall-diagnostics.md#first-exec-of-a-new-executable).
 
-Remedy confirmed, 2026-10-07: the owner added Claude, the app that launches
-agent commands, to Developer Tools. Three fresh one-line scripts then reached
-first stdout in 244, 151 and 148 ms under the same recorder, against 71,580 ms
-before. `syspolicyd` and `fseventsd` fell to about 0% CPU.
+Remedy not confirmed, 2026-10-07: the owner added Claude to Developer Tools
+and the host had restarted. Three fresh one-line scripts then reached first
+stdout in 244, 151 and 148 ms, with `syspolicyd` and `fseventsd` near 0% CPU.
+The improvement did not hold. Later that day, while three agent worktrees ran
+heavy builds, `syspolicyd` was back near 38% CPU:
+
+- A freshly compiled C binary was held for 208 s.
+- A recorded workspace-status run was held for 235 s, with the long-lived
+  `xtask` binary at `_dyld_start + 0` in both samples.
+- Unrecorded status runs took 15–168 s.
+
+The early result was therefore at least partly the restart clearing the
+backlog. Whether Developer Tools covers this launch chain is unproven, and the
+hold also reaches binaries that are not new.
 
 Private evidence: `scratch/host-stalls-20261006/`. Summary SHA-256
 `ad7e16f92579a055e0d183fdf5de9e5eab8421c67092a532124807f00d8876cf`; capture
