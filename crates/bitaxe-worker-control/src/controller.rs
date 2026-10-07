@@ -1,3 +1,4 @@
+mod clock;
 mod confirmation;
 mod response_types;
 use response_types::PreparedEffect;
@@ -7,6 +8,7 @@ mod frame;
 mod inspection;
 mod noise;
 mod probe;
+mod rejection_review;
 mod renew_dispatch;
 mod restart;
 mod start_dispatch;
@@ -136,6 +138,8 @@ pub struct WorkerControl<V, S> {
     maybe_v2_generation: Option<u64>,
     maybe_noise_observation: Option<crate::noise::NoiseObservation>,
     maybe_noise_generation: Option<u64>,
+    clock_stimulus: crate::clock_stimulus::ClockStimulus,
+    clock_discontinuities_detected: u32,
 }
 
 impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
@@ -186,6 +190,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             maybe_v2_generation: None,
             maybe_noise_observation: None,
             maybe_noise_generation: None,
+            clock_stimulus: crate::clock_stimulus::ClockStimulus::new(),
+            clock_discontinuities_detected: 0,
         })
     }
 
@@ -228,6 +234,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         self.maybe_restart_token = None;
         self.maybe_boot_restoration_report_generation = None;
         self.seen_nonce_digests.clear();
+        self.clock_stimulus.clear_pending();
     }
 
     #[must_use]
@@ -264,11 +271,6 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         let result = self.safe_stop(RestorationReason::ControlFailed, monotonic_milliseconds);
         self.invalidate_session();
         result
-    }
-
-    pub fn tick(&mut self, monotonic_milliseconds: u64) -> Result<(), WorkerControlError> {
-        self.session.noise_poll();
-        self.enforce_clock(monotonic_milliseconds)
     }
 
     fn prepare_possession(
@@ -354,9 +356,13 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                     | "qualification_core_dump_self_test"
                     | "qualification_cooling"
                     | "telemetry_cadence_arm"
+                    | "clock_discontinuity_stimulus"
             )
         {
             return Err(WorkerControlError::InvalidTransition);
+        }
+        if request.command == "clock_discontinuity_stimulus" {
+            return self.prepare_clock_stimulus(&request, now);
         }
         if matches!(
             request.command.as_str(),
@@ -396,6 +402,10 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 self.telemetry_cadence(&request, now)?
             }
             "acceptance_budget_review" => self.review_acceptance_budget(&request, now)?,
+            "clock_discontinuity_stimulus_review" => self.review_clock_stimulus(&request, now)?,
+            "authorization_rejection_review" => {
+                self.review_authorization_rejections(&request, now)?
+            }
             "qualification_cooling" => self.qualify_cooling(&request, now)?,
             "status" => {
                 request.require_no_payload()?;
@@ -437,7 +447,10 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
     }
 
     fn start(&mut self, grant: WorkerLeaseGrant, now: u64) -> Result<Value, WorkerControlError> {
-        let context = self.required_start_context(now)?.clone();
+        let maybe_context = self.required_start_context(now).cloned();
+        let context = maybe_context.inspect_err(|_| {
+            self.attribute_context_rejection(crate::AuthorizationOperation::Start);
+        })?;
         if self.maybe_active.is_some()
             || self.maybe_cleanup_reason.is_some()
             || self.boot_restoration_clear_required
@@ -490,7 +503,10 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         renewal: WorkerLeaseRenewal,
         now: u64,
     ) -> Result<Value, WorkerControlError> {
-        let context = self.required_active_context()?.clone();
+        let maybe_context = self.required_active_context().cloned();
+        let context = maybe_context.inspect_err(|_| {
+            self.attribute_context_rejection(crate::AuthorizationOperation::Renew);
+        })?;
         if !renewal.validate()
             || (self
                 .maybe_active
@@ -537,6 +553,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
     }
 
     fn safe_stop(&mut self, reason: RestorationReason, now: u64) -> Result<(), WorkerControlError> {
+        self.clock_stimulus.cancel();
         self.session
             .noise_cancel(match reason {
                 RestorationReason::ConnectivityLost => crate::noise::NoiseDetail::SessionReplaced,
@@ -564,28 +581,6 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         self.maybe_cleanup_reason = None;
         self.restoration = RestorationState::Confirmed(reason);
         self.maybe_last_monotonic_milliseconds = Some(now);
-        Ok(())
-    }
-
-    fn enforce_clock(&mut self, now: u64) -> Result<(), WorkerControlError> {
-        if let Some(reason) = self.maybe_cleanup_reason {
-            self.safe_stop(reason, now)?;
-        }
-        if self
-            .maybe_last_monotonic_milliseconds
-            .is_some_and(|last| now < last)
-        {
-            self.safe_stop(RestorationReason::MonotonicReset, now)?;
-            return Err(WorkerControlError::MonotonicReset);
-        }
-        self.maybe_last_monotonic_milliseconds = Some(now);
-        if self
-            .maybe_active
-            .as_ref()
-            .is_some_and(|active| now >= active.deadlines.expires_at_monotonic_milliseconds())
-        {
-            self.safe_stop(RestorationReason::LeaseExpired, now)?;
-        }
         Ok(())
     }
 

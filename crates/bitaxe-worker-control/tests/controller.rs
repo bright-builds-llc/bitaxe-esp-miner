@@ -2,6 +2,8 @@
 mod budget_review;
 #[path = "controller/cadence.rs"]
 mod cadence;
+#[path = "controller/clock_stimulus.rs"]
+mod clock_stimulus;
 #[path = "controller/cooling.rs"]
 mod cooling;
 #[path = "controller/fixture_session.rs"]

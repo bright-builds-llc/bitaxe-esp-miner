@@ -13,6 +13,15 @@ use zeroize::Zeroizing;
 use crate::codec::{base64_url, canonical_json, digest_text};
 use crate::{WorkerLeaseGrant, WorkerLeaseRenewal};
 
+mod rejection;
+mod wire;
+pub use rejection::{
+    authorization_rejection_review, AuthorizationOperation, AuthorizationRejectionLog,
+    AuthorizationRejectionRecord, AuthorizationRejectionReview, AuthorizationRejectionSource,
+    ContextAttribution, ReplayGuardAttribution, SignatureAttribution,
+};
+use wire::{WireDeploymentTrust, WirePublicKey};
+
 const TRUST_PROFILE: &str = "bwg-worker-deployment-trust/0.2";
 const AUTHORIZATION_PROFILE: &str = "bwg-worker-lease-authorization/0.2";
 const AUTHORIZATION_TYPE: &str = "bwg-worker-lease-authorization+jws";
@@ -159,12 +168,17 @@ impl fmt::Debug for WorkLeaseAuthorityTrust {
 pub struct WorkLeaseAuthorizationVerifier<S> {
     trust: WorkLeaseAuthorityTrust,
     store: S,
+    rejections: AuthorizationRejectionLog,
 }
 
 impl<S: AcceptedSequenceStore> WorkLeaseAuthorizationVerifier<S> {
     #[must_use]
     pub const fn new(trust: WorkLeaseAuthorityTrust, store: S) -> Self {
-        Self { trust, store }
+        Self {
+            trust,
+            store,
+            rejections: AuthorizationRejectionLog::new(),
+        }
     }
 
     pub fn verify_start(
@@ -173,7 +187,7 @@ impl<S: AcceptedSequenceStore> WorkLeaseAuthorizationVerifier<S> {
         context: &WorkerLeaseAuthorizationContext,
     ) -> Result<(), LeaseAuthorizationError> {
         self.verify(
-            "start",
+            AuthorizationOperation::Start,
             grant.challenge_id(),
             grant.authorizationless(),
             grant.authorization(),
@@ -188,7 +202,7 @@ impl<S: AcceptedSequenceStore> WorkLeaseAuthorizationVerifier<S> {
         context: &WorkerLeaseAuthorizationContext,
     ) -> Result<(), LeaseAuthorizationError> {
         self.verify(
-            "renew",
+            AuthorizationOperation::Renew,
             challenge_id,
             renewal.authorizationless(),
             renewal.authorization(),
@@ -196,35 +210,94 @@ impl<S: AcceptedSequenceStore> WorkLeaseAuthorizationVerifier<S> {
         )
     }
 
+    // Inlined into each signed entry point: the native stack audits require the
+    // entry point itself to call `verify_strict`. Acceptance is unchanged; only
+    // compare-and-store may advance the durable high-water, never a rejection.
+    #[inline(always)]
     fn verify(
         &mut self,
-        operation: &str,
+        operation: AuthorizationOperation,
         active_challenge_id: &str,
         request: impl Serialize,
         compact_jws: &str,
         context: &WorkerLeaseAuthorizationContext,
     ) -> Result<(), LeaseAuthorizationError> {
-        let verified = verify_jws(
+        let mut attribution = JwsAttribution::default();
+        let verified = match verify_jws(
             &self.trust,
-            operation,
+            operation.as_str(),
             active_challenge_id,
             request,
             compact_jws,
             context,
-        )?;
-        let maybe_current = self.store.load(&verified.key_id)?;
-        if maybe_current.is_some_and(|current| verified.sequence <= current) {
+            &mut attribution,
+        ) {
+            Ok(verified) => verified,
+            Err(error) => {
+                self.reject(operation, attribution, ReplayGuardAttribution::NotEvaluated);
+                return Err(error);
+            }
+        };
+        let maybe_current = match self.store.load(&verified.key_id) {
+            Ok(maybe_current) => maybe_current,
+            Err(error) => {
+                self.reject(operation, attribution, ReplayGuardAttribution::Unavailable);
+                return Err(if verified.context_matches {
+                    error
+                } else {
+                    LeaseAuthorizationError::InvalidAuthorization
+                });
+            }
+        };
+        let replay = maybe_current.is_some_and(|current| verified.sequence <= current);
+        let replay_guard = if replay {
+            ReplayGuardAttribution::AtOrBelowDurableHighWater
+        } else {
+            ReplayGuardAttribution::Fresh
+        };
+        if !verified.context_matches {
+            self.reject(operation, attribution, replay_guard);
+            return Err(LeaseAuthorizationError::InvalidAuthorization);
+        }
+        if replay {
+            self.reject(operation, attribution, replay_guard);
             return Err(LeaseAuthorizationError::Replay);
         }
         match self
             .store
-            .compare_and_store(&verified.key_id, maybe_current, verified.sequence)?
+            .compare_and_store(&verified.key_id, maybe_current, verified.sequence)
         {
-            SequenceStoreResult::Committed => Ok(()),
-            SequenceStoreResult::Stale | SequenceStoreResult::AlreadyCommitted => {
+            Ok(SequenceStoreResult::Committed) => {
+                self.rejections.mark_high_water_advanced();
+                Ok(())
+            }
+            Ok(SequenceStoreResult::Stale | SequenceStoreResult::AlreadyCommitted) => {
+                self.reject(
+                    operation,
+                    attribution,
+                    ReplayGuardAttribution::AtOrBelowDurableHighWater,
+                );
                 Err(LeaseAuthorizationError::Replay)
             }
+            Err(error) => {
+                self.reject(operation, attribution, ReplayGuardAttribution::Unavailable);
+                Err(error)
+            }
         }
+    }
+
+    fn reject(
+        &mut self,
+        operation: AuthorizationOperation,
+        attribution: JwsAttribution,
+        replay_guard: ReplayGuardAttribution,
+    ) {
+        self.rejections.record(
+            operation,
+            attribution.signature,
+            attribution.context,
+            replay_guard,
+        );
     }
 }
 
@@ -243,6 +316,23 @@ impl<S: AcceptedSequenceStore> crate::session::LeaseAuthorizationVerifier
 
     fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
         self.store.clear_effect_pending()
+    }
+
+    fn authorization_rejections(&self) -> Option<&AuthorizationRejectionLog> {
+        Some(&self.rejections)
+    }
+
+    fn record_context_rejection(
+        &mut self,
+        operation: AuthorizationOperation,
+        context: ContextAttribution,
+    ) {
+        self.rejections.record(
+            operation,
+            SignatureAttribution::NotEvaluated,
+            context,
+            ReplayGuardAttribution::NotEvaluated,
+        );
     }
 
     fn verify_start(
@@ -266,8 +356,27 @@ impl<S: AcceptedSequenceStore> crate::session::LeaseAuthorizationVerifier
 struct VerifiedAuthorization {
     key_id: String,
     sequence: u64,
+    context_matches: bool,
 }
 
+/// What `verify_jws` established before it accepted or rejected the token.
+#[derive(Clone, Copy)]
+struct JwsAttribution {
+    signature: SignatureAttribution,
+    context: ContextAttribution,
+}
+
+impl Default for JwsAttribution {
+    // Unparsed claims present no binding equal to the current admission.
+    fn default() -> Self {
+        Self {
+            signature: SignatureAttribution::NotEvaluated,
+            context: ContextAttribution::Mismatch,
+        }
+    }
+}
+
+#[inline(always)]
 fn verify_jws(
     trust: &WorkLeaseAuthorityTrust,
     operation: &str,
@@ -275,6 +384,7 @@ fn verify_jws(
     request: impl Serialize,
     compact_jws: &str,
     context: &WorkerLeaseAuthorizationContext,
+    attribution: &mut JwsAttribution,
 ) -> Result<VerifiedAuthorization, LeaseAuthorizationError> {
     if compact_jws.is_empty() || compact_jws.len() > MAXIMUM_AUTHORIZATION_BYTES {
         return Err(LeaseAuthorizationError::InvalidAuthorization);
@@ -298,12 +408,19 @@ fn verify_jws(
         .map_err(|_| LeaseAuthorizationError::InvalidAuthorization)?;
     let claims: AuthorizationClaims = serde_json::from_slice(&payload_bytes)
         .map_err(|_| LeaseAuthorizationError::InvalidAuthorization)?;
+    // Context is attributed, not short-circuited: the caller rejects a mismatch only
+    // after the signature and the read-only replay comparison are known.
+    let context_matches = claims.control_session_binding_sha256 == context.binding();
+    attribution.context = if context_matches {
+        ContextAttribution::Current
+    } else {
+        ContextAttribution::Mismatch
+    };
     if header.algorithm != "Ed25519"
         || header.type_ != AUTHORIZATION_TYPE
         || !key_id(&header.key_id)
         || claims.operation != operation
         || !digest_text(&claims.request_sha256)
-        || claims.control_session_binding_sha256 != context.binding()
         || canonical_json(&header)
             .map_err(|_| LeaseAuthorizationError::InvalidAuthorization)?
             .as_bytes()
@@ -339,13 +456,16 @@ fn verify_jws(
     let signature = Signature::from_slice(&signature_bytes)
         .map_err(|_| LeaseAuthorizationError::InvalidAuthorization)?;
     let signing_input = Zeroizing::new(format!("{protected}.{payload}"));
+    attribution.signature = SignatureAttribution::Invalid;
     trusted
         .key
         .verify_strict(signing_input.as_bytes(), &signature)
         .map_err(|_| LeaseAuthorizationError::InvalidAuthorization)?;
+    attribution.signature = SignatureAttribution::Valid;
     Ok(VerifiedAuthorization {
         key_id: header.key_id,
         sequence,
+        context_matches,
     })
 }
 
@@ -445,52 +565,6 @@ fn label(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || [b'.', b'_', b'-'].contains(&byte))
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-struct WireDeploymentTrust {
-    profile: String,
-    update_authority: WireUpdateAuthority,
-    work_lease_authority: WireWorkLeaseAuthority,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct WireUpdateAuthority {
-    issuer: String,
-    audience: String,
-    role: String,
-    keys: Vec<WirePublicKey>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct WireWorkLeaseAuthority {
-    profile: String,
-    issuer: String,
-    audience: String,
-    role: String,
-    keys: Vec<WirePublicKey>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct WirePublicKey {
-    #[serde(rename = "kid")]
-    key_id: String,
-    #[serde(rename = "kty")]
-    key_type: String,
-    #[serde(rename = "crv")]
-    curve: String,
-    #[serde(rename = "x")]
-    public_key: String,
-    #[serde(rename = "alg")]
-    algorithm: String,
-    #[serde(rename = "use")]
-    use_: String,
-    #[serde(rename = "key_ops")]
-    key_operations: Vec<String>,
 }
 
 #[derive(Deserialize, serde::Serialize)]

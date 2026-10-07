@@ -40,7 +40,7 @@ rust_test(
 
 rust_test(
     name = "controller_tests",
-    srcs = ["tests/controller.rs", "tests/controller/renew_dispatch.rs", "tests/controller/liveness.rs", "tests/controller/budget_review.rs", "tests/controller/cooling.rs", "tests/controller/serial_trace.rs", "tests/controller/cadence.rs", "tests/controller/fixture_session.rs", "tests/controller/restart.rs", "tests/controller/noise.rs", "tests/controller/v2.rs"],
+    srcs = ["tests/controller.rs", "tests/controller/renew_dispatch.rs", "tests/controller/liveness.rs", "tests/controller/budget_review.rs", "tests/controller/cooling.rs", "tests/controller/serial_trace.rs", "tests/controller/cadence.rs", "tests/controller/clock_stimulus.rs", "tests/controller/fixture_session.rs", "tests/controller/restart.rs", "tests/controller/noise.rs", "tests/controller/v2.rs"],
     crate_root = "tests/controller.rs",
     crate_name = "bitaxe_worker_control_controller_tests",
     edition = "2021",
@@ -133,6 +133,25 @@ rust_test(
         ":bitaxe_worker_control",
         "//crates/bitaxe-core:bitaxe_core",
         "@crates//:serde_json",
+    ],
+)
+
+rust_test(
+    name = "restoration_diagnostics_tests",
+    srcs = [
+        "tests/restoration_diagnostics.rs",
+        "tests/restoration_diagnostics/support.rs",
+        "tests/restoration_diagnostics/verifier.rs",
+    ],
+    crate_name = "bitaxe_worker_control_restoration_diagnostics_tests",
+    crate_root = "tests/restoration_diagnostics.rs",
+    edition = "2021",
+    deps = [
+        ":bitaxe_worker_control",
+        "@crates//:base64",
+        "@crates//:ed25519-dalek",
+        "@crates//:serde_json",
+        "@crates//:sha2",
     ],
 )
 

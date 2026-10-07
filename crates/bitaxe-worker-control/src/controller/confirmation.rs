@@ -33,6 +33,11 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             PreparedEffect::QualificationRestart { .. } => {
                 return Err(WorkerControlError::StaleResponse)
             }
+            // Arming needs a freshly observed clock: only `confirm_sent_at` may arm.
+            PreparedEffect::ClockStimulus { .. } => {
+                self.clock_stimulus.clear_pending();
+                return Err(WorkerControlError::StaleResponse);
+            }
             PreparedEffect::Admit {
                 generation,
                 token,

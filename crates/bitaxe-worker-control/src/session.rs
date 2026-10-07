@@ -15,6 +15,19 @@ pub trait LeaseAuthorizationVerifier {
         Ok(None)
     }
 
+    /// Boot-local, metadata-only rejection attribution; verifiers without one return none.
+    fn authorization_rejections(&self) -> Option<&crate::AuthorizationRejectionLog> {
+        None
+    }
+
+    /// Attributes a controller-side context rejection. It must not touch durable state.
+    fn record_context_rejection(
+        &mut self,
+        _operation: crate::AuthorizationOperation,
+        _context: crate::ContextAttribution,
+    ) {
+    }
+
     fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
     fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
     fn verify_start(

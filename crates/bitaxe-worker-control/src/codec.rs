@@ -25,6 +25,14 @@ pub(crate) fn digest_text(value: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
 }
 
+/// A request nonce is exactly 16 random bytes in canonical unpadded base64url.
+pub(crate) fn canonical_request_nonce(value: &str) -> bool {
+    value.len() == 22
+        && URL_SAFE_NO_PAD
+            .decode(value)
+            .is_ok_and(|decoded| decoded.len() == 16 && URL_SAFE_NO_PAD.encode(&decoded) == value)
+}
+
 pub(crate) fn base64_url(bytes: impl AsRef<[u8]>) -> String {
     URL_SAFE_NO_PAD.encode(bytes)
 }

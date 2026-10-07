@@ -53,7 +53,19 @@ impl ControllerRequest {
                 | "telemetry_cadence_review"
                 | "telemetry_cadence_endpoint"
                 | "qualification_cooling"
+                | "clock_discontinuity_stimulus"
+                | "clock_discontinuity_stimulus_review"
+                | "authorization_rejection_review"
         )
+    }
+
+    /// Review commands take exactly `payload: {}`, like the existing budget reviews.
+    pub(super) fn require_empty_payload(&self) -> Result<(), WorkerControlError> {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Empty {}
+        let _: Empty = self.required_payload()?;
+        Ok(())
     }
 
     pub(super) fn require_no_payload(&self) -> Result<(), WorkerControlError> {

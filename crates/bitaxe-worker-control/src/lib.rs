@@ -1,6 +1,7 @@
 //! Pure possession-bound BWG Worker-control state machine.
 
 mod authorization;
+mod clock_stimulus;
 mod codec;
 mod controller;
 mod effect_marker;
@@ -18,7 +19,10 @@ pub mod v2;
 pub use restart::{QualificationResetKind, QualificationRestartContext};
 
 pub use authorization::{
-    AcceptedSequenceStore, LeaseAuthorizationError, SequenceStoreResult, WorkLeaseAuthorityTrust,
+    authorization_rejection_review, AcceptedSequenceStore, AuthorizationOperation,
+    AuthorizationRejectionLog, AuthorizationRejectionRecord, AuthorizationRejectionReview,
+    AuthorizationRejectionSource, ContextAttribution, LeaseAuthorizationError,
+    ReplayGuardAttribution, SequenceStoreResult, SignatureAttribution, WorkLeaseAuthorityTrust,
     WorkLeaseAuthorizationVerifier, WorkerLeaseAuthorizationContext,
 };
 pub use controller::{PreparedResponse, WorkerControl, WorkerControlError};

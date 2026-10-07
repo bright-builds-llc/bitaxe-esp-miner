@@ -1,5 +1,4 @@
 use super::*;
-use base64::Engine;
 
 const MAX_SAFE_BOOT_ORDINAL: u64 = 9_007_199_254_740_990;
 
@@ -19,15 +18,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         now: u64,
     ) -> Result<PreparedResponse, WorkerControlError> {
         let payload: RestartRequest = request.required_payload()?;
-        if payload.request_nonce.len() != 22 {
-            return Err(WorkerControlError::InvalidRequest);
-        }
-        let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .decode(&payload.request_nonce)
-            .map_err(|_| WorkerControlError::InvalidRequest)?;
-        if decoded.len() != 16
-            || base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&decoded)
-                != payload.request_nonce
+        if !crate::codec::canonical_request_nonce(&payload.request_nonce)
             || payload.expected_boot_ordinal == 0
             || payload.expected_boot_ordinal > MAX_SAFE_BOOT_ORDINAL
         {
@@ -116,6 +107,12 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         mut response: PreparedResponse,
         now: u64,
     ) -> Result<(), WorkerControlError> {
+        if let Some(&PreparedEffect::ClockStimulus { generation, token }) =
+            response.maybe_effect.as_ref()
+        {
+            response.maybe_effect = None;
+            return self.confirm_clock_stimulus(generation, token, now);
+        }
         if matches!(
             response.maybe_effect.as_ref(),
             Some(PreparedEffect::V2Dispatch { .. })

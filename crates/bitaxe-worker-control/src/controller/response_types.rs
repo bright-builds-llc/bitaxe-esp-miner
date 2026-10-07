@@ -34,6 +34,10 @@ pub(super) enum PreparedEffect {
     BootRestorationReported {
         generation: u64,
     },
+    ClockStimulus {
+        generation: u64,
+        token: u64,
+    },
 }
 
 /// Bounded response plus a send-confirmation effect; Debug never includes frame bytes.
