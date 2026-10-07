@@ -13,7 +13,7 @@ import { signRestorationWindow } from "./authority.mjs";
 import { activate, admitSigning, createCampaign, deliverWindow, failCampaign, finishScenario, markSegment, observeRecord, recordSigned, replayArtifact,
   requireRunning } from "./campaign.mjs";
 import { admitReconnect, checkpointFacts, operatorReady, view } from "./checkpoint.mjs";
-import { BUNDLE, HOST_EVENTS, RESULT_SCHEMA, SCENARIO_RESULT_SCHEMA, SCENARIOS, TOKEN } from "./contract.mjs";
+import { BUNDLE, HOST_EVENTS, RESULT_SCHEMA, SCENARIO_RESULT_SCHEMA, SCENARIOS, scopeGroup, TOKEN } from "./contract.mjs";
 import { supervisorState } from "./guidance.mjs";
 import { judgeScenario } from "./judge.mjs";
 import { verifyFrozenRestoration } from "./preflight.mjs";
@@ -127,7 +127,7 @@ export async function createRestorationSupervisor(options, operations = {}) {
     await verify();
     const stratum = await readPool();
     for (const value of [stratum.endpoint, stratum.username, stratum.password, input.controlSessionBindingSha256]) secrets.add(value);
-    const scope = campaign.scopes.get(campaign.scenario.name === "authorization_negatives" ? "reboot" : campaign.scenario.name);
+    const scope = campaign.scopes.get(scopeGroup(campaign.scenario.name));
     const artifacts = await signRestorationWindow({ ...request, challengeId: scope.challengeId, binding: input.controlSessionBindingSha256, stratum, sign });
     for (const artifact of [artifacts.grant, ...artifacts.renewals]) { secrets.add(artifact.authorization); secrets.add(artifact.leaseId); }
     recordSigned(campaign, request, artifacts, now());
@@ -152,7 +152,7 @@ export async function createRestorationSupervisor(options, operations = {}) {
     const { file, value, judgement } = scenarioJudgement(campaign, parsed, context);
     await writeNew(resolve(root, file), { value, sha256: digest(JSON.stringify(value)) });
     await physical.stopWatcher();
-    finishScenario(campaign, judgement);
+    finishScenario(campaign, judgement, parsed.final_state.journal.entries.at(-1)?.ordinal ?? 0);
     await hostEvent("scenario_judged", { result: judgement.result });
     await writeFinal();
     return { result: judgement.result, scenario: judgement.scenario, cleanup_confirmed: true };

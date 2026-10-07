@@ -167,3 +167,12 @@ test("the first unverified scenario stops the attempt", () => {
   throwsWith(() => activate(campaign, newScope), "campaign_stopped");
   assert.equal(SCENARIOS.length, 8);
 });
+
+test("a scenario's closing journal entries stay out of the next scenario's segment", () => {
+  // Arrange
+  const campaign = createCampaign();
+  // Act
+  finishScenario(campaign, passed("completion"), 17);
+  // Assert
+  assert.deepEqual([campaign.scenario.name, campaign.scenario.segmentStartOrdinal], ["pause", 17]);
+});

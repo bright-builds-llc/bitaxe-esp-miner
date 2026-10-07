@@ -144,7 +144,9 @@ export function markSegment(campaign, now) {
 }
 
 /** Record a judged scenario; the first unverified scenario stops the attempt, a pass advances it. */
-export function finishScenario(campaign, judgement) {
+export function finishScenario(campaign, judgement, finalJournalOrdinal = 0) {
+  // The completion's own closing entries belong to this scenario, not to the next one's segment.
+  campaign.maybeLastJournalOrdinal = Math.max(campaign.maybeLastJournalOrdinal, finalJournalOrdinal);
   campaign.results.push(judgement);
   campaign.carry = judgement.carry;
   if (judgement.result !== "passed") { campaign.maybeFailure = { scenario: judgement.scenario, category: judgement.failures[0] ?? "scenario_unverified" }; return; }
