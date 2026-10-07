@@ -6,6 +6,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { detachedOwner, kill, workspaceFixture, writeCollection, writeServerOwner } from "./fixtures.test-helper.mjs";
 import { isLive } from "./host.mjs";
+import { positionalRecipes } from "./just.mjs";
 import { stopAndFinish } from "./owner-finish.mjs";
 import { ownerLayout } from "./owners.mjs";
 
@@ -102,4 +103,27 @@ test("owners outside the closed table and wrong stage shapes are refused", () =>
   const codes = cases.map(([name, stage]) => { try { ownerLayout(name, "/p/r", stage); return "accepted"; } catch (error) { return error.code; } });
   // Assert
   assert.deepEqual(codes, ["owner_unknown", "owner_stage_required", "owner_stage_unexpected"]);
+});
+
+test("a positional-argument recipe receives its finish arguments without shell quotes", async (t) => {
+  // Arrange
+  const fixture = await workspaceFixture();
+  await writeFile(resolve(fixture.base, "Justfile"), "[positional-arguments]\nultra205-soak action *args:\n    true\n");
+  const owner = await detachedOwner();
+  t.after(() => kill(owner));
+  await writeServerOwner(fixture.root, owner);
+  // Act
+  await stopAndFinish({ name: "ultra205-soak", root: fixture.root }, fixture.operations);
+  // Assert
+  const raw = (await readFile(resolve(fixture.env.FAKE_JUST_DIR, "raw-calls.jsonl"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+  assert.deepEqual(raw.at(-1), ["ultra205-soak", "finish", "--private-root", fixture.root]);
+});
+
+test("positional recipes are read from the Justfile", () => {
+  // Arrange
+  const text = "# comment\n[positional-arguments]\n@diagnose *args:\n    x\n\nother *args:\n    y\n[positional-arguments]\nhardware-operator action *args:\n";
+  // Act
+  const names = positionalRecipes(text);
+  // Assert
+  assert.deepEqual([...names].sort(), ["diagnose", "hardware-operator"]);
 });

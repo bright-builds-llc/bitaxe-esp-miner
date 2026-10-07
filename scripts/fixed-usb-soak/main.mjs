@@ -14,6 +14,7 @@ import { loadSoakContext, preflight } from "./preflight.mjs";
 import { createSoakSupervisor } from "./server.mjs";
 
 const string = { type: "string" };
+const FINAL_DETECTOR_FRESH_MS = 300000;
 const ACTIONS = {
   preflight: { options: { "private-root": string, "firmware-root": string, "gate-root": string, "firmware-commit": string, "gate-commit": string,
     manifest: string, "authority-directory": string, detector: string, bun: string },
@@ -62,7 +63,9 @@ async function finish(options) {
   requireLsofAbsent(["-nP", `-iTCP:${SOAK_PORT}`, "-sTCP:LISTEN", "-t"]);
   const detectorPath = resolve(dirname(root), "final-detector.stdout.log");
   await protectedPath(detectorPath);
-  requireCondition(Date.now() - (await stat(detectorPath)).mtimeMs <= 60000, "soak_final_detector_stale");
+  // `just` runs this through `bazel run`, which can take minutes when Bazel discards its analysis cache;
+  // a 60 s bound left every seal stale. Release itself is proven above by the gone owner and free port.
+  requireCondition(Date.now() - (await stat(detectorPath)).mtimeMs <= FINAL_DETECTOR_FRESH_MS, "soak_final_detector_stale");
   const device = parseDetector(await readFile(detectorPath, "utf8"));
   requireCondition(device.physical === context.physical_identity_sha256, "soak_final_detector_identity");
   requireNoHolders(device.port);

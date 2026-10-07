@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -103,7 +104,10 @@ test("a real observer process receives the handoff, journals privately and stops
   const node = process.env.JS_BINARY__NODE_BINARY ?? process.execPath;
   const wrapper = resolve(bin, "soak_observer");
   await writeFile(wrapper, `#!/bin/sh\nexec '${node}' '${helper}'\n`, { mode: 0o700 });
-  const observer = createSoakObserver(root, { soak_observer: { path: wrapper, sha256: digest(await readFile(wrapper)) } });
+  // The wrapper still passes the binary checks, but node runs the helper directly: macOS can stall the
+  // first exec of a freshly written script for a minute or more while it assesses it.
+  const spawnHelper = (path, args, options) => spawn(node, [helper, ...args], options);
+  const observer = createSoakObserver(root, { soak_observer: { path: wrapper, sha256: digest(await readFile(wrapper)) } }, { spawn: spawnHelper });
   // Act
   await observer.start({ ipv4: "192.168.1.20", httpPort: 80 });
   await new Promise((done) => setTimeout(done, 500));

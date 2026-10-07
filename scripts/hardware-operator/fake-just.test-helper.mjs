@@ -12,6 +12,7 @@ const option = (name) => args[args.indexOf(name) + 1];
 const callsPath = resolve(directory, "calls.jsonl");
 const previous = (() => { try { return readFileSync(callsPath, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line)); } catch { return []; } })();
 appendFileSync(callsPath, `${JSON.stringify([recipe, ...args])}\n`);
+appendFileSync(resolve(directory, "raw-calls.jsonl"), `${JSON.stringify(process.argv.slice(2))}\n`);
 const write = (path, value) => writeFileSync(path, `${JSON.stringify(value)}\n`, { mode: 0o600, flag: "wx" });
 
 if (recipe === "detect-ultra205") {

@@ -27240,3 +27240,546 @@ Residual risks:
 - Nested `just` calls assume `bazel run` keeps the served binary in the
   launching process group, as the existing owners' `requireGone` checks
   already do.
+
+### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
+
+- [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
+      only after the conservative live-share task completes.
+- [x] Count 600 seconds from authorized active mining rather than boot or
+      connection start.
+- [ ] Require uninterrupted fresh safety truth, watchdog responsiveness,
+      active work renewal, at least one new correlated nonce and pool response,
+      and correlated HTTP/WebSocket state throughout the soak.
+- [x] Confirm the device-local lease expires, hardware safe-stop completes,
+      the lease is cleared, `mineonboot=false` persists, pool settings remain,
+      and the new firmware remains installed in paused state.
+- [x] Seal one private, redacted soak result without automatic parity
+      promotion.
+
+Dependencies: Complete `task-ultra205-live-pool-share` successfully.
+
+Hardware contract:
+
+- Permitted commands:
+  1. `just detect-ultra205`
+  2. `just package`
+  3. `just mining-campaign stage=soak profile=upstream-default board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-default-profile-soak/attempt-003 duration-seconds=600 redact-evidence=true`
+  4. One recovery-only same-origin `POST /api/system/pause`, issued in-process
+     by the admitted campaign observer only after its first network or watchdog
+     failure. It is not an operator command or a general network-control grant.
+- Objective: prove the exact package can mine for 600 active seconds at the
+  Ultra 205 upstream-default profile with fresh safety, watchdog,
+  work/result/share, HTTP, WebSocket, and final safe-stop evidence.
+- Evidence: the ignored
+  `scratch/ultra205-default-profile-soak/attempt-003` root is private,
+  non-promoted `ProtectedOperational` evidence with mode-0700 parent and
+  mode-0600 artifacts. Only `pool_config: local-owner-supplied`, closed
+  categories, bounded counts/durations, and safe provenance may be summarized;
+  the same secret and device-identifier denylist as the live-share task
+  applies.
+- Preconditions: the live-share task completed with one correlated submit
+  response and confirmed safe-stop; all software gates pass against fresh
+  current HEAD; the exact package is frozen; exactly one board 205 is admitted;
+  and the ignored Wi-Fi and single pool credential inputs remain available
+  without being printed.
+- Allowed effects: private NVS credential injection, persistence of
+  `mineonboot=false`, installation of one 600-active-second default-profile
+  lease, exact package flash, repo-owned USB reset/re-enumeration, fan 100%,
+  DS4432U 1200 mV, ASIC enable/reset, BM1366 initialization and work/result
+  traffic, Stratum V1 TCP connection and submissions, fresh-session
+  HTTP/WebSocket observation, and bounded device-local safe-stop.
+- Safety and stop limits: the live-share limits remain unchanged: fresh
+  observations, 4.5-5.5 V input, at most 15 W, ASIC temperature below 75 C,
+  and fresh nonzero fan RPM after the 100% command. Any safety, watchdog,
+  transport, generation, actuation, lease, telemetry-correlation, or evidence
+  fault blocks work and begins safe-stop.
+- Prohibited effects: TLS, Stratum V2, automatic fan mode, mining beyond the
+  lease, non-205 hardware, erase-flash, arbitrary raw writes, OTA, recovery
+  upload, network discovery, foreign-process termination, raw secret output,
+  parity promotion, direct UART, pins, pads, headers, GPIO, probes, jumpers,
+  soldering, injected signals, voltage/fan stress, or fault injection.
+- Recovery/restoration: preserve the earliest typed failure; block and
+  invalidate submissions; close owned pool transports; frequency-down and
+  reset the ASIC; set core voltage off and ASIC enable off; keep fan at 100%
+  until fresh temperature is at or below 45 C, then set 30%; clear the lease;
+  persist `mineonboot=false`; retain pool settings; and release owned USB and
+  process resources. If device-local stop cannot be confirmed, one
+  predeclared exact-baseline reflash is allowed only after same-device
+  re-admission; otherwise stop.
+- Retry bound: one fresh attempt only and no unchanged retry. A later ordinal
+  requires a targeted regression-backed fix or authorized non-invasive
+  remediation with objective boundary-change proof; one post-fix recurrence
+  selects `stop_repeated_boundary`.
+- Attempt-003 continuation: run the exact command above once, only after the
+  watchdog, HTTP, WebSocket, continuity-window, terminal-persistence, and
+  recovery-pause regressions pass every required software gate on a clean,
+  pushed exact HEAD. The private recovery summary must still report
+  `phase=monitor_admission`, `deadline_seconds=60`, and 3 stable samples before
+  runtime evidence can be trusted.
+- Attempt-003 acceptance: divide the 600 device-reported active seconds into
+  twenty half-open 30-second windows. Every window must contain successful HTTP
+  and reconstructed WebSocket observations from the same boot and exact
+  package, active mining, fresh bounded safety truth, non-regressing counters
+  and snapshot revisions, healthy supervisor state, advancing task-watchdog
+  feed and supervisor-checkpoint sequences, and advancing ASIC poll activity.
+  Active serial markers may be no more than 5,000 ms apart, and the attempt
+  must contain at least one new correlated nonce plus accepted pool response.
+  Within ten seconds of the consumed marker, both HTTP and reconstructed
+  WebSocket state must prove the same boot/package is paused with
+  `mineonboot=false`, healthy watchdog participation, confirmed device-local
+  safe-stop, and a terminal NVS reread must prove a valid configured pool still
+  exists without exposing its values.
+- Attempt-003 failure handling: preserve the earliest closed failure category,
+  issue at most the one recovery-only pause request above when a trusted origin
+  exists, and continue observation until device-local safe-stop is confirmed or
+  terminal grace expires. Without a trusted origin, rely on lease expiry and
+  leave safe-stop unconfirmed unless serial proves it. Any failure ends this
+  targeted effort and is recorded without retry. No TLS, discovery, fault
+  injection, parity promotion, or expanded hardware authority is allowed.
+- Accepted terminal outcomes: `complete` only when the full active-duration,
+  correlation, and safe-stop criteria pass; otherwise
+  `stop_repeated_boundary`, `stop_hardware_blocker`,
+  `stop_authority_boundary`, or `stop_impossible_contract`.
+
+Verification: `stop_hardware_blocker` on attempt 001. `cargo fmt --all`, strict
+Clippy, the all-target/all-feature Cargo build and tests, all 82 Bazel test
+targets, the managed Bright Builds checks, `just package`, and detector
+admission passed against exact source commit `8e75d046`. The campaign admitted
+the package and completed both supervised writes, then failed before runtime
+observation. Its protected result sealed with a matching digest and recorded
+`observation_failed`, zero markers, `safe_stop=not_observed`, and successful USB
+cleanup. The authoritative monitor-admission recovery summary observed the same
+accessible, holder-free device but reached only 2 of 3 stable samples within
+the 30-second bound; final cleanup later reached 3 of 3 within 60 seconds. The
+one-shot campaign keys were consumed and erased before use, and the conservative
+720-second lease-plus-stop margin elapsed without another device effect, but
+elapsed time is not safe-stop evidence. No unchanged retry is authorized.
+
+Attempt-002 verification: `complete` for the targeted monitor-admission fix.
+All required software gates passed and the clean exact package from source
+commit `0e3f19d5` was pushed before hardware use. Fresh detector admission found
+exactly one Ultra 205. The protected monitor-admission recovery summary recorded
+a 60-second deadline and reached 3 of 3 same-device, accessible, holder-free
+stable samples. The sealed campaign result recorded `status=accepted`,
+`terminal_category=soak_duration_complete`, 600.501 active seconds, trusted
+package/runtime identity, 10 accepted and zero rejected shares, fresh safety,
+`mineonboot=false`, confirmed safe-stop, and USB cleanup ready. Its result seal,
+mode-0700 root, mode-0600 files and recovery summaries, redaction denylist, and
+non-promotion state all passed. No retry was run and no evidence was promoted.
+
+Attempt-003 verification: `stop_hardware_blocker` at the distinct closed
+`network_correlation_failed` boundary; no retry was run. All required software
+gates passed, source commit `da32b67d` was pushed to `main`, and the clean exact
+package was built before hardware use. Fresh detector admission found exactly
+one Ultra 205. Monitor admission used its 60-second deadline and reached 3 of 3
+same-device, accessible, holder-free stable samples. The sealed result proved
+trusted package/runtime identity, 600.081 active seconds, 21 qualified and
+accepted correlated shares with zero rejected shares, fresh safety, a maximum
+344-ms active-marker gap, consumed lease, `mineonboot=false`, retained pool
+configuration, final HTTP and reconstructed WebSocket paused-state evidence,
+confirmed device-local safe-stop, and USB cleanup ready. The in-process
+observer issued its single recovery pause request and preserved the earliest
+failure. Its continuity artifact recorded `active_state_valid=false`, zero
+credited active HTTP/WebSocket samples and zero complete windows; watchdog and
+work-renewal acceptance therefore also remained uncredited. Result/artifact
+digests, mode-0700 root, mode-0600 files, redaction, and non-promotion checks
+passed. This is a distinct observer-correlation boundary, not recurrence of
+the attempt-001 monitor-admission boundary.
+
+Software-only startup recovery verification: `cargo fmt --all`, strict Clippy,
+the all-target/all-feature Cargo build and tests, all 82 Bazel test targets, the
+managed Bright Builds checks, and `just verify-redaction` passed. Deterministic
+regressions prove the production campaign becomes active before work submission
+changes public mining activity from `safe_blocked` to `active`; HTTP and
+WebSocket then establish independently, uncredited startup samples cannot alter
+counts, baselines, gaps, or pause behavior, and the exact 30,000-ms boundary
+still fails an incomplete window. The private v2 continuity artifact remains
+sealed, mode-0600, aggregate-only, and identifier/secret-free. No hardware,
+package, credential, discovery, or attempt-004 action was performed.
+
+Completion review: Attempt 003 closes the previously missing terminal pool,
+HTTP/WebSocket paused-state, and persistence evidence, but the broader task
+remains active and is not archived because none of the twenty active continuity
+windows was credited after the first active-state correlation rejection.
+Continuous HTTP/WebSocket state, watchdog sequence advancement, and ASIC work
+renewal therefore remain unverified even though the serial mining/share and
+terminal paths succeeded. The exact-one-attempt authorization is consumed; a
+later attempt requires a new targeted regression-backed fix and fresh task
+contract. The task still does not authorize or verify automatic fan control,
+unbounded mining, complete statistics/hashrate parity, release readiness, or
+checklist promotion.
+
+Software-only continuation: the campaign observer now treats a valid-identity,
+safe, watchdog-fresh non-active sample as an uncredited startup transition until
+HTTP and WebSocket independently observe their first active sample. Window 0
+remains half-open at `[0, 30000)` and retains its full two-sample and sequence
+advancement contract; all identity, safety, watchdog, regression, terminal,
+and post-establishment mining-state failures remain fail-closed. This change
+does not alter or renew the consumed attempt-003 command, authorize attempt-004,
+or supply hardware evidence. The software prerequisite
+`task-campaign-websocket-connection-stability` is now completed and archived;
+the separately approved attempt-004 child contract below is now active and
+retains the parent's bounded acceptance criteria.
+
+Attempt-004 verification: `stop_repeated_boundary`; no retry was run. The
+authorized exact package came from clean pushed source commit `760859ef`, all
+required software gates and both GitHub workflows passed, and the manifest
+recorded v3, six artifacts, matching source identity, and `source_dirty=false`.
+Two private detector preflights each admitted exactly one Ultra 205 and cleaned
+up successfully; the second was a bounded host-output diagnostic after the
+local checker initially expected `port=` instead of the repository's `port:`
+label. Only one mining campaign was launched. Its protected result sealed with
+a valid digest and matching observation, serial-diagnostic, mining-diagnostic,
+and v2 network-continuity digests. The mode-0700 attempt root contains six
+mode-0600 artifacts, and the closed artifact denylist found no credential,
+origin, URL, network-address, USB-path, or raw operational-path leakage. The
+private mode-0600 monitor-admission summary recorded a 60-second deadline,
+same-device/accessibility/holder-free truth, and 3-of-3 stable samples.
+
+Attempt-004 completed 600.052 active seconds with 2,729 accepted serial
+markers, a 341-ms maximum active-marker gap, fresh required safety truth, 24
+accepted and zero rejected shares, advancing ASIC work, one completed block
+transition, retained pool configuration, consumed lease, `mineonboot=false`,
+valid final HTTP and reconstructed WebSocket paused state, confirmed
+device-local safe-stop, and USB cleanup ready. The earliest typed campaign
+failure remained `marker_invalid` with detail `marker_json_invalid`: exactly
+one of 2,730 marker candidates contained invalid JSON. Independently, the
+post-fix WebSocket signature recurred with 116 reconnects and a 6,455-ms
+maximum WebSocket gap, exceeding the 5,000-ms contract; HTTP reached a
+20,872-ms maximum gap and watchdog continuity was invalid. Although all twenty
+windows received observations and work renewal remained valid, the v2 network
+artifact correctly remained failed and the in-process observer issued its one
+recovery pause request.
+
+Attempt-004 closure: the repeated idle-reconnect signature after its targeted
+software fix selects `stop_repeated_boundary` even though the preserved
+earliest campaign failure is the distinct malformed-marker boundary. The
+broader soak remains active and unverified. Attempt-004 authorization is
+consumed; attempt-005, unchanged retry, parity promotion, and any expanded
+hardware or diagnostic action are not authorized.
+
+### task-ultra205-default-profile-soak-attempt-004 | 2026-08-01 | Run one bounded upstream-default soak retry
+
+- [x] Reconfirm that the exact source HEAD is clean, pushed, and passes every
+      software gate before building the exact Ultra 205 package.
+- [x] Admit exactly one board 205 through `just detect-ultra205`, then run at
+      most one upstream-default 600-active-second soak using the exact package
+      and the private `scratch/ultra205-default-profile-soak/attempt-004`
+      evidence destination.
+- [ ] Require all twenty half-open 30-second continuity windows, a maximum
+      WebSocket observation gap of 5,000 ms, valid sealed v2 continuity
+      evidence, and no recurrence of the 109-idle-reconnect signature.
+- [ ] Accept bounded same-origin WebSocket reconnects only when every active
+      window and every terminal condition remains fully evidenced.
+- [x] Preserve the previous board, profile, credential, safety, recovery,
+      redaction, exact-package, single-attempt, and non-promotion boundaries.
+
+Dependencies: `task-campaign-websocket-connection-stability` is completed and
+archived. The active `task-ultra205-default-profile-soak` remains the parent
+acceptance contract and is completed only if this attempt satisfies every
+continuity and terminal requirement.
+
+Hardware contract:
+
+1. `just package`
+2. `just detect-ultra205`
+3. `just mining-campaign stage=soak profile=upstream-default board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json pool-credentials=<single-ignored-local-pool-file> evidence-dir=scratch/ultra205-default-profile-soak/attempt-004 duration-seconds=600 redact-evidence=true`
+4. At most one in-process, same-origin recovery pause after the earliest network
+   or watchdog failure, under the existing campaign observer contract.
+
+Evidence and acceptance boundary: use a mode-0700 ignored private root
+with mode-0600 artifacts; expose no credentials, identifiers, origins, URLs,
+frames, bodies, or operational paths. Require trusted package/runtime identity,
+the 60-second monitor-admission policy with 3-of-3 stable samples, fresh safety
+and watchdog truth, advancing ASIC and supervisor activity, non-regressing
+counters and revisions, correlated nonce and accepted share evidence, retained
+pool configuration, consumed lease, `mineonboot=false`, final paused HTTP and
+WebSocket state, confirmed safe-stop, USB cleanup, valid seals and digests, and
+no parity promotion. The prior thermal, voltage, power, fan, identity,
+ownership, credential, discovery, recovery, retry, and prohibited-effect limits
+remain unchanged. Any incomplete window, observation gap above 5,000 ms,
+repeated idle-reconnect signature, or terminal-proof failure stops without
+retry.
+
+Safety and effects: only the parent contract's board-205 USB admission, exact
+package flash, private NVS credential injection, 600-active-second lease,
+upstream-default 485-MHz/1200-mV/100%-fan mining, Stratum V1 traffic,
+same-session HTTP/WebSocket observation, and bounded safe-stop are allowed.
+Fresh input voltage must remain 4.5-5.5 V, power at most 15 W, ASIC temperature
+below 75 C, and fan RPM fresh and nonzero. TLS, discovery, non-205 hardware,
+mining beyond the lease, automatic fan mode, erase-flash, raw writes, OTA,
+fault injection, parity promotion, foreign-process termination, direct UART,
+pins, pads, headers, GPIO, probes, jumpers, soldering, and injected signals
+remain prohibited.
+
+Recovery and retry: preserve the earliest typed failure; block submissions;
+close owned pool transports; frequency-down and reset the ASIC; turn core
+voltage and ASIC enable off; keep the fan at 100% until fresh temperature is at
+or below 45 C, then set 30%; clear the lease; persist `mineonboot=false`; retain
+pool settings; and release owned USB and process resources. If device-local
+stop cannot be confirmed, stop with `stop_hardware_blocker`; this child does not
+authorize an operator reflash command. Exactly one attempt-004 run is
+authorized. Do not retry an unchanged or repeated boundary.
+
+Authorization boundary: the user explicitly named this stable task ID and
+approved this exact hardware contract on 2026-08-01. That authorization covers
+only the four command/effect surfaces above and expires when attempt-004 reaches
+one terminal outcome. It does not authorize any later ordinal or broader work.
+
+Accepted terminal outcomes: `complete` only when all twenty windows, the
+5,000-ms WebSocket gap limit, v2 continuity evidence, share, persistence,
+safe-stop, identity, cleanup, sealing, and privacy requirements pass. Otherwise
+record `stop_repeated_boundary`, `stop_hardware_blocker`,
+`stop_authority_boundary`, or `stop_impossible_contract` and stop without retry.
+
+Verification: `stop_repeated_boundary`. Exact clean pushed commit `760859ef`,
+all seven software gates, both GitHub workflows, manifest/package admission,
+two successful private detector preflights, and exactly one campaign invocation
+passed their respective boundaries. The sealed result proved the full active
+duration, fresh safety, work/share progress, terminal persistence, safe-stop,
+USB cleanup, modes, digests, redaction, and non-promotion. It failed closed on
+one invalid-JSON serial marker and independently recorded 116 WebSocket
+reconnects, a 6,455-ms WebSocket gap, a 20,872-ms HTTP gap, and invalid watchdog
+continuity. No retry was run.
+
+Completion review: Closed at `stop_repeated_boundary`. The targeted WebSocket
+fix did not eliminate the real-device idle-reconnect signature, and the
+5,000-ms continuity ceiling did not pass. The earliest `marker_invalid` failure
+is preserved rather than overwritten by the later network evidence. This task
+remains active and unarchived as a terminal blocker under the tracker rules;
+its authorization is consumed and it cannot be selected for another hardware
+run.
+
+### task-ultra205-default-profile-soak-reverification | 2026-10-06 | Fully verify the upstream-default mining soak
+
+Status: Active, selected 2026-10-06. Owner-requested 2026-10-06 to reopen the
+soak for full verification. Successor to the Active terminal-blocker records
+`task-ultra205-default-profile-soak` and
+`task-ultra205-default-profile-soak-attempt-004`; those records stay unchanged
+and their consumed authorization is not revived. STR-007 is verified through
+its separate criteria promotion; this task owns the soak itself.
+
+Recorded boundary: attempt-004 kept the earliest `marker_invalid`
+(`marker_json_invalid`) failure and then repeated the idle-reconnect signature
+after its targeted fix: 116 WebSocket reconnects, a 6,455 ms maximum WebSocket
+gap against the 5,000 ms continuity ceiling, a 20,872 ms maximum HTTP gap and
+invalid watchdog continuity. That selected `stop_repeated_boundary`.
+
+- [x] Diagnose the idle-reconnect and marker boundaries on current firmware,
+      which has since moved to the fixed Serial/JTAG baseline (ADR-0021), and
+      decide whether the old soak observers still apply.
+- [x] Land regression-backed fixes for each boundary that still reproduces,
+      in these phases (plan of 2026-10-06):
+  - [x] Phase 0: ADR-0033 "Signed hardware profile and one-shot soak
+        allowance". The soak keeps the work gate open for 600,000 active ms
+        and signs and charges 619,050 ms, adding the 19,050 ms upstream-default
+        shutdown tail (review correction; the Conservative tail is 15,550 ms).
+        `soakAllowance` is a new grant field with its own `soak_ledger`.
+        Controller 0.4 stays (optional fields, fail-closed on old peers), and
+        renewals are pre-signed.
+  - [x] Phase 1: `crates/bitaxe-worker-control`: an optional signed
+        `hardwareProfile` (`conservative | upstream-default`) and
+        `soakAllowance` in the grant, with validation (`upstream-default` only
+        with a soak; a soak is Stratum V1 with a 60/20 s window), a `SoakLedger`
+        (reserve once, no refund) and a read-only `soak_allowance_review`.
+  - [x] Phase 2: Gate repo: parse the new fields; a soak-only renewal bound
+        (36); soak stop ordering (refresh before renewing, let the device close
+        the gate, wait for safe-stop); `soakQualification` mode; conformance
+        vectors; push; bump the MODULE.bazel pin.
+  - [x] Phase 3: firmware: the lease profile from the signed grant (fixed for
+        the lease's life), the soak budget in revocation admission,
+        `worker_soak_budget` with an NVS `soak_ledger`, and host tests.
+  - [x] Phase 4: WebSocket hardening: pings run every 5 s instead of every
+        500 ms cadence tick; httpd work-queue backpressure no longer
+        unregisters clients; a real send failure now closes the session
+        instead of stranding its socket. The upstream 10-client cap is kept.
+        The hardware regression is the soak's idle WebSocket pre-phase
+        (Phase 6).
+  - [x] Phase 5: `tools/http-transport` `soak-observer` (separate HTTP and
+        WebSocket threads, bounded by its stop request) plus a pure `soak-judge` over twenty
+        30-second windows, with the shared continuity helpers moved out of
+        `tools/flash`.
+  - [x] Phase 6: `scripts/fixed-usb-soak` owner (`just ultra205-soak`):
+        preflight/serve/finish, an idle WebSocket pre-phase proof, a
+        `signSoak` signer (36 renewals), and a terminal judge without serial
+        markers.
+- [x] Write a complete hardware contract under the Effectful Hardware Task
+      Gate for a fresh-ordinal soak at upstream defaults (485 MHz, 1200 mV,
+      100% fan), with the original continuity, safety, safe-stop and
+      persistence criteria.
+- [x] Run the soak, review the evidence independently, and close the two
+      predecessor records as superseded when it verifies.
+
+Diagnosis (2026-10-06, read-only):
+
+- The old observers no longer apply. `just mining-campaign` fails closed
+  with `provisioning_requires_factory_reset` since `b0165cd5`, and its serial
+  markers (`mining_campaign_status=`, `runtime_origin`, attestation) no longer
+  reach USB, because the fixed Serial/JTAG writer forwards only allowlisted
+  `usb_*` records.
+- Its 30-second-window HTTP/WebSocket judge (`tools/flash/src/campaign/network`)
+  takes its origin from those markers and expects to own the serial port.
+- `marker_json_invalid` was one 851-byte line truncated in transit, ahead of a
+  complete marker. Truncation became recoverable in `0e6e0351`/`2a97230c`; the
+  marker channel itself is gone now.
+- The idle-reconnect signature came from firmware empty pings every 500 ms
+  while ESP-IDF control-frame dispatch was off. The host-only fix in
+  `task-campaign-websocket-connection-stability` could not help. The firmware
+  fix (`0e6e0351`) enables dispatch and drains control frames, but it has
+  never run on hardware.
+- No current path mines at upstream defaults for 600 active seconds:
+  - The Gate Work Lease is hard-coded to the Conservative preset
+    (`production_mining_session/bwg.rs`), and the grant has no profile field.
+  - Stratum V2 `normal` allows 180 active seconds.
+  - The Gate rejects more than 16 renewal artifacts, and 600 s needs about 28.
+  - The legacy NVS campaign lease that still honours soak/upstream-default/600 s
+    is unreachable by design.
+  - The in-session endpoint is available only through the v2 observer route;
+    `otawww-endpoint` ends the session.
+
+Owner decision (2026-10-06): authorize the soak through the Gate path with a
+signed, bounded hardware profile field (`conservative | upstream-default`) in
+the Work Lease and a new one-shot `soak` allowance of 600 active seconds. The
+Gate repository (`bitaxe-turnstile-system`) may be changed and pushed, and its
+pin bumped here, for the renewal bound and soak/profile handling. The soak
+mines Stratum V1 against the owner's real pool, using the ignored local pool
+credentials under the existing privacy rules.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+Hardware contract (soak attempt ordinals 001 onward):
+
+- Objective: one 600-active-second Ultra 205 soak at upstream defaults
+  (485 MHz, 1200 mV, 100% fan) through the Gate, mining Stratum V1 against the
+  owner's pool. It must prove continuous HTTP and WebSocket state, safety,
+  watchdog and work progress, accepted shares, device-local safe-stop,
+  `mineonboot=false`, retained pool settings and a single soak charge.
+- Private inputs, used at run time and never printed, recorded or committed:
+  - the existing protected authority directory;
+  - the ignored `pool-credentials.json` (`pool_config: local-owner-supplied`).
+- Permitted commands, in order:
+  1. `just package` at a clean, pushed HEAD, and `bun run build:browser` in the
+     Gate checkout at the exact pinned Gate commit.
+  1. `just detect-ultra205 > P/detector.stdout.log`, with `P` a new mode-0700
+     parent under `scratch/ultra205-soak/`, in a shell with `umask 077`.
+  1. `espflash board-info --chip esp32s3 --port <detector-port> --non-interactive`,
+     then the state-preserving install
+     `just flash-monitor --board 205 --port <detector-port> --expected-physical-sha256 <detected> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --evidence-dir P/install --capture-timeout-seconds 360 --redact-evidence`.
+     Skip both when the device already runs the exact package.
+  1. A fresh detector, then `just ultra205-soak preflight` for
+     `R=P/attempt-NNN`, as in `scripts/fixed-usb-soak/README.md`.
+  1. `just ultra205-soak serve`, detached under `nohup`, with separate mode-0600
+     stdout and stderr files in `P`.
+  1. In the dedicated Gate tab: open `http://127.0.0.1:48765/`, Connect, and run
+     the README's page sequence. Check `document.visibilityState` before each
+     step, and hold in the idle safe state while the tab is hidden.
+  1. Navigate the tab to `about:blank`, stop the server, and seal with
+     `just hardware-operator owner-finish --owner ultra205-soak --private-root R`.
+- Allowed effects:
+  - the exact package install above;
+  - Gate Web Serial admission and the fan cooling proof;
+  - one signed soak grant with 36 renewals;
+  - BM1366 initialization and work at upstream defaults;
+  - Stratum V1 to the owner's pool;
+  - HTTP and WebSocket observation of the station endpoint handed off in the
+    same session;
+  - device-local safe-stop and restoration.
+- Prohibited effects: TLS, Stratum V2, automatic fan mode, mining beyond the
+  signed budget, factory reset or credential injection, erase-flash, raw writes,
+  OTA, network discovery, non-205 hardware, direct UART or pins, fault
+  injection, voltage or fan stress, parity promotion, and raw secret output.
+- Terminal criterion (deliberate deviation): mining observed stopped on HTTP
+  and WebSocket by the end of the ordered safe-stop (160 s after the gate
+  closes), and the paused baseline with `mineonboot=false` after restoration.
+  The legacy 10 s rule measured from a serial marker that no longer reaches
+  USB, and safe-stop now includes an up-to-120-s cooling proof.
+- Live stop limits, enforced by firmware revocation and judged on every
+  sample: input 4.5–5.5 V, at most 15 W, ASIC below 75 C, fresh nonzero fan,
+  watchdog alive, and the 2.8 s heartbeat deadline.
+- Evidence: `R` is a private `ProtectedOperational` root with mode-0600 files.
+  Committed summaries may hold only numeric categories from `result.json` and
+  `soak-judge`, after `just verify-redaction`.
+- Recovery: firmware revokes and safe-stops on any fault, and the Gate
+  restores the baseline. If restoration or the final state cannot be confirmed,
+  hold the device idle and stop with `stop_hardware_blocker`. No reflash beyond
+  the install above and no power action is taken without the owner.
+- Retry bound: `docs/hardware/hardware-attempt-policy.md`. Each ordinal needs
+  verified progress, and a recurrence of the same boundary after its targeted
+  fix selects `stop_repeated_boundary`.
+- Accepted outcomes: `complete` only when `result.json` is `passed` and an
+  independent review agrees. Otherwise `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary` or
+  `stop_impossible_contract`.
+
+Authorization: the contract above. Software work continues as ordinary task
+work.
+Verification (2026-10-06): soak attempt 001 passed on firmware `f2306620`
+and Gate `6fd3ff14`. Redacted summary:
+`docs/parity/evidence/20261006-ultra205-default-profile-soak.md`.
+
+- `result.json` is `passed`, with no failures:
+  - 607,781 active ms at stop; work gate 600,000 ms; budget 619,050 ms;
+  - soak ledger ordinal 1, charged once, next 2;
+  - 28 of 36 renewals used;
+  - 17 accepted and 0 rejected shares.
+- `soak-judge` credited 20/20 windows with zero reconnects. Maximum gaps were
+  843 ms for WebSocket and 2,265 ms for HTTP. The clock residual was 79 ms.
+- Terminal stop and the paused baseline were confirmed on both transports.
+  `mineonboot` stayed false and pool settings were retained.
+- Every sample stayed inside the live limits: 5.26–5.47 V, at most 12.76 W,
+  36–57 C, fan 7,346–7,681 RPM.
+- The idle pre-phase lasted 94,563 ms with one WebSocket connection and no
+  broken events. That is the hardware regression for attempt-004's
+  idle-reconnect boundary.
+- An independent review of the private root agrees with `passed`, with the
+  caveats recorded in the summary:
+  - no frequency, voltage or fan-duty readback;
+  - mining stopped 16–17.6 s after the gate closed (within the 160 s
+    deviation, outside the legacy 10 s rule);
+  - host-receipt clock correlation;
+  - the final ledger and state were relayed through the page;
+  - safety was sampled at about 1 s.
+
+Seal deviation: `owner-finish` failed twice.
+
+- It quoted arguments for the positional `ultra205-soak` recipe, which
+  produced `soak_action`.
+- The 60 s final-detector freshness window expired under 80–128 s of Bazel
+  overhead per command.
+
+The root was sealed by running the built `ultra205_soak finish` launcher
+directly, immediately after a fresh detector. Fixes:
+
+- `scripts/hardware-operator/just.mjs` reads the Justfile's positional recipes
+  and passes their arguments verbatim.
+- Soak finish accepts a detector up to 300 s old. Release is still proven by
+  the gone process group and the free port.
+- Regressions were added in `owner-finish.test.mjs`.
+
+The real-observer unit test now spawns node directly, because macOS stalled
+the first exec of each freshly written wrapper script for 60–93 s on this host.
+
+Gates passed:
+
+- Bright Builds checks, `cargo fmt`, clippy, build and `cargo test`;
+- `just verify-redaction`;
+- 303 of 304 `just test` targets.
+
+`//tools/automation:automation_test` failed in "mining criteria validator
+passes one existing absolute path through Bazel". That test execs a freshly
+written fake `bazel` with a 10 s bound, which hits the same macOS first-exec
+stall. It is untouched by this change. The touched script targets pass.
+
+Completion review: the upstream-default soak is verified through the signed
+Gate path, with every original continuity, safety, safe-stop and persistence
+criterion met. The terminal-timing rule is the recorded deviation.
+`task-ultra205-default-profile-soak` and
+`task-ultra205-default-profile-soak-attempt-004` are superseded by this
+verification and archived unchanged with it. Parity is not promoted.
+
+Residual risks:
+- The profile is evidenced by the signed grant and its enforcement, not by
+  hardware readback.
+- One soak on one board; drift over longer runs or other boards is unmeasured.
+- This host's Bazel analysis-cache churn makes each `just` command take
+  minutes. Owner commands with short freshness windows remain sensitive to it.
