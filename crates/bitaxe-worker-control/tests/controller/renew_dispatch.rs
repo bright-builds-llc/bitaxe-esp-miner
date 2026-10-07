@@ -202,3 +202,40 @@ fn renewal_after_the_lease_expired_cannot_reach_session_renew() {
     assert!(worker.session().events.contains(&"lease_expired"));
     assert!(!worker.session().events.contains(&"renew"));
 }
+
+fn soak_started_worker() -> WorkerControl<FixtureVerifier, FakeSession> {
+    let mut worker = admitted_worker();
+    let mut grant: serde_json::Value = serde_json::from_str(&start_frame()).expect("grant fixture");
+    grant["payload"]["hardwareProfile"] = json!("upstream-default");
+    grant["payload"]["soakAllowance"] = json!({"schema":"worker-soak-allowance-v1","id":URL_SAFE_NO_PAD.encode([4;16]),"ordinal":1,"maximumActiveMilliseconds":619050});
+    let mut bytes = serde_json::to_vec(&grant).expect("grant frame");
+    bytes.push(b'\n');
+    worker
+        .prepare_frame(&bytes, 1000)
+        .expect("signed soak Start");
+    worker
+}
+
+#[test]
+fn a_soak_renewal_must_keep_the_signed_60_20_window() {
+    // Arrange
+    let mut worker = soak_started_worker();
+    // Act
+    let shortened = worker.prepare_frame(
+        renewal_frame_for(
+            "fixture-renewal-authentication",
+            "lease_fixture_03",
+            30_000,
+            10_000,
+        )
+        .as_bytes(),
+        2000,
+    );
+    let exact = worker.prepare_frame(
+        renewal_frame("fixture-renewal-authentication").as_bytes(),
+        2000,
+    );
+    // Assert
+    assert!(shortened.is_err());
+    assert!(exact.is_ok());
+}

@@ -94,3 +94,40 @@ fn the_soak_observation_reports_the_full_reservation_for_its_generation_only() {
     assert_eq!(observed["reserved_ms"], 619050);
     assert!(worker_soak_budget::observation(scope.generation.raw().wrapping_add(8), 1_000).is_none());
 }
+fn qualified_grant() -> WorkerLeaseGrant {
+    serde_json::from_value(serde_json::json!({"protocolVersion":"bwg-worker-controller/0.4","leaseId":"fixture","challengeId":"fixture",
+        "authorization":"synthetic","durationMilliseconds":10000,"renewAfterMilliseconds":5000,
+        "stratum":{"endpoint":"stratum+tcp://example.invalid:3333/","username":"fixture","password":"fixture"},
+        "qualificationAttempt":{"schema":"worker-qualification-attempt-v1","id":"AAAAAAAAAAAAAAAAAAAAAA","ordinal":1,"purpose":"diagnostic","maximumActiveMilliseconds":30000}}))
+    .expect("fixture")
+}
+#[test]
+fn a_pending_soak_refuses_a_qualification() {
+    // Arrange
+    let scope = Scope::new();
+    *LEDGER.lock().expect("ledger") = Some(exhausted_original());
+    worker_acceptance_budget::admit(scope.generation, &soak_grant(1)).expect("admit soak");
+    let pending = worker_soak_budget::review().expect("review");
+    assert_eq!(pending["pending"], true);
+    // Act
+    let refused = worker_qualification_budget::admit(scope.generation, qualified_grant().maybe_qualification_attempt().expect("attempt"));
+    // Assert
+    assert!(refused.is_err());
+    assert_eq!(worker_qualification_budget::review().expect("review")["total_charged_ms"], 0);
+}
+#[test]
+fn a_failed_soak_recovery_blocks_only_soaks_and_not_boot_recovery() {
+    // Arrange
+    let scope = Scope::new();
+    *LEDGER.lock().expect("ledger") = Some(exhausted_original());
+    worker_acceptance_budget::admit(scope.generation, &soak_grant(1)).expect("admit soak");
+    FAIL_WRITE.store(true, Ordering::SeqCst);
+    // Act
+    let recovered = worker_acceptance_budget::recover_after_boot(&startup::BootMiningBaselineConfirmed);
+    FAIL_WRITE.store(false, Ordering::SeqCst);
+    let soak_refused = worker_soak_budget::admit(scope.generation, soak_grant(2).maybe_soak_allowance().expect("allowance"));
+    // Assert
+    assert!(recovered.is_ok());
+    assert!(soak_refused.is_err());
+    worker_soak_budget::recover_after_boot(&startup::BootMiningBaselineConfirmed);
+}

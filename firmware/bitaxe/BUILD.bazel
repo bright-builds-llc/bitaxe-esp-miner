@@ -1425,6 +1425,7 @@ rust_test(
         "//crates/bitaxe-asic:bitaxe_asic",
         "//crates/bitaxe-worker-control:bitaxe_worker_control",
         "@crates//:anyhow",
+        "@crates//:log",
         "@crates//:serde_json",
     ],
 )

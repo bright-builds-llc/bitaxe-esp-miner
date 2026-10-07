@@ -584,8 +584,19 @@ unsafe extern "C" fn send_queued_websocket_frame(argument: *mut c_void) {
         RECORDER.send_completed(token, result == sys::ESP_OK);
     }
     if result != sys::ESP_OK {
+        // Only a lease that is still current owns its fd; a reused fd belongs to a newer session.
+        let current = websocket_api::is_current(queued.lease);
         websocket_api::unregister_if_current(queued.lease);
-        // Unregistering alone left the socket open, stranding one of the server's few sockets.
-        let _ = unsafe { sys::httpd_sess_trigger_close(queued.server, queued.lease.session()) };
+        if current {
+            // Unregistering alone left the socket open, stranding one of the server's few sockets.
+            let closed =
+                unsafe { sys::httpd_sess_trigger_close(queued.server, queued.lease.session()) };
+            if closed != sys::ESP_OK {
+                log::warn!(
+                    "axeos_websocket_send=close_failed session={} error={closed}",
+                    queued.lease.session()
+                );
+            }
+        }
     }
 }

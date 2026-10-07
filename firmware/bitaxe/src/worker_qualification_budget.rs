@@ -46,6 +46,10 @@ pub(crate) fn admit(
     {
         anyhow::bail!("qualification_budget=original_incomplete");
     }
+    // A pending soak reservation excludes a qualification, as a pending qualification excludes a soak.
+    if store.soak_ledger()?.pending() {
+        anyhow::bail!("qualification_budget=soak_pending");
+    }
     let previous = store.qualification_ledger()?;
     let reserved = previous.reserve(allowance)?;
     *PENDING

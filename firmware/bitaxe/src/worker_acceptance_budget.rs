@@ -115,7 +115,7 @@ pub(crate) fn finish(generation: WorkerGeneration) -> anyhow::Result<()> {
 pub(crate) fn recover_after_boot(
     proof: &crate::startup::BootMiningBaselineConfirmed,
 ) -> anyhow::Result<()> {
-    crate::worker_soak_budget::recover_after_boot(proof)?;
+    crate::worker_soak_budget::recover_after_boot(proof);
     crate::worker_qualification_budget::recover_after_boot(proof)?;
     let _guard = acquire()?;
     let mut store =

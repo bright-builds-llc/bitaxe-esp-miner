@@ -17,6 +17,8 @@ static BUSY: AtomicBool = AtomicBool::new(false);
 static GENERATION: AtomicU32 = AtomicU32::new(0);
 static ORDINAL: AtomicU32 = AtomicU32::new(0);
 static COMPLETE: AtomicBool = AtomicBool::new(false);
+/// A soak ledger that failed boot recovery blocks soak admission only, never other Work Leases.
+static RECOVERY_FAILED: AtomicBool = AtomicBool::new(false);
 struct Guard;
 impl Drop for Guard {
     fn drop(&mut self) {
@@ -32,6 +34,9 @@ fn acquire() -> anyhow::Result<Guard> {
 /// Reserve and persist the whole soak before activation; storage failure never activates work.
 pub(crate) fn admit(generation: WorkerGeneration, allowance: &SoakAllowance) -> anyhow::Result<()> {
     let _guard = acquire()?;
+    if RECOVERY_FAILED.load(Ordering::SeqCst) {
+        anyhow::bail!("soak_budget=recovery_failed");
+    }
     if !revocation::begin_reservation(generation) {
         anyhow::bail!("soak_budget=revoked");
     }
@@ -89,9 +94,17 @@ pub(crate) fn finish(generation: WorkerGeneration) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn recover_after_boot(
-    _proof: &crate::startup::BootMiningBaselineConfirmed,
-) -> anyhow::Result<()> {
+/// Completes a pending soak without refund. A failure is retained and blocks only soak admission, so
+/// a corrupt or incompatible soak ledger never disables conservative or qualification Work Leases.
+pub(crate) fn recover_after_boot(proof: &crate::startup::BootMiningBaselineConfirmed) {
+    let failed = recover_ledger(proof).is_err();
+    RECOVERY_FAILED.store(failed, Ordering::SeqCst);
+    if failed {
+        log::warn!("soak_budget=recovery_failed");
+    }
+}
+
+fn recover_ledger(_proof: &crate::startup::BootMiningBaselineConfirmed) -> anyhow::Result<()> {
     let _guard = acquire()?;
     let mut store = BwgWorkerNvs::open().map_err(|_| anyhow::anyhow!("soak_budget=storage"))?;
     let ledger = store.soak_ledger()?;

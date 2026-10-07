@@ -495,7 +495,10 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             || (self
                 .maybe_active
                 .as_ref()
-                .is_some_and(|a| a.grant.maybe_v2().is_some())
+                // Stratum V2 and soak leases keep their signed 60/20 s window on every renewal.
+                .is_some_and(|a| {
+                    a.grant.maybe_v2().is_some() || a.grant.maybe_soak_allowance().is_some()
+                })
                 && (renewal.duration_milliseconds() != 60_000
                     || renewal.renew_after_milliseconds() != 20_000))
         {
