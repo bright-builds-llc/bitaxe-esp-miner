@@ -381,6 +381,10 @@ pub(crate) struct FlashCommand {
 
     #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
     pub(crate) wifi_credentials: Option<Utf8PathBuf>,
+
+    /// Web UI variant to build and require in the package manifest (ADR-0034).
+    #[arg(long = "web-ui", value_enum)]
+    pub(crate) maybe_web_ui: Option<WebUiVariant>,
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -415,6 +419,10 @@ pub(crate) struct FlashMonitorCommand {
 
     #[arg(long = "network-reconnect-probe", requires = "wifi_credentials")]
     pub(crate) network_reconnect_probe: bool,
+
+    /// Web UI variant to build and require in the package manifest (ADR-0034).
+    #[arg(long = "web-ui", value_enum)]
+    pub(crate) maybe_web_ui: Option<WebUiVariant>,
 
     #[arg(
         long = "thermal-fault-stimulus-intent",

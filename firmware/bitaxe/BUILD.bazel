@@ -1,6 +1,8 @@
 load("//scripts:build_identity.bzl", "build_provenance")
 load("@rules_rust//rust:defs.bzl", "rust_test")
 load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary")
+load("@bazel_lib//lib:copy_to_bin.bzl", "copy_to_bin")
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 
 js_library(
     name = "tcp_payload_evaluator_sources",
@@ -43,12 +45,102 @@ exports_files([
     "static/www/index.html",
     "static/www/assets/api-client.js",
     "static/www/assets/app.css",
-    "static/www/assets/app.css.gz",
     "static/www/assets/app.js",
     "static/www/assets/provenance.js",
     "static/www/assets/release.json",
     "static/www/assets/ui-core.js",
 ])
+
+# Web UI variant packed into www.bin (ADR-0034):
+#   bazel build //firmware/bitaxe:firmware_image --//firmware/bitaxe:web_ui=solid
+# `current` (the handwritten UI in static/www) stays the default.
+string_flag(
+    name = "web_ui",
+    build_setting_default = "current",
+    values = [
+        "current",
+        "solid",
+    ],
+)
+
+config_setting(
+    name = "web_ui_current",
+    flag_values = {":web_ui": "current"},
+)
+
+config_setting(
+    name = "web_ui_solid",
+    flag_values = {":web_ui": "solid"},
+)
+
+CURRENT_UI_SOURCES = [
+    "static/www/index.html",
+    "static/www/assets/api-client.js",
+    "static/www/assets/app.css",
+    "static/www/assets/app.js",
+    "static/www/assets/provenance.js",
+    "static/www/assets/release.json",
+    "static/www/assets/ui-core.js",
+]
+
+# Each variant is staged into `<dir>/www` (the files packed into www.bin, with
+# generated deterministic .gz siblings) and `<dir>/web-ui.json` (variant and
+# per-file SHA-256 digests).
+js_run_binary(
+    name = "web_ui_current_staged",
+    srcs = CURRENT_UI_SOURCES,
+    args = [
+        "--variant=current",
+        "--out=$(RULEDIR)/web-ui-current",
+        "--strip-prefix=firmware/bitaxe/static/www/",
+    ] + ["--input=$(execpath {})".format(source) for source in CURRENT_UI_SOURCES],
+    copy_srcs_to_bin = False,
+    out_dirs = ["web-ui-current"],
+    tool = "//tools/automation:stage_web_ui",
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_run_binary(
+    name = "web_ui_solid_staged",
+    srcs = ["//firmware/bitaxe/web/solid:dist"],
+    args = [
+        "--variant=solid",
+        "--out=$(RULEDIR)/web-ui-solid",
+        "--input=$(execpath //firmware/bitaxe/web/solid:dist)",
+    ],
+    copy_srcs_to_bin = False,
+    out_dirs = ["web-ui-solid"],
+    tool = "//tools/automation:stage_web_ui",
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+# Hard per-variant gzip budget, enforced by //tools/automation:web_ui_budget_test.
+js_library(
+    name = "web_ui_budget",
+    srcs = ["web-ui-budget.json"],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+alias(
+    name = "web_ui_staged",
+    actual = select({
+        ":web_ui_current": ":web_ui_current_staged",
+        ":web_ui_solid": ":web_ui_solid_staged",
+    }),
+    visibility = ["//visibility:public"],
+)
+
+# Files the SolidJS variant shares with `current`: the stylesheet it bundles and
+# the `current` modules its contract tests run against.
+copy_to_bin(
+    name = "current_ui_shared_sources",
+    srcs = [
+        "static/www/assets/api-client.js",
+        "static/www/assets/app.css",
+        "static/www/assets/ui-core.js",
+    ],
+    visibility = ["//firmware/bitaxe/web/solid:__pkg__"],
+)
 
 filegroup(
     name = "bwg_usb_runtime_source",
@@ -155,7 +247,6 @@ js_library(
         "static/www/index.html",
         "static/www/assets/api-client.js",
         "static/www/assets/app.css",
-        "static/www/assets/app.css.gz",
         "static/www/assets/app.js",
         "static/www/assets/provenance.js",
         "static/www/assets/release.json",
@@ -1244,6 +1335,7 @@ js_run_binary(
         ":bitaxe-firmware.map",
         ":bitaxe-firmware.debug.json",
         ":build_provenance_stamp",
+        ":web_ui_staged",
     ],
     outs = [
         "bitaxe-ultra205.elf",
@@ -1275,6 +1367,8 @@ js_run_binary(
         "$(RULEDIR)",
         "--manifest",
         "$(RULEDIR)/bitaxe-ultra205-package.json",
+        "--web-ui-stage",
+        "$(location :web_ui_staged)",
     ],
     execution_requirements = {
         "local": "1",

@@ -9,6 +9,7 @@ use sha2::{Digest, Sha256};
 
 use bitaxe_api::BuildProvenance;
 
+use crate::web_ui::{collect_web_ui_assets, validate_web_ui_manifest, WebUiAsset, WebUiVariant};
 use crate::{
     validate_package_request, PackageEnvironment, PackageRequest, DEFAULT_ELF_NAME,
     EXPECTED_REFERENCE_COMMIT, FACTORY_IMAGE_NAME, RUST_TARGET, UNAVAILABLE,
@@ -35,6 +36,12 @@ pub(crate) struct PackageManifestV3 {
     pub(crate) artifacts: Vec<ReleaseArtifact>,
     #[serde(default)]
     pub(crate) update_segments: Vec<bitaxe_api::update_segments::UpdateSegment>,
+    /// Web UI variant packed into `www.bin`; absent only in historical packages.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) web_ui_variant: Option<WebUiVariant>,
+    /// SHA-256 digest of every file packed into `www.bin`, sorted by path.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) web_ui_assets: Vec<WebUiAsset>,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -275,6 +282,8 @@ pub(crate) fn build_manifest(
         otadata_source: package_request.otadata_source.clone(),
         artifacts,
         update_segments,
+        web_ui_variant: Some(package_request.web_ui_variant),
+        web_ui_assets: collect_web_ui_assets(&package_request.www_dir)?,
     };
     validate_package_manifest_v3(&manifest)?;
 
@@ -381,6 +390,7 @@ pub(crate) fn validate_package_manifest_v3(manifest: &PackageManifestV3) -> Resu
         bitaxe_api::update_segments::validate_update_segments(&manifest.update_segments)?;
     }
 
+    validate_web_ui_manifest(manifest.web_ui_variant, &manifest.web_ui_assets)?;
     require_artifact_offset(manifest, ArtifactKind::FirmwareElf, UNAVAILABLE)?;
     require_artifact_offset(manifest, ArtifactKind::FirmwareOtaImage, "0x10000")?;
     require_artifact_offset(manifest, ArtifactKind::WwwSpiffsImage, "0x410000")?;

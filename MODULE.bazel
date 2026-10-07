@@ -8,6 +8,8 @@ bazel_dep(name = "rules_shell", version = "0.8.0")
 bazel_dep(name = "rules_nodejs", version = "6.7.5")
 bazel_dep(name = "aspect_rules_js", version = "3.2.3")
 bazel_dep(name = "aspect_rules_ts", version = "3.9.2")
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
+bazel_dep(name = "bazel_lib", version = "3.2.2")
 
 node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
 node.toolchain(node_version = "24.18.0")
@@ -36,12 +38,21 @@ npm.npm_import(
     integrity = "sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q==",
     deps = {"undici-types": "undici-types@7.18.0"},
 )
+# Locked, hermetic toolchain for the SolidJS web UI variant (ADR-0034). The hub
+# is not named `npm`, so its repositories cannot collide with the individually
+# imported `npm__*` packages above.
+npm.npm_translate_lock(
+    name = "npm_web_ui",
+    pnpm_lock = "//firmware/bitaxe/web/solid:pnpm-lock.yaml",
+    verify_node_modules_ignored = "//:.bazelignore",
+)
 use_repo(
     npm,
     "npm__at_types_node__24.13.3",
     "npm__at_types_node__24.13.3__links",
     "npm__undici_types__7.18.0",
     "npm__undici_types__7.18.0__links",
+    "npm_web_ui",
 )
 
 crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")

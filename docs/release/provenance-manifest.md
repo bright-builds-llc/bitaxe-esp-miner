@@ -35,18 +35,24 @@ material with explicit review boundaries.
 | --- | --- | --- |
 | Operator web index | `firmware/bitaxe/static/www/index.html` | Rust-owned responsive operator shell, not copied from upstream ESP-Miner. |
 | Operator stylesheet | `firmware/bitaxe/static/www/assets/app.css` | Rust-owned dark-first responsive styling. |
-| Deterministic gzip stylesheet | `firmware/bitaxe/static/www/assets/app.css.gz` | Generated from `firmware/bitaxe/static/www/assets/app.css` using deterministic gzip settings. |
+| Deterministic gzip stylesheet | `assets/app.css.gz` in the staged `current` variant | Generated at package time from `firmware/bitaxe/static/www/assets/app.css` using deterministic gzip settings; no longer committed. |
 | Operator UI core | `firmware/bitaxe/static/www/assets/ui-core.js` | Rust-owned pure route, settings, formatting, and theme decisions. |
 | Same-origin API client | `firmware/bitaxe/static/www/assets/api-client.js` | Rust-owned bounded API and WebSocket adapter. |
 | Operator DOM adapter | `firmware/bitaxe/static/www/assets/app.js` | Rust-owned navigation and workflow orchestration. |
 | Release metadata fixture | `firmware/bitaxe/static/www/assets/release.json` | Rust-owned static metadata fixture. |
-| Static filesystem source tree | `firmware/bitaxe/static/www` | Source tree for future `www.bin` generation. |
+| Static filesystem source tree | `firmware/bitaxe/static/www` | Source of the default `current` web UI variant. |
+| SolidJS variant source | `firmware/bitaxe/web/solid` | Rust-project SolidJS port of the `current` UI, built by Vite through Bazel; not copied from upstream ESP-Miner or AxeOS. |
+| SolidJS runtime | `solid-js 1.9.17` (MIT), locked in `firmware/bitaxe/web/solid/pnpm-lock.yaml` | Third-party runtime bundled into `solid` packages only. |
 
 - Owner: static/SPIFFS packaging workflow.
-- Package generation: `bitaxe-automation package-firmware` builds `www.bin` from the
-  static filesystem source tree with ESP-IDF `spiffsgen.py` at size `0x300000`;
-  `assets/app.css.gz` is deterministically regenerated from the operator
-  stylesheet and remains the representative gzip static smoke asset.
+- Package generation: `bitaxe-automation package-firmware` builds `www.bin` from
+  the staged web UI variant (`//firmware/bitaxe:web_ui_staged`, selected by
+  `--//firmware/bitaxe:web_ui`, default `current`) with ESP-IDF `spiffsgen.py`
+  at size `0x300000` (ADR-0034). Staging generates deterministic gzip siblings
+  and verifies that each one decompresses to its source. For `current` that is
+  only `assets/app.css.gz`, which remains the representative gzip static smoke
+  asset. The package manifest records `web_ui_variant` and a SHA-256 digest
+  for every packed file (`web_ui_assets`).
 - No upstream-generated static assets included in Phase 7 package source.
 - Follow-up: if a future release includes reference-built AxeOS assets, record
   the generated asset source path, upstream attribution, and GPL review decision

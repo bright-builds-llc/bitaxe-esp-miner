@@ -116,6 +116,8 @@ export async function rebuildInstalledPackage(
       otadataInitialBin: path.join(output, "bitaxe-firmware-otadata-initial.bin"),
       outDir: packageDirectory,
       manifest: manifestPath,
+      // Historical commits predate staged web UI variants (ADR-0034).
+      webUi: { kind: "legacy-tree", path: path.join(worktree, "firmware/bitaxe/static/www") },
     }, processPort, xtask);
     const manifestDocument = await readFile(manifestPath, "utf8");
     const manifest = JSON.parse(manifestDocument) as Record<string, unknown>;

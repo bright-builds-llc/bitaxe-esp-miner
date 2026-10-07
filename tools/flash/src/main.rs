@@ -75,6 +75,7 @@ mod support;
 mod tcp_payload_diagnostic;
 mod thermal_fault_intent;
 mod usb_stability;
+mod web_ui;
 mod wifi;
 
 #[cfg(test)]
@@ -108,9 +109,9 @@ pub(crate) use support::*;
 pub(crate) use tcp_payload_diagnostic::*;
 pub(crate) use thermal_fault_intent::*;
 pub(crate) use usb_stability::*;
+pub(crate) use web_ui::*;
 pub(crate) use wifi::*;
 
-const PACKAGE_BUILD_DISPLAY: &str = "bazel build //firmware/bitaxe:firmware_image";
 const PACKAGE_BUILD_TARGET: &str = "//firmware/bitaxe:firmware_image";
 const PACKAGE_MANIFEST_RELATIVE_PATH: &str = "firmware/bitaxe/bitaxe-ultra205-package.json";
 const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";

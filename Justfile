@@ -92,17 +92,32 @@ diagnose-ultra205-late-attach *args:
 diagnose-ultra205-uart-capture *args:
     bash scripts/phase28.1.1-terminal-closure-guard.sh
 
-build:
-    bazel build //firmware/bitaxe:firmware
+# Firmware ELF plus the staged web UI; `--web-ui current|solid` picks the variant (default current, ADR-0034).
+[positional-arguments]
+build *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    flag="$(scripts/web-ui-flag.sh "$@")"
+    bazel build //firmware/bitaxe:firmware //firmware/bitaxe:web_ui_staged "$flag"
 
 # Four parallel tests: at full parallelism slow script tests time out and starve the firmware build on a
 # developer host, which looks like a regression (STR-005 promotion, 2026-10-06).
 test:
     bazel test //... --local_test_jobs=4
 
-package:
-    bazel build //firmware/bitaxe:firmware_image
+# Package image; `--web-ui current|solid` picks the bundled web UI (default current). The manifest records it.
+[positional-arguments]
+package *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    flag="$(scripts/web-ui-flag.sh "$@")"
+    bazel build //firmware/bitaxe:firmware_image "$flag"
 
+# Web UI raw/gzip/served bytes and www.bin SPIFFS use; `--append-history docs/web-ui/size-history.csv` records them.
+web-ui-sizes *args:
+    bazel run //tools/automation:web_ui_sizes -- {{ args }}
+
+# `--web-ui current|solid` builds that variant and requires it in the package manifest.
 flash *args:
     bazel run //tools/flash:flash -- flash {{ args }}
 
@@ -116,6 +131,7 @@ diagnose-usb-reboot-loop *args:
 usb-reset-endurance *args:
     bazel run //tools/device-session:device-session -- usb-reset-endurance {{ args }}
 
+# `--web-ui current|solid` builds that variant and requires it in the package manifest.
 flash-monitor *args:
     bazel run //tools/flash:flash -- flash-monitor {{ args }}
 

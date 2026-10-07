@@ -521,7 +521,18 @@ fn package_request(
         license_inventory,
         provenance_manifest,
         otadata_source: "generated-erased-flash".to_owned(),
+        web_ui_variant: crate::web_ui::WebUiVariant::Current,
+        www_dir: www_dir_fixture(dir),
     }
+}
+
+fn www_dir_fixture(dir: &TempDir) -> Utf8PathBuf {
+    let www_dir = temp_path(dir, "www");
+    std::fs::create_dir_all(www_dir.join("assets").as_std_path()).expect("create www fixture");
+    write_fixture(&www_dir.join("index.html"), b"<!doctype html>");
+    write_fixture(&www_dir.join("version.txt"), b"0123456789ab-dev\n");
+    write_fixture(&www_dir.join("assets/app.css"), b"body{}");
+    www_dir
 }
 
 #[derive(Debug)]

@@ -230,6 +230,7 @@ async function main(): Promise<number> {
         otadataInitialBin: optionValue(invocation, "--otadata-initial-bin"),
         outDir: optionValue(invocation, "--out-dir"),
         manifest: optionValue(invocation, "--manifest"),
+        webUi: { kind: "stage", path: optionValue(invocation, "--web-ui-stage") },
       }, processPort, toolProgram(root, "tools/xtask/xtask"));
     } else if (invocation.command === "package-rollback-probe") {
       publicValue = await packageRollbackProbe(root, {

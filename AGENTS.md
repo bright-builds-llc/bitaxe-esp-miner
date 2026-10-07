@@ -292,6 +292,13 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - If ESP-IDF/esp-rs tooling is insufficient for a concrete workflow, document the reason in repo-local guidance, an ADR, or the relevant `TASKS.md` task before adding an alternate tool path.
 - Use `just doctor` for read-only contributor dependency checks and `just bootstrap-esp` for the explicit opt-in ESP tooling installer. `just doctor` intentionally calls a script directly because it must diagnose missing Bazel or ESP prerequisites before Bazel can run.
 
+### Web UI Variants
+
+- Two web UI variants exist (ADR-0034): `current` (default, handwritten, `firmware/bitaxe/static/www`) and `solid` (SolidJS, `firmware/bitaxe/web/solid`). Select one with `--web-ui current|solid` on `just build`, `just package`, `just flash` and `just flash-monitor` (Bazel flag `--//firmware/bitaxe:web_ui`). The package manifest records `web_ui_variant` and per-file digests, and the flash tool refuses a mismatch.
+- Never build, bundle or copy upstream Angular AxeOS; it is a feature reference only (`docs/web-ui/axeos-feature-inventory.md`).
+- Change `solid` dependencies only through its `package.json` and `pnpm-lock.yaml` (pnpm 10, exact versions, `allowBuilds: {}`), then rebuild through Bazel. Never commit `.gz` files under `static/www`; staging generates and verifies them.
+- `just web-ui-sizes` reports sizes. `//tools/automation:web_ui_budget_test` enforces `firmware/bitaxe/web-ui-budget.json`. Raise a budget only in a reviewed change with a new `--append-history` row in `docs/web-ui/size-history.csv`.
+
 ### Autonomous Ultra 205 Hardware Verification
 
 ### Persistent Gate Browser Tab

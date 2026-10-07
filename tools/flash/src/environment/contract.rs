@@ -1,7 +1,7 @@
 use crate::*;
 
 pub(crate) trait FlashEnvironment {
-    fn build_package(&self) -> Result<()>;
+    fn build_package(&self, web_ui: WebUiVariant) -> Result<()>;
     fn bazel_bin(&self) -> Result<Utf8PathBuf>;
     fn workspace_path(&self, path: &Utf8Path) -> Utf8PathBuf {
         path.to_owned()

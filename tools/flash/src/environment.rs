@@ -110,15 +110,17 @@ impl FlashEnvironment for LocalFlashEnvironment {
     fn usb_profile(&self, port: &str) -> Result<UsbProfile> {
         inspect_usb_profile(port).map(|inspection| inspection.profile)
     }
-    fn build_package(&self) -> Result<()> {
+    fn build_package(&self, web_ui: WebUiVariant) -> Result<()> {
+        let flag = web_ui.bazel_flag();
         let status = Command::new("bazel")
             .current_dir(self.workspace_dir.as_std_path())
             .arg("build")
             .arg(PACKAGE_BUILD_TARGET)
+            .arg(&flag)
             .status()
             .context("failed to run bazel build for firmware package")?;
         if !status.success() {
-            bail!("{PACKAGE_BUILD_DISPLAY} failed with {status}");
+            bail!("bazel build {PACKAGE_BUILD_TARGET} {flag} failed with {status}");
         }
 
         Ok(())
