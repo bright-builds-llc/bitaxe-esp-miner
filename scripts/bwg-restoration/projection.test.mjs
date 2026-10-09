@@ -30,7 +30,7 @@ test("every passed scenario projects to the closed 0.3 profile with only its all
   for (const value of projections) {
     assert.equal(value.profile, "bwg-worker-restoration-result/0.3");
     assert.deepEqual(Object.keys(value.facts).sort(), [...FACT_ALLOWLIST[value.scenario]].sort());
-    assert.deepEqual([value.facts.deviceIdentityStable, value.facts.poolConfigurationUnchanged, value.poolConfigurationNeverPersisted],
+    assert.deepEqual([value.facts.deviceIdentityStable, value.facts.poolConfigurationUnchanged, value.poolConfigurationUnchangedPerBoot],
       [true, true, true]);
     assert.equal(value.facts.sameKeyReacquired, ["disconnect", "reboot"].includes(value.scenario) ? true : undefined);
   }
@@ -109,13 +109,13 @@ test("a 0.2 projection cannot carry 0.3 fields and a 0.3 projection cannot omit 
   // Arrange
   const legacy = ATTEMPT_008["bwg007-attempt-008-reboot.json"];
   const current = projection("reboot");
-  const { poolConfigurationNeverPersisted, ...withoutPool } = current;
+  const { poolConfigurationUnchangedPerBoot, ...withoutPool } = current;
   // Act / Assert
-  throwsWith(() => validateProjection({ ...legacy, poolConfigurationNeverPersisted: true }), "projection_fields");
+  throwsWith(() => validateProjection({ ...legacy, poolConfigurationUnchangedPerBoot: true }), "projection_fields");
   throwsWith(() => validateProjection({ ...legacy, facts: { ...legacy.facts, sameKeyReacquired: true } }), "projection_facts");
   throwsWith(() => validateProjection(withoutPool), "projection_fields");
   throwsWith(() => validateProjection({ ...current, profile: "bwg-worker-restoration-result/0.4" }), "projection_identity");
-  assert.equal(poolConfigurationNeverPersisted, true);
+  assert.equal(poolConfigurationUnchangedPerBoot, true);
 });
 
 test("a second device identity anywhere in the attempt cannot be published as the same device", () => {

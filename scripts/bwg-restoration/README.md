@@ -73,6 +73,7 @@ scenario at a time, and check its result before starting the next.
    - the presence watcher binary (`bazel-bin/tools/flash/flash`).
 
    It records the detected physical identity in `R/context.json`.
+
 1. Start serve detached, with separate mode-0600 stdout and stderr files:
    `just bwg-restoration serve --private-root R --authority-directory <protected authority> --pool-credentials <ignored pool file>`.
    Serve listens on the Gate origin `127.0.0.1:48765`, re-checks the frozen
@@ -124,10 +125,11 @@ scenario at a time, and check its result before starting the next.
    1. `authorization_negatives`, run right after the reboot and before any
       Start:
       - N1: connect, `statusReview`, then `replayArtifact` (the pre-reboot
-        Start). The device refuses a Start until a status in the same
-        connection has reported the reboot, so serve withholds the replay
-        until it has recorded that status. After the device's rejection the
-        page disconnects. Connect, then `authorizationRejectionReview`.
+        Start). The device refuses a Start until its once-per-boot reboot
+        report has been delivered and acknowledged. The passing reboot
+        scenario normally receives it, so serve releases the replay on that
+        carried report, or else on a status in this connection reporting the
+        reboot. After the device's rejection the page disconnects. Connect, then `authorizationRejectionReview`.
       - N2: settle, then `prepareStart` (the server signs one Start and holds
         it). Keep the page connected for 61 s, then `replayArtifact`. Connect,
         then `authorizationRejectionReview`.
@@ -139,6 +141,7 @@ scenario at a time, and check its result before starting the next.
         re-confirms the stored reason as `connectivity_lost`, the scenario's
         terminal reason. Connect, then `authorizationRejectionReview`,
         `statusReview` and `submitCompletion()`.
+
 1. After the last scenario, or after any failure, navigate the tab to
    `about:blank` with the page's own `location.replace('about:blank')`
    (AGENTS.md, Persistent Gate Browser Tab).
@@ -166,6 +169,7 @@ scenario at a time, and check its result before starting the next.
    with `credential_in_evidence`, unless the campaign had already failed, in
    which case its earlier failure is kept. An attempt that never completed
    seals as `unverified` with `completion_missing`.
+
 1. After an independent review, run
    `just bwg-restoration publish --private-root R`. It requires an unchanged
    sealed root, `result: passed`, a credential scan with zero hits, all eight
@@ -247,8 +251,9 @@ Each scenario must also prove its own facts:
   → connected → terminal status. `reboot` also requires the stimulus reset to
   idle with count 0, no rejection and no high-water advance since boot, and a
   pre-reboot mining status.
-- `authorization_negatives`: a same-connection status reporting the reboot
-  before N1, then four device-attributed rejections, with rejection ordinals
+- `authorization_negatives`: the reboot report delivered before N1, either by
+  the passing reboot scenario (its carried `rebootReported`, with no lease
+  started since) or by a status in N1's own connection. Then four device-attributed rejections, with rejection ordinals
   1–4 since the reboot and the device's wire categories
   (`authentication_failed`, except `admission_required` for N2):
   - N1: Start, signature valid, context mismatch, replay guard at or below the
@@ -291,7 +296,7 @@ measured, not asserted:
 - `campaignEventCredentialsAbsent`: the seal-time scan found no hit;
 - `sameDeviceAcrossScenarios`: `deviceIdentityStable` in all eight scenarios
   and epoch 1 in the last final state;
-- `poolConfigurationNeverPersisted`: that scenario's
+- `poolConfigurationUnchangedPerBoot`: that scenario's
   `poolConfigurationUnchanged`.
 
 The validator still accepts the published attempt-008 files, which use profile

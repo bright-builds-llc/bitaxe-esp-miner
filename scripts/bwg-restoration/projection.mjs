@@ -13,7 +13,7 @@ export const PROJECTION_DIRECTORY = "docs/parity/evidence/bwg-worker-restoration
 const COMMIT_FIELDS = ["firmwareCommit", "gateCommit", "referenceCommit"];
 const DIGEST_FIELDS = ["appElfSha256", "packageManifestSha256", "gateBundleSha256", "gatePageSha256", "trustSha256", "recordsSha256", "scenarioResultSha256"];
 const LEGACY_BOOLEAN_FIELDS = ["baselineConfirmed", "cleanupConfirmed", "campaignEventCredentialsAbsent", "sameDeviceAcrossScenarios"];
-const BOOLEAN_FIELDS = [...LEGACY_BOOLEAN_FIELDS, "poolConfigurationNeverPersisted"];
+const BOOLEAN_FIELDS = [...LEGACY_BOOLEAN_FIELDS, "poolConfigurationUnchangedPerBoot"];
 const PHYSICAL_FACTS = ["watcherBeforeRemovalInstruction", "removalObservedByWatcher", "absenceBoundMet", "restoreTokenBeforeRestoreInstruction",
   "enumerationChanged", "samePhysicalIdentity", "stableBeforeReconnect", "rearmsWithinCap", "pageOrderConfirmed", "deviceEndedLease"];
 
@@ -105,7 +105,7 @@ export function buildProjection({ attemptId, context, scenarioResult, recordsSha
     gatePageSha256: context.gate_page_sha256, trustSha256: context.trust_sha256, recordsSha256, scenarioResultSha256,
     baselineConfirmed: scenarioResult.checks?.baselineConfirmed === true, cleanupConfirmed: scenarioResult.checks?.cleanupConfirmed === true,
     campaignEventCredentialsAbsent: attempt.campaignEventCredentialsAbsent === true, sameDeviceAcrossScenarios: attempt.sameDeviceAcrossScenarios === true,
-    poolConfigurationNeverPersisted: scenarioResult.facts.poolConfigurationUnchanged === true, facts,
+    poolConfigurationUnchangedPerBoot: scenarioResult.facts.poolConfigurationUnchanged === true, facts,
   });
 }
 

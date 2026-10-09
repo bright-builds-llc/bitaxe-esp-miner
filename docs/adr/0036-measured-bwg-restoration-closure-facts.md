@@ -80,7 +80,7 @@ not measured in that profile:
    - `campaignEventCredentialsAbsent` from a scan with files and zero hits;
    - `sameDeviceAcrossScenarios` from `deviceIdentityStable` in all eight
      scenarios and epoch 1 in the last final state;
-   - `poolConfigurationNeverPersisted`, a new boolean, from
+   - `poolConfigurationUnchangedPerBoot`, a new boolean, from
      `poolConfigurationUnchanged`.
 
    Every scenario's facts gain `deviceIdentityStable` and

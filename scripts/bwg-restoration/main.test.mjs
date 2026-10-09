@@ -129,7 +129,7 @@ test("publish writes the eight projections from a sealed, passed root", async ()
   const files = (await readdir(directory)).sort();
   assert.equal(files.length, 8);
   const reboot = JSON.parse(await readFile(resolve(directory, "bwg007-attempt-007-reboot.json"), "utf8"));
-  assert.deepEqual([reboot.profile, reboot.facts.rebootClearedStimulus, reboot.facts.sameKeyReacquired, reboot.poolConfigurationNeverPersisted,
+  assert.deepEqual([reboot.profile, reboot.facts.rebootClearedStimulus, reboot.facts.sameKeyReacquired, reboot.poolConfigurationUnchangedPerBoot,
     reboot.sameDeviceAcrossScenarios, reboot.campaignEventCredentialsAbsent], ["bwg-worker-restoration-result/0.3", true, true, true, true, true]);
   await rejectsWith(main(["publish", "--private-root", root]), "projection_exists");
 });
