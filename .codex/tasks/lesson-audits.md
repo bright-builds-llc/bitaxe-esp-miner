@@ -108,3 +108,35 @@
   - Bytes and estimates: global `5,230` / `1,744`, repository `39,922` / `13,308`, combined `45,152` / `15,052`
   - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `88feb1d9bcc0fd68c50687f8f5b80368e3cd46238a7a51a93fbfeb6c97bc29f6`
   - Threshold state: above both hard loading limits; startup loading uses the priority-ordered whole-block rule, and this trigger is consumed
+
+## audit-bwg-evidence-hardening-supersession | 2026-10-09T22:14:16Z
+
+- Audit timestamp: `2026-10-09T22:14:16Z`
+- Trigger: a proposed append of three lessons from the BWG-007 restoration work, with the combined active total already above the `24,000`-byte and `8,000`-token limits; requested by `task-bwg-evidence-hardening`. Both active files were unchanged since the 2026-10-06 baseline (SHA-256 values matched).
+- Active source paths:
+  - Global: `/Users/peterryszkiewicz/.codex/tasks/lessons.md` (not modified; outside this task's scope)
+  - Repository: `/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/.codex/tasks/lessons.md`
+- Review: every active block in both files was read in full and each repository block was compared with the current always-loaded AGENTS.md rules and the policy documents they cite.
+- Before: global `7` lessons, `5,230` bytes / `1,744`; repository `43` lessons, `39,922` bytes / `13,308`; combined `50`, `45,152` bytes / `15,052` summed estimated tokens.
+- Consolidated lesson IDs: none. No pair shares cause, rule and trigger. `lesson-native-usb-capture-needs-prearmed-observation-or-replay` and `lesson-never-invite-ready-before-live-checkpoint` overlap AGENTS.md only partly (its restoration pre-arm rule is Plan 13-specific; its invite-only-after-a-live-checkpoint rule is stricter than "say whether armed"), so both stay active.
+- Archived lesson IDs (15, `14,642` bytes): each is a safety, privacy, authorization or evidence guardrail whose preventive rule AGENTS.md now states in full, so an equally strong, always-loaded replacement exists. Original text, date, rule and trigger signal are preserved in `.codex/tasks/lessons.archive.md` with the archive date, the exact AGENTS.md section as the reason, and `Replacement ID: none` (the replacement is a rule, not a lesson).
+  - "Ultra 205 Serial Session Reuse": `lesson-espflash-no-reset-is-not-passive`, `lesson-power-and-usb-session-are-distinct`, `lesson-boot-proof-replay-must-outlive-service-sessions`, `lesson-heartbeat-cannot-prove-over-silent-transport`, `lesson-manual-removal-needs-owner-observation`, `lesson-physical-usb-identity-excludes-enumeration-fields`, `lesson-cold-boot-proof-needs-an-independent-observer` (also superseded in substance: its observer recommendation conflicts with the dormant external-UART policy)
+  - "Direct UART And Pin-Manipulation Authorization": `lesson-direct-uart-and-pin-access-requires-authorization`
+  - "Protected Evidence Root Ownership": `lesson-protected-evidence-root-ownership`
+  - "Repository-Wide Evidence Privacy" and `docs/parity/evidence-policy.md`: `lesson-redact-after-private-classification`
+  - "Progress-Gated Hardware Attempts" and `docs/hardware/hardware-attempt-policy.md`: `lesson-hardware-retries-require-new-information`
+  - "Autonomous Ultra 205 Hardware Verification" with "Progress-Gated Hardware Attempts": `lesson-standing-task-authorization-avoids-confirmation-churn`, `lesson-development-ip-needs-share-redaction-not-interactive-secrecy`
+  - "Iterative Hardware Fix Authorization": `lesson-hardware-fixes-do-not-require-plan-per-iteration`
+  - "Asynchronous Human Checkpoints": `lesson-time-bounded-physical-checkpoints-must-be-prearmed-and-self-describing`
+- Added lesson IDs (3, `2,776` bytes):
+  - `lesson-macos-holds-fresh-executables-at-launch`: new cause (macOS first-exec launch hold); distinct from `lesson-distinguish-agent-runtime-from-host-runtime`, which concerns agent-only timing.
+  - `lesson-gate-each-hardware-step-on-the-previous-result`: recurrence of the cause behind `lesson-surface-preflight-exit-before-advancing` with new trigger signals (`;` chains, multi-scenario driver calls), so it extends rather than duplicates it.
+  - `lesson-start-per-boot-attempts-on-a-fresh-boot`: new cause (spent per-boot one-shot state).
+- After: global `7` lessons, `5,230` / `1,744`; repository `31` lessons, `28,057` bytes / `9,353`; combined `38`, `33,287` bytes / `11,097` summed estimated tokens.
+- Remaining over budget: combined `9,287` bytes and `3,097` estimated tokens above the limits; the repository file alone exceeds both. Every remaining block records a distinct cause, rule and trigger not stated in AGENTS.md or another active lesson, and no remaining block is proven obsolete, duplicate or fully superseded. Archiving more on size alone is prohibited, so startup loading continues to use the priority-ordered whole-block rule. Reaching the budget would need promotion of further rules into AGENTS.md or another always-loaded source first, which is outside this audit's scope.
+- Next baseline:
+  - Timestamp: `2026-10-09T22:14:16Z`; the 90-day changed-lessons trigger becomes eligible on `2027-01-07T22:14:16Z`
+  - Counts: global `7`, repository `31`, combined `38`, with `0` new active lessons accumulated
+  - Bytes and estimates: global `5,230` / `1,744`, repository `28,057` / `9,353`, combined `33,287` / `11,097`
+  - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `5c4c671df8bf0cff541a16a40f62042330fe4aa280b6f508728fe3d8a948ed74`
+  - Threshold state: above both hard loading limits; this trigger is consumed
