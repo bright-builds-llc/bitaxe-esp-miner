@@ -299,7 +299,7 @@ live-limit rule to any samples it is given. Private files hold only closed
 page values. A record that echoes a signed authorization, lease or challenge
 id, possession binding or pool value fails the attempt and is not stored.
 Projections hold allowlisted digests, closed categories and `true` facts only.
-Publish writes profile `bwg-worker-restoration-result/0.3`. Its booleans are
+Publish writes profile `bwg-worker-restoration-result/0.4`. Its booleans are
 measured, not asserted:
 
 - `baselineConfirmed` and `cleanupConfirmed`: the judge's baseline and
@@ -310,5 +310,8 @@ measured, not asserted:
 - `poolConfigurationUnchangedPerBoot`: that scenario's
   `poolConfigurationUnchanged`.
 
-The validator still accepts the published attempt-008 files, which use profile
-0.2. The result never promotes parity by itself.
+Profile 0.4 adds two facts to 0.3: `rebootWasPowerLoss` (reboot) and
+`renewalReplaySafeStopObserved` (authorization_negatives). The validator still
+accepts the published attempt-008 files (profile 0.2) and attempt-009 files
+(profile 0.3) under their own field and fact sets. The result never promotes
+parity by itself.

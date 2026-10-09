@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { link, readdir, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ATTEMPT_008 } from "./attempt-008.test-helper.mjs";
+import { PUBLISHED_PROJECTIONS } from "./published-projections.test-helper.mjs";
 import { SCENARIOS } from "./contract.mjs";
 import { context, passingInput, privateDirectory } from "./fixtures.test-helper.mjs";
 import { judgeScenario } from "./judge.mjs";
@@ -23,18 +23,20 @@ function projection(scenario, { results = scenarioResults(), sealed = CLEAN_SCAN
     attempt: attemptFacts(results, sealed), recordsSha256: "7".repeat(64), scenarioResultSha256: "8".repeat(64) });
 }
 
-test("every passed scenario projects to the closed 0.3 profile with only its allowlisted facts", () => {
+test("every passed scenario projects to the closed 0.4 profile with only its allowlisted facts", () => {
   // Arrange / Act
   const projections = SCENARIOS.map((scenario) => projection(scenario));
   // Assert
   for (const value of projections) {
-    assert.equal(value.profile, "bwg-worker-restoration-result/0.3");
+    assert.equal(value.profile, "bwg-worker-restoration-result/0.4");
     assert.deepEqual(Object.keys(value.facts).sort(), [...FACT_ALLOWLIST[value.scenario]].sort());
     assert.deepEqual([value.facts.deviceIdentityStable, value.facts.poolConfigurationUnchanged, value.poolConfigurationUnchangedPerBoot],
       [true, true, true]);
     assert.equal(value.facts.sameKeyReacquired, ["disconnect", "reboot"].includes(value.scenario) ? true : undefined);
   }
   assert.equal(projections.at(-1).facts.durableReplayAttributed, true);
+  assert.equal(projections.at(-1).facts.renewalReplaySafeStopObserved, true);
+  assert.equal(projections[6].facts.rebootWasPowerLoss, true);
   assert.equal(projections[4].facts.monotonicDetectionCounted, true);
 });
 
@@ -90,32 +92,48 @@ test("publication refuses an existing target, a missing scenario and identity dr
   await assert.rejects(publishProjectionSet(await privateDirectory("projection-"), drifted), (error) => error.code === "projection_identity_drift");
 });
 
-test("the published attempt-008 0.2 projections still validate", async () => {
+test("the sixteen published BWG-007 projections still validate under their own profiles", async () => {
   // Arrange
   const directory = resolve(dirname(fileURLToPath(import.meta.url)), "../../docs/parity/evidence/bwg-worker-restoration");
   const published = await readdir(directory).catch(() => null);
   // Act
-  const validated = Object.values(ATTEMPT_008).map(validateProjection);
+  const validated = Object.values(PUBLISHED_PROJECTIONS).map(validateProjection);
   // Assert
-  assert.equal(validated.length, 8);
-  assert.ok(validated.every((value) => value.profile === "bwg-worker-restoration-result/0.2"));
+  assert.equal(validated.length, 16);
+  assert.deepEqual(validated.map((value) => `${value.attemptId} ${value.profile}`).filter((key, index, all) => all.indexOf(key) === index),
+    ["bwg007-attempt-008 bwg-worker-restoration-result/0.2", "bwg007-attempt-009 bwg-worker-restoration-result/0.3"]);
   // The copy must equal the published bytes wherever the checkout provides them (not inside Bazel's sandbox).
   if (published) {
-    for (const [name, value] of Object.entries(ATTEMPT_008)) assert.equal(await readFile(resolve(directory, name), "utf8"), `${canonicalJson(value)}\n`);
+    const names = published.filter((name) => name.endsWith(".json")).sort();
+    assert.deepEqual(names, Object.keys(PUBLISHED_PROJECTIONS).sort());
+    for (const [name, value] of Object.entries(PUBLISHED_PROJECTIONS)) assert.equal(await readFile(resolve(directory, name), "utf8"), `${canonicalJson(value)}\n`);
   }
 });
 
-test("a 0.2 projection cannot carry 0.3 fields and a 0.3 projection cannot omit them", () => {
+test("each profile carries exactly its own fields and facts", () => {
   // Arrange
-  const legacy = ATTEMPT_008["bwg007-attempt-008-reboot.json"];
+  const legacy = PUBLISHED_PROJECTIONS["bwg007-attempt-008-reboot.json"];
+  const measured = PUBLISHED_PROJECTIONS["bwg007-attempt-009-reboot.json"];
   const current = projection("reboot");
   const { poolConfigurationUnchangedPerBoot, ...withoutPool } = current;
   // Act / Assert
   throwsWith(() => validateProjection({ ...legacy, poolConfigurationUnchangedPerBoot: true }), "projection_fields");
   throwsWith(() => validateProjection({ ...legacy, facts: { ...legacy.facts, sameKeyReacquired: true } }), "projection_facts");
+  throwsWith(() => validateProjection({ ...measured, facts: { ...measured.facts, rebootWasPowerLoss: true } }), "projection_facts");
+  throwsWith(() => validateProjection({ ...current, profile: "bwg-worker-restoration-result/0.3" }), "projection_facts");
   throwsWith(() => validateProjection(withoutPool), "projection_fields");
-  throwsWith(() => validateProjection({ ...current, profile: "bwg-worker-restoration-result/0.4" }), "projection_identity");
+  throwsWith(() => validateProjection({ ...current, profile: "bwg-worker-restoration-result/0.5" }), "projection_identity");
   assert.equal(poolConfigurationUnchangedPerBoot, true);
+});
+
+test("a reboot that was not a power loss or an N4 replay that did not safe-stop cannot be published", () => {
+  // Arrange
+  const results = scenarioResults();
+  results[6] = { ...results[6], facts: { ...results[6].facts, rebootWasPowerLoss: false } };
+  results[7] = { ...results[7], facts: { ...results[7].facts, renewalReplaySafeStopObserved: false } };
+  // Act / Assert
+  throwsWith(() => projection("reboot", { results }), "projection_facts");
+  throwsWith(() => projection("authorization_negatives", { results }), "projection_facts");
 });
 
 test("a second device identity anywhere in the attempt cannot be published as the same device", () => {

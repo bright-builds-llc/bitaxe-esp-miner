@@ -1,14 +1,15 @@
 // Closed public projections for BWG-007 (ADR-0019 batch-publication rules, ADR-0036): publish writes
-// `bwg-worker-restoration-result/0.3`, whose booleans are derived from measured judge facts and the seal-time
-// credential scan; the 0.2 validator stays so the published attempt-008 files still validate.
+// `bwg-worker-restoration-result/0.4`, whose booleans are derived from measured judge facts and the seal-time
+// credential scan. The 0.2 and 0.3 validators stay so the published attempt-008 and attempt-009 files still validate.
 import { randomBytes } from "node:crypto";
 import { link, lstat, open, unlink } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { QualificationError, requireCondition } from "../fixed-usb-qualification/contract.mjs";
 import { SCENARIO_PLANS, SCENARIOS } from "./contract.mjs";
 
-export const PROJECTION_PROFILE = "bwg-worker-restoration-result/0.3";
+export const PROJECTION_PROFILE = "bwg-worker-restoration-result/0.4";
 export const LEGACY_PROJECTION_PROFILE = "bwg-worker-restoration-result/0.2";
+export const MEASURED_PROJECTION_PROFILE = "bwg-worker-restoration-result/0.3";
 export const PROJECTION_DIRECTORY = "docs/parity/evidence/bwg-worker-restoration";
 const COMMIT_FIELDS = ["firmwareCommit", "gateCommit", "referenceCommit"];
 const DIGEST_FIELDS = ["appElfSha256", "packageManifestSha256", "gateBundleSha256", "gatePageSha256", "trustSha256", "recordsSha256", "scenarioResultSha256"];
@@ -31,16 +32,25 @@ export const LEGACY_FACT_ALLOWLIST = Object.freeze({
     "highWaterUnchangedAcrossReboot", "rejectedStartsNeverStarted", "stimulusCounterConsistent"],
 });
 
-/** The only facts each scenario may publish in 0.3; all must be `true` in a published projection. */
-export const FACT_ALLOWLIST = Object.freeze(Object.fromEntries(SCENARIOS.map((scenario) => [scenario, Object.freeze([
-  ...LEGACY_FACT_ALLOWLIST[scenario], "deviceIdentityStable", "poolConfigurationUnchanged",
-  ...(["disconnect", "reboot"].includes(scenario) ? ["sameKeyReacquired"] : []),
-])])));
+const extend = (base, added) => Object.freeze(Object.fromEntries(SCENARIOS.map((scenario) => [scenario,
+  Object.freeze([...base[scenario], ...(added[scenario] ?? [])])])));
+const IDENTITY_AND_POOL = ["deviceIdentityStable", "poolConfigurationUnchanged"];
+
+/** The 0.3 facts (attempt-009): 0.2 plus the identity, key and pool measurements. */
+export const MEASURED_FACT_ALLOWLIST = extend(LEGACY_FACT_ALLOWLIST, { ...Object.fromEntries(SCENARIOS.map((scenario) => [scenario, IDENTITY_AND_POOL])),
+  disconnect: [...IDENTITY_AND_POOL, "sameKeyReacquired"], reboot: [...IDENTITY_AND_POOL, "sameKeyReacquired"] });
+
+/** The only facts each scenario may publish in 0.4: 0.3 plus the reboot's power loss and N4's own safe stop. */
+export const FACT_ALLOWLIST = extend(MEASURED_FACT_ALLOWLIST, { reboot: ["rebootWasPowerLoss"],
+  authorization_negatives: ["renewalReplaySafeStopObserved"] });
 
 const PROFILES = Object.freeze({
   [LEGACY_PROJECTION_PROFILE]: { booleans: LEGACY_BOOLEAN_FIELDS, facts: LEGACY_FACT_ALLOWLIST },
+  [MEASURED_PROJECTION_PROFILE]: { booleans: BOOLEAN_FIELDS, facts: MEASURED_FACT_ALLOWLIST },
   [PROJECTION_PROFILE]: { booleans: BOOLEAN_FIELDS, facts: FACT_ALLOWLIST },
 });
+/** Every profile the validator accepts; publish writes only `PROJECTION_PROFILE`. */
+export const PROJECTION_PROFILES = Object.freeze(Object.keys(PROFILES));
 const keysOf = (booleans) => ["profile", "attemptId", "scenario", "outcome", "terminalReason", ...COMMIT_FIELDS, ...DIGEST_FIELDS, ...booleans, "facts"].sort();
 const SECRET_LOOKING = /password|username|user=|endpoint|credential|challenge|lease_|authorization|jwk|stratum|pool|fingerprint|serial|\/dev\/|:\/\/|@|bearer|token|\.bitaxe|bc1|nonce/iu;
 
@@ -95,7 +105,7 @@ export function attemptFacts(scenarioResults, sealedResult) {
   };
 }
 
-/** Build one scenario's 0.3 projection from its sealed private result, the attempt facts and the frozen context. */
+/** Build one scenario's 0.4 projection from its sealed private result, the attempt facts and the frozen context. */
 export function buildProjection({ attemptId, context, scenarioResult, recordsSha256, scenarioResultSha256, attempt }) {
   const facts = Object.fromEntries(FACT_ALLOWLIST[scenarioResult.scenario].map((name) => [name, scenarioResult.facts[name]]));
   return validateProjection({
