@@ -25,10 +25,13 @@ export function journal(events, start = 0) {
 }
 
 /** `admission` is omitted unless given, as an older page sends; the current Gate always sends `null` or an observation. */
-export function pageState({ entries = [], connected = false, status = "closed", device, highWaterEpoch = 1, leaseActive = false, admission } = {}) {
+export function pageState({ entries = [], connected = false, status = "closed", device, highWaterEpoch = 1, leaseActive = false, admission,
+  deviceIdentity, poolConfiguration } = {}) {
   return { schema: "worker-restoration-page-v1", gateCommit: context.gate_commit, expectedFirmwareSourceCommit: context.firmware_commit,
     expectedAppElfSha256: context.app_elf_sha256, status, connected, leaseActive, leaseLoaded: false, renewalsRemaining: 0, stimulusUsed: false,
-    highWaterEpoch, ...(device ? { device } : {}), ...(admission === undefined ? {} : { admission }), journal: { entries, dropped: 0 } };
+    highWaterEpoch, ...(device ? { device } : {}), ...(admission === undefined ? {} : { admission }),
+    ...(deviceIdentity === undefined ? {} : { deviceIdentity }), ...(poolConfiguration === undefined ? {} : { poolConfiguration }),
+    journal: { entries, dropped: 0 } };
 }
 
 export const baseline = (reason) => ({ state: "baseline", restoration: "confirmed", reason });

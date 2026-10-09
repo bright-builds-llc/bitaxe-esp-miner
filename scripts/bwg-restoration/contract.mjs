@@ -96,8 +96,10 @@ export const PAGE_JOURNAL_EVENTS = Object.freeze([
   "replay_accepted", "replay_rejected", "replay_failed",
   "physical_window_begun", "physical_window_armed",
   "status_failed", "closed", "close_failed", "completion_submitted", "completion_failed",
-  "admission_observed",
+  "admission_observed", "device_identity_changed", "pool_configuration_changed",
 ]);
+/** Journal events that never carry a category. */
+export const UNCATEGORIZED_JOURNAL_EVENTS = Object.freeze(["device_identity_changed", "pool_configuration_changed"]);
 /** Journal events that are failures of the page's own operations. */
 export const PAGE_FAILURE_EVENTS = Object.freeze(["admission_failed", "serial_failure", "connect_failed", "lease_start_failed", "renew_failed",
   "stop_failed", "stimulus_failed", "review_failed", "replay_failed", "status_failed", "close_failed", "completion_failed"]);

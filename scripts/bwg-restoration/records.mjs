@@ -1,7 +1,8 @@
 // Closed parsers for what the restoration page and its supervisor client send. Shapes mirror the Gate page
 // (web/worker-restoration-operations.ts, worker-restoration-qualification.ts); unknown fields fail closed.
 import { exactObject, QualificationError, requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { ADMISSION_FAILURES, ADMISSION_READINESS_MAXIMUM, ADMISSION_STAGES, PAGE_JOURNAL_EVENTS, PAGE_OPERATIONS, TOKEN } from "./contract.mjs";
+import { ADMISSION_FAILURES, ADMISSION_READINESS_MAXIMUM, ADMISSION_STAGES, PAGE_JOURNAL_EVENTS, PAGE_OPERATIONS, TOKEN,
+  UNCATEGORIZED_JOURNAL_EVENTS } from "./contract.mjs";
 
 const RESTORATION_REASONS = ["paused", "cancelled", "lease_expired", "lost_continuity", "monotonic_reset", "reboot", "challenge_satisfied",
   "challenge_expired", "tab_closed", "connectivity_lost", "control_failed"];
@@ -23,9 +24,34 @@ function admission(value) {
   return value;
 }
 
-/** `admission_observed` carries exactly the observed first-failure boundary; other categories are closed tokens. */
-const entryCategory = (entry) => entry.event === "admission_observed" ? ADMISSION_FAILURES.includes(entry.category)
-  : entry.category === undefined || TOKEN.test(entry.category);
+/**
+ * The page-local device-identity tracker: `null` before the first preservation status, else exactly
+ * `{epoch, observations}` (distinct identity digests seen in this page lifetime, and preservation observations).
+ */
+function deviceIdentity(value) {
+  if (value === null) return value;
+  exactObject(value, ["epoch", "observations"]);
+  requireCondition(u32(value.epoch, 1) && u32(value.observations, 1) && value.epoch <= value.observations, "page_device_identity_shape");
+  return value;
+}
+
+/** The page-local pool tracker: `null` before the first preservation v2 status, else exactly `{observations, changed}`. */
+function poolConfiguration(value) {
+  if (value === null) return value;
+  exactObject(value, ["observations", "changed"]);
+  requireCondition(u32(value.observations, 1) && typeof value.changed === "boolean", "page_pool_configuration_shape");
+  return value;
+}
+
+/**
+ * `admission_observed` carries exactly the observed first-failure boundary; the identity and pool change events carry
+ * no category; other categories are closed tokens.
+ */
+function entryCategory(entry) {
+  if (entry.event === "admission_observed") return ADMISSION_FAILURES.includes(entry.category);
+  if (UNCATEGORIZED_JOURNAL_EVENTS.includes(entry.event)) return entry.category === undefined;
+  return entry.category === undefined || TOKEN.test(entry.category);
+}
 
 function journal(value) {
   exactObject(value, ["entries", "dropped"]);
@@ -43,7 +69,8 @@ function journal(value) {
 /** The published page state (`worker-restoration-page-v1`); identity values are checked against the context. */
 export function parsePageState(value, context) {
   exactObject(value, ["schema", "gateCommit", "status", "connected", "leaseActive", "leaseLoaded", "renewalsRemaining", "stimulusUsed",
-    "highWaterEpoch", "journal"], ["configurationFailure", "expectedFirmwareSourceCommit", "expectedAppElfSha256", "device", "failure", "admission"]);
+    "highWaterEpoch", "journal"], ["configurationFailure", "expectedFirmwareSourceCommit", "expectedAppElfSha256", "device", "failure", "admission",
+    "deviceIdentity", "poolConfiguration"]);
   requireCondition(value.schema === "worker-restoration-page-v1" && value.gateCommit === context.gate_commit &&
     value.expectedFirmwareSourceCommit === context.firmware_commit && value.expectedAppElfSha256 === context.app_elf_sha256 &&
     value.configurationFailure === undefined, "page_identity");
@@ -53,6 +80,8 @@ export function parsePageState(value, context) {
     (value.failure === undefined || PAGE_JOURNAL_EVENTS.includes(value.failure)), "page_state_shape");
   if (value.device !== undefined) device(value.device);
   if (value.admission !== undefined) admission(value.admission);
+  if (value.deviceIdentity !== undefined) deviceIdentity(value.deviceIdentity);
+  if (value.poolConfiguration !== undefined) poolConfiguration(value.poolConfiguration);
   journal(value.journal);
   return value;
 }

@@ -75,3 +75,44 @@ test("an admission_observed event without a closed first-failure category is ref
   // Act / Assert
   for (const state of states) throwsWith(() => parsePageState(state, context), "page_journal_entry");
 });
+
+test("a page state carries the identity and pool trackers, null before their first observation", () => {
+  // Arrange
+  const observed = pageState({ deviceIdentity: { epoch: 1, observations: 4 }, poolConfiguration: { observations: 3, changed: false } });
+  const unobserved = pageState({ deviceIdentity: null, poolConfiguration: null });
+  // Act
+  const parsed = [parsePageState(observed, context), parsePageState(unobserved, context)];
+  // Assert
+  assert.deepEqual(parsed.map((state) => [state.deviceIdentity, state.poolConfiguration]),
+    [[{ epoch: 1, observations: 4 }, { observations: 3, changed: false }], [null, null]]);
+});
+
+test("identity and pool trackers outside their closed shapes are refused", () => {
+  // Arrange
+  const malformed = [
+    { deviceIdentity: { epoch: 0, observations: 1 } },
+    { deviceIdentity: { epoch: 2, observations: 1 } },
+    { deviceIdentity: { epoch: 1, observations: 1, fingerprint: "a".repeat(64) } },
+    { deviceIdentity: { epoch: 1 } },
+    { deviceIdentity: 1 },
+    { poolConfiguration: { observations: 0, changed: false } },
+    { poolConfiguration: { observations: 1, changed: "no" } },
+    { poolConfiguration: { observations: 1, changed: false, sha256: "a".repeat(64) } },
+    { poolConfiguration: { changed: false } },
+  ];
+  // Act / Assert
+  for (const fields of malformed) {
+    throwsWith(() => parsePageState(pageState(fields), context), "page_device_identity_shape", "page_pool_configuration_shape", ...SHAPE_ERRORS);
+  }
+});
+
+test("the identity and pool change events are accepted only without a category", () => {
+  // Arrange
+  const accepted = pageState({ entries: journal(["connected", "device_identity_changed", "pool_configuration_changed"]) });
+  const categorized = [pageState({ entries: journal(["device_identity_changed:mismatch"]) }), pageState({ entries: journal(["pool_configuration_changed:true"]) })];
+  // Act
+  const events = parsePageState(accepted, context).journal.entries.map((entry) => entry.event);
+  // Assert
+  assert.deepEqual(events, ["connected", "device_identity_changed", "pool_configuration_changed"]);
+  for (const state of categorized) throwsWith(() => parsePageState(state, context), "page_journal_entry");
+});
