@@ -192,8 +192,17 @@ const SCENARIO_FACTS = {
 };
 
 /**
+ * The page's last observed first-failure boundary of the device's non-authoritative admission diagnostic: the
+ * final state's observation, else the segment's last `admission_observed` entry. Both are closed values.
+ */
+function lastAdmissionFailure(input, entries) {
+  return input.finalState.admission?.firstFailure ?? entries.findLast((entry) => entry.event === "admission_observed")?.category ?? null;
+}
+
+/**
  * Judge one scenario. Returns the closed result plus the carry the next scenario needs; the result is
- * `passed` only when every common check and every scenario fact holds.
+ * `passed` only when every common check and every scenario fact holds. An unverified result also names the
+ * last observed admission first failure, for diagnosis only.
  */
 export function judgeScenario(input) {
   const { failures, entries } = commonFailures(input);
@@ -207,6 +216,8 @@ export function judgeScenario(input) {
     // Passing requires the device's own `reboot` report, which it delivers once per boot.
     carry.rebootReported = failures.length === 0;
   }
+  // Diagnostic context for an unverified scenario only; it never decides a pass.
+  const diagnostic = failures.length === 0 ? {} : { admission_first_failure: lastAdmissionFailure(input, entries) };
   return { scenario: input.scenario, result: failures.length === 0 ? "passed" : "unverified", failures, facts, carry,
-    terminal_reason: input.finalState.device?.reason ?? null };
+    terminal_reason: input.finalState.device?.reason ?? null, ...diagnostic };
 }

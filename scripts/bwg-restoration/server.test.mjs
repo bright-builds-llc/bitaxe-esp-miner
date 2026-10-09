@@ -267,3 +267,19 @@ test("signing and delivery answer settle_required until the device's admission s
   assert.deepEqual([before.admission_settled, after.admission_settled], [false, true]);
   assert.match(before.local_action, /admissionDiagnostic.*no deadline.*idle or complete.*prepareStart/u);
 });
+
+test("an unverified scenario's private result names the last observed admission first failure", async (t) => {
+  // Arrange
+  const { root, server, call } = await supervisor();
+  t.after(() => server.close());
+  await call("/activate", {});
+  const input = passingInput("completion");
+  const finalState = { ...input.finalState, device: baseline("cancelled"), admission: { stage: "complete", firstFailure: "readiness", readiness: 5 } };
+  // Act
+  const nonce = parseCompletionNonce((await call("/completion-context", {})).value);
+  const receipt = (await call("/completion-review", { nonce, reviews: input.reviews, final_state: finalState })).value;
+  // Assert
+  const stored = JSON.parse(await readFile(resolve(root, "scenario-01-completion.json"), "utf8")).value;
+  assert.equal(receipt.result, "unverified");
+  assert.equal(stored.admission_first_failure, "readiness");
+});

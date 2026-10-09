@@ -301,3 +301,48 @@ test("a stimulus that expired instead of firing is not monotonic evidence", () =
   // Assert
   assert.ok(judgement.failures.includes("fact_monotonicDetectionCounted"));
 });
+
+test("an unverified scenario records the page's last observed admission first failure", () => {
+  // Arrange: attempt-006's shape, a Start the device rejected during preparation.
+  const input = passingInput("expiry");
+  input.finalState = { ...input.finalState, device: baseline("cancelled"), admission: { stage: "complete", firstFailure: "preparation", readiness: 31 } };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.equal(judgement.result, "unverified");
+  assert.equal(judgement.admission_first_failure, "preparation");
+});
+
+test("without a final observation the segment's last admission_observed entry is recorded", () => {
+  // Arrange
+  const input = passingInput("pause");
+  const entries = [...input.finalState.journal.entries.slice(0, 2), { ordinal: 20, event: "admission_observed", category: "none" },
+    { ordinal: 21, event: "admission_observed", category: "pool_activation" }];
+  input.finalState = pageState({ entries, device: baseline("paused") });
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.equal(judgement.result, "unverified");
+  assert.equal(judgement.admission_first_failure, "pool_activation");
+});
+
+test("an unverified scenario without any admission observation records null", () => {
+  // Arrange
+  const input = passingInput("cancel");
+  input.finalState = { ...input.finalState, device: baseline("paused") };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.equal(judgement.admission_first_failure, null);
+});
+
+test("a passing scenario is not decided or annotated by the admission diagnostic", () => {
+  // Arrange
+  const input = passingInput("completion");
+  input.finalState = { ...input.finalState, admission: { stage: "cleanup", firstFailure: "cleanup", readiness: 0 } };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.equal(judgement.result, "passed");
+  assert.equal(Object.hasOwn(judgement, "admission_first_failure"), false);
+});
