@@ -13,7 +13,9 @@ import { refuse } from "./errors.mjs";
 export const RECOVERY_FRESH_MS = 120_000;
 
 const STAGES = ["recovery", "restart"];
-const family = (name, kind) => ({ name, kind, staged: kind === "restart", writesRecoveryProof: kind === "recovery" });
+/** `finishPoolCredentials`: finish scans the attempt for the exact pool values (bwg-restoration ADR-0036). */
+const family = (name, kind) => ({ name, kind, staged: kind === "restart", writesRecoveryProof: kind === "recovery",
+  finishPoolCredentials: kind === "restoration" });
 
 export const OWNERS = Object.freeze(Object.fromEntries([
   family("str005-heartbeat-shutdown", "heartbeat"),

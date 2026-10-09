@@ -99,7 +99,7 @@ test("preflight refuses an existing root, a misnamed root and a readable pool fi
 });
 
 /** A sealed attempt root with eight judged scenarios, as serve and finish leave it. */
-async function sealedRoot({ result = "passed" } = {}) {
+async function sealedRoot({ result = "passed", credentialScan = { files: 12, hits: 0 } } = {}) {
   const base = await privateDirectory("restoration-publish-");
   const firmware = resolve(base, "firmware"), root = resolve(base, "attempt-007");
   await mkdir(firmware); await mkdir(root, { mode: 0o700 });
@@ -110,7 +110,8 @@ async function sealedRoot({ result = "passed" } = {}) {
       physical_identity_sha256: frozen.physical_identity_sha256 };
     await writeNew(resolve(root, `scenario-${String(index + 1).padStart(2, "0")}-${scenario}.json`), { value, sha256: digest(JSON.stringify(value)) });
   }
-  const final = { schema: RESULT_SCHEMA, result, scenarios: SCENARIOS.map((scenario) => ({ scenario, result: "passed", failures: [] })) };
+  const final = { schema: RESULT_SCHEMA, result, scenarios: SCENARIOS.map((scenario) => ({ scenario, result: "passed", failures: [] })),
+    ...(credentialScan ? { credential_scan: credentialScan } : {}) };
   await writeNew(resolve(root, "result.json"), { result: final, sha256: digest(JSON.stringify(final)) });
   await writeFile(resolve(root, "records.jsonl"), `${JSON.stringify({ scenario: "completion", operation: "statusReview" })}\n`, { mode: 0o600 });
   await writeNew(resolve(root, "sealed-inventory.json"), { files: await inventory(root) });
@@ -140,4 +141,13 @@ test("publish refuses an unverified attempt and a root changed after sealing", a
   await rejectsWith(main(["publish", "--private-root", unverified.root]), "restoration_not_passed");
   await rejectsWith(main(["publish", "--private-root", changed.root]), "noise_inventory_changed");
   await rejectsWith(readdir(unverified.directory), "ENOENT");
+});
+
+test("publish refuses a sealed result without a clean credential scan", async () => {
+  // Arrange
+  const unscanned = await sealedRoot({ credentialScan: null });
+  const leaked = await sealedRoot({ credentialScan: { files: 12, hits: 1 } });
+  // Act / Assert
+  await rejectsWith(main(["publish", "--private-root", unscanned.root]), "restoration_credential_scan_missing");
+  await rejectsWith(main(["publish", "--private-root", leaked.root]), "restoration_credential_scan_missing");
 });

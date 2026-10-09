@@ -12,6 +12,7 @@ import { processSnapshot, requireGone, requireLsofAbsent, requireNoHolders } fro
 import { RESTORATION_PORT, RESULT_SCHEMA, SCENARIO_RESULT_SCHEMA, SCENARIOS } from "./contract.mjs";
 import { loadRestorationContext, preflight } from "./preflight.mjs";
 import { buildProjection, PROJECTION_DIRECTORY, publishProjectionSet } from "./projection.mjs";
+import { campaignResult, poolScanValues, scanAttemptRoot, sealedResult } from "./seal.mjs";
 import { createRestorationSupervisor } from "./server.mjs";
 
 const string = { type: "string" };
@@ -22,7 +23,7 @@ const ACTIONS = {
   required: ["private-root", "firmware-root", "gate-root", "firmware-commit", "gate-commit", "manifest", "authority-directory", "pool-credentials", "detector"] },
   serve: { options: { "private-root": string, "authority-directory": string, "pool-credentials": string, bun: string },
     required: ["private-root", "authority-directory", "pool-credentials"] },
-  finish: { options: { "private-root": string }, required: ["private-root"] },
+  finish: { options: { "private-root": string, "pool-credentials": string }, required: ["private-root", "pool-credentials"] },
   publish: { options: { "private-root": string }, required: ["private-root"] },
 };
 
@@ -32,6 +33,8 @@ export function argumentsFor(argv) {
   requireCondition(spec !== undefined, "restoration_action");
   let values;
   try { ({ values } = parseArgs({ args: rest, options: spec.options, strict: true, allowPositionals: false })); } catch { throw new QualificationError("restoration_arguments"); }
+  // Finish scans the attempt for the exact pool values, so it cannot seal without them (ADR-0036).
+  if (action === "finish") requireCondition(values["pool-credentials"] !== undefined, "restoration_finish_pool_credentials_required");
   for (const name of spec.required) requireCondition(values[name] !== undefined, "restoration_arguments");
   const base = process.env.BUILD_WORKING_DIRECTORY ?? process.cwd();
   const path = (name) => values[name] === undefined ? undefined : resolve(base, values[name]);
@@ -59,7 +62,10 @@ async function serve(options, operations = {}) {
   return { server_released: true };
 }
 
-/** Seal after release: owner group gone, port free, fresh same-device detector, no serial holder. */
+/**
+ * Seal after release: owner group gone, port free, fresh same-device detector, no serial holder. Then scan every
+ * attempt file for pool values and credential shapes and write `result.json` with only the scan counts.
+ */
 async function finish(options) {
   const root = options.privateRoot, context = await loadRestorationContext(root);
   await absentOrRefuse(resolve(root, "sealed-inventory.json"), "restoration_already_sealed");
@@ -72,15 +78,18 @@ async function finish(options) {
   const device = parseDetector(await readFile(detectorPath, "utf8"));
   requireCondition(device.physical === context.physical_identity_sha256, "restoration_final_detector_identity");
   requireNoHolders(device.port);
-  const maybeResult = await readJson(resolve(root, "result.json")).catch(() => null);
-  if (!maybeResult) {
-    const result = { schema: RESULT_SCHEMA, attempt: context.attempt, result: "unverified", failure: { scenario: null, category: "completion_missing" },
-      scenarios: [], parity_promotion: false };
-    await writeNew(resolve(root, "result.json"), { result, sha256: digest(JSON.stringify(result)) });
-  }
+  return seal(root, context, options.poolCredentials);
+}
+
+/** The pure-file part of finish: scan, write the sealed result, then the sealed inventory. */
+export async function seal(root, context, poolCredentials) {
+  await absentOrRefuse(resolve(root, "result.json"), "restoration_already_sealed");
+  const values = await poolScanValues(context.firmware_root, poolCredentials);
+  const campaign = await campaignResult(root, context);
+  const result = sealedResult(campaign, await scanAttemptRoot(root, values));
+  await writeNew(resolve(root, "result.json"), { result, sha256: digest(JSON.stringify(result)) });
   await writeNew(resolve(root, "sealed-inventory.json"), { files: await inventory(root) });
-  const sealed = (await readJson(resolve(root, "result.json"))).result;
-  return { restoration_sealed: true, result: sealed.result, failure: sealed.failure ?? null };
+  return { restoration_sealed: true, result: result.result, failure: result.failure ?? null, credential_scan: result.credential_scan };
 }
 
 /** The records of one scenario, as written, digested in order. */
@@ -96,6 +105,8 @@ async function publish(options, operations = {}) {
   await verifyInventory(root, sealed.files, new Set(["sealed-inventory.json"]));
   const final = (await readJson(resolve(root, "result.json"))).result;
   requireCondition(final.schema === RESULT_SCHEMA && final.result === "passed" && final.scenarios.length === SCENARIOS.length, "restoration_not_passed");
+  requireCondition(Number.isSafeInteger(final.credential_scan?.files) && final.credential_scan.files > 0 && final.credential_scan.hits === 0,
+    "restoration_credential_scan_missing");
   const contextSha256 = digest(JSON.stringify(context)), projections = [];
   for (const [index, scenario] of SCENARIOS.entries()) {
     const record = await readJson(resolve(root, `scenario-${String(index + 1).padStart(2, "0")}-${scenario}.json`));

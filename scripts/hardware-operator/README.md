@@ -78,7 +78,13 @@ Close the Gate page by navigating the dedicated tab to `about:blank` (AGENTS.md
 just hardware-operator owner-finish --owner str005-accepted-share --private-root "$ROOT"
 just hardware-operator owner-finish --owner str005-step5-restart --private-root "$ROOT" --stage restart
 just hardware-operator owner-finish --owner str005-control-diagnostic-recovery --private-root "$ROOT" --wait-collection
+just hardware-operator owner-finish --owner bwg-restoration --private-root "$ROOT" --pool-credentials "$POOL_FILE"
 ```
+
+`bwg-restoration` requires `--pool-credentials` (its finish scans the attempt for
+the exact pool values) and every other owner refuses it. The file must be a
+mode-0600 regular file; owner-finish checks that before stopping the owner and
+never reads it, then passes it to finish as `--pool-credentials=<path>`.
 
 The owners are a closed table in `owners.mjs`:
 

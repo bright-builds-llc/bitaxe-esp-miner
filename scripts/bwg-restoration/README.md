@@ -145,17 +145,31 @@ scenario at a time, and check its result before starting the next.
 1. Stop serve, then seal with one of these:
 
    ```sh
-   just hardware-operator owner-finish --owner bwg-restoration --private-root R
-   just detect-ultra205 > P/final-detector.stdout.log && just bwg-restoration finish --private-root R
+   just hardware-operator owner-finish --owner bwg-restoration --private-root R \
+     --pool-credentials <ignored pool file>
+   just detect-ultra205 > P/final-detector.stdout.log && \
+     just bwg-restoration finish --private-root R --pool-credentials <ignored pool file>
    ```
 
    Finish requires the server's process group gone, the port free, a fresh
-   same-device detector (at most 300 s old) and no serial holder. An attempt
-   that never completed seals as `unverified` with `completion_missing`.
+   same-device detector (at most 300 s old) and no serial holder. It refuses
+   without `--pool-credentials` (`restoration_finish_pool_credentials_required`);
+   the file must be the same mode-0600, Git-ignored pool file serve used.
+   Before sealing, finish scans every file in `R` for the exact pool endpoint,
+   host, user and password (values of at least 8 characters, raw and
+   JSON-escaped) and for credential shapes: compact JWS, base64url runs of 40
+   or more characters that mix upper case, lower case and digits (never a
+   lower-case hex digest), and `challenge_`/`lease_` identifiers with a random
+   suffix. The pool values stay in memory and are never printed. Serve's
+   verdict (`R/campaign-result.json`) is sealed as `R/result.json` with
+   `credential_scan: {files, hits}`. Any hit makes the attempt `unverified`
+   with `credential_in_evidence`, unless the campaign had already failed, in
+   which case its earlier failure is kept. An attempt that never completed
+   seals as `unverified` with `completion_missing`.
 1. After an independent review, run
    `just bwg-restoration publish --private-root R`. It requires an unchanged
-   sealed root, `result: passed`, all eight scenarios passed and one context
-   and device identity. It then writes
+   sealed root, `result: passed`, a credential scan with zero hits, all eight
+   scenarios passed and one context and device identity. It then writes
    `docs/parity/evidence/bwg-worker-restoration/bwg007-attempt-NNN-<scenario>.json`
    for all eight scenarios, or none if any write fails.
 

@@ -128,7 +128,7 @@ test("a record that echoes a signed secret fails the attempt and is not stored",
   const response = await call("/record", { operation: "statusReview", outcome: "ok", result: null, state: { leaked } });
   // Assert
   assert.equal(response.value.error, "credential_in_record");
-  const result = JSON.parse(await readFile(resolve(root, "result.json"), "utf8")).result;
+  const result = JSON.parse(await readFile(resolve(root, "campaign-result.json"), "utf8")).result;
   assert.deepEqual([result.result, result.failure.category], ["unverified", "credential_in_record"]);
   const stored = (await readFile(resolve(root, "records.jsonl"), "utf8")).trim().split("\n");
   assert.deepEqual([stored.length, stored.some((line) => line.includes(leaked))], [1, false]);

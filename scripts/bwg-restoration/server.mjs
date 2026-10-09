@@ -13,7 +13,7 @@ import { signRestorationWindow } from "./authority.mjs";
 import { activate, admitSigning, createCampaign, deliverWindow, failCampaign, finishScenario, markSegment, observeRecord, recordSigned, replayArtifact,
   requireRunning } from "./campaign.mjs";
 import { admitReconnect, checkpointFacts, operatorReady, view } from "./checkpoint.mjs";
-import { BUNDLE, HOST_EVENTS, RESULT_SCHEMA, SCENARIO_RESULT_SCHEMA, SCENARIOS, scopeGroup, TOKEN } from "./contract.mjs";
+import { BUNDLE, CAMPAIGN_RESULT, HOST_EVENTS, RESULT_SCHEMA, SCENARIO_RESULT_SCHEMA, SCENARIOS, scopeGroup, TOKEN } from "./contract.mjs";
 import { supervisorState } from "./guidance.mjs";
 import { judgeScenario } from "./judge.mjs";
 import { verifyFrozenRestoration } from "./preflight.mjs";
@@ -30,7 +30,7 @@ function hostRow(sequence, atUnixMs, event, scenario, detail) {
   return { sequence, atUnixMs, event, scenario, ...detail };
 }
 
-/** The private sealed result: closed categories and counts only. */
+/** The private campaign verdict: closed categories and counts only. Finish seals it with the credential scan. */
 function finalResult(campaign, context) {
   return { schema: RESULT_SCHEMA, attempt: context.attempt, result: campaign.complete ? "passed" : "unverified", failure: campaign.maybeFailure,
     scenarios: campaign.results.map(({ scenario, result: outcome, failures }) => ({ scenario, result: outcome, failures })),
@@ -112,7 +112,7 @@ export async function createRestorationSupervisor(options, operations = {}) {
     finalWritten = true;
     await physical.stopWatcher();
     const result = finalResult(campaign, context);
-    await writeNew(resolve(root, "result.json"), { result, sha256: digest(JSON.stringify(result)) });
+    await writeNew(resolve(root, CAMPAIGN_RESULT), { result, sha256: digest(JSON.stringify(result)) });
     await hostEvent(campaign.complete ? "campaign_completed" : "campaign_failed", campaign.maybeFailure ? { category: campaign.maybeFailure.category } : {});
   }
 

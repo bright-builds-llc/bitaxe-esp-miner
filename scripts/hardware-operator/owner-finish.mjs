@@ -51,13 +51,29 @@ async function awaitGroupGone(owner, operations) {
   refuse(gone === true, "owner_exit_unproved");
 }
 
+/** The pool file finish scans for must be a mode-0600 regular file; its contents are never read here. */
+async function poolCredentialsArguments(owner, maybePoolCredentials) {
+  refuse((maybePoolCredentials !== undefined) === owner.finishPoolCredentials,
+    owner.finishPoolCredentials ? "owner_pool_credentials_required" : "owner_pool_credentials_unexpected");
+  if (maybePoolCredentials === undefined) return [];
+  let stat;
+  try { stat = await lstat(maybePoolCredentials); } catch (error) {
+    if (error.code === "ENOENT") throw new HardwareOperatorError("owner_pool_credentials_missing");
+    throw error;
+  }
+  refuse(stat.isFile() && !stat.isSymbolicLink() && (stat.mode & 0o777) === 0o600, "owner_pool_credentials_policy");
+  // Joined to its flag so a path can never be read as another option.
+  return [`--pool-credentials=${maybePoolCredentials}`];
+}
+
 /** Refuse every input problem before the first effect (the SIGTERM). */
-export async function admitOwnerFinish({ name, root, maybeStage }) {
+export async function admitOwnerFinish({ name, root, maybeStage, maybePoolCredentials }) {
   root = await privateDirectory(root, "owner_root_missing");
   const layout = ownerLayout(name, root, maybeStage);
+  const finishArguments = [...layout.finishArguments, ...await poolCredentialsArguments(layout.owner, maybePoolCredentials)];
   await privateDirectory(layout.parent, "owner_parent_missing");
   for (const path of [layout.finalDetector, layout.finalDetectorStderr, layout.finishStdout, layout.finishStderr]) await absent(path, "owner_output_exists");
-  return { layout, record: await readServerOwner(layout) };
+  return { layout: { ...layout, finishArguments }, record: await readServerOwner(layout) };
 }
 
 /**

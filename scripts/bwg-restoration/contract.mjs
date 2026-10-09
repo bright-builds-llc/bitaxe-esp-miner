@@ -14,6 +14,8 @@ export const CONTEXT_SCHEMA = "bwg-restoration-context-v1";
 export const RESULT_SCHEMA = "bwg-restoration-result-v1";
 export const SCENARIO_RESULT_SCHEMA = "bwg-restoration-scenario-result-v1";
 export const SUPERVISOR_STATE_SCHEMA = "bwg-restoration-supervisor-state-v1";
+/** Serve's campaign verdict; finish adds the credential scan and seals it as `result.json`. */
+export const CAMPAIGN_RESULT = "campaign-result.json";
 export const PROTOCOL_VERSION = "bwg-worker-controller/0.4";
 export const ARTIFACT_PROFILE = "bwg-worker-lease-authorization-artifact/0.1";
 export const ATTEMPT_PATTERN = /^attempt-[0-9]{3}$/u;

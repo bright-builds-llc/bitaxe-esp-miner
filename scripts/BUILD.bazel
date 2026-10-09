@@ -1843,6 +1843,7 @@ js_binary(
     "main",
     "projection",
     "records",
+    "seal",
     "server",
     "watcher",
 ]]

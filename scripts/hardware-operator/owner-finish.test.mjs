@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:net";
 import { once } from "node:events";
-import { readFile, writeFile } from "node:fs/promises";
+import { chmod, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { detachedOwner, kill, workspaceFixture, writeCollection, writeServerOwner } from "./fixtures.test-helper.mjs";
 import { isLive } from "./host.mjs";
@@ -135,10 +135,35 @@ test("the restoration owner is finished through its positional recipe without a 
   const owner = await detachedOwner();
   t.after(() => kill(owner));
   await writeServerOwner(fixture.root, owner);
+  const pool = resolve(fixture.parent, "pool.json");
+  await writeFile(pool, "{}", { mode: 0o600 });
   // Act
-  await stopAndFinish({ name: "bwg-restoration", root: fixture.root }, fixture.operations);
+  await stopAndFinish({ name: "bwg-restoration", root: fixture.root, maybePoolCredentials: pool }, fixture.operations);
   // Assert
   const raw = (await readFile(resolve(fixture.env.FAKE_JUST_DIR, "raw-calls.jsonl"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
-  assert.deepEqual(raw.at(-1), ["bwg-restoration", "finish", "--private-root", fixture.root]);
+  assert.deepEqual(raw.at(-1), ["bwg-restoration", "finish", "--private-root", fixture.root, `--pool-credentials=${pool}`]);
   assert.equal(ownerLayout("bwg-restoration", fixture.root).owner.staged, false);
+});
+
+test("the restoration owner refuses a missing, readable or unexpected pool file before stopping", async (t) => {
+  // Arrange
+  const fixture = await workspaceFixture();
+  const owner = await detachedOwner();
+  t.after(() => kill(owner));
+  await writeServerOwner(fixture.root, owner);
+  const readable = resolve(fixture.parent, "pool.json");
+  await writeFile(readable, "{}", { mode: 0o644 });
+  await chmod(readable, 0o644);
+  // Act
+  const codes = [];
+  for (const request of [{ name: "bwg-restoration" }, { name: "bwg-restoration", maybePoolCredentials: readable },
+    { name: "bwg-restoration", maybePoolCredentials: resolve(fixture.parent, "absent.json") },
+    { name: "str005-heartbeat-probe", maybePoolCredentials: readable }]) {
+    codes.push(await stopAndFinish({ ...request, root: fixture.root }, fixture.operations).then(() => "finished", (error) => error.code));
+  }
+  // Assert
+  assert.deepEqual(codes, ["owner_pool_credentials_required", "owner_pool_credentials_policy", "owner_pool_credentials_missing",
+    "owner_pool_credentials_unexpected"]);
+  assert.equal(await isLive(owner), true);
+  assert.deepEqual(await fixture.calls(), []);
 });
