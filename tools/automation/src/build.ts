@@ -16,6 +16,28 @@ export type BuildFirmwareRequest = {
 
 const target = "xtensa-esp32s3-espidf";
 const packageName = "bitaxe-firmware";
+/** The Cargo/ESP-IDF build's own bound; a cold ESP-IDF rebuild on a loaded host has exceeded it (BWG-007 attempt 004). */
+export const FIRMWARE_BUILD_TIMEOUT_MS = 900_000;
+
+/** The firmware build was killed at its bound: a distinct typed `timeout`, not a generic process failure. */
+export class FirmwareBuildTimeoutError extends Error {
+  readonly category = "timeout" as const;
+  readonly publicValue: Readonly<Record<string, unknown>>;
+
+  constructor(readonly timeoutMs: number, readonly diagnostic: string) {
+    super(`firmware_build_timed_out (bound ${String(timeoutMs)} ms)`);
+    this.name = "FirmwareBuildTimeoutError";
+    this.publicValue = { failure: "firmware_build_timed_out", timeout_ms: timeoutMs, protected_diagnostic: diagnostic };
+  }
+}
+
+/** Keep the Cargo stderr in a mode-0600 file under the ignored scratch root; returns its workspace-relative path. */
+async function protectedBuildDiagnostic(workspaceRoot: string, stderr: string): Promise<string> {
+  await mkdir(path.join(workspaceRoot, "scratch"), { recursive: true });
+  const diagnostic = await mkdtemp(path.join(workspaceRoot, "scratch/firmware-build-"));
+  await writeFile(path.join(diagnostic, "cargo.stderr"), stderr, { mode: 0o600 });
+  return path.relative(workspaceRoot, diagnostic);
+}
 
 export async function buildFirmware(
   workspaceRoot: string,
@@ -73,12 +95,12 @@ export async function buildFirmware(
       (value) => value,
       environment,
     ),
+    FIRMWARE_BUILD_TIMEOUT_MS,
   );
-  if (cargo.exitCode !== 0) {
-    await mkdir(path.join(workspaceRoot, "scratch"), { recursive: true });
-    const diagnostic = await mkdtemp(path.join(workspaceRoot, "scratch/firmware-build-"));
-    await writeFile(path.join(diagnostic, "cargo.stderr"), cargo.stderr, { mode: 0o600 });
-    throw new Error(`firmware Cargo build failed; protected diagnostic ${path.relative(workspaceRoot, diagnostic)}`);
+  if (cargo.timedOut || cargo.exitCode !== 0) {
+    const diagnostic = await protectedBuildDiagnostic(workspaceRoot, cargo.stderr);
+    if (cargo.timedOut) throw new FirmwareBuildTimeoutError(FIRMWARE_BUILD_TIMEOUT_MS, diagnostic);
+    throw new Error(`firmware Cargo build failed; protected diagnostic ${diagnostic}`);
   }
   rejectUnknownKconfigWarnings(`${cargo.stdout}\n${cargo.stderr}`);
 

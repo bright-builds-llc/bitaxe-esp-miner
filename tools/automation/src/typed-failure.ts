@@ -37,6 +37,7 @@ import { ThemeDurabilityError } from "./theme-durability.js";
 import { Ultra205DefaultsEvidenceError } from "./ultra205-defaults-evidence.js";
 import { UiWorkflowEvidenceError } from "./ui-workflow-evidence.js";
 import { SelfTestCampaignError } from "./self-test-campaign.js";
+import { FirmwareBuildTimeoutError } from "./build.js";
 import type { AutomationCategory } from "./contracts.generated.js";
 
 type TypedFailure = Error & {
@@ -83,7 +84,8 @@ function maybeTypedFailure(error: unknown): TypedFailure | undefined {
     || error instanceof LogBufferEvidenceError
     || error instanceof PartitionLayoutEvidenceError
     || error instanceof UiWorkflowEvidenceError
-    || error instanceof SelfTestCampaignError) {
+    || error instanceof SelfTestCampaignError
+    || error instanceof FirmwareBuildTimeoutError) {
     return error;
   }
   return undefined;

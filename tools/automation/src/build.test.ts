@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 
-import { rejectUnknownKconfigWarnings, requireResolvedUsbMemoryContract, requireResolvedCoreDumpContract, requireCoreDumpPartition, requireDebugArtifacts } from "./build.js";
+import {
+  buildFirmware, FIRMWARE_BUILD_TIMEOUT_MS, FirmwareBuildTimeoutError, rejectUnknownKconfigWarnings, requireResolvedUsbMemoryContract,
+  requireResolvedCoreDumpContract, requireCoreDumpPartition, requireDebugArtifacts,
+} from "./build.js";
+import { createFakeProcessPort, type ProcessLifetime, type ProcessOutcome } from "./process.js";
+import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
 
 const resolved = [
   "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
@@ -151,4 +159,63 @@ test("resolved default-allocation policy prefers PSRAM at every size and keeps t
   assert.throws(() => requireResolvedUsbMemoryContract(stale), /MALLOC_ALWAYSINTERNAL/u);
   assert.throws(() => requireResolvedUsbMemoryContract(reducedReserve), /MALLOC_RESERVE_INTERNAL/u);
   assert.doesNotThrow(() => requireResolvedUsbMemoryContract(resolved));
+});
+
+/** A workspace holding only the inputs buildFirmware reads before it starts Cargo. */
+async function buildWorkspace(): Promise<string> {
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-build-timeout-"));
+  await mkdir(path.join(root, "firmware/bitaxe"), { recursive: true });
+  await writeFile(path.join(root, "firmware/bitaxe/sdkconfig.defaults"), "CONFIG_EXAMPLE=y\n");
+  for (const name of ["stamp.txt", "identity.defaults", "timestamp.txt"]) await writeFile(path.join(root, name), "x\n");
+  return root;
+}
+
+/** Run buildFirmware against a fake port whose Cargo run ends with `outcome`; returns the error and the requested lifetime. */
+async function buildWith(root: string, outcome: ProcessOutcome): Promise<{ error: unknown; lifetime: ProcessLifetime | undefined }> {
+  let lifetime: ProcessLifetime | undefined;
+  const port = createFakeProcessPort(async (_spec, maybeLifetime) => { lifetime = maybeLifetime; return outcome; });
+  const request = { outputDir: "out", buildProvenanceStamp: "stamp.txt", identitySdkconfigDefaults: "identity.defaults",
+    buildTimestampUtc: "timestamp.txt", buildMode: "normal" } as const;
+  const error = await buildFirmware(root, request, port).then(() => undefined, (failure: unknown) => failure);
+  return { error, lifetime };
+}
+
+test("a firmware build killed at its bound is a typed firmware_build_timed_out failure with its diagnostic", async () => {
+  // Arrange
+  const root = await buildWorkspace();
+
+  try {
+    // Act
+    const { error, lifetime } = await buildWith(root, { exitCode: 1, stdout: "", stderr: "Compiling esp-idf-sys\n", timedOut: true });
+
+    // Assert
+    assert.ok(error instanceof FirmwareBuildTimeoutError);
+    assert.equal(lifetime, FIRMWARE_BUILD_TIMEOUT_MS);
+    assert.equal(error.message, "firmware_build_timed_out (bound 900000 ms)");
+    assert.equal(maybeTypedFailureCategory(error), "timeout");
+    const publicValue = maybeTypedFailurePublicValue(error);
+    assert.deepEqual([publicValue?.["failure"], publicValue?.["timeout_ms"]], ["firmware_build_timed_out", 900_000]);
+    const diagnostic = path.join(root, error.diagnostic, "cargo.stderr");
+    assert.equal(await readFile(diagnostic, "utf8"), "Compiling esp-idf-sys\n");
+    assert.equal((await stat(diagnostic)).mode & 0o777, 0o600);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("an ordinary firmware build failure stays an untyped process failure", async () => {
+  // Arrange
+  const root = await buildWorkspace();
+
+  try {
+    // Act
+    const { error } = await buildWith(root, { exitCode: 101, stdout: "", stderr: "error[E0308]\n", timedOut: false });
+
+    // Assert
+    assert.ok(error instanceof Error && !(error instanceof FirmwareBuildTimeoutError));
+    assert.match(error.message, /^firmware Cargo build failed; protected diagnostic scratch\/firmware-build-/u);
+    assert.equal(maybeTypedFailureCategory(error), undefined);
+  } finally {
+    await rm(root, { recursive: true });
+  }
 });
