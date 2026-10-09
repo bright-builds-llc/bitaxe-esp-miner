@@ -106,8 +106,9 @@ async function sealedRoot({ result = "passed", credentialScan = { files: 12, hit
   const frozen = { ...context, attempt: "attempt-007", firmware_root: firmware };
   await writeNew(resolve(root, "context.json"), { context: frozen, sha256: digest(JSON.stringify(frozen)) });
   for (const [index, scenario] of SCENARIOS.entries()) {
-    const value = { schema: SCENARIO_RESULT_SCHEMA, ...judgeScenario(passingInput(scenario)), context_sha256: digest(JSON.stringify(frozen)),
-      physical_identity_sha256: frozen.physical_identity_sha256 };
+    const input = passingInput(scenario);
+    const value = { schema: SCENARIO_RESULT_SCHEMA, ...judgeScenario(input), context_sha256: digest(JSON.stringify(frozen)),
+      physical_identity_sha256: frozen.physical_identity_sha256, final_state: input.finalState };
     await writeNew(resolve(root, `scenario-${String(index + 1).padStart(2, "0")}-${scenario}.json`), { value, sha256: digest(JSON.stringify(value)) });
   }
   const final = { schema: RESULT_SCHEMA, result, scenarios: SCENARIOS.map((scenario) => ({ scenario, result: "passed", failures: [] })),
@@ -127,8 +128,9 @@ test("publish writes the eight projections from a sealed, passed root", async ()
   assert.deepEqual(result, { restoration_published: true, projections: 8 });
   const files = (await readdir(directory)).sort();
   assert.equal(files.length, 8);
-  const text = await readFile(resolve(directory, "bwg007-attempt-007-reboot.json"), "utf8");
-  assert.equal(JSON.parse(text).facts.rebootClearedStimulus, true);
+  const reboot = JSON.parse(await readFile(resolve(directory, "bwg007-attempt-007-reboot.json"), "utf8"));
+  assert.deepEqual([reboot.profile, reboot.facts.rebootClearedStimulus, reboot.facts.sameKeyReacquired, reboot.poolConfigurationNeverPersisted,
+    reboot.sameDeviceAcrossScenarios, reboot.campaignEventCredentialsAbsent], ["bwg-worker-restoration-result/0.3", true, true, true, true, true]);
   await rejectsWith(main(["publish", "--private-root", root]), "projection_exists");
 });
 

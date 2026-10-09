@@ -11,7 +11,7 @@ import { inventory, verifyInventory } from "../str005-noise-serial/files.mjs";
 import { processSnapshot, requireGone, requireLsofAbsent, requireNoHolders } from "../str005-noise-serial/host-resources.mjs";
 import { RESTORATION_PORT, RESULT_SCHEMA, SCENARIO_RESULT_SCHEMA, SCENARIOS } from "./contract.mjs";
 import { loadRestorationContext, preflight } from "./preflight.mjs";
-import { buildProjection, PROJECTION_DIRECTORY, publishProjectionSet } from "./projection.mjs";
+import { attemptFacts, buildProjection, PROJECTION_DIRECTORY, publishProjectionSet } from "./projection.mjs";
 import { campaignResult, poolScanValues, scanAttemptRoot, sealedResult } from "./seal.mjs";
 import { createRestorationSupervisor } from "./server.mjs";
 
@@ -107,15 +107,19 @@ async function publish(options, operations = {}) {
   requireCondition(final.schema === RESULT_SCHEMA && final.result === "passed" && final.scenarios.length === SCENARIOS.length, "restoration_not_passed");
   requireCondition(Number.isSafeInteger(final.credential_scan?.files) && final.credential_scan.files > 0 && final.credential_scan.hits === 0,
     "restoration_credential_scan_missing");
-  const contextSha256 = digest(JSON.stringify(context)), projections = [];
+  const contextSha256 = digest(JSON.stringify(context)), records = [];
   for (const [index, scenario] of SCENARIOS.entries()) {
     const record = await readJson(resolve(root, `scenario-${String(index + 1).padStart(2, "0")}-${scenario}.json`));
     const value = record.value;
     requireCondition(record.sha256 === digest(JSON.stringify(value)) && value.schema === SCENARIO_RESULT_SCHEMA && value.scenario === scenario &&
       value.result === "passed" && value.context_sha256 === contextSha256 && value.physical_identity_sha256 === context.physical_identity_sha256,
     "restoration_scenario_identity");
-    projections.push(buildProjection({ attemptId: `bwg007-${basename(root)}`, context, scenarioResult: value,
-      recordsSha256: await scenarioRecordsDigest(root, scenario), scenarioResultSha256: record.sha256 }));
+    records.push(record);
+  }
+  const attempt = attemptFacts(records.map((record) => record.value), final), projections = [];
+  for (const record of records) {
+    projections.push(buildProjection({ attemptId: `bwg007-${basename(root)}`, context, scenarioResult: record.value, attempt,
+      recordsSha256: await scenarioRecordsDigest(root, record.value.scenario), scenarioResultSha256: record.sha256 }));
   }
   const directory = within(context.firmware_root, resolve(context.firmware_root, PROJECTION_DIRECTORY));
   await mkdir(directory, { recursive: true, mode: 0o755 });

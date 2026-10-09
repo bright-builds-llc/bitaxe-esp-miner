@@ -264,10 +264,35 @@ Each scenario must also prove its own facts:
 The stimulus counter must also be unchanged before `monotonic_uncertainty`,
 one higher through `disconnect`, and reset after `reboot`.
 
+Every scenario must also prove, from the page's identity and pool trackers
+([ADR-0036](../../docs/adr/0036-measured-bwg-restoration-closure-facts.md)):
+
+- `deviceIdentityStable`: from the first identity observation on, every
+  recorded state and the final state show epoch 1 (one device-identity key in
+  this page lifetime) with non-decreasing observations.
+- `poolConfigurationUnchanged`: the device's own boot-snapshot comparison
+  (preservation v2) never reports a change from the Start on, and a state
+  after the lease ended shows more observations than at the Start.
+- `disconnect` and `reboot` also need `sameKeyReacquired`: after the
+  post-reconnect terminal status, a state shows epoch 1 with more
+  observations than when the physical window began.
+
 The page does not expose live samples, so the voltage, power, temperature, fan
 and watchdog limits stay firmware-enforced. The judge applies the soak's
 live-limit rule to any samples it is given. Private files hold only closed
 page values. A record that echoes a signed authorization, lease or challenge
 id, possession binding or pool value fails the attempt and is not stored.
 Projections hold allowlisted digests, closed categories and `true` facts only.
-The result never promotes parity by itself.
+Publish writes profile `bwg-worker-restoration-result/0.3`. Its booleans are
+measured, not asserted:
+
+- `baselineConfirmed` and `cleanupConfirmed`: the judge's baseline and
+  clean-close checks for that scenario;
+- `campaignEventCredentialsAbsent`: the seal-time scan found no hit;
+- `sameDeviceAcrossScenarios`: `deviceIdentityStable` in all eight scenarios
+  and epoch 1 in the last final state;
+- `poolConfigurationNeverPersisted`: that scenario's
+  `poolConfigurationUnchanged`.
+
+The validator still accepts the published attempt-008 files, which use profile
+0.2. The result never promotes parity by itself.
