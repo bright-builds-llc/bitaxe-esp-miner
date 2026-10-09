@@ -454,7 +454,7 @@ Migration dependency satisfied: completed `task-fixed-usb-serial-qualification`,
       expiry, USB-only disconnect, both-power reboot, and monotonic uncertainty
       plus the authorization-negative matrix through the production Web Serial
       adapter and local mainnet-shaped pool path.
-- [ ] Prove replay/context negatives, credential absence, safe stop, same-key
+- [x] Prove replay/context negatives, credential absence, safe stop, same-key
       reacquisition, journal/high-water durability, restoration, and cleanup.
 - [ ] Commit only independently redaction-validated typed projections, link the
       Gate child evidence, and close BWG Core Ticket 23 only when every
@@ -589,7 +589,7 @@ Contract amendment (2026-10-09), closure attempt 009, under the owner's
 - One attempt ordinal (009) plus verified-fix continuations under the attempt
   policy.
 
-BWG-007 serial restoration hardware: enabled.
+Hardware disabled again on 2026-10-10 after attempt 009 passed.
 
 - Objective: on one detector-admitted Ultra 205, through the production Web
   Serial Gate and the owner's Stratum V1 pool, prove each of the following:
@@ -845,10 +845,10 @@ complete for the eight scenarios. Parity is not promoted.
 Remaining before this task can close, as follow-up software work with no
 hardware effect authorized:
 
-- [ ] Add a judged same-key reacquisition fact: the ADR-0019 per-scenario
+- [x] Add a judged same-key reacquisition fact: the ADR-0019 per-scenario
       device-key fingerprint match through the Gate's challenge-scoped
       fingerprint record.
-- [ ] Add a judged credential-absence fact.
+- [x] Add a judged credential-absence fact.
 - [ ] Link the Gate child evidence and resolve BWG Core Ticket 23's
       acceptance links, then decide whether a further attempt is needed.
 
@@ -871,6 +871,33 @@ Closure plan (owner-approved 2026-10-09):
   table in the Gate repo. Ticket 23 line 20 (another Device Identity derives a
   different context) and line 22 (BIP 23/mainnet guardrails) stay explicit
   non-claims outside BWG-007.
+
+Attempt 009 (2026-10-10), firmware `8e16961b`, Gate `be55781`, with the
+closure amendment: all eight scenarios passed. Sealed `passed`; the credential
+scan found 0 hits in 15 files.
+
+- Device identity was epoch 1 across 54 possession-bound observations.
+- The same key was reacquired after the USB disconnect (30 → 33) and after
+  the both-power reboot (37 → 40).
+- All 54 preservation reports were v2, with the pool configuration unchanged.
+- Caps: 9 of 10 Starts, 2 of 2 renewals, 0 re-arms.
+- Independent review: agree with caveats. All eight recompute to `passed`,
+  and a rescan of the whole run directory found 38 files with 0 hits.
+- Review caveats:
+  - pool continuity is per boot, and "unchanged" cannot exclude a write of
+    identical values;
+  - the scan covers only the listed values and shapes, and the short
+    password is unscannable;
+  - the identity tracker is page-local;
+  - `reboot` is not shown to be a power-on reset;
+  - N4 `control_failed` and the live limits are not observed.
+- Two review findings were fixed before publication (`7aa8a6db`):
+  - the projection field was renamed `poolConfigurationUnchangedPerBoot`;
+  - the README's N1 wording now matches the carried reboot report.
+- Projections (profile 0.3) published to
+  `docs/parity/evidence/bwg-worker-restoration/bwg007-attempt-009-*.json`.
+  Summary:
+  [20261010-bwg007-restoration-closure.md](docs/parity/evidence/20261010-bwg007-restoration-closure.md).
 
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
