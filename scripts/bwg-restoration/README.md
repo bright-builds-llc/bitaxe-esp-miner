@@ -90,18 +90,33 @@ scenario at a time, and check its result before starting the next.
    - `instruction`, while the owner must act;
    - `observe`;
    - `automated_bounds`;
-   - `waiting_for_human_has_no_deadline: true`.
+   - `waiting_for_human_has_no_deadline: true`;
+   - `admission_settled`, true when the scenario's latest record allows the
+     settle step below.
+
+   **Settle** before every lease. Serve signs (`prepareStart`) and delivers
+   (`loadScenarioLease`) a lease only when the current scenario's latest
+   recorded page state was taken while connected and shows the device's
+   admission diagnostic at stage `idle` or `complete`. Otherwise it answers
+   `settle_required`. Run `admissionDiagnostic` and repeat it until it reports
+   one of those stages; this wait has no deadline. The page refreshes the stage
+   only when the device's periodic diagnostic arrives while connected, so poll
+   after connecting. The diagnostic is non-authoritative: serve uses it only to
+   hold back a lease until the previous lease's native shutdown has finished
+   (attempt-006), never to admit one. A record from an earlier scenario never
+   settles the next one.
 
    The steps for each scenario are:
-   1. `completion`: connect, `prepareStart`, `loadScenarioLease`,
+   1. `completion`: connect, settle, `prepareStart`, `loadScenarioLease`,
       `startScenarioLease`, wait at least 20 s, `renewOnce`,
       `restoreChallengeSatisfied`, then `workerRestoration.submitCompletion()`.
-   1. `pause` and `cancel`: connect, `prepareStart`, `loadScenarioLease`,
-      `startScenarioLease`, then `pause` or `cancel`, then `submitCompletion()`.
+   1. `pause` and `cancel`: connect, settle, `prepareStart`,
+      `loadScenarioLease`, `startScenarioLease`, then `pause` or `cancel`, then
+      `submitCompletion()`.
    1. `expiry`: as above without a stop. Poll `statusReview` until the device
       reports `lease_expired` (at least 30 s), then `submitCompletion()`.
    1. `monotonic_uncertainty`: connect, `clockDiscontinuityStimulusReview`,
-      `prepareStart`, `loadScenarioLease`, `startScenarioLease`,
+      settle, `prepareStart`, `loadScenarioLease`, `startScenarioLease`,
       `triggerClockDiscontinuity`. Poll `statusReview` at most every 2 s until
       the device reports `monotonic_reset` (within 20 s), then
       `submitCompletion()`.
@@ -113,12 +128,12 @@ scenario at a time, and check its result before starting the next.
         connection has reported the reboot, so serve withholds the replay
         until it has recorded that status. After the device's rejection the
         page disconnects. Connect, then `authorizationRejectionReview`.
-      - N2: `prepareStart` (the server signs one Start and holds it). Keep the
-        page connected for 61 s, then `replayArtifact`. Connect, then
-        `authorizationRejectionReview`.
+      - N2: settle, then `prepareStart` (the server signs one Start and holds
+        it). Keep the page connected for 61 s, then `replayArtifact`. Connect,
+        then `authorizationRejectionReview`.
       - N3: within 45 s of that review, `replayArtifact` (the same Start under
         the new possession). Connect, then `authorizationRejectionReview`.
-      - N4: `prepareStart`, `loadScenarioLease`, `startScenarioLease`,
+      - N4: settle, `prepareStart`, `loadScenarioLease`, `startScenarioLease`,
         `renewOnce`, then `replayArtifact` (the accepted renewal). The device
         safe-stops with `control_failed`. Connect, then
         `authorizationRejectionReview`, `statusReview` and `submitCompletion()`.
@@ -153,7 +168,7 @@ deadline; only the finite effects have automated bounds.
    `POST /checkpoint/ready`. A local tool may post without an Origin; a browser
    must be same-origin. The reply must name the current checkpoint, so a stale
    reply is refused.
-1. `ready_for_lease`: run `prepareStart`, `loadScenarioLease`,
+1. `ready_for_lease`: settle, then run `prepareStart`, `loadScenarioLease`,
    `startScenarioLease` and `statusReview` (required before `reboot`, to
    capture the pre-reboot high-water epoch). Then run `beginPhysicalWindow`.
    Begin starts the presence watcher (`flash usb-presence-watch`). The removal

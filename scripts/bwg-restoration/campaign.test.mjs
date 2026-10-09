@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { activate, admitSigning, createCampaign, deliverWindow, finishScenario, markSegment, observeRecord, recordSigned, replayArtifact } from "./campaign.mjs";
+import { activate, admissionSettled, admitSigning, createCampaign, deliverWindow, finishScenario, markSegment, observeRecord, recordSigned, replayArtifact } from "./campaign.mjs";
 import { operatorReady } from "./checkpoint.mjs";
 import { SCENARIOS } from "./contract.mjs";
 import { baseline, journal, pageState, rejectionReview } from "./fixtures.test-helper.mjs";
@@ -11,7 +11,17 @@ const newScope = () => ({ challengeId: `challenge_${++scopes}`, retentionExpiryU
 const window = (renewals) => ({ grant: { leaseId: `lease_${scopes}`, authorization: "g" }, renewals: Array.from({ length: renewals }, () => ({ authorization: "r" })) });
 const passed = (scenario) => ({ scenario, result: "passed", failures: [], facts: {}, carry: {} });
 
+/** Record a connected `admissionDiagnostic` whose page state shows `stage` (or no observation for `null`). */
+function observeAdmission(campaign, stage, { connected = true } = {}) {
+  const admission = stage === null ? null : { stage, firstFailure: "none", readiness: 63 };
+  const entries = journal(["admission_observed:none"], campaign.maybeLastJournalOrdinal);
+  observeRecord(campaign, { operation: "admissionDiagnostic", outcome: "ok", result: { admission },
+    state: pageState({ entries, connected, status: "ready", admission }) }, 0);
+}
+const settle = (campaign) => observeAdmission(campaign, "idle");
+
 function sign(campaign, now = 0) {
+  settle(campaign);
   const request = admitSigning(campaign);
   const artifacts = window(request.renewals);
   recordSigned(campaign, request, artifacts, now);
@@ -32,7 +42,7 @@ function advanceTo(campaign, name) {
 const reviewRecord = (operation, result) => ({ operation, outcome: "ok", result, state: pageState({ entries: journal(["closed"], 100) }) });
 /** The post-reboot status in the same connection that the firmware requires before N1. */
 const reportReboot = (campaign, events = ["connected", "status_reviewed:reboot"]) =>
-  observeRecord(campaign, { operation: "statusReview", outcome: "ok", result: baseline("reboot"), state: pageState({ entries: journal(events) }) }, 0);
+  observeRecord(campaign, { operation: "statusReview", outcome: "ok", result: baseline("reboot"), state: pageState({ entries: journal(events, campaign.maybeLastJournalOrdinal) }) }, 0);
 
 test("one scope serves every reconnect within a scenario and a new scenario gets a new one", () => {
   // Arrange
@@ -83,6 +93,7 @@ test("a physical scenario signs only after the operator's readiness", () => {
   // Act / Assert
   throwsWith(() => admitSigning(campaign), "operator_ready_required");
   operatorReady(campaign.scenario.maybeCheckpoint, "awaiting_operator_ready", 0);
+  settle(campaign);
   assert.equal(admitSigning(campaign).renewals, 0);
 });
 
@@ -90,6 +101,7 @@ test("the attempt never signs more than ten Starts or two renewals", () => {
   // Arrange
   const campaign = createCampaign();
   activate(campaign, newScope);
+  settle(campaign);
   campaign.startsSigned = 10;
   // Act / Assert
   throwsWith(() => admitSigning(campaign), "start_cap");
@@ -210,4 +222,74 @@ test("N1 waits for a status that reported the reboot in the same connection", ()
   throwsWith(() => replayArtifact(campaign, 0), "n1_status_required");
   reportReboot(campaign, ["connected", "status_reviewed:reboot", "disconnected", "connected", "status_reviewed:reboot"]);
   assert.equal(replayArtifact(campaign, 0).operation, "start");
+});
+
+test("no lease is signed before the scenario has a settled admission record", () => {
+  // Arrange
+  const campaign = createCampaign();
+  activate(campaign, newScope);
+  // Act / Assert
+  throwsWith(() => admitSigning(campaign), "settle_required");
+  assert.equal(campaign.startsSigned, 0);
+});
+
+test("an unsettled, unobserved or disconnected admission record refuses signing until a settled one arrives", () => {
+  // Arrange
+  const campaign = createCampaign();
+  activate(campaign, newScope);
+  const refusals = [];
+  // Act
+  for (const [stage, options] of [["cleanup", {}], ["active", {}], ["preparation", {}], [null, {}], ["complete", { connected: false }]]) {
+    observeAdmission(campaign, stage, options);
+    refusals.push(admissionSettled(campaign));
+    throwsWith(() => admitSigning(campaign), "settle_required");
+  }
+  observeAdmission(campaign, "complete");
+  // Assert
+  assert.deepEqual(refusals, [false, false, false, false, false]);
+  assert.equal(admitSigning(campaign).kind, "window");
+});
+
+test("a signed window is withheld while a later record shows the device unsettled", () => {
+  // Arrange
+  const campaign = createCampaign();
+  activate(campaign, newScope);
+  sign(campaign);
+  observeAdmission(campaign, "cleanup");
+  // Act
+  const refused = (() => { try { deliverWindow(campaign, 0); return null; } catch (error) { return error.code; } })();
+  observeAdmission(campaign, "complete");
+  const delivered = deliverWindow(campaign, 5);
+  // Assert
+  assert.equal(refused, "settle_required");
+  assert.equal(delivered.renewals.length, 1);
+  assert.equal(campaign.scenario.maybeDeliveredAt, 5);
+});
+
+test("a settled record from the previous scenario does not settle the next one", () => {
+  // Arrange
+  const campaign = createCampaign();
+  activate(campaign, newScope);
+  settle(campaign);
+  // Act
+  finishScenario(campaign, passed("completion"));
+  activate(campaign, newScope);
+  // Assert
+  assert.equal(admissionSettled(campaign), false);
+  throwsWith(() => admitSigning(campaign), "settle_required");
+});
+
+test("the N2 and N4 signing legs require a settled admission record", () => {
+  // Arrange
+  const campaign = createCampaign();
+  advanceTo(campaign, "authorization_negatives");
+  activate(campaign, newScope);
+  // Act / Assert
+  for (const leg of ["n2_sign", "n4_sign"]) {
+    Object.assign(campaign.scenario, { leg });
+    observeAdmission(campaign, "pool_activation");
+    throwsWith(() => admitSigning(campaign), "settle_required");
+    settle(campaign);
+    assert.equal(admitSigning(campaign).renewals, leg === "n2_sign" ? 0 : 1);
+  }
 });

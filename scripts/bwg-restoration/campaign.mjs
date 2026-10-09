@@ -3,7 +3,7 @@
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
 import { blocksActivation, createCheckpoint } from "./checkpoint.mjs";
 import { EXPIRED_START_WAIT_MS, FRESH_POSSESSION_MS, MAXIMUM_RENEWALS, MAXIMUM_STARTS, PHYSICAL_PLANS, SCENARIO_PLANS, SCENARIOS,
-  scopeGroup } from "./contract.mjs";
+  scopeGroup, SETTLED_ADMISSION_STAGES } from "./contract.mjs";
 
 function freshScenario(name) {
   return { name, signed: 0, signedSinceReady: 0, maybePending: null, records: [], segmentStartOrdinal: 0, segmentStartAt: 0,
@@ -35,6 +35,21 @@ export function activate(campaign, createScope) {
 }
 
 /**
+ * True when this scenario's latest page record was taken while connected and shows the device's admission
+ * diagnostic settled (`idle` or `complete`), so the previous lease's native shutdown has finished
+ * (attempt-006). The diagnostic is non-authoritative: it can only refuse a lease, never admit one.
+ */
+export function admissionSettled(campaign) {
+  const maybeState = campaign.scenario.records.at(-1)?.state;
+  return maybeState?.connected === true && SETTLED_ADMISSION_STAGES.includes(maybeState.admission?.stage);
+}
+
+/** No deadline: the agent re-polls `admissionDiagnostic` until the device settles. */
+function requireSettled(campaign) {
+  requireCondition(admissionSettled(campaign), "settle_required");
+}
+
+/**
  * What the next signing request may produce, or a refusal. Caps count signed Starts and renewals for the
  * whole attempt; replays never sign.
  */
@@ -54,6 +69,7 @@ export function admitSigning(campaign) {
     requireCondition(scenario.signed === 0, "scenario_already_signed");
     request = { window: plan.window, renewals: plan.renewals, kind: "window" };
   }
+  requireSettled(campaign);
   requireCondition(campaign.startsSigned + 1 <= MAXIMUM_STARTS, "start_cap");
   requireCondition(campaign.renewalsSigned + request.renewals <= MAXIMUM_RENEWALS, "renewal_cap");
   return request;
@@ -79,6 +95,7 @@ export function deliverWindow(campaign, now) {
   requireRunning(campaign);
   const artifacts = campaign.scenario.maybePending;
   requireCondition(artifacts !== null, "artifacts_unavailable");
+  requireSettled(campaign);
   campaign.scenario.maybePending = null;
   campaign.scenario.maybeDeliveredAt = now;
   return artifacts;

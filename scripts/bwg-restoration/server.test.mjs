@@ -60,6 +60,13 @@ async function until(probe, timeoutMs = 5000) {
   }
 }
 
+/** Record a connected `admissionDiagnostic` as the supervisor client would; `stage` null means not yet observed. */
+function admissionRecord(stage) {
+  const admission = stage === null ? null : { stage, firstFailure: "none", readiness: 63 };
+  return { operation: "admissionDiagnostic", outcome: "ok", result: { admission }, state: pageState({ connected: true, status: "ready", admission }) };
+}
+const settle = (call, stage = "complete") => call("/record", admissionRecord(stage));
+
 const events = async (root) => (await readFile(resolve(root, "campaign-events.jsonl"), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
 
 test("the context is exactly the restoration configuration and the page loads the import-free client", async (t) => {
@@ -94,6 +101,7 @@ test("a signed window matches the Gate restoration parser, carries no budget and
   const { server, call, signed } = await supervisor();
   t.after(() => server.close());
   const scope = (await call("/activate", {})).value;
+  await settle(call);
   // Act
   const authorized = await call("/authorization-context", { controlSessionBindingSha256: binding });
   const first = await call("/scenario-artifacts");
@@ -113,6 +121,7 @@ test("a record that echoes a signed secret fails the attempt and is not stored",
   const { root, server, call } = await supervisor();
   t.after(() => server.close());
   await call("/activate", {});
+  await settle(call);
   await call("/authorization-context", { controlSessionBindingSha256: binding });
   const leaked = (await call("/scenario-artifacts")).value.grant.authorization;
   // Act
@@ -121,7 +130,8 @@ test("a record that echoes a signed secret fails the attempt and is not stored",
   assert.equal(response.value.error, "credential_in_record");
   const result = JSON.parse(await readFile(resolve(root, "result.json"), "utf8")).result;
   assert.deepEqual([result.result, result.failure.category], ["unverified", "credential_in_record"]);
-  await assert.rejects(readFile(resolve(root, "records.jsonl")), (error) => error.code === "ENOENT");
+  const stored = (await readFile(resolve(root, "records.jsonl"), "utf8")).trim().split("\n");
+  assert.deepEqual([stored.length, stored.some((line) => line.includes(leaked))], [1, false]);
 });
 
 test("a completion review answers the exact Gate receipt and advances to the next scenario", async (t) => {
@@ -148,6 +158,7 @@ test("N1 replays the reboot Start once under the persistent scope", async (t) =>
   for (const scenario of SCENARIOS.slice(0, 6)) finishScenario(server.campaign, passed(scenario));
   await call("/activate", {});
   await call("/checkpoint/ready", { scenario: "reboot", checkpoint: "awaiting_operator_ready" });
+  await settle(call);
   await call("/authorization-context", { controlSessionBindingSha256: binding });
   const rebootStart = (await call("/scenario-artifacts")).value.grant;
   finishScenario(server.campaign, passed("reboot"));
@@ -189,6 +200,7 @@ test("the disconnect checkpoint orders watcher, removal, absence bound, restore 
   const waiting = (await call("/supervisor-state")).value;
   const unsigned = await call("/authorization-context", { controlSessionBindingSha256: binding });
   await operator("/checkpoint/ready", { scenario: "disconnect", checkpoint: "awaiting_operator_ready" });
+  await settle(call);
   await call("/authorization-context", { controlSessionBindingSha256: binding });
   await call("/scenario-artifacts");
   // Act
@@ -225,4 +237,33 @@ test("the disconnect checkpoint orders watcher, removal, absence bound, restore 
   assert.ok(rows.indexOf("restore_watcher_armed") > rows.indexOf("checkpoint:remove_usb"));
   const stopped = (await events(root)).find((row) => row.event === "watcher_stopped");
   assert.equal(stopped.stopped_on_request, true);
+});
+
+test("signing and delivery answer settle_required until the device's admission settles", async (t) => {
+  // Arrange
+  const { server, call, signed } = await supervisor();
+  t.after(() => server.close());
+  await call("/activate", {});
+  const before = (await call("/supervisor-state")).value;
+  // Act
+  const unobserved = await call("/authorization-context", { controlSessionBindingSha256: binding });
+  await settle(call, null);
+  const unknown = await call("/authorization-context", { controlSessionBindingSha256: binding });
+  await settle(call, "cleanup");
+  const cleaning = await call("/authorization-context", { controlSessionBindingSha256: binding });
+  await settle(call, "idle");
+  const authorized = await call("/authorization-context", { controlSessionBindingSha256: binding });
+  await settle(call, "active");
+  const withheld = await call("/scenario-artifacts");
+  await settle(call, "complete");
+  const after = (await call("/supervisor-state")).value;
+  const delivered = await call("/scenario-artifacts");
+  // Assert
+  assert.deepEqual([unobserved.value.error, unknown.value.error, cleaning.value.error], ["settle_required", "settle_required", "settle_required"]);
+  assert.equal(signed.length, 2);
+  assert.deepEqual(authorized.value, { authorization_context_saved: true });
+  assert.equal(withheld.value.error, "settle_required");
+  parseWindow(delivered.value);
+  assert.deepEqual([before.admission_settled, after.admission_settled], [false, true]);
+  assert.match(before.local_action, /admissionDiagnostic.*no deadline.*idle or complete.*prepareStart/u);
 });

@@ -82,6 +82,8 @@ export const EXPIRY_EARLY_TOLERANCE_MS = 3000;
 export const ADMISSION_STAGES = Object.freeze(["idle", "admission", "readiness", "preparation", "pool_activation", "active", "cleanup", "complete"]);
 export const ADMISSION_FAILURES = Object.freeze(["none", "admission", "readiness", "preparation", "pool_activation", "cleanup"]);
 export const ADMISSION_READINESS_MAXIMUM = 63;
+/** Stages in which no admission, lease or native shutdown is in progress. */
+export const SETTLED_ADMISSION_STAGES = Object.freeze(["idle", "complete"]);
 
 /** Closed Gate restoration-page journal events (web/worker-restoration-journal.ts). */
 export const PAGE_JOURNAL_EVENTS = Object.freeze([
