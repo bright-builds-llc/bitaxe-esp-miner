@@ -43,6 +43,13 @@ so the pin must first move to a Gate commit that carries the restoration page.
 Run every command in a shell with `umask 077`, so redirected outputs are
 mode 0600. Preflight and finish refuse other modes.
 
+Every attempt must start on a fresh device boot. The clock stimulus is spent
+once per boot and the rejection counter is per boot, so a boot already used by
+an earlier attempt fails the first scenario with
+`fact_stimulusCounterConsistent`. The install provides a fresh boot. Without
+an install, the permitted `espflash board-info` resets the chip. Drive one
+scenario at a time, and check its result before starting the next.
+
 1. Install the exact package as the task contract specifies. Then run
    `bazel build //tools/flash:flash`, which the recipe also runs.
 1. Run `just detect-ultra205 > P/detector.stdout.log`. Then run preflight within

@@ -733,6 +733,42 @@ Attempt 003 (2026-10-08), firmware `5394edb9`, new parent:
   - `scenario_judged` rows now name the judged scenario, not the next one.
   - Regressions fail on the old code and pass on the new.
 
+Attempts 004–006 (2026-10-09), firmware `d7dd9bc0`:
+
+- Attempt 004:
+  - The first package try died at the 900 s firmware-build process timeout
+    during an ESP-IDF rebuild on this host, then rebuilt on retry.
+  - Completion through monotonic passed.
+  - Disconnect passed on its permitted re-arm. The first removal came 40 s
+    after the instruction, against a 30 s window; that was expired authority.
+  - Reboot failed with `terminal_reason_mismatch`: the device reported
+    `connectivity_lost` in the same boot. The owner confirmed they had pulled
+    only USB. Device facts classified it correctly.
+- Attempt 005 (same boot, no reinstall): the first scenario failed with
+  `fact_stimulusCounterConsistent`, because the stimulus was still spent from
+  004's boot. Remediation was a permitted `board-info` chip reset, and the
+  README now states the fresh-boot precondition.
+- Attempt 006 (fresh boot):
+  - Completion, pause and cancel passed.
+  - The expiry Start was rejected by the device during preparation:
+    `session_failed`, 14.7 s after loading (8.6 s when it succeeded in 004).
+    The agent's driver then chained the next scenario's steps without
+    checking the result, so the expiry segment sealed
+    `terminal_reason_mismatch`. The README now says to drive one scenario at
+    a time.
+  - The rejected-preparation stage is unknown: the restoration page does not
+    expose the device's admission diagnostics (first failure: admission,
+    readiness, preparation or pool activation).
+- Every root was sealed `unverified` with the built detector and finish
+  binaries run directly; Bazel launch holds made the `just` path stale.
+- Hardware coverage so far:
+  - each of completion, pause, cancel, expiry, monotonic reset, USB
+    disconnect and both-power reboot has passed at least once on hardware;
+  - the N1–N4 authorization negatives have never run;
+  - no attempt has passed all eight.
+- Outcome: `stop_hardware_blocker`, pending a discriminating diagnostic for
+  the intermittent preparation rejection. A blind retry is not eligible.
+
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
 also advances the current high-water. A generic rejection therefore cannot
