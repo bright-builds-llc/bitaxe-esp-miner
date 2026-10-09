@@ -93,3 +93,10 @@ contract and its enabling line.
 ## Non-claims
 
 This ADR verifies nothing on hardware and promotes no parity row.
+
+## Amendment (2026-10-09)
+
+[ADR-0036](0036-measured-bwg-restoration-closure-facts.md) adds measured
+identity, same-key reacquisition, pool-persistence and seal-time
+credential-absence facts. It also moves publication to projection profile
+0.3, whose booleans are derived from those measurements.
