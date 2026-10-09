@@ -576,6 +576,21 @@ Serial successor hardware contract (attempt ordinals 001 onward), enabled
 
 Hardware run disabled on 2026-10-09, after attempt 008 passed. Re-enable only through a new contract amendment.
 
+Contract amendment (2026-10-09), closure attempt 009, under the owner's
+"go ahead with the remaining BWG-007 items":
+
+- Same commands, effects, caps and limits as above.
+- The firmware reports `worker-preservation-v2`.
+- The Gate pin carries the identity and pool trackers (`be55781`).
+- The judge also requires `deviceIdentityStable`, `sameKeyReacquired` and
+  `poolConfigurationUnchanged`.
+- Finish takes `--pool-credentials` and scans for credentials before sealing.
+- Projections use profile 0.3.
+- One attempt ordinal (009) plus verified-fix continuations under the attempt
+  policy.
+
+BWG-007 serial restoration hardware: enabled.
+
 - Objective: on one detector-admitted Ultra 205, through the production Web
   Serial Gate and the owner's Stratum V1 pool, prove each of the following:
   - the eight scenarios in ADR-0035's order: completion, pause, terminal
@@ -609,7 +624,11 @@ Hardware run disabled on 2026-10-09, after attempt 008 passed. Re-enable only th
      before USB. No human wait has a deadline.
   1. Navigate the tab to `about:blank` with the page's own `location.replace`.
      Stop serve, then seal with
-     `just hardware-operator owner-finish --owner bwg-restoration --private-root R`.
+     `just hardware-operator owner-finish --owner bwg-restoration --private-root R --pool-credentials <ignored pool file>`.
+     From attempt 009, finish scans the attempt root for credentials before
+     sealing. Where Bazel launch holds would make the detector stale, run the
+     built detector and `bwg_restoration finish` binaries directly with the
+     same flag.
   1. Publish only after all eight scenarios pass and an independent review
      agrees: `just bwg-restoration publish --private-root R`, then
      `just verify-redaction`.
@@ -832,6 +851,26 @@ hardware effect authorized:
 - [ ] Add a judged credential-absence fact.
 - [ ] Link the Gate child evidence and resolve BWG Core Ticket 23's
       acceptance links, then decide whether a further attempt is needed.
+
+Closure plan (owner-approved 2026-10-09):
+
+- Same key: a Gate page-local device-identity tracker over the status
+  `preservation.device_identity_sha256`, which is already bound to the
+  possession-verified key. It publishes only an epoch and an observation count.
+  The judge requires `deviceIdentityStable` in every scenario and
+  `sameKeyReacquired` after the USB disconnect and the reboot.
+- Credential absence, device side: firmware `worker-preservation-v2` reports
+  `pool_configuration_unchanged_since_boot`, comparing the stored primary and
+  fallback pool settings with a boot-time digest held only in RAM. The judge
+  requires `poolConfigurationUnchanged` after every lease.
+- Credential absence, host side: a seal-time scan of the attempt root for pool
+  values and token shapes, recorded as counts. Any hit leaves the result
+  `unverified`.
+- Projection profile 0.3 measures every boolean.
+- One new attempt (009) under a contract amendment, then the Ticket 23 evidence
+  table in the Gate repo. Ticket 23 line 20 (another Device Identity derives a
+  different context) and line 22 (BIP 23/mainnet guardrails) stay explicit
+  non-claims outside BWG-007.
 
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
