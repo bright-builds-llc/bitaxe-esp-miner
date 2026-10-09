@@ -44,7 +44,9 @@ export const SCENARIO_PLANS = Object.freeze({
   monotonic_uncertainty: Object.freeze({ window: "standard", renewals: 0, terminal: "monotonic_reset", endedBy: "device" }),
   disconnect: Object.freeze({ window: "standard", renewals: 0, terminal: "connectivity_lost", endedBy: "device" }),
   reboot: Object.freeze({ window: "standard", renewals: 0, terminal: "reboot", endedBy: "device" }),
-  authorization_negatives: Object.freeze({ window: "standard", renewals: 1, terminal: "control_failed", endedBy: "device" }),
+  // N4's replay safe-stops with control_failed, but the rejection also revokes the transport epoch; the device's own
+  // fail-safe disconnect then re-confirms the stored reason as connectivity_lost (WorkerControl::disconnect, attempt-007).
+  authorization_negatives: Object.freeze({ window: "standard", renewals: 1, terminal: "connectivity_lost", endedBy: "device" }),
 });
 
 /** Physical checkpoints: absence bounds are finite effect windows; human readiness waits have no deadline. */

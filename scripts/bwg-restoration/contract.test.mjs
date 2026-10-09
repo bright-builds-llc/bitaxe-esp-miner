@@ -46,7 +46,7 @@ test("the scenarios run in the fixed order with their terminal reasons and windo
   const terminals = SCENARIOS.map((scenario) => SCENARIO_PLANS[scenario].terminal);
   // Assert
   assert.deepEqual(SCENARIOS, ["completion", "pause", "cancel", "expiry", "monotonic_uncertainty", "disconnect", "reboot", "authorization_negatives"]);
-  assert.deepEqual(terminals, ["challenge_satisfied", "paused", "cancelled", "lease_expired", "monotonic_reset", "connectivity_lost", "reboot", "control_failed"]);
+  assert.deepEqual(terminals, ["challenge_satisfied", "paused", "cancelled", "lease_expired", "monotonic_reset", "connectivity_lost", "reboot", "connectivity_lost"]);
   assert.deepEqual(WINDOWS.expiry, { durationMilliseconds: 30000, renewAfterMilliseconds: 10000 });
   assert.equal(SCENARIO_PLANS.expiry.renewals, 0);
 });

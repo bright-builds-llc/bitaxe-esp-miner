@@ -769,6 +769,33 @@ Attempts 004–006 (2026-10-09), firmware `d7dd9bc0`:
 - Outcome: `stop_hardware_blocker`, pending a discriminating diagnostic for
   the intermittent preparation rejection. A blind retry is not eligible.
 
+Attempt 007 (2026-10-09), firmware `6f673d5e`, Gate `8461ef0`, with the
+settle gate and wider latency allowances:
+
+- Every scenario behaved as intended on hardware: completion, pause, cancel,
+  expiry, monotonic reset, USB-only disconnect, both-power reboot and N1–N4.
+  - Each settle check found the device already idle or complete.
+  - Disconnect and reboot passed on their first physical windows.
+- The authorization scenario's facts all held:
+  - `rebootReportedBeforeN1`;
+  - durable replay, expired-context, cross-context and in-context renewal
+    replay attributions;
+  - `highWaterUnchangedAcrossReboot`;
+  - `rejectedStartsNeverStarted`.
+- The judge still failed it with `terminal_reason_mismatch` (expected
+  `control_failed`, observed `connectivity_lost`), and the root was sealed
+  `unverified`.
+  - N4's replay does safe-stop with `control_failed`, but the rejection also
+    revokes the transport epoch.
+  - `WorkerControl::disconnect` then always runs
+    `safe_stop(ConnectivityLost)`, which re-confirms the stored reason.
+  - The design's expected terminal reason was therefore wrong by firmware
+    construction.
+- Outcome: `continue_after_verified_fix`. The negatives' terminal reason is
+  now `connectivity_lost`, with a regression built from attempt 007's
+  observation. A sealed `unverified` result is not relabelled, so completion
+  needs a fresh attempt.
+
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
 also advances the current high-water. A generic rejection therefore cannot

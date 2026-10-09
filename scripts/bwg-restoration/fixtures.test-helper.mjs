@@ -89,8 +89,8 @@ export function passingInput(scenario) {
       finalState: pageState({ entries: journal(["connected", "status_reviewed:reboot", "replay_rejected:authentication_failed", "disconnected", "connected", "rejection_reviewed:mismatch",
         "start_prepared", "replay_rejected:admission_required", "disconnected", "connected", "rejection_reviewed:expired", "replay_rejected:authentication_failed",
         "disconnected", "connected", "rejection_reviewed:mismatch", "start_prepared", "lease_loaded:one_renewal", "lease_started", "renewed",
-        "replay_rejected:authentication_failed", "disconnected", "connected", "rejection_reviewed:current", "status_reviewed:control_failed",
-        "stimulus_reviewed:idle", "rejection_reviewed:current", "closed"]), device: baseline("control_failed") }) },
+        "replay_rejected:authentication_failed", "disconnected", "connected", "rejection_reviewed:current", "status_reviewed:connectivity_lost",
+        "stimulus_reviewed:idle", "rejection_reviewed:current", "closed"]), device: baseline("connectivity_lost") }) },
   };
   return { ...common, ...inputs[scenario] };
 }

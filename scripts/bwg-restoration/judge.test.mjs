@@ -19,7 +19,7 @@ for (const scenario of SCENARIOS) {
 test("a wrong terminal reason fails the scenario", () => {
   // Arrange
   const input = passingInput("authorization_negatives");
-  input.finalState = { ...input.finalState, device: baseline("connectivity_lost") };
+  input.finalState = { ...input.finalState, device: baseline("tab_closed") };
   // Act
   const judgement = judgeScenario(input);
   // Assert
@@ -239,18 +239,29 @@ test("N1 replayed before a same-connection reboot status fails the negatives", (
   // Arrange
   const input = passingInput("authorization_negatives");
   const entries = input.finalState.journal.entries.filter((entry) => !(entry.event === "status_reviewed" && entry.category === "reboot"));
-  input.finalState = pageState({ entries, device: baseline("control_failed") });
+  input.finalState = pageState({ entries, device: baseline("connectivity_lost") });
   // Act
   const judgement = judgeScenario(input);
   // Assert
   assert.ok(judgement.failures.includes("fact_rebootReportedBeforeN1"));
 });
 
+test("the negatives end on the device's connectivity_lost after its own fail-safe close", () => {
+  // Arrange: attempt-007, where every attribution held and the reconnect reported connectivity_lost.
+  const input = passingInput("authorization_negatives");
+  const stale = passingInput("authorization_negatives");
+  stale.finalState = { ...stale.finalState, device: baseline("control_failed") };
+  // Act
+  const judgements = [judgeScenario(input), judgeScenario(stale)];
+  // Assert
+  assert.deepEqual(judgements.map((judgement) => judgement.result), ["passed", "unverified"]);
+});
+
 test("N1 after the reboot scenario's carried report passes without a same-connection status", () => {
   // Arrange: attempt-003, where the reboot scenario's completion had already received the once-per-boot report.
   const input = passingInput("authorization_negatives");
   const entries = input.finalState.journal.entries.filter((entry) => !(entry.event === "status_reviewed" && entry.category === "reboot"));
-  input.finalState = pageState({ entries, device: baseline("control_failed") });
+  input.finalState = pageState({ entries, device: baseline("connectivity_lost") });
   input.carry = { ...input.carry, rebootReported: true };
   // Act
   const judgement = judgeScenario(input);
@@ -263,7 +274,7 @@ test("a carried reboot report does not cover a lease started before N1", () => {
   const input = passingInput("authorization_negatives");
   const entries = input.finalState.journal.entries.map((entry) => entry.event === "status_reviewed" && entry.category === "reboot"
     ? { ordinal: entry.ordinal, event: "lease_started" } : entry);
-  input.finalState = pageState({ entries, device: baseline("control_failed") });
+  input.finalState = pageState({ entries, device: baseline("connectivity_lost") });
   input.carry = { ...input.carry, rebootReported: true };
   // Act
   const judgement = judgeScenario(input);

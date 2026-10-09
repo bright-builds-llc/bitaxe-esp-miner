@@ -135,8 +135,10 @@ scenario at a time, and check its result before starting the next.
         the new possession). Connect, then `authorizationRejectionReview`.
       - N4: settle, `prepareStart`, `loadScenarioLease`, `startScenarioLease`,
         `renewOnce`, then `replayArtifact` (the accepted renewal). The device
-        safe-stops with `control_failed`. Connect, then
-        `authorizationRejectionReview`, `statusReview` and `submitCompletion()`.
+        safe-stops with `control_failed`, then its own fail-safe disconnect
+        re-confirms the stored reason as `connectivity_lost`, the scenario's
+        terminal reason. Connect, then `authorizationRejectionReview`,
+        `statusReview` and `submitCompletion()`.
 1. After the last scenario, or after any failure, navigate the tab to
    `about:blank` with the page's own `location.replace('about:blank')`
    (AGENTS.md, Persistent Gate Browser Tab).
