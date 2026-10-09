@@ -758,6 +758,18 @@ js_test(
     entry_point = "str005-v2-serial/permission-correction.test.mjs",
 )
 
+# The BWG restoration projection validator, for the semantic redaction verifier.
+js_library(
+    name = "bwg_projection_validator",
+    srcs = [
+        "bwg-restoration/contract.mjs",
+        "bwg-restoration/projection.d.mts",
+        "bwg-restoration/projection.mjs",
+        "fixed-usb-qualification/contract.mjs",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 # Versioned V2 qualification sources retain separate historical Noise readers.
 js_library(
     name = "v2_projection_validator",

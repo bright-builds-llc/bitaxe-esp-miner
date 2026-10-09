@@ -1,5 +1,9 @@
 import { validateNoiseSerialProjection } from "./noise-serial-redaction.js";
 import { parseProjection as validateV2SerialProjection } from "../../../scripts/str005-v2-serial/projection.mjs";
+import {
+  PROJECTION_PROFILES as bwgRestorationProfiles,
+  validateProjection as validateBwgRestorationProjection,
+} from "../../../scripts/bwg-restoration/projection.mjs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -36,9 +40,17 @@ const semanticSchemas = new Set([
   "bitaxe-otawww-evidence-v1",
 ]);
 
+/**
+ * Evidence identified by a top-level `profile` rather than a schema: the BWG restoration projections
+ * (bwg-worker-restoration-result/0.2, /0.3 and /0.4). Each is also checked by its own closed validator.
+ */
+const semanticProfiles = new Set<string>(bwgRestorationProfiles);
+
 const safeSemanticKeys = new Set([
   "exactly_one_chip_detected",
   "exactly_one_chip_detected_after_reset",
+  // A BWG restoration fact: the restore-watcher token was observed before the restore instruction; it carries no token.
+  "restoreTokenBeforeRestoreInstruction",
   "same_origin_api_observed",
   "same_origin_observed",
   "same_origin_requests_observed",
@@ -98,6 +110,15 @@ async function jsonFiles(root: string): Promise<string[]> {
   return files;
 }
 
+/** The registered schema or profile that identifies a semantic evidence file, or `undefined` when unregistered. */
+function registeredIdentity(fields: Record<string, unknown>): string | undefined {
+  const schema = fields["schema_version"] ?? fields["schema"];
+  if (typeof schema === "string" && semanticSchemas.has(schema)) return schema;
+  const profile = fields["profile"];
+  if (typeof profile === "string" && semanticProfiles.has(profile)) return profile;
+  return undefined;
+}
+
 export async function verifySemanticEvidenceRedaction(root: string): Promise<{ readonly checked: number }> {
   let checked = 0;
   const violations: string[] = [];
@@ -110,10 +131,11 @@ export async function verifySemanticEvidenceRedaction(root: string): Promise<{ r
     }
     if (typeof value !== "object" || value === null) continue;
     const fields = value as Record<string, unknown>;
-    const schema = fields["schema_version"] ?? fields["schema"];
-    if (typeof schema !== "string" || !semanticSchemas.has(schema)) continue;
+    const schema = registeredIdentity(fields);
+    if (schema === undefined) continue;
     if (schema === "bitaxe-stratum-v2-noise-serial-projection-v2") validateNoiseSerialProjection(fields);
     if (schema === "str005-v2-serial-projection-v1") validateV2SerialProjection(fields);
+    if (semanticProfiles.has(schema)) validateBwgRestorationProjection(fields);
     checked += 1;
     for (const violation of inspectValue(value, "$", schema.startsWith("fixed-usb-"))) {
       violations.push(`${path.relative(root, file)} ${violation}`);

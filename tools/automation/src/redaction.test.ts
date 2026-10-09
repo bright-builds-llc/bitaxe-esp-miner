@@ -349,3 +349,74 @@ test("V2 serial projection uses its versioned closed parser before privacy scann
     await assert.rejects(verifySemanticEvidenceRedaction(root));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+/** A BWG restoration `cancel` projection in profile 0.2 or 0.3, shaped like the published bwg007 files. */
+function bwgCancelProjection(profile: "0.2" | "0.3"): Record<string, unknown> {
+  const measured = profile === "0.3";
+  return {
+    profile: `bwg-worker-restoration-result/${profile}`, attemptId: measured ? "bwg007-attempt-009" : "bwg007-attempt-008", scenario: "cancel",
+    outcome: "complete", terminalReason: "cancelled",
+    firmwareCommit: "a".repeat(40), gateCommit: "b".repeat(40), referenceCommit: "c".repeat(40),
+    appElfSha256: "1".repeat(64), packageManifestSha256: "2".repeat(64), gateBundleSha256: "3".repeat(64), gatePageSha256: "4".repeat(64),
+    trustSha256: "5".repeat(64), recordsSha256: "6".repeat(64), scenarioResultSha256: "7".repeat(64),
+    baselineConfirmed: true, cleanupConfirmed: true, campaignEventCredentialsAbsent: true, sameDeviceAcrossScenarios: true,
+    ...(measured ? { poolConfigurationUnchangedPerBoot: true } : {}),
+    facts: measured
+      ? { operatorEndedLease: true, stimulusCounterConsistent: true, deviceIdentityStable: true, poolConfigurationUnchanged: true }
+      : { operatorEndedLease: true, stimulusCounterConsistent: true },
+  };
+}
+
+test("BWG restoration projections are checked by their registered profile", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-bwg-"));
+  await writeFile(path.join(root, "bwg007-attempt-008-cancel.json"), JSON.stringify(bwgCancelProjection("0.2")));
+  await writeFile(path.join(root, "bwg007-attempt-009-cancel.json"), JSON.stringify(bwgCancelProjection("0.3")));
+
+  try {
+    // Act
+    const result = await verifySemanticEvidenceRedaction(root);
+
+    // Assert
+    assert.equal(result.checked, 2);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a BWG restoration projection outside its closed profile or carrying a private value is refused", async () => {
+  // Arrange
+  const cases = [
+    { ...bwgCancelProjection("0.3"), poolUser: "private-worker" },
+    { ...bwgCancelProjection("0.2"), poolConfigurationUnchangedPerBoot: true },
+    { ...bwgCancelProjection("0.3"), attemptId: "bwg007-attempt-009@pool.invalid" },
+    { ...bwgCancelProjection("0.3"), facts: { operatorEndedLease: true } },
+  ];
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-bwg-refused-"));
+
+  try {
+    for (const value of cases) {
+      await writeFile(path.join(root, "evidence.json"), JSON.stringify(value));
+      // Act / Assert
+      await assert.rejects(verifySemanticEvidenceRedaction(root));
+    }
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("an unregistered profile is not counted as checked", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-bwg-unregistered-"));
+  await writeFile(path.join(root, "evidence.json"), JSON.stringify({ ...bwgCancelProjection("0.3"), profile: "bwg-worker-restoration-result/0.9" }));
+
+  try {
+    // Act
+    const result = await verifySemanticEvidenceRedaction(root);
+
+    // Assert
+    assert.equal(result.checked, 0);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
