@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { admitReconnect, armRestore, beginWindow, blocksActivation, checkpointFacts, createCheckpoint, humanWait, operatorReady, view, watcherEvent } from "./checkpoint.mjs";
-import { REMOVAL_WINDOW_MS, RESTORE_WATCHER_TOKEN } from "./contract.mjs";
+import { REMOVAL_LEASE_HEADROOM_MS, REMOVAL_WINDOW_MS, RESTORE_WATCHER_TOKEN } from "./contract.mjs";
 
 const A = "a".repeat(64), B = "b".repeat(64);
 const event = (name, elapsed, extra = {}) => ({ schema: "bwg-usb-presence-watch-v1", sequence: 1, elapsed_ms: elapsed, event: name, ...extra });
@@ -11,7 +11,7 @@ const throwsWith = (operation, code) => assert.throws(operation, (error) => erro
 function removing(scenario = "disconnect", now = 1000) {
   const state = createCheckpoint(scenario);
   operatorReady(state, "awaiting_operator_ready", now);
-  beginWindow(state, now);
+  beginWindow(state, now, now);
   watcherEvent(state, event("present", 0, { enumeration_sha256: A, ready: false }), now);
   return state;
 }
@@ -27,7 +27,7 @@ test("the removal instruction appears only after the watcher proves the device p
   // Arrange
   const state = createCheckpoint("disconnect");
   operatorReady(state, "awaiting_operator_ready", 1000);
-  beginWindow(state, 1000);
+  beginWindow(state, 1000, 1000);
   // Act
   const before = state.checkpoint;
   watcherEvent(state, event("present", 0, { enumeration_sha256: A }), 1100);
@@ -55,6 +55,47 @@ test("a removal after the removal window is expired authority, not device eviden
   watcherEvent(state, event("absent", 40000), 1000 + REMOVAL_WINDOW_MS + 1);
   // Assert
   assert.deepEqual([state.checkpoint, state.maybeRearmReason], ["rearm_required", "removal_late"]);
+});
+
+test("a removal 40 s after the instruction is inside the widened 45 s window", () => {
+  // Arrange
+  const state = removing();
+  // Act
+  watcherEvent(state, event("absent", 40000), 1000 + 40000);
+  // Assert
+  assert.equal(REMOVAL_WINDOW_MS, 45000);
+  assert.equal(state.checkpoint, "absence_bounding");
+});
+
+test("a removal 46 s after the instruction is late", () => {
+  // Arrange
+  const state = removing();
+  // Act
+  watcherEvent(state, event("absent", 46000), 1000 + 46000);
+  // Assert
+  assert.deepEqual([state.checkpoint, state.maybeRearmReason], ["rearm_required", "removal_late"]);
+});
+
+test("a removal that would race the delivered lease's end is late even inside the removal window", () => {
+  // Arrange: the lease was delivered 15 s before the instruction, so the device may end it 45 s after the instruction.
+  const state = createCheckpoint("reboot");
+  operatorReady(state, "awaiting_operator_ready", 0);
+  beginWindow(state, 15000, 0);
+  watcherEvent(state, event("present", 0, { enumeration_sha256: A }), 15000);
+  // Act
+  const deadline = state.maybeRemovalDeadline;
+  watcherEvent(state, event("absent", 41000), 15000 + 41000);
+  // Assert
+  assert.equal(deadline, 60000 - REMOVAL_LEASE_HEADROOM_MS);
+  assert.deepEqual([state.checkpoint, state.maybeRearmReason], ["rearm_required", "removal_late"]);
+});
+
+test("a window cannot begin without a delivered lease", () => {
+  // Arrange
+  const state = createCheckpoint("disconnect");
+  operatorReady(state, "awaiting_operator_ready", 0);
+  // Act / Assert
+  throwsWith(() => beginWindow(state, 1000, null), "physical_window_lease_missing");
 });
 
 test("the restore watcher does not arm before the absence bound", () => {
@@ -129,12 +170,12 @@ test("re-arms are capped at two per physical scenario", () => {
   const state = createCheckpoint("disconnect");
   operatorReady(state, "awaiting_operator_ready", 0);
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    beginWindow(state, 0);
+    beginWindow(state, 0, 0);
     watcherEvent(state, event("present", 0, { enumeration_sha256: A }), 0);
     watcherEvent(state, event("absent", 60000), REMOVAL_WINDOW_MS + 1);
     operatorReady(state, "rearm_required", 0);
   }
-  beginWindow(state, 0);
+  beginWindow(state, 0, 0);
   watcherEvent(state, event("present", 0, { enumeration_sha256: A }), 0);
   watcherEvent(state, event("absent", 60000), REMOVAL_WINDOW_MS + 1);
   // Act / Assert

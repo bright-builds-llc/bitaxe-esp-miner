@@ -56,8 +56,14 @@ export const PHYSICAL_PLANS = Object.freeze({
     removal: "Remove the USB cable and the barrel power from the Ultra 205. Then wait for the restore instruction.",
     restore: "Restore barrel power first, then reconnect the USB cable." }),
 });
-/** The removal must be observed this soon after the instruction, well inside the 60 s lease. */
-export const REMOVAL_WINDOW_MS = 30000;
+/** The removal must be observed this soon after the instruction (widened for operator latency, owner 2026-10-09). */
+export const REMOVAL_WINDOW_MS = 45000;
+/**
+ * The removal must also be observed this long before the delivered lease could end. The device accepts the Start
+ * only after delivery, so delivery + 60 s is the earliest device deadline; 5 s covers the 2.8 s heartbeat deadline,
+ * so the device sees the transport loss while it still holds the lease.
+ */
+export const REMOVAL_LEASE_HEADROOM_MS = 5000;
 /** Bound for the watcher to prove the admitted device present before any removal instruction. */
 export const WATCHER_PRESENT_TIMEOUT_MS = 10000;
 export const RESTORE_WATCHER_TOKEN = "bwg-restoration-restore-watcher-armed-v1";
@@ -65,9 +71,9 @@ export const RESTORE_WATCHER_TOKEN = "bwg-restoration-restore-watcher-armed-v1";
 /** authorization_negatives timing: N2 waits past the 60 s admission age; N3 needs a fresh admission. */
 export const EXPIRED_START_WAIT_MS = 61000;
 export const FRESH_POSSESSION_MS = 45000;
-/** The device must end a stimulated lease well before the 60 s lease and its renewal point. */
-export const STIMULUS_OBSERVATION_MS = 15000;
-export const EXPIRY_EARLY_TOLERANCE_MS = 2000;
+/** The device must end a stimulated lease well before the 60 s lease (widened for host latency, owner 2026-10-09). */
+export const STIMULUS_OBSERVATION_MS = 20000;
+export const EXPIRY_EARLY_TOLERANCE_MS = 3000;
 
 /** Closed Gate restoration-page journal events (web/worker-restoration-journal.ts). */
 export const PAGE_JOURNAL_EVENTS = Object.freeze([

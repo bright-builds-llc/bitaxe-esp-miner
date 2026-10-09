@@ -24,7 +24,7 @@ function advanceTo(campaign, name) {
     activate(campaign, newScope);
     if (campaign.scenario.maybeCheckpoint) { operatorReady(campaign.scenario.maybeCheckpoint, "awaiting_operator_ready", 0); markSegment(campaign, 0); }
     sign(campaign);
-    deliverWindow(campaign);
+    deliverWindow(campaign, 0);
     finishScenario(campaign, passed(campaign.scenario.name));
   }
 }
@@ -68,10 +68,10 @@ test("a signed window is delivered exactly once", () => {
   activate(campaign, newScope);
   sign(campaign);
   // Act
-  const first = deliverWindow(campaign);
+  const first = deliverWindow(campaign, 0);
   // Assert
   assert.equal(first.renewals.length, 1);
-  throwsWith(() => deliverWindow(campaign), "artifacts_unavailable");
+  throwsWith(() => deliverWindow(campaign, 0), "artifacts_unavailable");
   throwsWith(() => admitSigning(campaign), "scenario_already_signed");
 });
 
@@ -153,7 +153,7 @@ test("N4 replays its accepted renewal once, only after renewOnce", () => {
   activate(campaign, newScope);
   Object.assign(campaign.scenario, { leg: "n4_sign" });
   sign(campaign);
-  deliverWindow(campaign);
+  deliverWindow(campaign, 0);
   // Act / Assert
   throwsWith(() => replayArtifact(campaign, 0), "replay_unavailable");
   observeRecord(campaign, reviewRecord("renewOnce", null), 1);
@@ -190,7 +190,7 @@ test("N1 is released by the passing reboot scenario's carried report", () => {
   operatorReady(campaign.scenario.maybeCheckpoint, "awaiting_operator_ready", 0);
   markSegment(campaign, 0);
   sign(campaign);
-  deliverWindow(campaign);
+  deliverWindow(campaign, 0);
   finishScenario(campaign, { ...passed("reboot"), carry: { rebootReported: true } });
   activate(campaign, newScope);
   // Act

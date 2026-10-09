@@ -2,7 +2,7 @@
 // Human Checkpoints; Ultra 205 Serial Session Reuse, Plan-13 restore-watcher ordering). Human readiness and
 // restoration waits have no deadline; the removal window and the absence bound are finite effect bounds.
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { MAXIMUM_REARMS, PHYSICAL_PLANS, REMOVAL_WINDOW_MS, RESTORE_WATCHER_TOKEN } from "./contract.mjs";
+import { MAXIMUM_REARMS, PHYSICAL_PLANS, REMOVAL_LEASE_HEADROOM_MS, REMOVAL_WINDOW_MS, RESTORE_WATCHER_TOKEN, SCENARIO_PLANS, WINDOWS } from "./contract.mjs";
 
 /**
  * Checkpoints, in order: awaiting_operator_ready → ready_for_lease → watcher_starting → remove_* →
@@ -13,7 +13,7 @@ export function createCheckpoint(scenario) {
   const plan = PHYSICAL_PLANS[scenario];
   requireCondition(plan !== undefined, "checkpoint_scenario");
   return { scenario, plan, checkpoint: "awaiting_operator_ready", rearms: 0, trace: [],
-    maybeRemovalDeadline: null, maybeAbsentAt: null, maybePreRemovalEnumeration: null, maybeFailure: null, maybeRearmReason: null };
+    maybeRemovalDeadline: null, maybeLeaseRemovalLimit: null, maybeAbsentAt: null, maybePreRemovalEnumeration: null, maybeFailure: null, maybeRearmReason: null };
 }
 
 function move(state, checkpoint, now, detail = {}) {
@@ -43,12 +43,19 @@ export function operatorReady(state, expectedCheckpoint, now) {
     state.rearms += 1;
   }
   state.maybeRearmReason = null; state.maybeAbsentAt = null; state.maybePreRemovalEnumeration = null; state.maybeRemovalDeadline = null;
+  state.maybeLeaseRemovalLimit = null;
   move(state, "ready_for_lease", now, { rearm: state.rearms });
 }
 
-/** The page began the window with an active lease; the watcher must prove presence before any instruction. */
-export function beginWindow(state, now) {
+/**
+ * The page began the window with an active lease delivered at `leaseDeliveredAt`; the watcher must prove presence
+ * before any instruction. The removal must land before that lease could end, less the heartbeat headroom.
+ */
+export function beginWindow(state, now, leaseDeliveredAt) {
   requireCondition(state.checkpoint === "ready_for_lease", "physical_window_not_ready");
+  requireCondition(Number.isSafeInteger(leaseDeliveredAt) && leaseDeliveredAt <= now, "physical_window_lease_missing");
+  const lease = WINDOWS[SCENARIO_PLANS[state.scenario].window].durationMilliseconds;
+  state.maybeLeaseRemovalLimit = leaseDeliveredAt + lease - REMOVAL_LEASE_HEADROOM_MS;
   move(state, "watcher_starting", now);
 }
 
@@ -71,8 +78,8 @@ function starting(state, event, now, at) {
   if (event.event === "absent") return fail(state, "device_absent_at_begin", now);
   if (event.event !== "present") return undefined;
   state.maybePreRemovalEnumeration = event.enumeration_sha256;
-  state.maybeRemovalDeadline = now + REMOVAL_WINDOW_MS;
-  move(state, state.plan.removeCheckpoint, now, { ...at, watcherPresent: true, removalWindowMs: REMOVAL_WINDOW_MS });
+  state.maybeRemovalDeadline = Math.min(now + REMOVAL_WINDOW_MS, state.maybeLeaseRemovalLimit);
+  move(state, state.plan.removeCheckpoint, now, { ...at, watcherPresent: true, removalWindowMs: state.maybeRemovalDeadline - now });
   return undefined;
 }
 

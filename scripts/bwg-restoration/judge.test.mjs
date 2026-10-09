@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SCENARIOS } from "./contract.mjs";
+import { EXPIRY_EARLY_TOLERANCE_MS, SCENARIOS, STIMULUS_OBSERVATION_MS } from "./contract.mjs";
 import { baseline, journal, pageState, passingInput, rejectionReview, stimulusReview } from "./fixtures.test-helper.mjs";
 import { judgeScenario, liveSafetyFailures, preRebootEpoch, segment } from "./judge.mjs";
 
@@ -53,11 +53,22 @@ test("a missing discontinuity counter increment fails monotonic_uncertainty", ()
 test("a device stop observed after the stimulus bound fails monotonic_uncertainty", () => {
   // Arrange
   const input = passingInput("monotonic_uncertainty");
-  input.records = input.records.map((record) => record.operation === "statusReview" ? { ...record, receivedAtUnixMs: 3000 + 15001 } : record);
+  input.records = input.records.map((record) => record.operation === "statusReview" ? { ...record, receivedAtUnixMs: 3000 + 20001 } : record);
   // Act
   const judgement = judgeScenario(input);
   // Assert
   assert.ok(judgement.failures.includes("fact_endedWithinBound"));
+});
+
+test("a device stop observed 18 s after the stimulus is inside the widened 20 s bound", () => {
+  // Arrange
+  const input = passingInput("monotonic_uncertainty");
+  input.records = input.records.map((record) => record.operation === "statusReview" ? { ...record, receivedAtUnixMs: 3000 + 18000 } : record);
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.equal(STIMULUS_OBSERVATION_MS, 20000);
+  assert.deepEqual(judgement.failures, []);
 });
 
 test("a reconnect between the stimulus and the stop fails monotonic_uncertainty", () => {
@@ -112,14 +123,25 @@ test("an accepted replay fails the negatives", () => {
   assert.ok(judgement.failures.includes("fact_expiredContextAttributed"));
 });
 
-test("an expiry observed before the 30 s window fails expiry", () => {
+test("an expiry observed before the 30 s window less its 3 s tolerance fails expiry", () => {
+  // Arrange
+  const input = passingInput("expiry");
+  input.records[2] = { ...input.records[2], receivedAtUnixMs: 1000 + 26999 };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(judgement.failures.includes("fact_expiredAfterWindow"));
+});
+
+test("an expiry observed 27 s after loading is inside the 3 s early tolerance", () => {
   // Arrange
   const input = passingInput("expiry");
   input.records[2] = { ...input.records[2], receivedAtUnixMs: 1000 + 27000 };
   // Act
   const judgement = judgeScenario(input);
   // Assert
-  assert.ok(judgement.failures.includes("fact_expiredAfterWindow"));
+  assert.equal(EXPIRY_EARLY_TOLERANCE_MS, 3000);
+  assert.deepEqual(judgement.failures, []);
 });
 
 test("a start operation that includes lease preparation does not shorten the expiry window", () => {

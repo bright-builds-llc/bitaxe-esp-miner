@@ -170,7 +170,7 @@ export async function createRestorationSupervisor(options, operations = {}) {
       return { ...scope };
     },
     "POST /authorization-context": authorize,
-    "GET /scenario-artifacts": async () => { const artifacts = deliverWindow(campaign); await hostEvent("artifacts_delivered"); return artifacts; },
+    "GET /scenario-artifacts": async () => { const artifacts = deliverWindow(campaign, now()); await hostEvent("artifacts_delivered"); return artifacts; },
     "GET /replay-artifact": async () => { const artifact = replayArtifact(campaign, now()); await hostEvent("replay_delivered", { operation: artifact.operation }); return artifact; },
     "POST /physical-window": async (input) => {
       exactObject(input, ["event"]);

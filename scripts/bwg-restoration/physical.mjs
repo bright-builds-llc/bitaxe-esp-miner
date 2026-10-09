@@ -34,7 +34,7 @@ export function createPhysicalOwner({ campaign, context, root, now, hostEvent, a
   async function begin() {
     const state = requireCheckpoint();
     requireCondition(campaign.scenario.signedSinceReady === 1 && campaign.scenario.maybePending === null, "physical_window_lease_missing");
-    beginWindow(state, now());
+    beginWindow(state, now(), campaign.scenario.maybeDeliveredAt);
     const watcher = createWatcher({ binary: context.watcher, physicalIdentity: context.physical_identity_sha256,
       journalPath: resolve(root, "watcher.jsonl"), stderrPath: resolve(root, "watcher.stderr.log"),
       onEvent: (event, at) => {

@@ -103,7 +103,7 @@ scenario at a time, and check its result before starting the next.
    1. `monotonic_uncertainty`: connect, `clockDiscontinuityStimulusReview`,
       `prepareStart`, `loadScenarioLease`, `startScenarioLease`,
       `triggerClockDiscontinuity`. Poll `statusReview` at most every 2 s until
-      the device reports `monotonic_reset` (within 15 s), then
+      the device reports `monotonic_reset` (within 20 s), then
       `submitCompletion()`.
    1. `disconnect` and `reboot` (physical checkpoints, below).
    1. `authorization_negatives`, run right after the reboot and before any
@@ -161,8 +161,10 @@ deadline; only the finite effects have automated bounds.
    device present (bound 10 s).
 1. `remove_usb` (USB only; barrel power stays) or `remove_power` (USB and
    barrel): the owner removes them now. Removal counts only when the watcher
-   observes the disappearance, within 30 s of the instruction. A later removal
-   is expired authority (`rearm_required`), not device evidence.
+   observes the disappearance, within 45 s of the instruction and at least 5 s
+   before the delivered lease could end (delivery plus 60 s), so the device
+   still sees the transport loss inside its lease. A later removal is expired
+   authority (`rearm_required`), not device evidence.
 1. `absence_bounding`: the absence must last at least 5 s (`disconnect`) or
    10 s (`reboot`). Then run `armPhysicalWindow`. Only then does serve print
    `action_token=bwg-restoration-restore-watcher-armed-v1 response_required=false`
@@ -195,14 +197,15 @@ Each scenario must also prove its own facts:
 - `completion`, `pause`, `cancel`: the operator's own stop ended the lease;
   `completion` also needs an accepted renewal.
 - `expiry`: no renewal; the device ended the lease with `lease_expired`, no
-  sooner than 28 s after the Start was recorded.
+  sooner than 27 s after the lease was loaded (the 30 s window less a 3 s
+  tolerance).
 - `monotonic_uncertainty`: seven facts:
   1. an idle stimulus before the Start;
   2. an exact acknowledgement during the lease;
   3. the device, not the page, ended the lease with `monotonic_reset`;
   4. no restore, pause, cancel or renewal in the segment (a relabelled stop is
      rejected);
-  5. the stop was observed within 15 s;
+  5. the stop was observed within 20 s;
   6. no reconnect between the Start and the stop;
   7. the stimulus review is `consumed`, with the discontinuity counter exactly
      one above its pre-Start value.

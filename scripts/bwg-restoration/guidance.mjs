@@ -2,8 +2,8 @@
 // the safe state held, the local action that starts any finite effect, what to observe and which automated
 // bounds apply (AGENTS.md, Asynchronous Human Checkpoints). Human waits never carry a deadline.
 import { humanWait, view } from "./checkpoint.mjs";
-import { EXPIRED_START_WAIT_MS, FRESH_POSSESSION_MS, MAXIMUM_REARMS, MAXIMUM_RENEWALS, MAXIMUM_STARTS, PHYSICAL_PLANS, REMOVAL_WINDOW_MS,
-  STIMULUS_OBSERVATION_MS, SUPERVISOR_STATE_SCHEMA, WATCHER_PRESENT_TIMEOUT_MS } from "./contract.mjs";
+import { EXPIRED_START_WAIT_MS, FRESH_POSSESSION_MS, MAXIMUM_REARMS, MAXIMUM_RENEWALS, MAXIMUM_STARTS, PHYSICAL_PLANS, REMOVAL_LEASE_HEADROOM_MS,
+  REMOVAL_WINDOW_MS, STIMULUS_OBSERVATION_MS, SUPERVISOR_STATE_SCHEMA, WATCHER_PRESENT_TIMEOUT_MS } from "./contract.mjs";
 
 const IDLE = "No lease is active; the device holds its paused baseline and the page holds no lease.";
 const LEASED = "A signed 60 s lease is active; the device ends it on its own at the lease deadline or on transport loss.";
@@ -45,7 +45,8 @@ function physicalStep(scenario, now) {
     watcher_starting: { safe_state: LEASED, local_action: "None; the watcher must prove the admitted device present.",
       observe: "Watcher presence.", automated_bounds: [`watcher_present_${WATCHER_PRESENT_TIMEOUT_MS}_ms`] },
     [plan.removeCheckpoint]: { safe_state: LEASED, local_action: "The owner performs the removal now.", instruction: plan.removal,
-      observe: "The watcher reports the admitted device absent.", automated_bounds: [`removal_window_${REMOVAL_WINDOW_MS}_ms`, "lease_60000_ms"] },
+      observe: "The watcher reports the admitted device absent.", automated_bounds: [`removal_window_${REMOVAL_WINDOW_MS}_ms`,
+        `removal_lease_headroom_${REMOVAL_LEASE_HEADROOM_MS}_ms`, "lease_60000_ms"] },
     absence_bounding: { safe_state: "The device is unpowered or disconnected and holds no lease.", local_action: "Wait, then armPhysicalWindow.",
       observe: "Absence continues.", automated_bounds: [`minimum_absence_${plan.minimumAbsenceMs}_ms`] },
     absence_satisfied: { safe_state: "The device is unpowered or disconnected and holds no lease.", local_action: "armPhysicalWindow.",

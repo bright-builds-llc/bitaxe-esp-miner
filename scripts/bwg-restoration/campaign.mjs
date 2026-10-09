@@ -9,7 +9,7 @@ function freshScenario(name) {
   return { name, signed: 0, signedSinceReady: 0, maybePending: null, records: [], segmentStartOrdinal: 0, segmentStartAt: 0,
     maybeCheckpoint: PHYSICAL_PLANS[name] ? createCheckpoint(name) : null,
     leg: name === "authorization_negatives" ? "n1" : null, legs: {}, maybeExpiredStart: null, maybeReplayRenewal: null,
-    maybeReplayDelivered: null, maybeLastReviewAt: null, n1StatusReported: false };
+    maybeReplayDelivered: null, maybeLastReviewAt: null, n1StatusReported: false, maybeDeliveredAt: null };
 }
 
 export function createCampaign() {
@@ -74,12 +74,13 @@ export function recordSigned(campaign, request, artifacts, now) {
   if (scenario.name === "authorization_negatives") { scenario.maybeReplayRenewal = artifacts.renewals[0]; scenario.leg = "n4_renew"; }
 }
 
-/** Signed windows are delivered exactly once. */
-export function deliverWindow(campaign) {
+/** Signed windows are delivered exactly once; the delivery time bounds the earliest device lease deadline. */
+export function deliverWindow(campaign, now) {
   requireRunning(campaign);
   const artifacts = campaign.scenario.maybePending;
   requireCondition(artifacts !== null, "artifacts_unavailable");
   campaign.scenario.maybePending = null;
+  campaign.scenario.maybeDeliveredAt = now;
   return artifacts;
 }
 
