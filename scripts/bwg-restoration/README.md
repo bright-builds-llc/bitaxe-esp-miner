@@ -11,6 +11,9 @@ The command adds no authority. It refuses to run unless
 `task-bwg007-real-worker-restoration` is active and contains the exact line
 `BWG-007 serial restoration hardware: enabled.` That task's contract still
 governs every effect, the evidence, recovery and the stop conditions.
+That task passed attempts 008 and 009 and is archived, so the command now
+refuses. A future run needs a new active task with its own contract and the
+enabling line, with `TASK` in `contract.mjs` pointed at it.
 Preflight also requires the Gate commit to equal the `MODULE.bazel` Gate pin,
 so the pin must first move to a Gate commit that carries the restoration page.
 
