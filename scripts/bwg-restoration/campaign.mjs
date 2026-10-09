@@ -91,8 +91,9 @@ export function replayArtifact(campaign, now) {
   const deliver = (leg, artifact, next) => { scenario.leg = next; scenario.maybeReplayDelivered = leg; return artifact; };
   if (scenario.leg === "n1") {
     requireCondition(campaign.maybeRebootStart !== null, "replay_unavailable");
-    // The device refuses a Start until a status in the same connection has reported the reboot.
-    requireCondition(scenario.n1StatusReported, "n1_status_required");
+    // The device refuses a Start until its once-per-boot reboot report has been delivered and acknowledged: either the
+    // passing reboot scenario received it (its carry) or a status in this connection reported it.
+    requireCondition(scenario.n1StatusReported || campaign.carry.rebootReported === true, "n1_status_required");
     const grant = campaign.maybeRebootStart; campaign.maybeRebootStart = null;
     return deliver("n1", { operation: "start", grant }, "n1_review");
   }

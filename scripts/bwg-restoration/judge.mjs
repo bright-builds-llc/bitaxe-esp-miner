@@ -146,11 +146,16 @@ export function legAttributed(leg, name, ordinal) {
     leg.review.highWater.advancedThisBoot === expected.advanced;
 }
 
-/** The device refuses N1 until a status in the same connection has reported the reboot (firmware P2). */
-function rebootReportedBeforeN1(entries) {
+/**
+ * The device refuses a Start until its once-per-boot reboot report has been delivered by a status and acknowledged
+ * by a later frame (firmware P2). A passing reboot scenario has already received that report (attempt-003), so its
+ * carry covers N1 provided no lease started first; otherwise a status in N1's own connection must report it.
+ */
+function rebootReportedBeforeN1(entries, carry) {
   const replay = indexOf(entries, "replay_rejected");
   if (replay < 0) return false;
   const before = entries.slice(0, replay);
+  if (carry.rebootReported === true) return before.findIndex((entry) => entry.event === "lease_started") < 0;
   const connected = before.findLastIndex((entry) => entry.event === "connected");
   return connected >= 0 && before.findLastIndex((entry) => entry.event === "status_reviewed" && entry.category === "reboot") > connected &&
     before.findLastIndex((entry) => entry.event === "disconnected") < connected;
@@ -160,7 +165,7 @@ function negatives(input, entries) {
   const legs = input.legs ?? {}, base = input.carry.rebootRejections ?? 0;
   const n1 = legs.n1?.review?.highWater;
   return {
-    rebootReportedBeforeN1: rebootReportedBeforeN1(entries),
+    rebootReportedBeforeN1: rebootReportedBeforeN1(entries, input.carry),
     durableReplayAttributed: legAttributed(legs.n1, "n1", base + 1),
     expiredContextAttributed: legAttributed(legs.n2, "n2", base + 2),
     crossContextAttributed: legAttributed(legs.n3, "n3", base + 3),
@@ -196,7 +201,12 @@ export function judgeScenario(input) {
   for (const [name, value] of Object.entries(facts)) if (value !== true) failures.push(`fact_${name}`);
   const carry = { ...input.carry };
   if (input.scenario === "completion") carry.stimulusBaseline = input.reviews.stimulus.discontinuitiesDetected;
-  if (input.scenario === "reboot") { carry.preRebootEpoch = preRebootEpoch(input.records); carry.rebootRejections = input.reviews.rejection.bootRejections; }
+  if (input.scenario === "reboot") {
+    carry.preRebootEpoch = preRebootEpoch(input.records);
+    carry.rebootRejections = input.reviews.rejection.bootRejections;
+    // Passing requires the device's own `reboot` report, which it delivers once per boot.
+    carry.rebootReported = failures.length === 0;
+  }
   return { scenario: input.scenario, result: failures.length === 0 ? "passed" : "unverified", failures, facts, carry,
     terminal_reason: input.finalState.device?.reason ?? null };
 }

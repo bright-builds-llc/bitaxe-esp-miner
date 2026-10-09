@@ -224,6 +224,42 @@ test("N1 replayed before a same-connection reboot status fails the negatives", (
   assert.ok(judgement.failures.includes("fact_rebootReportedBeforeN1"));
 });
 
+test("N1 after the reboot scenario's carried report passes without a same-connection status", () => {
+  // Arrange: attempt-003, where the reboot scenario's completion had already received the once-per-boot report.
+  const input = passingInput("authorization_negatives");
+  const entries = input.finalState.journal.entries.filter((entry) => !(entry.event === "status_reviewed" && entry.category === "reboot"));
+  input.finalState = pageState({ entries, device: baseline("control_failed") });
+  input.carry = { ...input.carry, rebootReported: true };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(!judgement.failures.includes("fact_rebootReportedBeforeN1"));
+});
+
+test("a carried reboot report does not cover a lease started before N1", () => {
+  // Arrange
+  const input = passingInput("authorization_negatives");
+  const entries = input.finalState.journal.entries.map((entry) => entry.event === "status_reviewed" && entry.category === "reboot"
+    ? { ordinal: entry.ordinal, event: "lease_started" } : entry);
+  input.finalState = pageState({ entries, device: baseline("control_failed") });
+  input.carry = { ...input.carry, rebootReported: true };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(judgement.failures.includes("fact_rebootReportedBeforeN1"));
+});
+
+test("a passing reboot scenario carries the reboot report and a failing one does not", () => {
+  // Arrange
+  const passing = passingInput("reboot");
+  const failing = passingInput("reboot");
+  failing.finalState = { ...failing.finalState, device: baseline("connectivity_lost") };
+  // Act
+  const carried = [judgeScenario(passing), judgeScenario(failing)].map((judgement) => judgement.carry.rebootReported);
+  // Assert
+  assert.deepEqual(carried, [true, false]);
+});
+
 test("an expired-context replay must carry the device's admission_required category", () => {
   // Arrange
   const input = passingInput("authorization_negatives");

@@ -182,6 +182,23 @@ test("a scenario's closing journal entries stay out of the next scenario's segme
   assert.deepEqual([campaign.scenario.name, campaign.scenario.segmentStartOrdinal], ["pause", 17]);
 });
 
+test("N1 is released by the passing reboot scenario's carried report", () => {
+  // Arrange
+  const campaign = createCampaign();
+  advanceTo(campaign, "reboot");
+  activate(campaign, newScope);
+  operatorReady(campaign.scenario.maybeCheckpoint, "awaiting_operator_ready", 0);
+  markSegment(campaign, 0);
+  sign(campaign);
+  deliverWindow(campaign);
+  finishScenario(campaign, { ...passed("reboot"), carry: { rebootReported: true } });
+  activate(campaign, newScope);
+  // Act
+  const artifact = replayArtifact(campaign, 0);
+  // Assert
+  assert.equal(artifact.operation, "start");
+});
+
 test("N1 waits for a status that reported the reboot in the same connection", () => {
   // Arrange
   const campaign = createCampaign();

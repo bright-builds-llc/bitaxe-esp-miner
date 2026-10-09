@@ -152,8 +152,9 @@ export async function createRestorationSupervisor(options, operations = {}) {
     const { file, value, judgement } = scenarioJudgement(campaign, parsed, context);
     await writeNew(resolve(root, file), { value, sha256: digest(JSON.stringify(value)) });
     await physical.stopWatcher();
-    finishScenario(campaign, judgement, parsed.final_state.journal.entries.at(-1)?.ordinal ?? 0);
+    // Logged before finishScenario advances, so the row names the judged scenario rather than the next one.
     await hostEvent("scenario_judged", { result: judgement.result });
+    finishScenario(campaign, judgement, parsed.final_state.journal.entries.at(-1)?.ordinal ?? 0);
     await writeFinal();
     return { result: judgement.result, scenario: judgement.scenario, cleanup_confirmed: true };
   }

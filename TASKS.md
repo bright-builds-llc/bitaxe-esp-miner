@@ -702,6 +702,37 @@ Attempt 002 (2026-10-08), firmware `0ed4bd6d`:
   fails. Pure regressions cover a transient error, a persistent fault and
   reset on success. Attempt 003 uses a new parent.
 
+Attempt 003 (2026-10-08), firmware `5394edb9`, new parent:
+
+- The first seven scenarios passed.
+- Reboot passed with the watcher fix: clean `absent`, restore token before
+  the restore instruction, device `reboot`.
+- `authorization_negatives` could not start N1. Serve and the judge
+  required a `reboot` status in N1's own connection. The device delivers its
+  reboot report once per boot, and the passing reboot scenario's completion
+  had already received and acknowledged it. N1's status therefore read
+  `connectivity_lost`, and serve withheld the replay (page
+  `local_input_invalid`).
+- The in-memory pre-reboot Start cannot survive a serve restart. The attempt
+  was therefore cancelled, the tab went to `about:blank`, and the root was
+  sealed `unverified` (`operator_cancelled`).
+- The seal hit two problems:
+  - `owner-finish` was killed by the agent's 10-minute tool timeout after a
+    309 s Bazel launch hold;
+  - a rerun went stale (`restoration_final_detector_stale`).
+
+  It was finally sealed by running the built detector and finish binaries
+  directly (1.1 s). The interrupted and stale outputs were kept under
+  `attempt-003-*` names.
+- Outcome: `continue_after_verified_fix`.
+  - A passing reboot scenario now carries `rebootReported`.
+  - The N1 gate and the `rebootReportedBeforeN1` fact accept that carry,
+    provided no lease started before N1.
+  - A missing acknowledgement would still fail N1's attribution: the device
+    would return `invalid_transition` before verification.
+  - `scenario_judged` rows now name the judged scenario, not the next one.
+  - Regressions fail on the old code and pass on the new.
+
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
 also advances the current high-water. A generic rejection therefore cannot
