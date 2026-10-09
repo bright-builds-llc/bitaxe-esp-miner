@@ -1,7 +1,7 @@
 // Closed parsers for what the restoration page and its supervisor client send. Shapes mirror the Gate page
 // (web/worker-restoration-operations.ts, worker-restoration-qualification.ts); unknown fields fail closed.
 import { exactObject, QualificationError, requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { ADMISSION_FAILURES, ADMISSION_READINESS_MAXIMUM, ADMISSION_STAGES, PAGE_JOURNAL_EVENTS, PAGE_OPERATIONS, TOKEN,
+import { ADMISSION_FAILURES, ADMISSION_READINESS_MAXIMUM, ADMISSION_STAGES, PAGE_JOURNAL_EVENTS, PAGE_OPERATIONS, RESET_CAUSES, TOKEN,
   UNCATEGORIZED_JOURNAL_EVENTS } from "./contract.mjs";
 
 const RESTORATION_REASONS = ["paused", "cancelled", "lease_expired", "lost_continuity", "monotonic_reset", "reboot", "challenge_satisfied",
@@ -100,13 +100,19 @@ export function parseStimulusReview(value) {
   return value;
 }
 
-/** The page's projection of the rejection review: no digest leaves the page, only epoch comparisons. */
+const REJECTION_REVIEW_SCHEMAS = { "worker-authorization-rejection-review-v1": [], "worker-authorization-rejection-review-v2": ["safeStop"] };
+
+/**
+ * The page's projection of the rejection review: no digest leaves the page, only epoch comparisons. Version 2 adds
+ * `last.safeStop`, the safe stop the rejection itself triggered (`none` or a restoration reason).
+ */
 export function parseRejectionReview(value) {
   exactObject(value, ["schema", "bootRejections", "last", "highWater"]);
-  requireCondition(value.schema === "worker-authorization-rejection-review-v1" && u32(value.bootRejections) &&
-    (value.bootRejections === 0) === (value.last === null), "rejection_review_shape");
+  const extra = REJECTION_REVIEW_SCHEMAS[value.schema];
+  requireCondition(extra !== undefined && u32(value.bootRejections) && (value.bootRejections === 0) === (value.last === null), "rejection_review_shape");
   if (value.last !== null) {
-    exactObject(value.last, ["ordinal", "operation", "signature", "context", "replayGuard"]);
+    exactObject(value.last, ["ordinal", "operation", "signature", "context", "replayGuard", ...extra]);
+    requireCondition(extra.length === 0 || value.last.safeStop === "none" || RESTORATION_REASONS.includes(value.last.safeStop), "rejection_safe_stop_shape");
     requireCondition(u32(value.last.ordinal, 1) && value.last.ordinal <= value.bootRejections && ["start", "renew"].includes(value.last.operation) &&
       ["valid", "invalid", "not_evaluated"].includes(value.last.signature) && ["current", "mismatch", "expired", "absent"].includes(value.last.context) &&
       ["fresh", "at_or_below_durable_high_water", "unavailable", "not_evaluated"].includes(value.last.replayGuard), "rejection_record_shape");
@@ -114,6 +120,13 @@ export function parseRejectionReview(value) {
   exactObject(value.highWater, ["advancedThisBoot", "fingerprintMatchesLatestObservation", "fingerprintFirstObservedEpoch"]);
   requireCondition(typeof value.highWater.advancedThisBoot === "boolean" && typeof value.highWater.fingerprintMatchesLatestObservation === "boolean" &&
     (value.highWater.fingerprintFirstObservedEpoch === null || u32(value.highWater.fingerprintFirstObservedEpoch, 1)), "rejection_high_water_shape");
+  return value;
+}
+
+/** The device's read-only boot review: exactly this boot's reset cause. */
+export function parseBootReview(value) {
+  exactObject(value, ["schema", "resetCause"]);
+  requireCondition(value.schema === "worker-boot-review-v1" && RESET_CAUSES.includes(value.resetCause), "boot_review_shape");
   return value;
 }
 
@@ -147,6 +160,7 @@ const RESULT_PARSERS = {
   armPhysicalWindow: parseCheckpointAnswer,
   physicalWindowState: parseCheckpointAnswer,
   admissionDiagnostic: parseAdmissionDiagnostic,
+  bootReview: parseBootReview,
 };
 
 /** One `POST /record` body from the supervisor client. */

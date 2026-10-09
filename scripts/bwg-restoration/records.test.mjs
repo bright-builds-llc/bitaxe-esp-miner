@@ -116,3 +116,46 @@ test("the identity and pool change events are accepted only without a category",
   assert.deepEqual(events, ["connected", "device_identity_changed", "pool_configuration_changed"]);
   for (const state of categorized) throwsWith(() => parsePageState(state, context), "page_journal_entry");
 });
+
+test("the bootReview operation records exactly this boot's reset cause", () => {
+  // Arrange
+  const causes = ["power_on", "software_cpu", "watchdog", "panic", "brownout", "other"];
+  // Act
+  const parsed = causes.map((resetCause) => parseRecord(record("bootReview", { schema: "worker-boot-review-v1", resetCause }), context).result.resetCause);
+  // Assert
+  assert.deepEqual(parsed, causes);
+});
+
+test("a malformed boot review is refused", () => {
+  // Arrange
+  const malformed = [null, { schema: "worker-boot-review-v1", resetCause: "unplugged" }, { schema: "worker-boot-review-v2", resetCause: "power_on" },
+    { schema: "worker-boot-review-v1", resetCause: "power_on", bootCount: 3 }, { schema: "worker-boot-review-v1" }];
+  // Act / Assert
+  for (const result of malformed) throwsWith(() => parseRecord(record("bootReview", result), context), "boot_review_shape", ...SHAPE_ERRORS);
+});
+
+const rejection = (schema, last) => ({ schema, bootRejections: 1, last,
+  highWater: { advancedThisBoot: false, fingerprintMatchesLatestObservation: true, fingerprintFirstObservedEpoch: 1 } });
+const LAST = Object.freeze({ ordinal: 1, operation: "renew", signature: "valid", context: "current", replayGuard: "at_or_below_durable_high_water" });
+
+test("a version 2 rejection review carries the safe stop the rejection triggered", () => {
+  // Arrange
+  const reviews = [rejection("worker-authorization-rejection-review-v2", { ...LAST, safeStop: "control_failed" }),
+    rejection("worker-authorization-rejection-review-v2", { ...LAST, safeStop: "none" }), rejection("worker-authorization-rejection-review-v1", LAST)];
+  // Act
+  const parsed = reviews.map((review) => parseRecord(record("authorizationRejectionReview", review), context).result.last.safeStop);
+  // Assert
+  assert.deepEqual(parsed, ["control_failed", "none", undefined]);
+});
+
+test("a rejection review whose safe stop does not match its version is refused", () => {
+  // Arrange
+  const malformed = [rejection("worker-authorization-rejection-review-v1", { ...LAST, safeStop: "none" }),
+    rejection("worker-authorization-rejection-review-v2", LAST), rejection("worker-authorization-rejection-review-v2", { ...LAST, safeStop: "unplugged" }),
+    rejection("worker-authorization-rejection-review-v3", { ...LAST, safeStop: "none" })];
+  // Act / Assert
+  for (const review of malformed) {
+    throwsWith(() => parseRecord(record("authorizationRejectionReview", review), context), "rejection_review_shape", "rejection_safe_stop_shape",
+      ...SHAPE_ERRORS);
+  }
+});

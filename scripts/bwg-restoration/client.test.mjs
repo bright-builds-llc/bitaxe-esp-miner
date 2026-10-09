@@ -10,6 +10,7 @@ async function loadClient() {
   const posted = [];
   globalThis.document = { createElement: () => ({}), body: { append: () => undefined } };
   globalThis.window = { workerRestoration: { admissionDiagnostic: async () => ({ admission: { ...ADMISSION } }),
+    bootReview: async () => ({ schema: "worker-boot-review-v1", resetCause: "power_on" }),
     state: () => pageState({ admission: { ...ADMISSION }, connected: true, status: "ready" }) } };
   globalThis.fetch = async (route, init) => {
     posted.push({ route, body: JSON.parse(init.body) });
@@ -29,4 +30,15 @@ test("the supervisor client runs admissionDiagnostic and records its closed valu
   assert.deepEqual(value, { admission: ADMISSION });
   assert.deepEqual(posted.map((item) => item.route), ["/record"]);
   assert.deepEqual(parseRecord(posted[0].body, context).result, { admission: ADMISSION });
+});
+
+test("the supervisor client runs bootReview and records its closed value", async () => {
+  // Arrange
+  const { supervisor, posted } = await loadClient();
+  // Act
+  const value = await supervisor.run("bootReview");
+  await supervisor.flush();
+  // Assert
+  assert.deepEqual(value, { schema: "worker-boot-review-v1", resetCause: "power_on" });
+  assert.deepEqual(parseRecord(posted[0].body, context).result, value);
 });

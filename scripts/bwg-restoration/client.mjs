@@ -4,9 +4,11 @@
 // The Gate page owns all USB. Connect stays bound to the page's own trusted #connect button.
 const OPERATIONS = ["reconnect", "prepareStart", "loadScenarioLease", "startScenarioLease", "renewOnce", "pause", "cancel",
   "restoreChallengeSatisfied", "triggerClockDiscontinuity", "clockDiscontinuityStimulusReview", "authorizationRejectionReview", "statusReview",
-  "replayArtifact", "beginPhysicalWindow", "armPhysicalWindow", "physicalWindowState", "close", "admissionDiagnostic"];
+  "replayArtifact", "beginPhysicalWindow", "armPhysicalWindow", "physicalWindowState", "close", "admissionDiagnostic",
+  "bootReview"];
 const VALUED = new Set(["triggerClockDiscontinuity", "clockDiscontinuityStimulusReview", "authorizationRejectionReview", "statusReview",
-  "replayArtifact", "beginPhysicalWindow", "armPhysicalWindow", "physicalWindowState", "admissionDiagnostic"]);
+  "replayArtifact", "beginPhysicalWindow", "armPhysicalWindow", "physicalWindowState", "admissionDiagnostic",
+  "bootReview"]);
 const TOKEN = /^[a-z][a-z0-9_]{0,63}$/u;
 const note = document.createElement("p");
 note.id = "supervisor-status";

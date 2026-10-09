@@ -86,6 +86,11 @@ export const EXPIRY_EARLY_TOLERANCE_MS = 3000;
 export const ADMISSION_STAGES = Object.freeze(["idle", "admission", "readiness", "preparation", "pool_activation", "active", "cleanup", "complete"]);
 export const ADMISSION_FAILURES = Object.freeze(["none", "admission", "readiness", "preparation", "pool_activation", "cleanup"]);
 export const ADMISSION_READINESS_MAXIMUM = 63;
+
+/** This boot's reset cause as the device's read-only `boot_review` reports it (`worker-boot-review-v1`). */
+export const RESET_CAUSES = Object.freeze(["power_on", "software_cpu", "watchdog", "panic", "brownout", "other"]);
+/** Reset causes that prove the reboot scenario removed power rather than resetting the chip. */
+export const POWER_LOSS_RESET_CAUSES = Object.freeze(["power_on", "brownout"]);
 /** Stages in which no admission, lease or native shutdown is in progress. */
 export const SETTLED_ADMISSION_STAGES = Object.freeze(["idle", "complete"]);
 
@@ -110,7 +115,7 @@ export const PAGE_FAILURE_EVENTS = Object.freeze(["admission_failed", "serial_fa
 export const PAGE_OPERATIONS = Object.freeze(["connect", "reconnect", "prepareStart", "loadScenarioLease", "startScenarioLease", "renewOnce",
   "pause", "cancel", "restoreChallengeSatisfied", "triggerClockDiscontinuity", "clockDiscontinuityStimulusReview",
   "authorizationRejectionReview", "statusReview", "replayArtifact", "beginPhysicalWindow", "armPhysicalWindow", "physicalWindowState", "close",
-  "admissionDiagnostic"]);
+  "admissionDiagnostic", "bootReview"]);
 
 /** Closed host campaign events; rows carry only these names, scenario names, checkpoints and counts. */
 export const HOST_EVENTS = Object.freeze(["campaign_started", "scope_created", "scope_reused", "artifacts_signed", "artifacts_delivered",
