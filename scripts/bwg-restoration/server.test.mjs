@@ -140,6 +140,7 @@ test("a completion review answers the exact Gate receipt and advances to the nex
   t.after(() => server.close());
   await call("/activate", {});
   const input = passingInput("completion");
+  for (const { operation, outcome, result, state } of input.records) await call("/record", { operation, outcome, result, state });
   // Act
   const nonce = parseCompletionNonce((await call("/completion-context", {})).value);
   const receipt = parseCompletion((await call("/completion-review", { nonce, reviews: input.reviews, final_state: input.finalState })).value);

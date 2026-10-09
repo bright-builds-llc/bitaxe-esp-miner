@@ -95,7 +95,30 @@ export function passingInput(scenario) {
         "replay_rejected:authentication_failed", "disconnected", "connected", "rejection_reviewed:current", "status_reviewed:connectivity_lost",
         "stimulus_reviewed:idle", "rejection_reviewed:current", "closed"]), device: baseline("connectivity_lost") }) },
   };
-  return { ...common, ...inputs[scenario] };
+  return tracked({ ...common, ...inputs[scenario] });
+}
+
+/** Tracker states with `observations` preservation statuses seen so far, the same key and an unchanged pool. */
+export const trackers = (observations) => ({ deviceIdentity: { epoch: 1, observations }, poolConfiguration: { observations, changed: false } });
+
+/** Records each fixture adds so the identity and pool facts can hold: the Start, the window begin and the post-reconnect status. */
+const TRACKED_RECORDS = {
+  completion: [["startScenarioLease", null, 1000]],
+  pause: [["startScenarioLease", null, 1000]],
+  cancel: [["startScenarioLease", null, 1000]],
+  disconnect: [["startScenarioLease", null, 1000], ["beginPhysicalWindow", { checkpoint: "remove_usb" }, 3000],
+    ["statusReview", baseline("connectivity_lost"), 20000]],
+  reboot: [["startScenarioLease", null, 1000], ["statusReview", baseline("reboot"), 20000]],
+  authorization_negatives: [["startScenarioLease", null, 1000], ["statusReview", baseline("connectivity_lost"), 20000]],
+};
+
+/** Every recorded state and the final state carry growing tracker observations, as a real page lifetime does. */
+function tracked(input) {
+  const added = (TRACKED_RECORDS[input.scenario] ?? []).map(([operation, result, at]) => okRecord(operation, result, at));
+  const records = [...input.records, ...added].sort((left, right) => left.receivedAtUnixMs - right.receivedAtUnixMs)
+    .map((record, index) => ({ ...record, state: { ...record.state, ...trackers(index + 1),
+      ...(record.operation === "startScenarioLease" ? { leaseActive: true } : {}) } }));
+  return { ...input, records, finalState: { ...input.finalState, ...trackers(records.length + 1) } };
 }
 
 const HELPER = fileURLToPath(new URL("./fake-watcher.test-helper.mjs", import.meta.url));

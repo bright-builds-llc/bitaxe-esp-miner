@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { EXPIRY_EARLY_TOLERANCE_MS, SCENARIOS, STIMULUS_OBSERVATION_MS } from "./contract.mjs";
-import { baseline, journal, pageState, passingInput, rejectionReview, stimulusReview } from "./fixtures.test-helper.mjs";
+import { baseline, journal, pageState, passingInput, rejectionReview, stimulusReview, trackers } from "./fixtures.test-helper.mjs";
 import { judgeScenario, liveSafetyFailures, preRebootEpoch, segment } from "./judge.mjs";
 
 for (const scenario of SCENARIOS) {
@@ -356,4 +356,106 @@ test("a passing scenario is not decided or annotated by the admission diagnostic
   // Assert
   assert.equal(judgement.result, "passed");
   assert.equal(Object.hasOwn(judgement, "admission_first_failure"), false);
+});
+
+/** Replace the tracker fields of the record at `index` (or the final state for `final`). */
+function withState(input, index, fields) {
+  if (index === "final") return { ...input, finalState: { ...input.finalState, ...fields } };
+  return { ...input, records: input.records.map((record, at) => at === index ? { ...record, state: { ...record.state, ...fields } } : record) };
+}
+const recordIndex = (input, operation) => input.records.findIndex((record) => record.operation === operation);
+
+for (const scenario of SCENARIOS) {
+  test(`${scenario} requires the identity and pool facts`, () => {
+    // Arrange
+    const input = passingInput(scenario);
+    // Act
+    const judgement = judgeScenario(input);
+    // Assert
+    assert.equal(judgement.facts.deviceIdentityStable, true);
+    assert.equal(judgement.facts.poolConfigurationUnchanged, true);
+    assert.equal(judgement.facts.sameKeyReacquired, ["disconnect", "reboot"].includes(scenario) ? true : undefined);
+  });
+}
+
+test("a second device identity in the segment fails deviceIdentityStable", () => {
+  // Arrange
+  const input = withState(passingInput("pause"), "final", { deviceIdentity: { epoch: 2, observations: 9 } });
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.equal(judgement.result, "unverified");
+  assert.ok(judgement.failures.includes("fact_deviceIdentityStable"));
+});
+
+test("a page without the identity tracker or with a reset tracker fails deviceIdentityStable", () => {
+  // Arrange
+  const strip = ({ deviceIdentity, poolConfiguration, ...state }) => state;
+  const base = passingInput("cancel");
+  const missing = { ...base, records: base.records.map((record) => ({ ...record, state: strip(record.state) })), finalState: strip(base.finalState) };
+  const reset = withState(base, "final", { deviceIdentity: null });
+  const regressed = { ...base, records: base.records.map((record) => ({ ...record, state: { ...record.state, ...trackers(5) } })),
+    finalState: { ...base.finalState, deviceIdentity: { epoch: 1, observations: 1 } } };
+  // Act
+  const judgements = [missing, reset, regressed].map(judgeScenario);
+  // Assert
+  for (const judgement of judgements) assert.ok(judgement.failures.includes("fact_deviceIdentityStable"));
+});
+
+test("a reboot whose post-reconnect status shows no new identity observation did not reacquire the key", () => {
+  // Arrange
+  const base = passingInput("reboot");
+  const begin = recordIndex(base, "beginPhysicalWindow");
+  const stale = base.records[begin].state.deviceIdentity.observations;
+  const input = { ...base, records: base.records.map((record, index) => index > begin ? { ...record, state: { ...record.state, ...trackers(stale) } } : record),
+    finalState: { ...base.finalState, ...trackers(stale) } };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(judgement.failures.includes("fact_sameKeyReacquired"));
+});
+
+test("a disconnect without a post-reconnect terminal status cannot prove same-key reacquisition", () => {
+  // Arrange
+  const base = passingInput("disconnect");
+  const input = { ...base, records: base.records.filter((record) => record.operation !== "statusReview") };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(judgement.failures.includes("fact_sameKeyReacquired"));
+});
+
+test("a pool configuration change reported by the device fails poolConfigurationUnchanged", () => {
+  // Arrange
+  const input = withState(passingInput("completion"), "final", { poolConfiguration: { observations: 9, changed: true } });
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.equal(judgement.result, "unverified");
+  assert.ok(judgement.failures.includes("fact_poolConfigurationUnchanged"));
+});
+
+test("a pool tracker that never advanced after the Start or is missing fails poolConfigurationUnchanged", () => {
+  // Arrange
+  const base = passingInput("expiry");
+  const start = recordIndex(base, "startScenarioLease");
+  const frozen = base.records[start].state.poolConfiguration;
+  const stalled = { ...base, records: base.records.map((record, index) => index > start ? { ...record, state: { ...record.state, poolConfiguration: frozen } } : record),
+    finalState: { ...base.finalState, poolConfiguration: frozen } };
+  const missing = withState(base, start, { poolConfiguration: null });
+  // Act
+  const judgements = [stalled, missing].map(judgeScenario);
+  // Assert
+  for (const judgement of judgements) assert.ok(judgement.failures.includes("fact_poolConfigurationUnchanged"));
+});
+
+test("the judgement exposes the measured baseline and cleanup checks", () => {
+  // Arrange
+  const input = passingInput("pause");
+  const open = { ...input, finalState: { ...input.finalState, connected: true } };
+  // Act
+  const [passed, failed] = [input, open].map(judgeScenario);
+  // Assert
+  assert.deepEqual(passed.checks, { cleanupConfirmed: true, baselineConfirmed: true });
+  assert.deepEqual(failed.checks, { cleanupConfirmed: false, baselineConfirmed: true });
 });

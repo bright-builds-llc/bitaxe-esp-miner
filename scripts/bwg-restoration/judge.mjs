@@ -24,6 +24,49 @@ const indexOf = (entries, event, category, from = 0) =>
 const count = (entries, event) => entries.filter((entry) => entry.event === event).length;
 const ok = (records, operation) => records.filter((record) => record.operation === operation && record.outcome === "ok");
 
+/**
+ * Page-local device-identity tracker (ADR-0036): every recorded state from the first observation on, and the
+ * final state, show the first identity (epoch 1) with non-decreasing observations. A page without the tracker,
+ * a reset tracker or a second identity fails.
+ */
+export function deviceIdentityStable(input) {
+  const states = [...input.records.map((record) => record.state), input.finalState];
+  const first = states.findIndex((state) => state.deviceIdentity != null);
+  if (first < 0) return false;
+  const values = states.slice(first).map((state) => state.deviceIdentity);
+  return values.every((value, index) => value?.epoch === 1 && (index === 0 || value.observations >= values[index - 1].observations));
+}
+
+/**
+ * Disconnect and reboot: after the post-reconnect terminal status, the page shows the first identity again with
+ * more observations than it had when the physical window began, so the reconnect re-proved the same key.
+ */
+function sameKeyReacquired(input) {
+  const records = input.records;
+  const begin = records.findLastIndex((record) => record.operation === "beginPhysicalWindow" && record.outcome === "ok");
+  const before = records.slice(0, begin + 1).map((record) => record.state.deviceIdentity).filter(Boolean).at(-1);
+  const terminal = SCENARIO_PLANS[input.scenario].terminal;
+  const status = records.findIndex((record, index) => index > begin && record.operation === "statusReview" && record.outcome === "ok" &&
+    record.result?.state === "baseline" && record.result.reason === terminal);
+  if (begin < 0 || !before || status < 0) return false;
+  return [...records.slice(status).map((record) => record.state), input.finalState]
+    .some((state) => state.deviceIdentity?.epoch === 1 && state.deviceIdentity.observations > before.observations);
+}
+
+/**
+ * Every scenario starts exactly one lease. The device's own boot-snapshot comparison (preservation v2) never
+ * reports a change from the Start on, and a state after the lease ended shows more observations than at the Start.
+ */
+function poolConfigurationUnchanged(input) {
+  const records = input.records;
+  const start = records.findLastIndex((record) => record.operation === "startScenarioLease" && record.outcome === "ok");
+  const atStart = records[start]?.state.poolConfiguration;
+  if (!atStart || atStart.changed !== false) return false;
+  const later = [...records.slice(start + 1).map((record) => record.state), input.finalState];
+  return later.every((state) => state.poolConfiguration?.changed !== true) && later.some((state) => state.leaseActive === false &&
+    state.poolConfiguration?.changed === false && state.poolConfiguration.observations > atStart.observations);
+}
+
 function commonFailures(input) {
   const { scenario, finalState } = input, plan = SCENARIO_PLANS[scenario];
   const failures = [];
@@ -32,13 +75,15 @@ function commonFailures(input) {
   check(truncated, "journal_truncated");
   check(finalState.connected !== false || finalState.status !== "closed" || finalState.failure !== undefined, "page_not_closed_cleanly");
   const device = finalState.device;
+  const checks = { cleanupConfirmed: finalState.connected === false && finalState.status === "closed" && finalState.failure === undefined,
+    baselineConfirmed: device?.state === "baseline" && device.restoration === "confirmed" };
   check(device?.state !== "baseline" || device.restoration !== "confirmed", "baseline_unconfirmed");
   check(device?.reason !== plan.terminal, "terminal_reason_mismatch");
   const forbidden = PAGE_FAILURE_EVENTS.filter((event) => !(event === "serial_failure" && SESSION_LOSS_SCENARIOS.has(scenario)));
   check(entries.some((entry) => forbidden.includes(entry.event)), "page_operation_failed");
   check(count(entries, "lease_started") !== 1, "lease_start_count");
   failures.push(...liveSafetyFailures(input.safetySamples ?? []));
-  return { failures, entries };
+  return { failures, entries, checks };
 }
 
 /** completion, pause and cancel: the operator's own stop ends the lease before the device ends it. */
@@ -188,7 +233,9 @@ function stimulusCarry(input) {
 
 const SCENARIO_FACTS = {
   completion: operatorStop, pause: operatorStop, cancel: operatorStop, expiry, monotonic_uncertainty: monotonic,
-  disconnect: physical, reboot: (input, entries) => ({ ...physical(input, entries), ...reboot(input) }), authorization_negatives: negatives,
+  disconnect: (input, entries) => ({ ...physical(input, entries), sameKeyReacquired: sameKeyReacquired(input) }),
+  reboot: (input, entries) => ({ ...physical(input, entries), ...reboot(input), sameKeyReacquired: sameKeyReacquired(input) }),
+  authorization_negatives: negatives,
 };
 
 /**
@@ -205,8 +252,9 @@ function lastAdmissionFailure(input, entries) {
  * last observed admission first failure, for diagnosis only.
  */
 export function judgeScenario(input) {
-  const { failures, entries } = commonFailures(input);
-  const facts = { ...SCENARIO_FACTS[input.scenario](input, entries), stimulusCounterConsistent: stimulusCarry(input) };
+  const { failures, entries, checks } = commonFailures(input);
+  const facts = { ...SCENARIO_FACTS[input.scenario](input, entries), stimulusCounterConsistent: stimulusCarry(input),
+    deviceIdentityStable: deviceIdentityStable(input), poolConfigurationUnchanged: poolConfigurationUnchanged(input) };
   for (const [name, value] of Object.entries(facts)) if (value !== true) failures.push(`fact_${name}`);
   const carry = { ...input.carry };
   if (input.scenario === "completion") carry.stimulusBaseline = input.reviews.stimulus.discontinuitiesDetected;
@@ -219,5 +267,5 @@ export function judgeScenario(input) {
   // Diagnostic context for an unverified scenario only; it never decides a pass.
   const diagnostic = failures.length === 0 ? {} : { admission_first_failure: lastAdmissionFailure(input, entries) };
   return { scenario: input.scenario, result: failures.length === 0 ? "passed" : "unverified", failures, facts, carry,
-    terminal_reason: input.finalState.device?.reason ?? null, ...diagnostic };
+    terminal_reason: input.finalState.device?.reason ?? null, checks, ...diagnostic };
 }
