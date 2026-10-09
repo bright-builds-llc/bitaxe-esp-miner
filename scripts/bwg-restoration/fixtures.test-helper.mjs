@@ -63,7 +63,8 @@ export function passingInput(scenario) {
     completion: { records: [], finalState: pageState({ entries: operatorEvents("restored", "one_renewal", ["renewed"]), device: baseline("challenge_satisfied") }) },
     pause: { records: [], finalState: pageState({ entries: operatorEvents("paused"), device: baseline("paused") }) },
     cancel: { records: [], finalState: pageState({ entries: operatorEvents("cancelled"), device: baseline("cancelled") }) },
-    expiry: { records: [okRecord("startScenarioLease", null, 1000), okRecord("statusReview", baseline("lease_expired"), 31500, pageState({ device: baseline("lease_expired") }))],
+    expiry: { records: [okRecord("loadScenarioLease", null, 1000), okRecord("startScenarioLease", null, 2000),
+      okRecord("statusReview", baseline("lease_expired"), 31500, pageState({ device: baseline("lease_expired") }))],
       finalState: pageState({ entries: journal(["connected", "start_prepared", "lease_loaded:no_renewal", "lease_started", "device_baseline_observed:lease_expired",
         "status_reviewed:lease_expired", "stimulus_reviewed:idle", "rejection_reviewed:none", "closed"]), device: baseline("lease_expired") }) },
     monotonic_uncertainty: {

@@ -115,7 +115,28 @@ test("an accepted replay fails the negatives", () => {
 test("an expiry observed before the 30 s window fails expiry", () => {
   // Arrange
   const input = passingInput("expiry");
-  input.records[1] = { ...input.records[1], receivedAtUnixMs: 1000 + 27000 };
+  input.records[2] = { ...input.records[2], receivedAtUnixMs: 1000 + 27000 };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(judgement.failures.includes("fact_expiredAfterWindow"));
+});
+
+test("a start operation that includes lease preparation does not shorten the expiry window", () => {
+  // Arrange: attempt-001's shape, where the start record landed 8.88 s after loading and expiry was seen 27.98 s later.
+  const input = passingInput("expiry");
+  input.records[1] = { ...input.records[1], receivedAtUnixMs: 1000 + 8880 };
+  input.records[2] = { ...input.records[2], receivedAtUnixMs: 1000 + 8880 + 27983 };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.ok(!judgement.failures.includes("fact_expiredAfterWindow"));
+});
+
+test("an expiry without a loaded-lease record fails expiry", () => {
+  // Arrange
+  const input = passingInput("expiry");
+  input.records.splice(0, 1);
   // Act
   const judgement = judgeScenario(input);
   // Assert

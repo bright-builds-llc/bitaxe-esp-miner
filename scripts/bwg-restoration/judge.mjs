@@ -54,13 +54,17 @@ function operatorStop(input, entries) {
 function expiry(input, entries) {
   const records = input.records;
   const started = ok(records, "startScenarioLease").at(-1);
+  // The device starts its lease clock when it accepts the Start, inside the start operation, whose record lands only after
+  // lease preparation and the follow-up status (8.9 s on hardware, attempt-001). The loaded-lease record is the latest host
+  // time the device clock cannot predate, so it is the sound lower bound for the expiry window.
+  const loaded = started && ok(records, "loadScenarioLease").filter((record) => record.receivedAtUnixMs <= started.receivedAtUnixMs).at(-1);
   const observed = records.find((record) => record.state.device?.state === "baseline" && record.state.device.reason === "lease_expired" &&
     started && record.receivedAtUnixMs >= started.receivedAtUnixMs);
   const window = WINDOWS.expiry.durationMilliseconds;
   return {
     noRenewal: indexOf(entries, "lease_loaded", "no_renewal") >= 0 && count(entries, "renewed") === 0,
     deviceEndedLease: indexOf(entries, "device_baseline_observed", "lease_expired") > indexOf(entries, "lease_started"),
-    expiredAfterWindow: Boolean(observed) && observed.receivedAtUnixMs - started.receivedAtUnixMs >= window - EXPIRY_EARLY_TOLERANCE_MS,
+    expiredAfterWindow: Boolean(observed && loaded) && observed.receivedAtUnixMs - loaded.receivedAtUnixMs >= window - EXPIRY_EARLY_TOLERANCE_MS,
     noOperatorStop: ["paused", "cancelled", "restored"].every((event) => count(entries, event) === 0),
   };
 }

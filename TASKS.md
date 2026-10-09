@@ -655,6 +655,31 @@ BWG-007 serial restoration hardware: enabled.
   `stop_hardware_blocker`, `stop_authority_boundary` or
   `stop_impossible_contract`.
 
+Attempt 001 (2026-10-08), firmware `05e4c72c`, Gate `6e9527b`:
+
+- Pre-run:
+  - `board-info` failed twice at serial open ("Device error"), so hardware
+    stopped. The owner replugged USB with barrel power kept.
+  - Detector and `board-info` then passed on the same physical device.
+  - The state-preserving install observed the exact package.
+- Two agent process slips, recorded privately:
+  - The first install was chained with `;`. It stopped before transfer, so
+    nothing was written.
+  - The failed attempt's install evidence directory was removed before
+    reuse; its top-level logs remain.
+- Completion, pause and cancel passed.
+- Expiry was judged `fact_expiredAfterWindow`, although the device itself
+  ended the lease with `lease_expired`.
+  - The judge measured from the start-operation record, which lands after
+    lease preparation and its follow-up status: 8.88 s after loading.
+  - Expiry was seen 27.98 s after that record, but 36.86 s after loading.
+  - The campaign stopped, the tab went to `about:blank`, and the root was
+    sealed `unverified`.
+- Outcome: `continue_after_verified_fix`. The judge now anchors the expiry
+  window on the loaded-lease record, the latest host time the device clock
+  cannot predate. A regression built from attempt-001's timings fails on the
+  old judge and passes on the new one.
+
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
 also advances the current high-water. A generic rejection therefore cannot
