@@ -112,3 +112,40 @@ watcher's USB identity covers that. `changed: false` reflects only the device's
 own comparison against its boot snapshot; it does not cover changes made before
 that boot. The scan proves absence of the listed values and shapes only. This
 ADR verifies nothing on hardware and promotes no parity row.
+
+## Amendment (2026-10-10, `task-bwg-evidence-hardening`)
+
+Attempt-009 published profile 0.3, and BWG-007 was archived. Two of its
+claims still rested on interpretation rather than on a device fact, and the
+redaction verifier never checked the projections. This amendment adds the
+following:
+
+1. **Reboot was a power loss.** The firmware adds a read-only, possession-gated
+   `boot_review` command. It answers `{schema: "worker-boot-review-v1",
+   resetCause}` with this boot's reset category. The restoration page exposes
+   it as `bootReview()` and journals `boot_reviewed` with the cause as its
+   category. The reboot reconnect runs `statusReview`, `bootReview`, then
+   `submitCompletion()`. The new reboot fact `rebootWasPowerLoss` requires at
+   least one boot review after the post-reconnect terminal status, and every
+   such review must report `power_on` or `brownout`. A chip or software reset
+   with barrel power kept fails.
+2. **N1–N4 safe stops.** The rejection review becomes version 2, which adds
+   `last.safeStop`: the safe stop that the rejection itself triggered,
+   recorded in RAM with the rejection so a later disconnect cannot overwrite
+   it. N1–N3 attribution now also requires `safeStop: none`, because those
+   rejections arrive without an active lease. The new fact
+   `renewalReplaySafeStopObserved` requires N4's in-context renewal replay to
+   report `control_failed`.
+3. **Projection 0.4** is 0.3 plus `rebootWasPowerLoss` (reboot) and
+   `renewalReplaySafeStopObserved` (authorization_negatives). The validator
+   keeps 0.2 (attempt-008) and 0.3 (attempt-009) with their own field and fact
+   sets.
+4. **Redaction verification of projections.** `just verify-redaction`
+   recognizes registered `profile` values as well as schemas. It checks every
+   BWG restoration projection with that projection's own closed validator and
+   the generic operational-field scan. All sixteen published bwg007 files are
+   checked.
+
+These are software changes only. The new facts are first exercised on the
+next hardware attempt under a new task contract; the published 0.2 and 0.3
+evidence keeps its original meaning.
