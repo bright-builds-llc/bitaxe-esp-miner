@@ -159,3 +159,14 @@ test("a rejection review whose safe stop does not match its version is refused",
       ...SHAPE_ERRORS);
   }
 });
+
+test("the boot_reviewed journal event carries exactly a closed reset cause", () => {
+  // Arrange
+  const accepted = pageState({ entries: journal(["connected", "status_reviewed:reboot", "boot_reviewed:power_on", "boot_reviewed:brownout"]) });
+  const refused = [pageState({ entries: journal(["boot_reviewed"]) }), pageState({ entries: journal(["boot_reviewed:unplugged"]) })];
+  // Act
+  const categories = parsePageState(accepted, context).journal.entries.map((entry) => entry.category);
+  // Assert
+  assert.deepEqual(categories, [undefined, "reboot", "power_on", "brownout"]);
+  for (const state of refused) throwsWith(() => parsePageState(state, context), "page_journal_entry");
+});

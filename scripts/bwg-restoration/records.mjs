@@ -44,11 +44,12 @@ function poolConfiguration(value) {
 }
 
 /**
- * `admission_observed` carries exactly the observed first-failure boundary; the identity and pool change events carry
- * no category; other categories are closed tokens.
+ * `admission_observed` carries exactly the observed first-failure boundary and `boot_reviewed` exactly the reset cause;
+ * the identity and pool change events carry no category; other categories are closed tokens.
  */
 function entryCategory(entry) {
   if (entry.event === "admission_observed") return ADMISSION_FAILURES.includes(entry.category);
+  if (entry.event === "boot_reviewed") return RESET_CAUSES.includes(entry.category);
   if (UNCATEGORIZED_JOURNAL_EVENTS.includes(entry.event)) return entry.category === undefined;
   return entry.category === undefined || TOKEN.test(entry.category);
 }
