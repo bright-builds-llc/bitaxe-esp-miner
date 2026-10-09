@@ -6,10 +6,17 @@ use bitaxe_worker_control::{
 };
 use serde_json::{json, Value};
 
-struct PublicStateSession(StateFingerprint);
+struct PublicStateSession {
+    settings: StateFingerprint,
+    pool_configuration_unchanged: bool,
+}
 impl WorkerSession for PublicStateSession {
     fn settings_preservation(&self) -> Result<Option<SettingsPreservation>, WorkerSessionError> {
-        Ok(Some(SettingsPreservation::new(self.0, false)))
+        Ok(Some(SettingsPreservation::new(
+            self.settings,
+            false,
+            self.pool_configuration_unchanged,
+        )))
     }
     fn start(&mut self, _: &WorkerLeaseGrant, _: LeaseDeadlines) -> Result<(), WorkerSessionError> {
         Err(WorkerSessionError::Rejected)
@@ -55,9 +62,18 @@ impl LeaseAuthorizationVerifier for PublicSequenceVerifier {
     }
 }
 fn status(seed: u8, settings: &[u8], sequences: &[u8]) -> Value {
-    status_with_admission(seed, settings, sequences, true)
+    status_with_admission(seed, settings, sequences, true, true)
 }
-fn status_with_admission(seed: u8, settings: &[u8], sequences: &[u8], admitted: bool) -> Value {
+fn status_with_pool_configuration(pool_configuration_unchanged: bool) -> Value {
+    status_with_admission(7, b"rotation=0", b"{}", true, pool_configuration_unchanged)
+}
+fn status_with_admission(
+    seed: u8,
+    settings: &[u8],
+    sequences: &[u8],
+    admitted: bool,
+    pool_configuration_unchanged: bool,
+) -> Value {
     let firmware = FirmwareIdentity::new(
         FirmwareSourceCommit::parse(&"a".repeat(40)).expect("source"),
         &"b".repeat(64),
@@ -66,7 +82,10 @@ fn status_with_admission(seed: u8, settings: &[u8], sequences: &[u8], admitted: 
     let mut worker = WorkerControl::new(
         DeviceIdentity::from_seed([seed; 32]),
         PublicSequenceVerifier(StateFingerprint::of_public_state(sequences)),
-        PublicStateSession(StateFingerprint::of_public_state(settings)),
+        PublicStateSession {
+            settings: StateFingerprint::of_public_state(settings),
+            pool_configuration_unchanged,
+        },
         None,
         firmware,
         json!({}),
@@ -108,7 +127,7 @@ fn preservation_is_available_after_possession_before_any_mining() {
     assert_eq!(reply["result"]["state"], "baseline");
     assert!(reply["result"].get("qualification").is_none());
     let preservation = &reply["result"]["preservation"];
-    assert_eq!(preservation["schema"], "worker-preservation-v1");
+    assert_eq!(preservation["schema"], "worker-preservation-v2");
     assert_eq!(preservation["mine_on_boot"], false);
     for field in [
         "settings_sha256",
@@ -148,7 +167,50 @@ fn identity_settings_and_authorization_drift_have_independent_fingerprints() {
 #[test]
 fn prepossession_status_does_not_expose_stable_fingerprints() {
     // Arrange / Act
-    let reply = status_with_admission(7, b"rotation=0", b"{}", false);
+    let reply = status_with_admission(7, b"rotation=0", b"{}", false, true);
     // Assert
     assert!(reply["result"].get("preservation").is_none());
+}
+
+#[test]
+fn preservation_status_emits_exactly_the_v2_field_set() {
+    // Arrange
+    let mut expected = vec![
+        "authorization_high_water_sha256",
+        "device_identity_sha256",
+        "mine_on_boot",
+        "pool_configuration_unchanged_since_boot",
+        "schema",
+        "settings_sha256",
+    ];
+    expected.sort_unstable();
+
+    // Act
+    let reply = status_with_pool_configuration(true);
+
+    // Assert
+    let preservation = reply["result"]["preservation"]
+        .as_object()
+        .expect("preservation object");
+    let mut fields: Vec<&str> = preservation.keys().map(String::as_str).collect();
+    fields.sort_unstable();
+    assert_eq!(fields, expected);
+    assert_eq!(preservation["schema"], "worker-preservation-v2");
+}
+
+#[test]
+fn pool_configuration_continuity_is_reported_only_as_the_device_boolean() {
+    // Arrange / Act
+    let unchanged = status_with_pool_configuration(true);
+    let changed = status_with_pool_configuration(false);
+
+    // Assert
+    let field = "pool_configuration_unchanged_since_boot";
+    assert_eq!(unchanged["result"]["preservation"][field], true);
+    assert_eq!(changed["result"]["preservation"][field], false);
+    let mut unchanged_without_pool = unchanged["result"]["preservation"].clone();
+    let mut changed_without_pool = changed["result"]["preservation"].clone();
+    unchanged_without_pool[field] = Value::Null;
+    changed_without_pool[field] = Value::Null;
+    assert_eq!(unchanged_without_pool, changed_without_pool);
 }

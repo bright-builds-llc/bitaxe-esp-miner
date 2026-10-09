@@ -1387,6 +1387,11 @@ rust_test(
     srcs = [
         "src/settings_preservation_host_test.rs",
         "src/settings_adapter/preservation/model.rs",
+        "src/settings_adapter/preservation/pool_configuration.rs",
+    ],
+    compile_data = [
+        "src/settings_adapter/preservation.rs",
+        "src/startup.rs",
     ],
     crate_root = "src/settings_preservation_host_test.rs",
     crate_name = "settings_preservation_tests",

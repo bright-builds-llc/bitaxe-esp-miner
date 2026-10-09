@@ -139,7 +139,8 @@ pub trait WorkerSession {
         Err(WorkerSessionError::Rejected)
     }
 
-    /// Returns only an allowlisted nonsecret-settings fingerprint and boot preference.
+    /// Returns only an allowlisted nonsecret-settings fingerprint, boot preference and the
+    /// device-local pool-configuration continuity boolean; never a pool value or its digest.
     fn settings_preservation(
         &self,
     ) -> Result<Option<crate::SettingsPreservation>, WorkerSessionError> {

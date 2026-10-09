@@ -25,8 +25,11 @@ const KEYS: &[&str] = &[
     "themescheme",
 ];
 
+/// Fingerprints the public allowlist; the pool-configuration boolean is computed separately and
+/// only carried through, so no pool key is ever read here.
 pub(super) fn fingerprint(
     mut read: impl FnMut(&str) -> Result<Option<StoredValueKind>, SettingsAdapterFailure>,
+    pool_configuration_unchanged_since_boot: bool,
 ) -> Result<SettingsPreservation, SettingsAdapterFailure> {
     let mut hash = Sha256::new();
     hash.update(b"worker-public-settings-v1\0");
@@ -77,6 +80,7 @@ pub(super) fn fingerprint(
     Ok(SettingsPreservation::new(
         StateFingerprint::from_digest(hash.finalize().into()),
         mine_on_boot,
+        pool_configuration_unchanged_since_boot,
     ))
 }
 
@@ -84,13 +88,16 @@ pub(super) fn fingerprint(
 mod tests {
     use super::*;
     fn digest(rotation: u16) -> String {
-        let settings = fingerprint(|key| {
-            Ok(match key {
-                "rotation" => Some(StoredValueKind::U16(rotation)),
-                "mineonboot" => Some(StoredValueKind::U16(0)),
-                _ => None,
-            })
-        })
+        let settings = fingerprint(
+            |key| {
+                Ok(match key {
+                    "rotation" => Some(StoredValueKind::U16(rotation)),
+                    "mineonboot" => Some(StoredValueKind::U16(0)),
+                    _ => None,
+                })
+            },
+            true,
+        )
         .expect("public settings");
         serde_json::to_string(&settings).expect("fingerprint projection")
     }
@@ -105,10 +112,13 @@ mod tests {
         // Arrange
         let mut requested = Vec::new();
         // Act
-        fingerprint(|key| {
-            requested.push(key.to_owned());
-            Ok(None)
-        })
+        fingerprint(
+            |key| {
+                requested.push(key.to_owned());
+                Ok(None)
+            },
+            true,
+        )
         .expect("empty public settings");
         // Assert
         for forbidden in [

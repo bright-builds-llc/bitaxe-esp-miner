@@ -135,6 +135,9 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
         PROGRESS.fail(DiagnosticStage::Nvs);
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
     }
+    // Earliest point with readable NVS, before Wi-Fi, HTTP settings writes and the Worker owner
+    // exist, so the capture precedes every lease and every runtime pool-configuration writer.
+    settings_adapter::preservation::capture_boot_pool_configuration();
     match settings_adapter::maybe_self_test_receipt() {
         Ok(Some((lease, receipt))) => {
             log::info!(

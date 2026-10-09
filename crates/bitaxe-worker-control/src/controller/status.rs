@@ -27,10 +27,11 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 .map_err(|_| WorkerControlError::PersistenceFailed)?
                 .ok_or(WorkerControlError::PersistenceFailed)?;
             result["preservation"] = json!({
-                "schema":"worker-preservation-v1", "settings_sha256":settings.fingerprint,
+                "schema":"worker-preservation-v2", "settings_sha256":settings.fingerprint,
                 "authorization_high_water_sha256":authorization,
                 "device_identity_sha256":self.identity.public_key_fingerprint(),
                 "mine_on_boot":settings.mine_on_boot,
+                "pool_configuration_unchanged_since_boot":settings.pool_configuration_unchanged_since_boot,
             });
         }
         Ok(result)

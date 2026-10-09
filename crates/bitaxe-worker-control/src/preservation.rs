@@ -34,17 +34,27 @@ impl fmt::Debug for StateFingerprint {
     }
 }
 
+/// Status preservation facts. Pool configuration contributes only a device-local boolean:
+/// no pool value, and no digest of one, ever reaches this type.
 #[derive(Debug, Serialize)]
 pub struct SettingsPreservation {
     pub(crate) fingerprint: StateFingerprint,
     pub(crate) mine_on_boot: bool,
+    pub(crate) pool_configuration_unchanged_since_boot: bool,
 }
 impl SettingsPreservation {
+    /// `pool_configuration_unchanged_since_boot` must be false whenever the device cannot
+    /// prove continuity, including when its boot-time capture is unavailable.
     #[must_use]
-    pub const fn new(fingerprint: StateFingerprint, mine_on_boot: bool) -> Self {
+    pub const fn new(
+        fingerprint: StateFingerprint,
+        mine_on_boot: bool,
+        pool_configuration_unchanged_since_boot: bool,
+    ) -> Self {
         Self {
             fingerprint,
             mine_on_boot,
+            pool_configuration_unchanged_since_boot,
         }
     }
 }
