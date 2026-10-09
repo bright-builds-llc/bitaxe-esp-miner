@@ -444,12 +444,12 @@ prerequisites exist and continue to the next software-actionable row.
 
 Migration dependency satisfied: completed `task-fixed-usb-serial-qualification`, with the current fixed-Serial/JTAG baseline and measured CPU0 cadence in [accepted cadence evidence](docs/parity/evidence/20260915-cpu0-cadence-qualified.md). September 8, September 11 and September 13 retain their separate exact-pair live-stop, Hello-recovery and reconciliation scopes. Qualification replaces the retired TinyUSB handoff/recovery006 mechanism requirement; it does not execute or validate this task's legacy plan. This task remains open and requires a verified/published current serial successor contract before effects. Independent authorization, replay, monotonicity, protocol, restoration and evidence requirements remain unresolved unless supported by their own evidence.
 
-- [ ] Create and verify a successor serial restoration contract after the
+- [x] Create and verify a successor serial restoration contract after the
       migration qualification; the old WebUSB campaign is superseded.
-- [ ] Admit one Ultra 205, exact clean firmware/Gate commits, the canonical
+- [x] Admit one Ultra 205, exact clean firmware/Gate commits, the canonical
       package, protected authority/pool/recovery inputs, and an absent private
       attempt root through the effect-free preflight.
-- [ ] Install the exact package once through the existing detector-gated flash
+- [x] Install the exact package once through the existing detector-gated flash
       workflow, then exercise completion, Pause, terminal Cancel, exclusive
       expiry, USB-only disconnect, both-power reboot, and monotonic uncertainty
       plus the authorization-negative matrix through the production Web Serial
@@ -568,13 +568,13 @@ Plan (2026-10-07), recorded in [ADR-0035](docs/adr/0035-serial-bwg-restoration-c
     per-scenario judges, seal, and all-or-nothing projection publication;
   - registration in `owners.mjs`, a Bazel target and a `just` recipe.
 - [x] P5 hardware contract (below), written while disabled; verified and pushed (c18f177b).
-- [ ] P6 add the enabling line, run the attempt, have the evidence reviewed
-      independently, and publish all eight projections together.
+- [x] P6 add the enabling line, run the attempt, have the evidence reviewed
+      independently, and publish all eight projections together (attempt 008).
 
 Serial successor hardware contract (attempt ordinals 001 onward), enabled
 2026-10-07 under the owner's authorization:
 
-BWG-007 serial restoration hardware: enabled.
+Hardware run disabled on 2026-10-09, after attempt 008 passed. Re-enable only through a new contract amendment.
 
 - Objective: on one detector-admitted Ultra 205, through the production Web
   Serial Gate and the owner's Stratum V1 pool, prove each of the following:
@@ -795,6 +795,43 @@ settle gate and wider latency allowances:
   now `connectivity_lost`, with a regression built from attempt 007's
   observation. A sealed `unverified` result is not relabelled, so completion
   needs a fresh attempt.
+
+Attempt 008 (2026-10-09), firmware `ffef193e`, Gate `8461ef0`: all eight
+scenarios passed, `campaign_complete`. The root was sealed `passed` with the
+directly run detector and finish binaries.
+
+- Both physical windows passed first time, with no re-arms.
+- Caps: 9 of 10 Starts and 2 of 2 renewals.
+- The settle gate saw the device idle or complete before every signing.
+- An independent review recomputed every scenario from records, journal,
+  events and the watcher. Verdict: agree with caveats.
+- The eight projections were published as one batch to
+  `docs/parity/evidence/bwg-worker-restoration/bwg007-attempt-008-*.json`.
+- Summary with caveats:
+  [20261009-bwg007-serial-restoration.md](docs/parity/evidence/20261009-bwg007-serial-restoration.md).
+
+Review caveats:
+
+- `connectivity_lost` is a weak terminal fact for disconnect and N4. N4's
+  `control_failed` stop is established by code, not observed.
+- `reboot` proves a new boot, not a power-on reset.
+- Same-device evidence is indirect. The ADR-0019 per-scenario device-key
+  fingerprint match is not implemented.
+- Credential absence and same-key reacquisition have no judged fact.
+- Live limits are not judged (a recorded non-claim), nor are pool shares.
+
+Verification: P6 done. The campaign, contract, publication and review are
+complete for the eight scenarios. Parity is not promoted.
+
+Remaining before this task can close, as follow-up software work with no
+hardware effect authorized:
+
+- [ ] Add a judged same-key reacquisition fact: the ADR-0019 per-scenario
+      device-key fingerprint match through the Gate's challenge-scoped
+      fingerprint record.
+- [ ] Add a judged credential-absence fact.
+- [ ] Link the Gate child evidence and resolve BWG Core Ticket 23's
+      acceptance links, then decide whether a further attempt is needed.
 
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
