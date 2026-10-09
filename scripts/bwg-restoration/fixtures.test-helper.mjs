@@ -37,8 +37,10 @@ export function pageState({ entries = [], connected = false, status = "closed", 
 export const baseline = (reason) => ({ state: "baseline", restoration: "confirmed", reason });
 export const stimulusReview = (state, discontinuitiesDetected) => ({ schema: "worker-clock-discontinuity-stimulus-review-v1", state, offsetMilliseconds: 1000,
   discontinuitiesDetected });
+/** Version 2 when `last` carries `safeStop` (or no rejection happened yet), as current firmware answers. */
 export function rejectionReview({ bootRejections = 0, last = null, advancedThisBoot = false, matches = true, epoch = 1 } = {}) {
-  return { schema: "worker-authorization-rejection-review-v1", bootRejections, last,
+  const schema = last !== null && last.safeStop === undefined ? "worker-authorization-rejection-review-v1" : "worker-authorization-rejection-review-v2";
+  return { schema, bootRejections, last,
     highWater: { advancedThisBoot, fingerprintMatchesLatestObservation: matches, fingerprintFirstObservedEpoch: epoch } };
 }
 export const okRecord = (operation, result, at, state = pageState()) => ({ operation, outcome: "ok", result, state, receivedAtUnixMs: at });
@@ -52,9 +54,9 @@ function physicalJournal(remove, restore, terminal) {
     `status_reviewed:${terminal}`, "stimulus_reviewed:idle", "rejection_reviewed:none", "closed"]);
 }
 
-const leg = (operation, signature, context, replayGuard, ordinal, advancedThisBoot, category = "authentication_failed") => ({
+const leg = (operation, signature, context, replayGuard, ordinal, advancedThisBoot, category = "authentication_failed", safeStop = "none") => ({
   replay: { operation, outcome: "rejected", category },
-  review: rejectionReview({ bootRejections: ordinal, last: { ordinal, operation, signature, context, replayGuard }, advancedThisBoot, epoch: 3 }),
+  review: rejectionReview({ bootRejections: ordinal, last: { ordinal, operation, signature, context, replayGuard, safeStop }, advancedThisBoot, epoch: 3 }),
 });
 
 /** A passing judge input for each scenario; tests break exactly one fact. */
@@ -86,9 +88,10 @@ export function passingInput(scenario) {
     finalState: pageState({ entries: physicalJournal("remove_power", "restore_power", "reboot"), device: baseline("reboot") }) },
     authorization_negatives: { records: [], carry: { stimulusBaseline: 0, preRebootEpoch: 3, rebootRejections: 0 },
       legs: { n1: leg("start", "valid", "mismatch", "at_or_below_durable_high_water", 1, false), n2: leg("start", "not_evaluated", "expired", "not_evaluated", 2, false, "admission_required"),
-        n3: leg("start", "valid", "mismatch", "fresh", 3, false), n4: leg("renew", "valid", "current", "at_or_below_durable_high_water", 4, true) },
+        n3: leg("start", "valid", "mismatch", "fresh", 3, false), n4: leg("renew", "valid", "current", "at_or_below_durable_high_water", 4, true, "authentication_failed", "control_failed") },
       reviews: { stimulus: stimulusReview("idle", 0), rejection: rejectionReview({ bootRejections: 4, advancedThisBoot: true, epoch: 3,
-        last: { ordinal: 4, operation: "renew", signature: "valid", context: "current", replayGuard: "at_or_below_durable_high_water" } }) },
+        last: { ordinal: 4, operation: "renew", signature: "valid", context: "current", replayGuard: "at_or_below_durable_high_water",
+          safeStop: "control_failed" } }) },
       finalState: pageState({ entries: journal(["connected", "status_reviewed:reboot", "replay_rejected:authentication_failed", "disconnected", "connected", "rejection_reviewed:mismatch",
         "start_prepared", "replay_rejected:admission_required", "disconnected", "connected", "rejection_reviewed:expired", "replay_rejected:authentication_failed",
         "disconnected", "connected", "rejection_reviewed:mismatch", "start_prepared", "lease_loaded:one_renewal", "lease_started", "renewed",
@@ -101,14 +104,18 @@ export function passingInput(scenario) {
 /** Tracker states with `observations` preservation statuses seen so far, the same key and an unchanged pool. */
 export const trackers = (observations) => ({ deviceIdentity: { epoch: 1, observations }, poolConfiguration: { observations, changed: false } });
 
-/** Records each fixture adds so the identity and pool facts can hold: the Start, the window begin and the post-reconnect status. */
+/**
+ * Records each fixture adds so the identity, pool and power-loss facts can hold: the Start, the window begin, the
+ * post-reconnect status and the reboot's boot review.
+ */
 const TRACKED_RECORDS = {
   completion: [["startScenarioLease", null, 1000]],
   pause: [["startScenarioLease", null, 1000]],
   cancel: [["startScenarioLease", null, 1000]],
   disconnect: [["startScenarioLease", null, 1000], ["beginPhysicalWindow", { checkpoint: "remove_usb" }, 3000],
     ["statusReview", baseline("connectivity_lost"), 20000]],
-  reboot: [["startScenarioLease", null, 1000], ["statusReview", baseline("reboot"), 20000]],
+  reboot: [["startScenarioLease", null, 1000], ["statusReview", baseline("reboot"), 20000],
+    ["bootReview", { schema: "worker-boot-review-v1", resetCause: "power_on" }, 21000]],
   authorization_negatives: [["startScenarioLease", null, 1000], ["statusReview", baseline("connectivity_lost"), 20000]],
 };
 

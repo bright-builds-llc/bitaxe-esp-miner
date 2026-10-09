@@ -213,7 +213,9 @@ deadline; only the finite effects have automated bounds.
    requires the same physical identity with a new enumeration identity, then a
    3 s stability gate (accessible, unheld, Serial/JTAG runtime). Until then,
    `/activate` refuses every reconnect.
-1. `reconnect_ready`: connect, `statusReview`, then `submitCompletion()`.
+1. `reconnect_ready`: connect, `statusReview`, then `submitCompletion()`. For
+   `reboot`, run `bootReview` between them: connect, `statusReview`,
+   `bootReview`, then `submitCompletion()`.
 
 `rearm_required` waits for a new readiness reply (checkpoint `rearm_required`),
 at most twice per scenario. End any page lease first with `cancel`.
@@ -252,20 +254,26 @@ Each scenario must also prove its own facts:
   instruction; the same physical identity with a new enumeration; stability
   before reconnect; at most 2 re-arms; page order begin → disconnected → armed
   → connected → terminal status. `reboot` also requires the stimulus reset to
-  idle with count 0, no rejection and no high-water advance since boot, and a
-  pre-reboot mining status.
+  idle with count 0, no rejection and no high-water advance since boot, a
+  pre-reboot mining status, and `rebootWasPowerLoss`: at least one
+  `bootReview` after the post-reconnect status, every one reporting
+  `resetCause` `power_on` or `brownout`.
 - `authorization_negatives`: the reboot report delivered before N1, either by
   the passing reboot scenario (its carried `rebootReported`, with no lease
   started since) or by a status in N1's own connection. Then four device-attributed rejections, with rejection ordinals
   1–4 since the reboot and the device's wire categories
-  (`authentication_failed`, except `admission_required` for N2):
+  (`authentication_failed`, except `admission_required` for N2). The
+  rejection review must be version 2. N1–N3 must report `safeStop: none`,
+  because those rejections arrive without an active lease:
   - N1: Start, signature valid, context mismatch, replay guard at or below the
     durable high-water, not advanced this boot. Its fingerprint was first
     observed no later than the pre-reboot epoch.
   - N2: Start, signature not evaluated, context expired.
   - N3: Start, signature valid, context mismatch, replay guard fresh.
   - N4: Renew, signature valid, context current, replay guard at or below the
-    durable high-water, advanced this boot.
+    durable high-water, advanced this boot. Its `safeStop` must be
+    `control_failed` (`renewalReplaySafeStopObserved`): the in-context replay
+    safe-stopped the active lease itself.
 
   Four `replay_rejected`, no `replay_accepted`, and one accepted renewal.
 

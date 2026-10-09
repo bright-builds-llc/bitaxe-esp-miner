@@ -38,6 +38,8 @@ function physicalStep(scenario, now) {
   const checkpoint = scenario.maybeCheckpoint, plan = PHYSICAL_PLANS[scenario.name];
   const { checkpoint: name } = view(checkpoint, now);
   const base = { checkpoint: name, human_checkpoint_armed: humanWait(checkpoint) || name === plan.removeCheckpoint, rearms: checkpoint.rearms };
+  // The reboot proves a power loss from the device's own reset cause, read after its terminal status.
+  const review = scenario.name === "reboot" ? "statusReview, bootReview, submitCompletion." : "statusReview, submitCompletion.";
   const steps = {
     awaiting_operator_ready: { safe_state: IDLE, local_action: "The owner confirms readiness; then POST /checkpoint/ready with this scenario and checkpoint.",
       observe: "Nothing yet; no instruction is live.", automated_bounds: [] },
@@ -59,9 +61,9 @@ function physicalStep(scenario, now) {
       instruction: plan.restore, observe: "The same physical device reappears with a new enumeration and stays stable.", automated_bounds: [],
       restore_watcher: { action_token: "bwg-restoration-restore-watcher-armed-v1", response_required: false } },
     stabilizing: { safe_state: "The device is reappearing and holds no lease.", local_action: "None.", observe: "Stability gate.", automated_bounds: ["stable_3000_ms"] },
-    reconnect_ready: { safe_state: "The device is present and holds no lease.", local_action: "connect (Connect click), statusReview, submitCompletion.",
+    reconnect_ready: { safe_state: "The device is present and holds no lease.", local_action: `connect (Connect click), ${review}`,
       observe: "The device reports the scenario's terminal reason.", automated_bounds: [] },
-    reconnected: { safe_state: "The page is connected; the device holds no lease.", local_action: "statusReview, submitCompletion.", observe: "Terminal reason.", automated_bounds: [] },
+    reconnected: { safe_state: "The page is connected; the device holds no lease.", local_action: review, observe: "Terminal reason.", automated_bounds: [] },
     failed: { safe_state: IDLE, local_action: "None; the attempt is stopped.", observe: checkpoint.maybeFailure, automated_bounds: [] },
   };
   return { ...base, ...steps[name] };

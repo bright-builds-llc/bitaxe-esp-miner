@@ -2,8 +2,8 @@
 // the completion reviews, the host checkpoint trace and a small carry between scenarios. Every failure is a
 // closed category; every fact is a boolean that the public projection may copy.
 import { unsafeSample } from "../fixed-usb-soak/judge.mjs";
-import { EXPIRY_EARLY_TOLERANCE_MS, MAXIMUM_REARMS, PAGE_FAILURE_EVENTS, PHYSICAL_PLANS, SCENARIO_PLANS, STIMULUS_OBSERVATION_MS,
-  WINDOWS } from "./contract.mjs";
+import { EXPIRY_EARLY_TOLERANCE_MS, MAXIMUM_REARMS, PAGE_FAILURE_EVENTS, PHYSICAL_PLANS, POWER_LOSS_RESET_CAUSES, SCENARIO_PLANS,
+  STIMULUS_OBSERVATION_MS, WINDOWS } from "./contract.mjs";
 
 const SESSION_LOSS_SCENARIOS = new Set(["disconnect", "reboot", "authorization_negatives"]);
 
@@ -165,19 +165,39 @@ export function preRebootEpoch(records) {
   return status ? status.state.highWaterEpoch : null;
 }
 
+/**
+ * Reboot: every `bootReview` after the post-reconnect terminal status reports a power-loss reset cause, and there
+ * is at least one. A chip or software reset with barrel power kept is not the both-power reboot.
+ */
+function rebootWasPowerLoss(input) {
+  const records = input.records;
+  const begin = records.findLastIndex((record) => record.operation === "beginPhysicalWindow" && record.outcome === "ok");
+  const status = records.findIndex((record, index) => begin >= 0 && index > begin && record.operation === "statusReview" && record.outcome === "ok" &&
+    record.result?.state === "baseline" && record.result.reason === "reboot");
+  const reviews = status < 0 ? [] : records.slice(status + 1).filter((record) => record.operation === "bootReview" && record.outcome === "ok");
+  return reviews.length > 0 && reviews.every((record) => POWER_LOSS_RESET_CAUSES.includes(record.result.resetCause));
+}
+
 function reboot(input) {
   const { stimulus, rejection } = input.reviews;
   return {
     rebootClearedStimulus: stimulus.state === "idle" && stimulus.discontinuitiesDetected === 0,
     highWaterNotAdvancedAfterReboot: rejection.bootRejections === 0 && rejection.highWater.advancedThisBoot === false,
     preRebootStatusObserved: preRebootEpoch(input.records) !== null,
+    rebootWasPowerLoss: rebootWasPowerLoss(input),
   };
 }
 
+/**
+ * The device's expected attribution of each negative leg. N1–N3 reject without an active lease, so the rejection
+ * itself safe-stops nothing (`safeStop: none`, rejection review v2). N4's safe stop is its own fact.
+ */
 const ATTRIBUTION = {
-  n1: { operation: "start", signature: "valid", context: "mismatch", replayGuard: "at_or_below_durable_high_water", advanced: false, wire: "authentication_failed" },
-  n2: { operation: "start", signature: "not_evaluated", context: "expired", replayGuard: "not_evaluated", advanced: false, wire: "admission_required" },
-  n3: { operation: "start", signature: "valid", context: "mismatch", replayGuard: "fresh", advanced: false, wire: "authentication_failed" },
+  n1: { operation: "start", signature: "valid", context: "mismatch", replayGuard: "at_or_below_durable_high_water", advanced: false, wire: "authentication_failed",
+    safeStop: "none" },
+  n2: { operation: "start", signature: "not_evaluated", context: "expired", replayGuard: "not_evaluated", advanced: false, wire: "admission_required",
+    safeStop: "none" },
+  n3: { operation: "start", signature: "valid", context: "mismatch", replayGuard: "fresh", advanced: false, wire: "authentication_failed", safeStop: "none" },
   n4: { operation: "renew", signature: "valid", context: "current", replayGuard: "at_or_below_durable_high_water", advanced: true, wire: "authentication_failed" },
 };
 
@@ -188,7 +208,7 @@ export function legAttributed(leg, name, ordinal) {
     last !== null && last !== undefined &&
     last.operation === expected.operation && last.signature === expected.signature && last.context === expected.context &&
     last.replayGuard === expected.replayGuard && last.ordinal === ordinal && leg.review.bootRejections === ordinal &&
-    leg.review.highWater.advancedThisBoot === expected.advanced;
+    leg.review.highWater.advancedThisBoot === expected.advanced && (expected.safeStop === undefined || last.safeStop === expected.safeStop);
 }
 
 /**
@@ -215,6 +235,8 @@ function negatives(input, entries) {
     expiredContextAttributed: legAttributed(legs.n2, "n2", base + 2),
     crossContextAttributed: legAttributed(legs.n3, "n3", base + 3),
     renewalReplayAttributed: legAttributed(legs.n4, "n4", base + 4),
+    // The in-context renewal replay during N4's active lease must itself have safe-stopped the lease.
+    renewalReplaySafeStopObserved: legs.n4?.review?.last?.safeStop === "control_failed",
     highWaterUnchangedAcrossReboot: n1?.fingerprintMatchesLatestObservation === true && Number.isInteger(n1.fingerprintFirstObservedEpoch) &&
       Number.isInteger(input.carry.preRebootEpoch) && n1.fingerprintFirstObservedEpoch <= input.carry.preRebootEpoch,
     rejectedStartsNeverStarted: count(entries, "replay_rejected") === 4 && count(entries, "replay_accepted") === 0 && count(entries, "renewed") === 1,

@@ -1839,6 +1839,7 @@ js_binary(
     "checkpoint",
     "client",
     "contract",
+    "guidance",
     "judge",
     "main",
     "projection",

@@ -459,3 +459,74 @@ test("the judgement exposes the measured baseline and cleanup checks", () => {
   assert.deepEqual(passed.checks, { cleanupConfirmed: true, baselineConfirmed: true });
   assert.deepEqual(failed.checks, { cleanupConfirmed: false, baselineConfirmed: true });
 });
+
+/** A boot review recorded with the trackers the final state shows, so only the reset cause varies. */
+const bootReview = (resetCause, at) => ({ operation: "bootReview", outcome: "ok", result: { schema: "worker-boot-review-v1", resetCause },
+  state: { ...pageState(), ...trackers(passingInput("reboot").finalState.deviceIdentity.observations) }, receivedAtUnixMs: at });
+const withBootReviews = (input, reviews) => ({ ...input, records: [...input.records.filter((record) => record.operation !== "bootReview"), ...reviews] });
+
+test("a reboot whose boot review reports power_on or brownout was a power loss", () => {
+  // Arrange
+  const inputs = ["power_on", "brownout"].map((cause) => withBootReviews(passingInput("reboot"), [bootReview(cause, 30000)]));
+  // Act
+  const judgements = inputs.map(judgeScenario);
+  // Assert
+  for (const judgement of judgements) assert.deepEqual([judgement.result, judgement.facts.rebootWasPowerLoss], ["passed", true]);
+});
+
+test("a reboot with a chip or software reset, no boot review, or one before the reconnect status was not a power loss", () => {
+  // Arrange
+  const base = passingInput("reboot");
+  const cases = [...["software_cpu", "watchdog", "panic", "other"].map((cause) => withBootReviews(base, [bootReview(cause, 30000)])),
+    withBootReviews(base, []), withBootReviews(base, [bootReview("power_on", 30000), bootReview("software_cpu", 31000)]),
+    { ...withBootReviews(base, []), records: [bootReview("power_on", 500), ...withBootReviews(base, []).records] }];
+  // Act
+  const judgements = cases.map(judgeScenario);
+  // Assert
+  for (const judgement of judgements) assert.ok(judgement.failures.includes("fact_rebootWasPowerLoss"));
+});
+
+test("N1 to N3 rejections must not have safe-stopped anything", () => {
+  // Arrange
+  const inputs = ["n1", "n2", "n3"].map((name) => {
+    const input = passingInput("authorization_negatives");
+    const leg = input.legs[name];
+    input.legs = { ...input.legs, [name]: { ...leg, review: { ...leg.review, last: { ...leg.review.last, safeStop: "control_failed" } } } };
+    return input;
+  });
+  // Act
+  const failures = inputs.map((input) => judgeScenario(input).failures);
+  // Assert
+  assert.ok(failures[0].includes("fact_durableReplayAttributed"));
+  assert.ok(failures[1].includes("fact_expiredContextAttributed"));
+  assert.ok(failures[2].includes("fact_crossContextAttributed"));
+});
+
+test("an N4 renewal replay must itself safe-stop the lease with control_failed", () => {
+  // Arrange
+  const cases = ["none", "connectivity_lost", undefined].map((safeStop) => {
+    const input = passingInput("authorization_negatives");
+    const { safeStop: ignored, ...last } = input.legs.n4.review.last;
+    const review = safeStop === undefined ? { ...input.legs.n4.review, schema: "worker-authorization-rejection-review-v1", last }
+      : { ...input.legs.n4.review, last: { ...last, safeStop } };
+    input.legs = { ...input.legs, n4: { ...input.legs.n4, review } };
+    return input;
+  });
+  // Act
+  const judgements = cases.map(judgeScenario);
+  // Assert
+  for (const judgement of judgements) assert.equal(judgement.facts.renewalReplaySafeStopObserved, false);
+  assert.equal(judgeScenario(passingInput("authorization_negatives")).facts.renewalReplaySafeStopObserved, true);
+});
+
+test("a version 1 rejection review cannot attribute N1 to N3", () => {
+  // Arrange
+  const input = passingInput("authorization_negatives");
+  const { safeStop, ...last } = input.legs.n1.review.last;
+  input.legs = { ...input.legs, n1: { ...input.legs.n1, review: { ...input.legs.n1.review, schema: "worker-authorization-rejection-review-v1", last } } };
+  // Act
+  const judgement = judgeScenario(input);
+  // Assert
+  assert.equal(safeStop, "none");
+  assert.ok(judgement.failures.includes("fact_durableReplayAttributed"));
+});
