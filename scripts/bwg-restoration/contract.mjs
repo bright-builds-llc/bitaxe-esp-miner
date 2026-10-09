@@ -75,6 +75,14 @@ export const FRESH_POSSESSION_MS = 45000;
 export const STIMULUS_OBSERVATION_MS = 20000;
 export const EXPIRY_EARLY_TOLERANCE_MS = 3000;
 
+/**
+ * The device's non-authoritative admission diagnostic as the restoration page exposes it (firmware
+ * `admission_diagnostics.rs`, Gate `state().admission`). Serve uses it only to refuse, never to authorize.
+ */
+export const ADMISSION_STAGES = Object.freeze(["idle", "admission", "readiness", "preparation", "pool_activation", "active", "cleanup", "complete"]);
+export const ADMISSION_FAILURES = Object.freeze(["none", "admission", "readiness", "preparation", "pool_activation", "cleanup"]);
+export const ADMISSION_READINESS_MAXIMUM = 63;
+
 /** Closed Gate restoration-page journal events (web/worker-restoration-journal.ts). */
 export const PAGE_JOURNAL_EVENTS = Object.freeze([
   "configured", "admission_failed", "serial_failure", "connect_failed", "connected", "disconnected",
@@ -84,6 +92,7 @@ export const PAGE_JOURNAL_EVENTS = Object.freeze([
   "replay_accepted", "replay_rejected", "replay_failed",
   "physical_window_begun", "physical_window_armed",
   "status_failed", "closed", "close_failed", "completion_submitted", "completion_failed",
+  "admission_observed",
 ]);
 /** Journal events that are failures of the page's own operations. */
 export const PAGE_FAILURE_EVENTS = Object.freeze(["admission_failed", "serial_failure", "connect_failed", "lease_start_failed", "renew_failed",
@@ -92,7 +101,8 @@ export const PAGE_FAILURE_EVENTS = Object.freeze(["admission_failed", "serial_fa
 /** `window.workerRestoration` operations the supervisor client may record. */
 export const PAGE_OPERATIONS = Object.freeze(["connect", "reconnect", "prepareStart", "loadScenarioLease", "startScenarioLease", "renewOnce",
   "pause", "cancel", "restoreChallengeSatisfied", "triggerClockDiscontinuity", "clockDiscontinuityStimulusReview",
-  "authorizationRejectionReview", "statusReview", "replayArtifact", "beginPhysicalWindow", "armPhysicalWindow", "physicalWindowState", "close"]);
+  "authorizationRejectionReview", "statusReview", "replayArtifact", "beginPhysicalWindow", "armPhysicalWindow", "physicalWindowState", "close",
+  "admissionDiagnostic"]);
 
 /** Closed host campaign events; rows carry only these names, scenario names, checkpoints and counts. */
 export const HOST_EVENTS = Object.freeze(["campaign_started", "scope_created", "scope_reused", "artifacts_signed", "artifacts_delivered",

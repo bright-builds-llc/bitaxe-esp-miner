@@ -1837,10 +1837,12 @@ js_binary(
 ) for name in [
     "campaign",
     "checkpoint",
+    "client",
     "contract",
     "judge",
     "main",
     "projection",
+    "records",
     "server",
     "watcher",
 ]]

@@ -1,7 +1,7 @@
 // Closed parsers for what the restoration page and its supervisor client send. Shapes mirror the Gate page
 // (web/worker-restoration-operations.ts, worker-restoration-qualification.ts); unknown fields fail closed.
 import { exactObject, QualificationError, requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { PAGE_JOURNAL_EVENTS, PAGE_OPERATIONS, TOKEN } from "./contract.mjs";
+import { ADMISSION_FAILURES, ADMISSION_READINESS_MAXIMUM, ADMISSION_STAGES, PAGE_JOURNAL_EVENTS, PAGE_OPERATIONS, TOKEN } from "./contract.mjs";
 
 const RESTORATION_REASONS = ["paused", "cancelled", "lease_expired", "lost_continuity", "monotonic_reset", "reboot", "challenge_satisfied",
   "challenge_expired", "tab_closed", "connectivity_lost", "control_failed"];
@@ -14,14 +14,27 @@ function device(value) {
   return value;
 }
 
+/** The page's last admission observation: `null` before any, else exactly `{stage, firstFailure, readiness}`. */
+function admission(value) {
+  if (value === null) return value;
+  exactObject(value, ["stage", "firstFailure", "readiness"]);
+  requireCondition(ADMISSION_STAGES.includes(value.stage) && ADMISSION_FAILURES.includes(value.firstFailure) &&
+    Number.isSafeInteger(value.readiness) && value.readiness >= 0 && value.readiness <= ADMISSION_READINESS_MAXIMUM, "page_admission_shape");
+  return value;
+}
+
+/** `admission_observed` carries exactly the observed first-failure boundary; other categories are closed tokens. */
+const entryCategory = (entry) => entry.event === "admission_observed" ? ADMISSION_FAILURES.includes(entry.category)
+  : entry.category === undefined || TOKEN.test(entry.category);
+
 function journal(value) {
   exactObject(value, ["entries", "dropped"]);
   requireCondition(Array.isArray(value.entries) && value.entries.length <= 256 && u32(value.dropped), "page_journal_shape");
   let previous = 0;
   for (const entry of value.entries) {
     exactObject(entry, ["ordinal", "event"], ["category"]);
-    requireCondition(u32(entry.ordinal, 1) && entry.ordinal > previous && PAGE_JOURNAL_EVENTS.includes(entry.event) &&
-      (entry.category === undefined || TOKEN.test(entry.category)), "page_journal_entry");
+    requireCondition(u32(entry.ordinal, 1) && entry.ordinal > previous && PAGE_JOURNAL_EVENTS.includes(entry.event) && entryCategory(entry),
+      "page_journal_entry");
     previous = entry.ordinal;
   }
   return value;
@@ -30,7 +43,7 @@ function journal(value) {
 /** The published page state (`worker-restoration-page-v1`); identity values are checked against the context. */
 export function parsePageState(value, context) {
   exactObject(value, ["schema", "gateCommit", "status", "connected", "leaseActive", "leaseLoaded", "renewalsRemaining", "stimulusUsed",
-    "highWaterEpoch", "journal"], ["configurationFailure", "expectedFirmwareSourceCommit", "expectedAppElfSha256", "device", "failure"]);
+    "highWaterEpoch", "journal"], ["configurationFailure", "expectedFirmwareSourceCommit", "expectedAppElfSha256", "device", "failure", "admission"]);
   requireCondition(value.schema === "worker-restoration-page-v1" && value.gateCommit === context.gate_commit &&
     value.expectedFirmwareSourceCommit === context.firmware_commit && value.expectedAppElfSha256 === context.app_elf_sha256 &&
     value.configurationFailure === undefined, "page_identity");
@@ -39,6 +52,7 @@ export function parsePageState(value, context) {
     typeof value.stimulusUsed === "boolean" && u32(value.highWaterEpoch) &&
     (value.failure === undefined || PAGE_JOURNAL_EVENTS.includes(value.failure)), "page_state_shape");
   if (value.device !== undefined) device(value.device);
+  if (value.admission !== undefined) admission(value.admission);
   journal(value.journal);
   return value;
 }
@@ -81,6 +95,12 @@ function parseReplayOutcome(value) {
   return value;
 }
 
+function parseAdmissionDiagnostic(value) {
+  exactObject(value, ["admission"]);
+  admission(value.admission);
+  return value;
+}
+
 function parseCheckpointAnswer(value) {
   exactObject(value, ["checkpoint"]);
   requireCondition(TOKEN.test(value.checkpoint), "checkpoint_answer_shape");
@@ -97,6 +117,7 @@ const RESULT_PARSERS = {
   beginPhysicalWindow: parseCheckpointAnswer,
   armPhysicalWindow: parseCheckpointAnswer,
   physicalWindowState: parseCheckpointAnswer,
+  admissionDiagnostic: parseAdmissionDiagnostic,
 };
 
 /** One `POST /record` body from the supervisor client. */
