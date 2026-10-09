@@ -680,6 +680,28 @@ Attempt 001 (2026-10-08), firmware `05e4c72c`, Gate `6e9527b`:
   cannot predate. A regression built from attempt-001's timings fails on the
   old judge and passes on the new one.
 
+Attempt 002 (2026-10-08), firmware `0ed4bd6d`:
+
+- Completion, pause, cancel, expiry (with the fixed anchor), monotonic reset
+  and the USB-only disconnect passed.
+- The monotonic reset proof held: device-ended `monotonic_reset` about 7 s
+  after the stimulus, stimulus `consumed`, counter +1.
+- The disconnect proof held: watcher-observed removal, restore token before
+  the restore instruction, same physical identity on a new enumeration,
+  `connectivity_lost`.
+- Reboot failed with `watcher_failed`. On both-power removal the presence
+  watcher reported `probe_failed` about 2 s after the instruction, instead of
+  `absent`. The device vanished mid-probe, between the registry read and the
+  holder probe, and the watcher treated one probe error as terminal.
+- The owner restored barrel then USB, and the root was sealed `unverified`.
+- Attempt-001's parent-level finish files were renamed with an `attempt-001.`
+  prefix, so they were kept and the exclusive outputs could be written.
+- Outcome: `continue_after_verified_fix`. The watcher now tolerates up to 8
+  consecutive probe errors (about 2 s) and records no observation on those
+  ticks, so an error is never read as absence. A persistent fault still
+  fails. Pure regressions cover a transient error, a persistent fault and
+  reset on success. Attempt 003 uses a new parent.
+
 Durable replay evidence is also blocked before effects. After reboot, the old
 renewal is bound to the prior possession context; admitting a fresh Start first
 also advances the current high-water. A generic rejection therefore cannot

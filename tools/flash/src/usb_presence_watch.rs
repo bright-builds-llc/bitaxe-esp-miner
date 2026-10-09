@@ -11,6 +11,28 @@ use std::sync::Arc;
 
 const SCHEMA: &str = "bwg-usb-presence-watch-v1";
 const STOP_POLL: Duration = Duration::from_millis(50);
+/// Consecutive probe errors tolerated before the watcher fails (about 2 s at the default interval). A device pulled
+/// mid-scan can vanish between the registry read and the holder probe (BWG-007 attempt-002, both-power removal).
+const PROBE_FAILURE_LIMIT: u8 = 8;
+
+/// Counts consecutive probe errors. A transient error yields no observation for that tick, so it is never read as
+/// absence or presence; only a persistent fault ends the watch.
+#[derive(Debug, Default)]
+pub(crate) struct ProbeFailures {
+    consecutive: u8,
+}
+
+impl ProbeFailures {
+    /// Records one probe error and reports whether the watcher must now fail.
+    pub(crate) fn record_failure(&mut self) -> bool {
+        self.consecutive = self.consecutive.saturating_add(1);
+        self.consecutive >= PROBE_FAILURE_LIMIT
+    }
+
+    pub(crate) fn record_success(&mut self) {
+        self.consecutive = 0;
+    }
+}
 
 #[derive(Debug, Args)]
 pub(crate) struct UsbPresenceWatchCommand {
@@ -260,14 +282,19 @@ pub(crate) fn run(command: &UsbPresenceWatchCommand) -> Result<()> {
     let mut tracker = PresenceTracker::new(command.stable_ms);
     emit(&tracker.event(0, PresenceEventKind::Started, None))?;
     let interval = Duration::from_millis(command.interval_ms);
+    let mut probe_failures = ProbeFailures::default();
     loop {
         if stop.load(Ordering::SeqCst) {
             return emit(&tracker.event(elapsed_ms(started), PresenceEventKind::Stopped, None));
         }
-        let observation = match sample_usb_presence(&command.physical_identity) {
-            Ok(maybe_sample) => maybe_sample.map_or(PresenceObservation::Absent, |sample| {
-                PresenceObservation::Present(sample.into())
-            }),
+        let maybe_observation = match sample_usb_presence(&command.physical_identity) {
+            Ok(maybe_sample) => {
+                probe_failures.record_success();
+                Some(maybe_sample.map_or(PresenceObservation::Absent, |sample| {
+                    PresenceObservation::Present(sample.into())
+                }))
+            }
+            Err(_) if !probe_failures.record_failure() => None,
             Err(_) => {
                 let mut failed =
                     tracker.event(elapsed_ms(started), PresenceEventKind::Failed, None);
@@ -276,8 +303,10 @@ pub(crate) fn run(command: &UsbPresenceWatchCommand) -> Result<()> {
                 bail!("usb_presence_watch=failed reason=probe_failed");
             }
         };
-        for event in tracker.observe(elapsed_ms(started), &observation) {
-            emit(&event)?;
+        if let Some(observation) = maybe_observation {
+            for event in tracker.observe(elapsed_ms(started), &observation) {
+                emit(&event)?;
+            }
         }
         let deadline = Instant::now() + interval;
         while Instant::now() < deadline && !stop.load(Ordering::SeqCst) {
@@ -300,6 +329,43 @@ mod tests {
 
     fn kinds(events: &[PresenceEvent]) -> Vec<PresenceEventKind> {
         events.iter().map(|event| event.event).collect()
+    }
+
+    #[test]
+    fn a_transient_probe_error_does_not_fail_the_watch() {
+        // Arrange
+        let mut failures = ProbeFailures::default();
+        // Act
+        let must_fail = failures.record_failure();
+        // Assert
+        assert!(!must_fail);
+    }
+
+    #[test]
+    fn a_persistent_probe_fault_fails_the_watch() {
+        // Arrange
+        let mut failures = ProbeFailures::default();
+        // Act
+        let results: Vec<bool> = (0..PROBE_FAILURE_LIMIT)
+            .map(|_| failures.record_failure())
+            .collect();
+        // Assert
+        assert_eq!(results.iter().filter(|must_fail| **must_fail).count(), 1);
+        assert!(results.last().copied().unwrap_or(false));
+    }
+
+    #[test]
+    fn a_successful_probe_resets_the_failure_count() {
+        // Arrange
+        let mut failures = ProbeFailures::default();
+        for _ in 1..PROBE_FAILURE_LIMIT {
+            failures.record_failure();
+        }
+        // Act
+        failures.record_success();
+        let must_fail = failures.record_failure();
+        // Assert
+        assert!(!must_fail);
     }
 
     #[test]
