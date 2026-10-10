@@ -10,6 +10,7 @@ import { lifecycle } from './lifecycle.mjs';
 import { nativeAudits } from './audits.mjs';
 import { componentCoverage, liveWriters } from './coverage.mjs';
 import { compilerBindings, classifyHost } from './compiler-bindings.mjs';
+import { ledgerParity } from './parity.mjs';
 
 export async function writeJson(path, value) {
   await writeFile(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
@@ -57,6 +58,7 @@ export async function runCorpus(binary, repo, options) {
   await newEvidenceRoot(root);
   const rows = [], coverage = REQUIRED_COVERAGE.map(id => ({ id, status: 'unsupported', category: 'integration_not_qualified' }));
   const initial = await sourceBindings(repo);
+  const parity = await ledgerParity(repo);
   let manifestPath = options['--manifest'] && resolve(repo, options['--manifest']);
   let production = null, targetManifest = null;
   const preparation = [];
@@ -119,7 +121,7 @@ export async function runCorpus(binary, repo, options) {
   const writers = await liveWriters(root);
   if (writers.length) { decision.qualified = false; decision.mode = 'observation'; decision.blockers.push({ category: 'producer_release_unproven', count: writers.length }); }
   const report = { schema: VERSION, command: options.command, ...decision, bindings, rows, coverage, preparation, native_audits: audits,
-    parity: '90/95', device_effects: false, package_frozen: false, rollout: 'observation_only_until_full_qualification' };
+    parity, device_effects: false, package_frozen: false, rollout: 'observation_only_until_full_qualification' };
   // No frozen physical candidate is produced from incomplete qualification.
   if (report.qualified) {
     const frozen = join(root, 'frozen-package'); await mkdir(frozen, { mode: 0o700 });

@@ -2,7 +2,8 @@
 
 This milestone is **not full virtual-board qualification**. The task stays active,
 mandatory pre-flash rollout remains disabled, and physical device effects remain
-disabled. Parity stays **90/95**. Accepted-share qualification and all historical
+disabled. It promotes no parity row (`docs/parity/progress.jsonl` is authoritative).
+Accepted-share qualification and all historical
 resource-proof gaps remain unresolved; earlier seals are unchanged.
 
 ## Implemented and checked

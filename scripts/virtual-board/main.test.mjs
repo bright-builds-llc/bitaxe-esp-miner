@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { parseArguments } from './main.mjs';
 import { SCENARIOS, SEEDS, REQUIRED_COVERAGE, qualify, requiredProfiles } from './profiles.mjs';
 import { lifecycle } from './lifecycle.mjs';
+import { parityFromLedger } from './parity.mjs';
 
 test('unknown changes select the full corpus', () => {
   assert.deepEqual(requiredProfiles(['tools/flash/src/main.rs']), [...SCENARIOS]);
@@ -93,4 +94,21 @@ test('wrong invocation or compiled source identity rejects otherwise passing evi
     const { expected, envelope, life } = admittedHost(); envelope[field] = 'different';
     assert.equal(classifyHost(envelope, life, expected), 'failed', field);
   }
+});
+test('report parity comes from the latest ledger record', () => {
+  // Arrange
+  const ledger = [
+    { schema_version: 'parity-progress-v1', verified_total: 90, active_total: 95 },
+    { schema_version: 'parity-progress-v1', verified_total: 92, active_total: 96 },
+  ].map(record => JSON.stringify(record)).join('\n') + '\n';
+
+  // Act
+  const parity = parityFromLedger(ledger);
+
+  // Assert
+  assert.equal(parity, '92/96');
+});
+test('an empty or malformed parity ledger fails visibly', () => {
+  assert.throws(() => parityFromLedger('\n'), /parity_ledger_empty/);
+  assert.throws(() => parityFromLedger('{"schema_version":"other","verified_total":1,"active_total":2}\n'), /parity_ledger_invalid/);
 });

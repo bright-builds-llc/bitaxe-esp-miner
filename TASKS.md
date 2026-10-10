@@ -174,12 +174,15 @@ prerequisites exist and continue to the next software-actionable row.
 
 ### task-ultra205-virtual-board-validation | 2026-09-30 | Full functional virtual Ultra 205 and pre-flash validation
 
-Status: Verified software milestone; full qualification blocked by corrected-target
-panic recurrence and unsupported mandatory integration coverage.
+Status: Verified software milestone; full qualification blocked by missing actual
+margin/call-closure proof and unsupported mandatory integration coverage. The
+corrected-target panic is resolved in emulation (campaign004, below).
 Cross-reference | 2026-10-02: archived `task-device-noise-worker-stack` resolved
 run017's composed Noise boundary in emulation (campaign004) and passed a real
 device Noise handshake (attempt-003). Other mandatory profiles and coverage
-remain open.
+remain open. Later virtual-path changes (`654338d0` generation-gate layout,
+`24af10be`/`00f84eae` movsp-safe queues, `92f58abb` PSRAM preference) postdate
+the recorded results and rotate their source bindings.
 Objective: reuse production control logic in deterministic host and Xtensa/QEMU
 scenarios, model every Ultra 205 functional peripheral, then qualify one canonical
 pre-flash gate. References: `task-str005-v2-accepted-share-probe`, its immutable
@@ -220,7 +223,8 @@ local evidence only; no modification of sealed predecessor inventories or raw du
 Pinned upstream reference remains read-only. Functional models are not electrical,
 RF, cycle-accurate or physical USB timing proof. Keep calibration gaps and modeled
 memory distinct from actual SDK observations; no hardware parity promotion.
-Parity remains90/95; accepted-share stays active/unresolved. Changed SDK/model/source/
+This task promotes no parity row (`docs/parity/progress.jsonl` is authoritative);
+accepted-share stays active/unresolved. Changed SDK/model/source/
 package/validator identities invalidate affected results. Unknown changes select the
 full validation suite. Missing required profile, calibration or process-release proof
 is a concrete blocker, never success or permission for another hardware attempt.
@@ -737,12 +741,46 @@ stale-source/build regressions, process/listener and evidence regressions, five
 production native audits, reference/redaction/standards/Markdown/diff checks.
 Final verification receipts and public summary accompany the committed milestone.
 Completion review: not complete; do not archive. Explicit remaining blockers are
-corrected-target panic and missing actual margin/call-closure proof, strict live
-fixture/header/nonce vector, real allocation interception, production Gate/page/
-HTTP/framed-I/O integration, consolidated production lifecycle/ownership profiles,
-full qualified host/target corpus and mandatory matching-report rollout. Missing
+missing actual margin/call-closure proof, strict live fixture/header/nonce vector,
+real allocation interception, production Gate/page/HTTP/framed-I/O integration
+(in progress below), consolidated production lifecycle/ownership profiles, full
+qualified host/target corpus and mandatory matching-report rollout. The
+corrected-target panic is resolved in emulation (campaign004). Missing
 calibration remains an explicit fidelity non-claim. Accepted-share stays active,
-all physical-effect gates stay disabled and parity remains90/95.
+all physical-effect gates stay disabled and this task promotes no parity row.
+
+Framed-link integration, increment 1 | 2026-10-10 | Owner-approved plan
+
+Objective: run the production inbound `bwg-worker-serial/0.2` link decisions on
+the host. Extract them from firmware `bwg_worker_usb/link.rs` into a pure
+`bitaxe-worker-control::serial::link` core behind a statically dispatched effects
+trait, keep the firmware file as a thin adapter, and drive the simulation through
+real envelopes (Hello, sequence, heartbeat liveness, receive credit, Close) instead
+of bare controller JSON. Later increments: outbound writer core; a stdio virtual
+device driven by the pinned Gate controller; the Gate page plus loopback HTTP
+supervisor, which alone may flip `gate-page-http-seams`.
+
+- [ ] Refresh stale status, blocker and parity text; derive the validation report's
+  parity figure from the ledger instead of a literal.
+- [ ] Add a host characterization harness that records today's link effect
+  transcripts, and keep a pre-refactor ELF as the stack baseline.
+- [ ] Extract the pure core with unit, allocation-failure and Gate conformance
+  vector tests; reduce firmware `link.rs` to an adapter with identical transcripts.
+- [ ] Update source-ownership tests and the native USB ownership verifier; add a
+  link-thread stack audit and compare it against the baseline.
+- [ ] Drive simulation scenarios through the core; add a `framed-serial-link`
+  coverage row while `gate-page-http-seams` stays unsupported.
+- [ ] Run the affected Bazel and ordered Cargo checks, firmware build/package,
+  native audits, redaction/reference/parity/standards checks; commit and push.
+
+Authorization: repository source, tests, fixtures, documentation, build, package,
+static ELF audits, host-backend virtual runs, commit and push only. No detector,
+USB/device session, flash, monitor, emulator effect gate, credentials, network
+discovery, mining or other hardware effect. No parity promotion.
+
+Verification: pending. Completion review: pending. Residual risk to record: the
+refactored firmware link meets hardware only in a later, separately contracted
+hardware task.
 
 ## Future
 

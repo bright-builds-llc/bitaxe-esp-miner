@@ -83,4 +83,5 @@ real Gate/page/HTTP seams, capability-specific interception of real allocation
 paths, retained V2 status serialization, and several composed timing/recovery/
 process-ownership scenarios. The active task records exact target execution
 failures and remaining blockers. Models and simulator passes cannot establish
-physical electrical, RF, USB timing or hardware parity. Parity remains **90/95**.
+physical electrical, RF, USB timing or hardware parity. Virtual runs promote no
+parity row; `docs/parity/progress.jsonl` is authoritative.
