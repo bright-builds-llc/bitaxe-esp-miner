@@ -28488,3 +28488,389 @@ metadata-only, non-signing diagnostic seam that distinguishes durable replay
 from context rejection, and that seam is outside the standing authorization.
 
 Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md) proves real shares/renewal and foreground/heartbeat safe-stop on the exact fixed-USB pair. This broader task remains open: its Pause, independent expiry, USB-only disconnect, reboot/uncertain-time, negative authorization and credential-absence matrix still requires its own complete successor contract and evidence.
+
+### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
+
+Status: Blocked historical evidence. The consumed commands/plans below are historical, not current execution authority. ADR-0021 and `task-fixed-usb-serial-qualification` own the replacement transport/baseline; missing historical evidence is not promoted or erased.
+
+- [x] Create the immutable read-only boot-chain discriminator plan.
+- [x] Implement exact boot metadata, OTA selection, selected-app readback, and
+      protected evidence.
+- [x] Verify, commit/push, package, and run the single authorized Ultra 205
+      readback.
+- [x] Record the closed result without repairing or reopening predecessor work.
+
+Plan: `docs/parity/work-plans/20260902T022334Z-NATIVE-USB-BOOT-CHAIN-INTEGRITY/PLAN.md`
+
+Depends on: terminal `application_missing` under
+`task-native-usb-rom-exit-discriminator-205`; immutable recovery-006 snapshot
+bundle; connected Ultra 205; and existing native-USB/process/privacy owners.
+
+Authorization: plan/source/test/docs/rules/build/package, commit/push,
+effect-free preflight/finalization, one closed display-state capture, one
+built-in BOOT/RESET sequence, one ROM admission, exact read-only bootloader,
+partition-table, OTA-data, and selected-app flash reads, one managed hard-reset
+application exit, protected evidence, and cleanup. All device writes, erase,
+network, mining, hardware-control, electrical-interface, other-device,
+durability, recovery mutation, and parity-promotion effects are excluded.
+
+Verification: Plan commit `2f150921` is pushed. Exact read-only esptool range
+ownership, ESP-IDF partition/OTA selection, selected-app identity validation,
+closed display/manual checkpoints, consume-once evidence, and public
+allowlisting are implemented with focused tests. Full gates, implementation
+commit/package, and hardware readback were admitted only after verification.
+
+Hardware result: Implementation commit `897b83cc` and its exact clean package
+are pushed. The display checkpoint independently recorded `active_ui` before
+reset. One built-in BOOT/RESET sequence admitted the same physical Ultra 205 in
+ROM. Exact read-only bootloader, partition-table, and OTA-data reads completed,
+and all three match the immutable recovery-006 snapshots byte-for-byte. Both
+OTA select copies reduce to invalid, so the pinned bootloader rule selects the
+factory application. The single selected factory-partition read then failed
+mid-transfer at the macOS USB boundary with closed signature
+`device_not_configured`; no selected-app file, machine result, public
+projection, or `RESULT.md` was produced. Passive final inspection found the
+same Serial/JTAG transport with unknown execution owner. No write, erase, NVS,
+network, mining, or hardware-control effect occurred; no process or USB holder
+remains.
+
+Completion review: Terminal and blocked after the one authorized readback.
+Recovery-006 boot metadata is exact and its factory-selection state is proved;
+the remaining discriminator is the unstable long USB read or selected factory
+application boundary. The readback root is consumed, another reset/read is
+prohibited, and follow-up requires a new contract. Recovery-006 bytes remain
+unchanged.
+
+Closed as superseded (2026-10-10, `task-bwg-evidence-hardening`): ADR-0021 and
+the completed, archived `task-fixed-usb-serial-qualification` replaced the
+TinyUSB/recovery transport this record depended on. Since then:
+
+- the fixed Serial/JTAG baseline has run every hardware campaign;
+- the soak and BWG-007 attempts 008 and 009 used detector-gated installs and
+  board-info, with no recovery-006 path.
+
+This record's consumed commands stay historical, and its missing evidence is
+neither promoted nor erased.
+
+### task-native-usb-rom-exit-discriminator-205 | 2026-08-31 | Separate ROM exit from Serial/JTAG application ownership
+
+Status: Blocked historical evidence. The consumed commands/plans below are historical, not current execution authority. ADR-0021 and `task-fixed-usb-serial-qualification` own the replacement transport/baseline; missing historical evidence is not promoted or erased.
+
+- [x] Create and push the immutable ROM-exit discriminator plan before source
+      changes or hardware effects.
+- [x] Split transport profile from execution owner behind `UsbOwnership`.
+- [x] Correct the force-download ROM exit and add boot-lifetime profile evidence.
+- [x] Create the immutable passive-first/manual-fallback successor plan after
+      the rebooted host proved Serial/JTAG transport without ROM admission.
+- [x] Verify, commit/push, package, and run one no-write Ultra 205 discriminator.
+- [x] Publish or record the closed result without reopening predecessor tasks.
+
+Plan: `docs/parity/work-plans/20260831T190744Z-NATIVE-USB-ROM-EXIT-DISCRIMINATOR/PLAN.md`
+
+Successor plan:
+`docs/parity/work-plans/20260901T161405Z-NATIVE-USB-SERIAL-OWNER-RECOVERY/PLAN.md`.
+The predecessor plan and unused `scratch/native-usb-rom-exit/attempt-001`
+remain immutable historical context.
+
+Depends on: accepted immutable `nvs_match` under
+`task-native-usb-config-ap-recovery-205`; terminal repeated
+`same_serial_jtag` traces; installed recovery-006; connected Ultra 205; and
+the existing native-USB ownership, recovery, privacy, and process supervisors.
+
+Authorization: repository source/test/docs/rules/build/package, commit/push,
+effect-free preflight/finalization, one 25-second passive owner observation,
+one read-only ROM admission probe only after silence or insufficient samples,
+one conditional built-in BOOT/RESET sequence, one contained read of the exact
+force-download bit, one contained esptool hard-reset application exit, at most
+30 seconds of same-device passive application observation, protected evidence,
+and cleanup. Firmware/NVS/settings/theme writes, flash, erase, OTA, Wi-Fi or
+HTTP actions, discovery, mining, ASIC work, fan/voltage/power effects, direct
+UART/pins/pads/headers/probes, other devices, durability, recovery mutation,
+and parity promotion are excluded.
+
+Verification: Plan commit `29950014` is pushed. Red-to-green coverage passes
+for execution-owner separation, ROM and application admission, force-bit
+parsing, hard-reset exit, periodic boot-profile replay, CLI shape, projection
+allowlisting, and ownership/source guards. Ordered Cargo gates, Bright Builds,
+all 74 Bazel tests, firmware build/package, native-USB ownership, parity,
+progress, redaction, reference cleanliness, whitespace, sensitive-value scan,
+and final diff review pass. The separate implementation commit/package,
+effect-free preflight, one no-write hardware discriminator, finalization, and
+cleanup remain.
+
+Successor verification: Immutable successor plan commit `ed71ba15` is pushed.
+The software implementation makes ordinary Serial/JTAG detection inspection
+only, adds the sealed passive-first owner recovery Interface, binds two-sample
+recovery-006 attestation admission, permits the manual branch only for missing
+or insufficient samples, retains one-probe/no-repeat semantics, and projects
+only closed allowlisted fields. Focused Rust, TypeScript, Swift fixture,
+detector, flash, device-session, runfiles, and native-USB ownership tests pass.
+The ordered Cargo gates, Bright Builds, all 75 Bazel tests, firmware
+build/package, ownership verification, parity/progress, redaction, reference,
+whitespace, sensitive-value scan, and final source review pass. The separate
+implementation commit was admitted only after this complete gate set.
+
+Successor hardware result: Implementation commit `9d3aec4b` and its exact clean
+package are pushed. Inspection-only detection admitted one Serial/JTAG
+transport without synchronization traffic, and the effect-free preflight
+passed. The single 25-second passive observation reported `missing`; its one
+read-only ROM probe failed without identity drift and sealed `manual_required`.
+The authorized built-in BOOT/RESET checkpoint then admitted the same physical
+board in ROM. The exact force-download bit was clear, the contained managed
+esptool hard-reset application exit completed once, and the subsequent
+30-second observation again reported `missing` on the same Serial/JTAG
+transport without enumeration change. The sealed terminal category is
+`application_missing`. Device writes, NVS reads, host-network effects, and
+repetition remained zero; private modes, USB cleanup, zero holders, and zero
+owned processes passed. No public projection or `RESULT.md` was produced.
+
+Predecessor progress: Implementation commit `88fd860e` is pushed and its exact clean
+package is built. A Mac reboot cleared the uninterruptible host-I/O child. Fresh
+retain-ROM detection then found exactly one same-device Serial/JTAG transport,
+but read-only bootloader synchronization failed without enumeration change.
+The detector left no holder or owned process. No preflight, task root,
+force-bit read, reset, monitor, projection, device write, or network effect
+occurred. The successor corrects this admission inversion by authenticating the
+application passively before requesting ROM proof and allows one built-in
+BOOT/RESET recovery only when passive evidence is unavailable.
+
+Predecessor checkpoint: Blocked at the shared Serial/JTAG execution-owner
+boundary before hardware admission. Predecessor tasks and recovery-006 remain
+unchanged.
+
+Completion review: Terminal and blocked after the one authorized passive/manual
+owner-recovery sequence. Recovery-006 remains installed, but execution owner
+cannot be authenticated from its silent Serial/JTAG runtime. Configuration-AP
+Stage 2, another reset, and another owner-recovery ordinal remain prohibited
+until a new contract addresses the missing application evidence boundary.
+
+Closed as superseded (2026-10-10, `task-bwg-evidence-hardening`): ADR-0021 and
+the completed, archived `task-fixed-usb-serial-qualification` replaced the
+TinyUSB/recovery transport this record depended on. Since then:
+
+- the fixed Serial/JTAG baseline has run every hardware campaign;
+- the soak and BWG-007 attempts 008 and 009 used detector-gated installs and
+  board-info, with no recovery-006 path.
+
+This record's consumed commands stay historical, and its missing evidence is
+neither promoted nor erased.
+
+### task-native-usb-display-recovery-205 | 2026-08-30 | Authenticate recovery-006 from the displayed origin
+
+Status: Blocked historical evidence. The consumed commands/plans below are historical, not current execution authority. ADR-0021 and `task-fixed-usb-serial-qualification` own the replacement transport/baseline; missing historical evidence is not promoted or erased.
+
+- [x] Create and push the immutable display-bound recovery plan before
+      implementation or hardware/network effects.
+- [x] Add the task-gated display capture, private USB MAC receipt, strict HTTP
+      restoration Module, no-effect finalizer, and focused guardrails.
+- [ ] Authenticate recovery-006, restore exact settings/theme, and prove
+      mine-on-boot disabled, inactive zero-work/share state, and cleanup.
+- [ ] Publish the redacted recovery projection, write `RESULT.md`, and archive
+      only this child task.
+
+Plan: `docs/parity/work-plans/20260830T161148Z-NATIVE-USB-DISPLAY-RECOVERY/PLAN.md`
+
+Depends on: terminal predecessor `task-native-usb-recovery-transition-205`;
+completed recovery-006 snapshot and Wi-Fi-seed receipts under
+`scratch/native-usb-transition/recovery-002`; connected Ultra 205 displaying
+an RFC1918 address; recovery-006 bundle/readiness/validator evidence; and the
+existing strict HTTP and native-USB owners.
+
+Authorization: plan/source/test/docs/rules/build/package, lesson audit and one
+corrective lesson, commit/push, effect-free preflight/finalization, one
+operator display-address capture with one pre-mutation correction branch, one
+read-only USB/MAC admission, one exact settings PATCH, one exact theme POST,
+bounded reconciliation reads, final detector admission, protected evidence,
+and cleanup. Local development output may show the RFC1918 address; committed
+evidence remains redacted. Flash, NVS write, erase, manual buttons, transition
+diagnostic, mining, ASIC, fan/voltage, fault injection, OTA, discovery, mDNS,
+ARP, router state, scans, direct UART/pins/pads/probes/headers, other devices,
+other boards, durability, and parity promotion are excluded.
+
+Verification: Immutable plan/audit/task commit `29a98fcc` is pushed. Focused
+RFC1918, MAC normalization, restoration payload, strict HTTP route, CLI,
+projection allowlist, Swift fixture/runfiles, file-mode, ownership, and source
+guard tests pass. Ordered Rust gates, Bright Builds, all 72 Bazel tests, normal
+and rollback firmware links, canonical package, native-USB ownership, parity
+and progress, redaction, reference cleanliness, sensitive-value scan,
+whitespace, and final diff review pass. The implementation commit, exact clean
+package, one display-bound restoration, finalization, and cleanup remain
+pending.
+
+Terminal update: implementation commit `54020484` and nested-root fix
+`cfcbfa9b` are pushed. Effect-free preflight accepted. The first capture
+returned `capture_cancelled` without creating a device or network effect; the
+operator then confirmed that the Bitaxe display shows no IP address. The
+plan's required displayed-origin assumption is therefore false. No USB
+admission, HTTP request, settings/theme mutation, final detector, or public
+projection occurred.
+
+Completion review: Blocked at `display_origin_unavailable`. Recovery-006
+remains installed, but Wi-Fi association and exact settings/runtime state are
+still unauthenticated. Another display capture, network discovery, or settings
+request is ineligible. Follow-up work requires a separate task contract for
+the recovery-006 Wi-Fi NVS/schema and runtime association boundary. The
+blocked predecessor, parent native-USB task, STR-005, and BWG remain
+unchanged.
+
+Closed as superseded (2026-10-10, `task-bwg-evidence-hardening`): ADR-0021 and
+the completed, archived `task-fixed-usb-serial-qualification` replaced the
+TinyUSB/recovery transport this record depended on. Since then:
+
+- the fixed Serial/JTAG baseline has run every hardware campaign;
+- the soak and BWG-007 attempts 008 and 009 used detector-gated installs and
+  board-info, with no recovery-006 path.
+
+This record's consumed commands stay historical, and its missing evidence is
+neither promoted nor erased.
+
+### task-native-usb-config-ap-recovery-205 | 2026-08-30 | Recover through the detector-bound setup AP
+
+Status: Blocked historical evidence. The consumed commands/plans below are historical, not current execution authority. ADR-0021 and `task-fixed-usb-serial-qualification` own the replacement transport/baseline; missing historical evidence is not promoted or erased.
+
+- [x] Create and push the immutable configuration-AP recovery plan before
+      implementation or hardware/host-network effects.
+- [x] Add the exact read-only NVS admission and protected typed semantic
+      discriminator; prohibit later actions until it seals `nvs_match`.
+- [ ] After an accepted `nvs_match`, add detector-bound AP association, strict
+      restoration, restart/resume, and host cleanup in a separate commit.
+- [ ] Prove exact recovery-006 settings/theme, station recovery, inactive
+      zero-work/share state, final USB admission, and cleanup.
+- [ ] Publish the redacted projection, write `RESULT.md`, and archive only this
+      child task.
+
+Plan: `docs/parity/work-plans/20260831T033840Z-NATIVE-USB-CONFIG-AP-RECOVERY-NVS-FIRST/PLAN.md`
+
+Supersedes immutable planning contract
+`docs/parity/work-plans/20260830T184150Z-NATIVE-USB-CONFIG-AP-RECOVERY/PLAN.md`;
+the earlier plan remains historical and unmodified.
+
+Depends on: blocked display-origin and transition recovery tasks; completed
+recovery-006 snapshot/Wi-Fi-seed receipts; visible USB-derived `Bitaxe_ABCD`
+configuration AP; connected Ultra 205; protected Wi-Fi/pool/settings inputs;
+and the existing native-USB, strict HTTP, and CoreWLAN owners.
+
+Authorization: plan/source/test/docs/rules/build/package, commit/push,
+effect-free preflight/finalization, one exact NVS readback, one directed scan
+and association to the USB-derived AP, one settings PATCH, one theme POST, one
+software restart, one host Wi-Fi restoration, bounded reconciliation reads,
+one no-timeout station-IP checkpoint, final detector admission, protected
+evidence, and cleanup. Firmware/NVS writes, erase, manual buttons, transition
+diagnostics, mining, ASIC, fan/voltage, OTA, broad scans, ARP, mDNS, router
+inspection, subnet discovery, direct UART/pins/pads/probes/headers, other
+devices/boards, durability, and parity promotion are excluded.
+
+Verification: Successor plan commit `7db48345` is pushed. Stage 1 software
+implementation commit `5e75017b` and its exact clean package are pushed and
+verified. The first `read-nvs` launch stopped before root creation, USB
+acquisition, or NVS read because the wrapper lacked a typed child-admission
+checkpoint and rejected the managed virtualenv Python symlink. The targeted
+admission-only/closed-failure fix passes the real no-effect managed-tool
+boundary in pushed commit `ee527b40`. Its exact clean package, fresh detector,
+and strengthened preflight passed. The progress-backed read consumed exactly
+24 KiB at `0x9000`, sealed `nvs_match` across all 30 expected typed entries,
+performed no device write or host-network effect, returned to the admitted ROM
+profile, and proved private modes and zero owned processes. Stage 2
+configuration-AP recovery remains blocked because the required recovery-006
+application profile did not reappear after the read. The first sealed `resume`
+proved that `board-info --after hard-reset` left the same device continuously
+in `SerialJtagRuntime`. A targeted successor uses the pinned esptool `run`
+command to execute the installed application without repeating the NVS read or
+writing the device. Pushed commit `aba74ad9`, its exact package, and all gates
+passed, but the successor repeated the same authoritative signature: 132
+bounded observations were all `same_serial_jtag`, with no overflow, completion
+receipt, NVS reread, device write, host-network effect, or owned-process leak.
+The plan's repeated-signature stop is terminal. Stage 2 association, recovery,
+and finalization are prohibited until a separate contract resolves whether the
+installed application can be authenticated in `SerialJtagRuntime` without
+assuming Worker reappearance.
+
+Completion review: Blocked after accepted `nvs_match` at the recovery-006
+runtime-profile boundary. Recovery-006 remains installed and the protected
+readback is immutable. No public projection was produced. Blocked predecessors,
+parent native-USB task, STR-005, and BWG remain unchanged.
+
+Closed as superseded (2026-10-10, `task-bwg-evidence-hardening`): ADR-0021 and
+the completed, archived `task-fixed-usb-serial-qualification` replaced the
+TinyUSB/recovery transport this record depended on. Since then:
+
+- the fixed Serial/JTAG baseline has run every hardware campaign;
+- the soak and BWG-007 attempts 008 and 009 used detector-gated installs and
+  board-info, with no recovery-006 path.
+
+This record's consumed commands stay historical, and its missing evidence is
+neither promoted nor erased.
+
+### task-bwg-evidence-hardening | 2026-10-10 | Harden BWG evidence and close the review caveats
+
+Status: Active, owner-approved 2026-10-10. Follow-up to the archived
+`task-bwg007-real-worker-restoration`. Software and documentation only; no
+hardware effect is authorized. The new facts run on the next hardware session
+under its own contract.
+
+- [x] Redaction verifier: check the restoration projections, which use a
+      `profile` key, and report other unchecked evidence JSON.
+- [x] Firmware build: report a cargo build killed by its process timeout as a
+      timeout.
+- [x] Tracker hygiene: archive the four native-USB records the completed
+      fixed-USB qualification superseded.
+- [x] Lessons audit (`e7b1e096`): 15 lessons that AGENTS.md now fully states
+      were archived and 3 added. The active set is still over budget, because
+      the remaining lessons are distinct; moving more rules into AGENTS.md is a
+      separate owner decision.
+- [x] Firmware `boot_review` (reset cause), with a host judge fact
+      `rebootWasPowerLoss`.
+- [x] Rejection review v2 recording the safe stop each rejection caused, with
+      N4 requiring `control_failed`.
+- [x] Gate parsers and page operation for both, a pin bump, projection profile
+      0.4 and all gates.
+
+Verification (2026-10-10):
+
+- Firmware `5a6ce541`: `boot_review` with `worker-boot-review-v1`
+  `resetCause`, and rejection review v2 with `last.safeStop` (`control_failed`
+  for N4, `none` for N1–N3, unchanged by a later disconnect).
+  - 323 worker-control tests.
+  - Stack audits within budget. The tightest is signed Start, with 2,800
+    bytes of headroom against the 2,048 required.
+- Gate `d9023cb`, pinned here: `bootReview()` and v1/v2 rejection-review
+  parsing; 1,093 tests.
+- Host (`8d31fc62`..`06fbbbe6`):
+  - judge facts `rebootWasPowerLoss` and `renewalReplaySafeStopObserved`;
+  - projection profile 0.4; the published 0.2 and 0.3 files still validate;
+  - 160 restoration tests.
+- Redaction verifier (`f6b8990c`): it now checks registered `profile`
+  values, raising the checked count from 34 to 50, including all 16 BWG
+  projections.
+- Build timeout (`7d663528`): a killed build now reports
+  `firmware_build_timed_out`.
+- Lessons audit `e7b1e096`. The four superseded native-USB records were
+  archived.
+- Gates: Bright Builds, fmt, clippy, build, `cargo test` (2,824 passed,
+  0 failed) and `just verify-redaction` (50) passed.
+  - `just test`: 315 of 322 passed. Three of the seven failures then
+    passed on a serial rerun.
+  - The other four are timeouts at their bounds in process-spawning tests
+    this task did not change: `hardware_operator_sequences` (300 s),
+    `str005_noise_serial_pipeline` (30 s),
+    `str005_v2_serial_operator_private_output` (10 s) and automation
+    `validator-boundary` (10 s).
+  - They match this host's macOS execution-policy launch holds (`syspolicyd`
+    about 29% CPU; `heap_capture` took 124 s against 1.2 s on a quiet run).
+    The private-output test passed alone in 0.4 s earlier this session.
+
+Completion review: done. The attempt-008/009 caveats about the reset cause and
+N4's `control_failed` now have device-reported, judged facts ready for the
+next hardware session. The redaction backstop now covers the restoration
+projections. No hardware was used and no parity changed.
+
+Residual risks:
+
+- 111 of 161 evidence JSON files are still outside the semantic redaction
+  verifier: 64 have no schema key and 47 have unregistered schemas. This
+  needs a separate task.
+- `reboot` power loss and N4 `control_failed` are proven only once the next
+  hardware run exercises them.
+- The lessons ledger is still over budget unless more rules move into
+  AGENTS.md (owner decision).
+- Launch-hold timeouts on this host keep `just test` from running clean.
