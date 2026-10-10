@@ -1,5 +1,6 @@
 //! Bounded fixed Serial/JTAG framing and logical connection identity.
 
+pub mod link;
 mod liveness;
 mod receive;
 pub mod trace;

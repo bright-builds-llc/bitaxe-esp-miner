@@ -1,22 +1,6 @@
 //! First closed receive failure per logical session; no payload or identifier retention.
+use bitaxe_worker_control::serial::link::SerialLinkFailure;
 use std::sync::atomic::{AtomicU32, Ordering};
-
-#[derive(Clone, Copy)]
-#[repr(u8)]
-pub(super) enum Stage {
-    Read = 1,
-    Framing,
-    Envelope,
-    Sequence,
-    HeartbeatPayload,
-    HeartbeatTimeout,
-    ControlAllocation,
-    ControlQueue,
-    UnexpectedKind,
-    SessionRevoked,
-    Integrity,
-    ReceiveCounter,
-}
 
 pub(super) struct Receipt(AtomicU32);
 impl Receipt {
@@ -26,30 +10,15 @@ impl Receipt {
     pub fn clear(&self) {
         self.0.store(0, Ordering::Release);
     }
-    pub fn record(&self, stage: Stage, observed_bytes: usize) {
-        let value = ((stage as u32) << 24) | observed_bytes.min(66560) as u32;
+    pub fn record(&self, failure: SerialLinkFailure, observed_bytes: usize) {
+        let value = (u32::from(failure.code()) << 24) | observed_bytes.min(66560) as u32;
         let _ = self
             .0
             .compare_exchange(0, value, Ordering::AcqRel, Ordering::Acquire);
     }
     pub fn marker(&self) -> Option<String> {
         let value = self.0.load(Ordering::Acquire);
-        let stage = match value >> 24 {
-            0 => return None,
-            1 => "read",
-            2 => "framing",
-            3 => "envelope",
-            4 => "sequence",
-            5 => "heartbeat_payload",
-            6 => "heartbeat_timeout",
-            7 => "control_allocation",
-            8 => "control_queue",
-            9 => "unexpected_kind",
-            10 => "session_revoked",
-            11 => "integrity",
-            12 => "receive_counter",
-            _ => return None,
-        };
+        let stage = SerialLinkFailure::from_code(value >> 24)?.label();
         Some(format!(
             "usb_rx_failure schema=v1 stage={stage} observed_bytes={} redacted=true",
             value & 0x00ff_ffff
@@ -66,8 +35,8 @@ mod tests {
         // Arrange
         let receipt = Receipt::new();
         // Act
-        receipt.record(Stage::Framing, usize::MAX);
-        receipt.record(Stage::SessionRevoked, 0);
+        receipt.record(SerialLinkFailure::Framing, usize::MAX);
+        receipt.record(SerialLinkFailure::SessionRevoked, 0);
         // Assert
         assert_eq!(
             receipt.marker().as_deref(),
@@ -75,7 +44,7 @@ mod tests {
         );
         // Act
         receipt.clear();
-        receipt.record(Stage::HeartbeatTimeout, 4096);
+        receipt.record(SerialLinkFailure::HeartbeatTimeout, 4096);
         // Assert
         assert_eq!(receipt.marker().as_deref(), Some("usb_rx_failure schema=v1 stage=heartbeat_timeout observed_bytes=4096 redacted=true"));
     }

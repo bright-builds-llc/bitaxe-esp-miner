@@ -6,6 +6,8 @@ const CRATE_CLOCK_ROUTE: &str =
     include_str!("../../../crates/bitaxe-worker-control/src/controller/clock.rs");
 const USB_SOURCE: &str = include_str!("bwg_worker_usb.rs");
 const LINK_SOURCE: &str = include_str!("bwg_worker_usb/link.rs");
+const LINK_CORE_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-worker-control/src/serial/link.rs");
 const WRITER_SOURCE: &str = include_str!("bwg_worker_usb/writer.rs");
 const SESSION_SOURCE: &str = include_str!("bwg_worker_session.rs");
 const NVS_SOURCE: &str = include_str!("bwg_worker_nvs.rs");
@@ -101,15 +103,24 @@ fn the_owner_loop_ticks_the_worker_from_real_uptime_and_names_the_failure() {
 #[test]
 fn heartbeat_and_link_deadlines_read_real_uptime() {
     // Arrange
-    let heartbeat = "let now = crate::runtime_uptime::millis();\n                    if !link.liveness.heartbeat(now) {";
+    let heartbeat = "let now = effects.now_ms();\n        if !link.liveness.heartbeat(now) {";
+    let position = |needle: &str| LINK_SOURCE.find(needle).expect(needle);
 
     // Act
-    let link_reads_uptime = LINK_SOURCE.contains(heartbeat);
+    let deadline = position("revocation::check_deadline(now);");
+    let supervise = position("receiver.supervise(now, &Native);");
+    let read = position("crate::usb_runtime::read(");
 
     // Assert
-    assert!(link_reads_uptime);
-    assert!(LINK_SOURCE.contains("revocation::check_deadline(now);"));
-    assert!(!LINK_SOURCE.contains("WorkerControl"));
+    assert!(LINK_SOURCE.contains("let now = crate::runtime_uptime::millis();"));
+    assert!(deadline < supervise && supervise < read);
+    assert!(LINK_SOURCE.contains("fn now_ms(&self) -> u64 {\n        crate::runtime_uptime::millis()\n    }"));
+    assert_eq!(LINK_SOURCE.matches("runtime_uptime::millis()").count(), 2);
+    assert!(LINK_CORE_SOURCE.contains(heartbeat));
+    for source in [LINK_SOURCE, LINK_CORE_SOURCE] {
+        assert!(!source.contains("WorkerControl"));
+        assert!(!source.contains("ClockStimulus") && !source.contains("clock_stimulus"));
+    }
 }
 
 #[test]

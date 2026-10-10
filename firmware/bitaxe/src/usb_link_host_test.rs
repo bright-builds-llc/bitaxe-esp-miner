@@ -16,7 +16,7 @@ mod bwg_worker_usb {
     use crate::fake_revocation::WorkerGeneration;
     use bitaxe_runtime::queue::SyncSender;
     use bitaxe_worker_control::serial::trace::{SerialTraceCorrelation, SerialTraceStage};
-    use bitaxe_worker_control::serial::{SerialKind, SerialSessionBinding};
+    use bitaxe_worker_control::serial::SerialSessionBinding;
     use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::OnceLock;
     use std::time::Duration;

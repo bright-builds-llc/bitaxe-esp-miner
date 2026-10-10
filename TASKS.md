@@ -768,10 +768,20 @@ supervisor, which alone may flip `gate-page-http-seams`.
   transcripts covering every reachable failure stage. New `just audit-link-stack`
   on the pre-refactor ELF: `link::run` frame 1,264 bytes, deepest normal path
   2,928 of a 6,144-byte budget (3,216 headroom, 96 unresolved targets).
-- [ ] Extract the pure core with unit, allocation-failure and Gate conformance
+- [x] Extract the pure core with unit, allocation-failure and Gate conformance
   vector tests; reduce firmware `link.rs` to an adapter with identical transcripts.
-- [ ] Update source-ownership tests and the native USB ownership verifier; add a
-  link-thread stack audit and compare it against the baseline.
+  `bitaxe_worker_control::serial::link` (`SerialLinkReceiver`, statically
+  dispatched `SerialLinkEffects`, pinned `SerialLinkFailure` codes) has 52 unit
+  tests; `:serial_link_tests` drives the pinned Gate serial and integrity vectors
+  and armed allocation failures. All 21 characterization transcripts reproduce
+  byte for byte through the adapter.
+- [x] Update source-ownership tests and the native USB ownership verifier; add a
+  link-thread stack audit and compare it against the baseline. The compiler
+  spills loop call targets to stack slots, so the audit now also counts every
+  address-taken callee (conservative). On that basis the baseline ELF measures
+  5,600 bytes and the refactored ELF 5,536 of a 6,144-byte budget, with the same
+  envelope-parse deepest path; the control-owner audit is unchanged at 10,256 and
+  no runtime realignment callers exist.
 - [ ] Drive simulation scenarios through the core; add a `framed-serial-link`
   coverage row while `gate-page-http-seams` stays unsupported.
 - [ ] Run the affected Bazel and ordered Cargo checks, firmware build/package,

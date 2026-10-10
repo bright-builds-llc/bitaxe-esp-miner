@@ -1,4 +1,12 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+# The native USB ownership verifier reads the shared serial link core.
+js_library(
+    name = "native_usb_link_core",
+    srcs = ["src/serial/link.rs"],
+    visibility = ["//scripts:__pkg__"],
+)
 
 rust_library(
     name = "bitaxe_worker_control",
@@ -108,6 +116,26 @@ rust_test(
     deps = [
         ":bitaxe_worker_control",
         "@crates//:serde_json",
+    ],
+)
+
+rust_test(
+    name = "serial_link_tests",
+    srcs = ["tests/serial_link.rs"],
+    crate_name = "bitaxe_worker_control_serial_link_tests",
+    data = [
+        "@bwg_gate_contract//:worker_serial_v02_fixtures",
+        "@bwg_gate_contract//:worker_serial_v02_integrity_fixtures",
+    ],
+    edition = "2021",
+    env = {
+        "BWG_SERIAL_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_serial_v02_fixtures)",
+        "BWG_SERIAL_INTEGRITY_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_serial_v02_integrity_fixtures)",
+    },
+    deps = [
+        ":bitaxe_worker_control",
+        "@crates//:serde_json",
+        "@crates//:zeroize",
     ],
 )
 

@@ -51,3 +51,17 @@ test('a changed RX thread stack size invalidates the audit contract', () => {
   // Act / Assert
   assert.throws(() => auditLinkStack(disassembly(graph()), prepared), /link_stack_contract/);
 });
+
+test('a call target spilled to a stack slot still counts toward depth', () => {
+  // Arrange: the link loop only loads `receive` from a literal, then calls through a reloaded register.
+  const rows = [[LINK, 640, []], ['receive', 3000, []]];
+  const address = new Map(rows.map(([name], index) => [name, (0x42000000 + index * 0x100).toString(16)]));
+  const text = `${address.get(LINK)} <${LINK}>:\n ${address.get(LINK)}: 004136 entry a1, 0x280\n` +
+    ` 42000003: 3d8f81 l32r a8, 42f00000 <_stext+0x10> (${address.get('receive')} <receive>)\n` +
+    ` 42000006: 3189 s32i.n a8, a1, 12\n 42000008: 3188 l32i.n a8, a1, 12\n 4200000a: 0008e0 callx8 a8\n\n` +
+    `${address.get('receive')} <receive>:\n ${address.get('receive')}: 004136 entry a1, 0xbb8\n`;
+  // Act
+  const result = auditLinkStack(text, PREPARED);
+  // Assert
+  assert.equal(result.deepest_normal_path_bytes, 640 + 3000 + 256);
+});

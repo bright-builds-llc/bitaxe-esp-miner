@@ -11,6 +11,10 @@ impl SerialReceiveProgress {
     pub const fn received_bytes(&self) -> u32 {
         self.0
     }
+    #[cfg(test)]
+    pub(crate) const fn at(received_bytes: u32) -> Self {
+        Self(received_bytes)
+    }
     /// Advances without wrapping. Exhaustion requires a fresh logical session.
     pub fn advance(&mut self, bytes: u32) -> Option<u32> {
         self.0 = self.0.checked_add(bytes)?;

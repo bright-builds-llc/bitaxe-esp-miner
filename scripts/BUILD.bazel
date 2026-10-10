@@ -49,6 +49,7 @@ js_binary(
     data = [
         "verify-native-usb-ownership.mjs",
         "//:native_usb_ownership_guard_inputs",
+        "//crates/bitaxe-worker-control:native_usb_link_core",
         "//firmware/bitaxe:native_usb_ownership_sources",
     ],
     entry_point = "verify-native-usb-ownership.mjs",
@@ -61,6 +62,7 @@ js_test(
     data = [
         "verify-native-usb-ownership.mjs",
         "//:native_usb_ownership_guard_inputs",
+        "//crates/bitaxe-worker-control:native_usb_link_core",
         "//firmware/bitaxe:native_usb_ownership_sources",
     ],
     entry_point = "verify-native-usb-ownership.mjs",

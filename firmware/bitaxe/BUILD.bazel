@@ -500,6 +500,7 @@ rust_test(
         "src/bwg_worker_usb/writer.rs",
         "src/bwg_worker_usb/rx_diagnostics.rs",
         "src/application_log.rs",
+        "//crates/bitaxe-worker-control:compiler_inputs",
     ],
     crate_name = "bwg_worker_source_ownership_tests",
     crate_root = "src/bwg_worker_source_ownership_test.rs",

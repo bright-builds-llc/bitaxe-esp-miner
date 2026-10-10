@@ -54,6 +54,7 @@ fn fixed_serial_driver_has_one_writer_and_no_phy_switching() {
     // Arrange
     let writer = include_str!("bwg_worker_usb/writer.rs");
     let link = include_str!("bwg_worker_usb/link.rs");
+    let link_core = include_str!("../../../crates/bitaxe-worker-control/src/serial/link.rs");
 
     // Act / Assert
     assert_eq!(
@@ -72,17 +73,24 @@ fn fixed_serial_driver_has_one_writer_and_no_phy_switching() {
     );
     assert!(USB_RUNTIME_SOURCE.contains("usb_serial_jtag_read_bytes"));
     assert!(USB_RUNTIME_SOURCE.contains("usb_serial_jtag_write_bytes"));
-    for source in [USB_RUNTIME_SOURCE, USB_SOURCE, writer, link] {
+    for source in [USB_RUNTIME_SOURCE, USB_SOURCE, writer, link, link_core] {
         assert!(!source.contains("tinyusb_driver_install"));
         assert!(!source.contains("restart_into_rom_downloader"));
         assert!(!source.contains("LineCoding"));
     }
-    assert!(!link.contains("recv_timeout"));
-    assert!(!link.contains("send_control"));
+    for source in [link, link_core] {
+        assert!(!source.contains("recv_timeout"));
+        assert!(!source.contains("send_control"));
+    }
     assert!(link.contains("revocation::check_deadline(now)"));
     assert!(link.contains("revocation::revoke_reason_at("));
     assert!(link.contains("RevocationReason::LinkClosed"));
-    assert!(link.contains("link.liveness.poll(now)"));
+    assert_eq!(link.matches("crate::usb_runtime::read(").count(), 1);
+    assert!(link_core.contains("link.liveness.poll(now_ms)"));
+    // The shared core performs no transport, thread or blocking effect of its own.
+    for effect in ["usb_runtime", "sleep(", "std::thread", "to_vec("] {
+        assert!(!link_core.contains(effect), "{effect}");
+    }
     assert!(writer.contains("MAXIMUM") || writer.contains("DIAGNOSTIC_BYTES"));
 }
 
