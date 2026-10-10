@@ -760,10 +760,14 @@ of bare controller JSON. Later increments: outbound writer core; a stdio virtual
 device driven by the pinned Gate controller; the Gate page plus loopback HTTP
 supervisor, which alone may flip `gate-page-http-seams`.
 
-- [ ] Refresh stale status, blocker and parity text; derive the validation report's
+- [x] Refresh stale status, blocker and parity text; derive the validation report's
   parity figure from the ledger instead of a literal.
-- [ ] Add a host characterization harness that records today's link effect
+- [x] Add a host characterization harness that records today's link effect
   transcripts, and keep a pre-refactor ELF as the stack baseline.
+  `//firmware/bitaxe:usb_link_characterization_tests` pins 21 ordered effect
+  transcripts covering every reachable failure stage. New `just audit-link-stack`
+  on the pre-refactor ELF: `link::run` frame 1,264 bytes, deepest normal path
+  2,928 of a 6,144-byte budget (3,216 headroom, 96 unresolved targets).
 - [ ] Extract the pure core with unit, allocation-failure and Gate conformance
   vector tests; reduce firmware `link.rs` to an adapter with identical transcripts.
 - [ ] Update source-ownership tests and the native USB ownership verifier; add a

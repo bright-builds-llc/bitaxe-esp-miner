@@ -1,0 +1,423 @@
+check_deadline now=0
+read at=0 bytes=246 failure=None
+entropy bytes=16
+entropy bytes=32
+begin_link now=0 -> Some(WorkerGeneration(1))
+credit_begin epoch=1
+trace epoch=1 sequence=0 stage=Hello wire=246
+writer_hello epoch=1 session=AAECAwQFBgcICQoLDA0ODw payload={"appElfSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","deviceNonce":"EBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8","firmwareSourceCommit":"0123456789abcdef0123456789abcdef01234567","hostNonce":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc","op":"hello_ack","receiveWindowBytes":2048,"receivedBytes":0,"serialManifest":{"baudRate":115200,"foregroundOnly":true,"framing":"utf8_ndjson","heartbeatIntervalMilliseconds":1000,"heartbeatTimeoutMilliseconds":2800,"hostToDeviceReceiveWindowBytes":2048,"maximumControlPayloadBytes":65536,"maximumHostWriteChunkBytes":1024,"maximumWireFrameBytes":66560,"payloadIntegrity":"sha256_exact_utf8_json","poolDifficultyHintProfile":"worker-stratum-difficulty-hint-v1","profile":"bwg-worker-serial/0.2","qualificationAttemptProfile":"worker-qualification-attempt-v1","recordWriteTimeoutMilliseconds":2000,"transport":"esp32s3_usb_serial_jtag"}}
+check_deadline now=0
+read at=10 bytes=512 failure=None
+credit_publish received=1..=512
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=513..=1024
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=1025..=1536
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=1537..=2048
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=2049..=2560
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=2561..=3072
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=3073..=3584
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=3585..=4096
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=4097..=4608
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=4609..=5120
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=5121..=5632
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=5633..=6144
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=6145..=6656
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=6657..=7168
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=7169..=7680
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=7681..=8192
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=8193..=8704
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=8705..=9216
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=9217..=9728
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=9729..=10240
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=10241..=10752
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=10753..=11264
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=11265..=11776
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=11777..=12288
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=12289..=12800
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=12801..=13312
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=13313..=13824
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=13825..=14336
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=14337..=14848
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=14849..=15360
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=15361..=15872
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=15873..=16384
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=16385..=16896
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=16897..=17408
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=17409..=17920
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=17921..=18432
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=18433..=18944
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=18945..=19456
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=19457..=19968
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=19969..=20480
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=20481..=20992
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=20993..=21504
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=21505..=22016
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=22017..=22528
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=22529..=23040
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=23041..=23552
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=23553..=24064
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=24065..=24576
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=24577..=25088
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=25089..=25600
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=25601..=26112
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=26113..=26624
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=26625..=27136
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=27137..=27648
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=27649..=28160
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=28161..=28672
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=28673..=29184
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=29185..=29696
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=29697..=30208
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=30209..=30720
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=30721..=31232
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=31233..=31744
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=31745..=32256
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=32257..=32768
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=32769..=33280
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=33281..=33792
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=33793..=34304
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=34305..=34816
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=34817..=35328
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=35329..=35840
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=35841..=36352
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=36353..=36864
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=36865..=37376
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=37377..=37888
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=37889..=38400
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=38401..=38912
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=38913..=39424
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=39425..=39936
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=39937..=40448
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=40449..=40960
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=40961..=41472
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=41473..=41984
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=41985..=42496
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=42497..=43008
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=43009..=43520
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=43521..=44032
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=44033..=44544
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=44545..=45056
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=45057..=45568
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=45569..=46080
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=46081..=46592
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=46593..=47104
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=47105..=47616
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=47617..=48128
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=48129..=48640
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=48641..=49152
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=49153..=49664
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=49665..=50176
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=50177..=50688
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=50689..=51200
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=51201..=51712
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=51713..=52224
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=52225..=52736
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=52737..=53248
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=53249..=53760
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=53761..=54272
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=54273..=54784
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=54785..=55296
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=55297..=55808
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=55809..=56320
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=56321..=56832
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=56833..=57344
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=57345..=57856
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=57857..=58368
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=58369..=58880
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=58881..=59392
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=59393..=59904
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=59905..=60416
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=60417..=60928
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=60929..=61440
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=61441..=61952
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=61953..=62464
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=62465..=62976
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=62977..=63488
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=63489..=64000
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=64001..=64512
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=64513..=65024
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=65025..=65536
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=65537..=66048
+check_deadline now=10
+read at=10 bytes=512 failure=None
+credit_publish received=66049..=66560
+trace epoch=1 sequence=0 stage=ValidationRejected wire=66560
+revoke_reason_at WorkerGeneration(1) now=10 reason=LinkClosed
+revoke_epoch epoch=1
+credit_close epoch=1
+check_deadline now=10
+read at=10 bytes=512 failure=Some("usb_rx_failure schema=v1 stage=framing observed_bytes=66560 redacted=true")
+check_deadline now=10
+read at=10 bytes=512 failure=Some("usb_rx_failure schema=v1 stage=framing observed_bytes=66560 redacted=true")
+check_deadline now=10
+read at=10 bytes=512 failure=Some("usb_rx_failure schema=v1 stage=framing observed_bytes=66560 redacted=true")
+check_deadline now=10
+read at=10 bytes=512 failure=Some("usb_rx_failure schema=v1 stage=framing observed_bytes=66560 redacted=true")
+check_deadline now=10
+read at=10 bytes=512 failure=Some("usb_rx_failure schema=v1 stage=framing observed_bytes=66560 redacted=true")
+check_deadline now=10
+read at=10 bytes=512 failure=Some("usb_rx_failure schema=v1 stage=framing observed_bytes=66560 redacted=true")
+check_deadline now=10
+read at=10 bytes=369 failure=Some("usb_rx_failure schema=v1 stage=framing observed_bytes=66560 redacted=true")
+check_deadline now=10
+read at=20 bytes=214 failure=Some("usb_rx_failure schema=v1 stage=framing observed_bytes=66560 redacted=true")
+check_deadline now=20
+owner_session epoch=1 session=AAECAwQFBgcICQoLDA0ODw host=BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc device=EBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8 WorkerGeneration(1)
+final current=0 authenticated=0
+credit received=None terminal=None
+failure=Some("usb_rx_failure schema=v1 stage=framing observed_bytes=66560 redacted=true")

@@ -1,0 +1,20 @@
+check_deadline now=0
+read at=0 bytes=246 failure=None
+entropy bytes=16
+entropy bytes=32
+begin_link now=0 -> Some(WorkerGeneration(1))
+credit_begin epoch=1
+trace epoch=1 sequence=0 stage=Hello wire=246
+writer_hello epoch=1 session=AAECAwQFBgcICQoLDA0ODw payload={"appElfSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","deviceNonce":"EBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8","firmwareSourceCommit":"0123456789abcdef0123456789abcdef01234567","hostNonce":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc","op":"hello_ack","receiveWindowBytes":2048,"receivedBytes":0,"serialManifest":{"baudRate":115200,"foregroundOnly":true,"framing":"utf8_ndjson","heartbeatIntervalMilliseconds":1000,"heartbeatTimeoutMilliseconds":2800,"hostToDeviceReceiveWindowBytes":2048,"maximumControlPayloadBytes":65536,"maximumHostWriteChunkBytes":1024,"maximumWireFrameBytes":66560,"payloadIntegrity":"sha256_exact_utf8_json","poolDifficultyHintProfile":"worker-stratum-difficulty-hint-v1","profile":"bwg-worker-serial/0.2","qualificationAttemptProfile":"worker-qualification-attempt-v1","recordWriteTimeoutMilliseconds":2000,"transport":"esp32s3_usb_serial_jtag"}}
+check_deadline now=0
+owner_authenticate epoch=1
+read at=10 bytes=202 failure=None
+credit_publish received=1..=202
+revoke_reason_at WorkerGeneration(1) now=10 reason=LinkClosed
+revoke_epoch epoch=1
+credit_close epoch=1
+check_deadline now=10
+owner_session epoch=1 session=AAECAwQFBgcICQoLDA0ODw host=BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc device=EBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8 WorkerGeneration(1)
+final current=0 authenticated=1
+credit received=None terminal=None
+failure=Some("usb_rx_failure schema=v1 stage=heartbeat_payload observed_bytes=202 redacted=true")

@@ -1437,6 +1437,29 @@ rust_test(
 
 
 rust_test(
+    name = "usb_link_characterization_tests",
+    srcs = [
+        "src/usb_link_host_test.rs",
+        "src/usb_link_host_test/scripts.rs",
+        "src/bwg_worker_usb/link.rs",
+        "src/bwg_worker_usb/rx_diagnostics.rs",
+    ],
+    compile_data = glob(["src/usb_link_host_test/transcripts/*.txt"]),
+    crate_root = "src/usb_link_host_test.rs",
+    crate_name = "usb_link_characterization_tests",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-runtime:bitaxe_runtime",
+        "//crates/bitaxe-worker-control:bitaxe_worker_control",
+        "@crates//:anyhow",
+        "@crates//:base64",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:zeroize",
+    ],
+)
+
+rust_test(
     name = "crypto_entropy_tests",
     srcs = [
         "src/crypto_entropy_host_test.rs",

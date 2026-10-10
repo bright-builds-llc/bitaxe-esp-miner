@@ -1,0 +1,367 @@
+check_deadline now=0
+read at=10 bytes=7 failure=None
+check_deadline now=10
+read at=11 bytes=7 failure=None
+check_deadline now=11
+read at=12 bytes=7 failure=None
+check_deadline now=12
+read at=13 bytes=7 failure=None
+check_deadline now=13
+read at=14 bytes=7 failure=None
+check_deadline now=14
+read at=15 bytes=7 failure=None
+check_deadline now=15
+read at=16 bytes=7 failure=None
+check_deadline now=16
+read at=17 bytes=7 failure=None
+check_deadline now=17
+read at=18 bytes=7 failure=None
+check_deadline now=18
+read at=19 bytes=7 failure=None
+check_deadline now=19
+read at=20 bytes=7 failure=None
+check_deadline now=20
+read at=21 bytes=7 failure=None
+check_deadline now=21
+read at=22 bytes=7 failure=None
+check_deadline now=22
+read at=23 bytes=7 failure=None
+check_deadline now=23
+read at=24 bytes=7 failure=None
+check_deadline now=24
+read at=25 bytes=7 failure=None
+check_deadline now=25
+read at=26 bytes=7 failure=None
+check_deadline now=26
+read at=27 bytes=7 failure=None
+check_deadline now=27
+read at=28 bytes=7 failure=None
+check_deadline now=28
+read at=29 bytes=7 failure=None
+check_deadline now=29
+read at=30 bytes=7 failure=None
+check_deadline now=30
+read at=31 bytes=7 failure=None
+check_deadline now=31
+read at=32 bytes=7 failure=None
+check_deadline now=32
+read at=33 bytes=7 failure=None
+check_deadline now=33
+read at=34 bytes=7 failure=None
+check_deadline now=34
+read at=35 bytes=7 failure=None
+check_deadline now=35
+read at=36 bytes=7 failure=None
+check_deadline now=36
+read at=37 bytes=7 failure=None
+check_deadline now=37
+read at=38 bytes=7 failure=None
+check_deadline now=38
+read at=39 bytes=7 failure=None
+check_deadline now=39
+read at=40 bytes=7 failure=None
+check_deadline now=40
+read at=41 bytes=7 failure=None
+check_deadline now=41
+read at=42 bytes=7 failure=None
+check_deadline now=42
+read at=43 bytes=7 failure=None
+check_deadline now=43
+read at=44 bytes=7 failure=None
+check_deadline now=44
+read at=45 bytes=7 failure=None
+entropy bytes=16
+entropy bytes=32
+begin_link now=45 -> Some(WorkerGeneration(1))
+credit_begin epoch=1
+trace epoch=1 sequence=0 stage=Hello wire=246
+writer_hello epoch=1 session=AAECAwQFBgcICQoLDA0ODw payload={"appElfSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","deviceNonce":"EBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8","firmwareSourceCommit":"0123456789abcdef0123456789abcdef01234567","hostNonce":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc","op":"hello_ack","receiveWindowBytes":2048,"receivedBytes":0,"serialManifest":{"baudRate":115200,"foregroundOnly":true,"framing":"utf8_ndjson","heartbeatIntervalMilliseconds":1000,"heartbeatTimeoutMilliseconds":2800,"hostToDeviceReceiveWindowBytes":2048,"maximumControlPayloadBytes":65536,"maximumHostWriteChunkBytes":1024,"maximumWireFrameBytes":66560,"payloadIntegrity":"sha256_exact_utf8_json","poolDifficultyHintProfile":"worker-stratum-difficulty-hint-v1","profile":"bwg-worker-serial/0.2","qualificationAttemptProfile":"worker-qualification-attempt-v1","recordWriteTimeoutMilliseconds":2000,"transport":"esp32s3_usb_serial_jtag"}}
+credit_publish received=1..=6
+check_deadline now=45
+read at=46 bytes=7 failure=None
+credit_publish received=7..=13
+check_deadline now=46
+read at=47 bytes=7 failure=None
+credit_publish received=14..=20
+check_deadline now=47
+read at=48 bytes=7 failure=None
+credit_publish received=21..=27
+check_deadline now=48
+read at=49 bytes=7 failure=None
+credit_publish received=28..=34
+check_deadline now=49
+read at=50 bytes=7 failure=None
+credit_publish received=35..=41
+check_deadline now=50
+read at=51 bytes=7 failure=None
+credit_publish received=42..=48
+check_deadline now=51
+read at=52 bytes=7 failure=None
+credit_publish received=49..=55
+check_deadline now=52
+read at=53 bytes=7 failure=None
+credit_publish received=56..=62
+check_deadline now=53
+read at=54 bytes=7 failure=None
+credit_publish received=63..=69
+check_deadline now=54
+read at=55 bytes=7 failure=None
+credit_publish received=70..=76
+check_deadline now=55
+read at=56 bytes=7 failure=None
+credit_publish received=77..=83
+check_deadline now=56
+read at=57 bytes=7 failure=None
+credit_publish received=84..=90
+check_deadline now=57
+read at=58 bytes=7 failure=None
+credit_publish received=91..=97
+check_deadline now=58
+read at=59 bytes=7 failure=None
+credit_publish received=98..=104
+check_deadline now=59
+read at=60 bytes=7 failure=None
+credit_publish received=105..=111
+check_deadline now=60
+read at=61 bytes=7 failure=None
+credit_publish received=112..=118
+check_deadline now=61
+read at=62 bytes=7 failure=None
+credit_publish received=119..=125
+check_deadline now=62
+read at=63 bytes=7 failure=None
+credit_publish received=126..=132
+check_deadline now=63
+read at=64 bytes=7 failure=None
+credit_publish received=133..=139
+check_deadline now=64
+read at=65 bytes=7 failure=None
+credit_publish received=140..=146
+check_deadline now=65
+read at=66 bytes=7 failure=None
+credit_publish received=147..=153
+check_deadline now=66
+read at=67 bytes=7 failure=None
+credit_publish received=154..=160
+check_deadline now=67
+read at=68 bytes=7 failure=None
+credit_publish received=161..=167
+check_deadline now=68
+read at=69 bytes=7 failure=None
+credit_publish received=168..=174
+check_deadline now=69
+read at=70 bytes=7 failure=None
+credit_publish received=175..=181
+check_deadline now=70
+read at=71 bytes=7 failure=None
+credit_publish received=182..=188
+check_deadline now=71
+read at=72 bytes=7 failure=None
+credit_publish received=189..=195
+check_deadline now=72
+read at=73 bytes=7 failure=None
+credit_publish received=196..=202
+check_deadline now=73
+read at=74 bytes=7 failure=None
+credit_publish received=203..=209
+check_deadline now=74
+read at=75 bytes=7 failure=None
+credit_publish received=210..=216
+check_deadline now=75
+read at=76 bytes=7 failure=None
+credit_publish received=217..=223
+check_deadline now=76
+read at=77 bytes=7 failure=None
+credit_publish received=224..=230
+check_deadline now=77
+read at=78 bytes=7 failure=None
+credit_publish received=231..=237
+check_deadline now=78
+read at=79 bytes=7 failure=None
+credit_publish received=238..=244
+check_deadline now=79
+read at=80 bytes=7 failure=None
+credit_publish received=245..=251
+check_deadline now=80
+read at=81 bytes=7 failure=None
+credit_publish received=252..=258
+check_deadline now=81
+read at=82 bytes=7 failure=None
+credit_publish received=259..=265
+check_deadline now=82
+read at=83 bytes=7 failure=None
+credit_publish received=266..=272
+check_deadline now=83
+read at=84 bytes=7 failure=None
+credit_publish received=273..=279
+check_deadline now=84
+read at=85 bytes=7 failure=None
+credit_publish received=280..=286
+check_deadline now=85
+read at=86 bytes=7 failure=None
+credit_publish received=287..=293
+check_deadline now=86
+read at=87 bytes=7 failure=None
+credit_publish received=294..=300
+check_deadline now=87
+read at=88 bytes=7 failure=None
+credit_publish received=301..=307
+check_deadline now=88
+read at=89 bytes=7 failure=None
+credit_publish received=308..=314
+check_deadline now=89
+read at=90 bytes=7 failure=None
+credit_publish received=315..=321
+check_deadline now=90
+read at=91 bytes=7 failure=None
+credit_publish received=322..=328
+check_deadline now=91
+read at=92 bytes=7 failure=None
+credit_publish received=329..=335
+check_deadline now=92
+read at=93 bytes=7 failure=None
+credit_publish received=336..=342
+check_deadline now=93
+read at=94 bytes=7 failure=None
+credit_publish received=343..=349
+check_deadline now=94
+read at=95 bytes=7 failure=None
+credit_publish received=350..=356
+check_deadline now=95
+read at=96 bytes=7 failure=None
+credit_publish received=357..=363
+check_deadline now=96
+read at=97 bytes=7 failure=None
+credit_publish received=364..=370
+check_deadline now=97
+read at=98 bytes=7 failure=None
+credit_publish received=371..=377
+check_deadline now=98
+read at=99 bytes=7 failure=None
+credit_publish received=378..=384
+check_deadline now=99
+read at=100 bytes=7 failure=None
+credit_publish received=385..=391
+check_deadline now=100
+read at=101 bytes=7 failure=None
+credit_publish received=392..=398
+check_deadline now=101
+read at=102 bytes=7 failure=None
+credit_publish received=399..=405
+check_deadline now=102
+read at=103 bytes=7 failure=None
+credit_publish received=406..=410
+trace epoch=1 sequence=2 stage=Validated wire=214
+credit_publish received=411
+trace epoch=1 sequence=2 stage=EnqueueStarted wire=214
+trace epoch=1 sequence=2 stage=Enqueued wire=214
+credit_publish received=412
+check_deadline now=103
+read at=104 bytes=7 failure=None
+credit_publish received=413..=419
+check_deadline now=104
+read at=105 bytes=7 failure=None
+credit_publish received=420..=426
+check_deadline now=105
+read at=106 bytes=7 failure=None
+credit_publish received=427..=433
+check_deadline now=106
+read at=107 bytes=7 failure=None
+credit_publish received=434..=440
+check_deadline now=107
+read at=108 bytes=7 failure=None
+credit_publish received=441..=447
+check_deadline now=108
+read at=109 bytes=7 failure=None
+credit_publish received=448..=454
+check_deadline now=109
+read at=110 bytes=7 failure=None
+credit_publish received=455..=461
+check_deadline now=110
+read at=111 bytes=7 failure=None
+credit_publish received=462..=468
+check_deadline now=111
+read at=112 bytes=7 failure=None
+credit_publish received=469..=475
+check_deadline now=112
+read at=113 bytes=7 failure=None
+credit_publish received=476..=482
+check_deadline now=113
+read at=114 bytes=7 failure=None
+credit_publish received=483..=489
+check_deadline now=114
+read at=115 bytes=7 failure=None
+credit_publish received=490..=496
+check_deadline now=115
+read at=116 bytes=7 failure=None
+credit_publish received=497..=503
+check_deadline now=116
+read at=117 bytes=7 failure=None
+credit_publish received=504..=510
+check_deadline now=117
+read at=118 bytes=7 failure=None
+credit_publish received=511..=517
+check_deadline now=118
+read at=119 bytes=7 failure=None
+credit_publish received=518..=524
+check_deadline now=119
+read at=120 bytes=7 failure=None
+credit_publish received=525..=531
+check_deadline now=120
+read at=121 bytes=7 failure=None
+credit_publish received=532..=538
+check_deadline now=121
+read at=122 bytes=7 failure=None
+credit_publish received=539..=545
+check_deadline now=122
+read at=123 bytes=7 failure=None
+credit_publish received=546..=552
+check_deadline now=123
+read at=124 bytes=7 failure=None
+credit_publish received=553..=559
+check_deadline now=124
+read at=125 bytes=7 failure=None
+credit_publish received=560..=566
+check_deadline now=125
+read at=126 bytes=7 failure=None
+credit_publish received=567..=573
+check_deadline now=126
+read at=127 bytes=7 failure=None
+credit_publish received=574..=580
+check_deadline now=127
+read at=128 bytes=7 failure=None
+credit_publish received=581..=587
+check_deadline now=128
+read at=129 bytes=7 failure=None
+credit_publish received=588..=594
+check_deadline now=129
+read at=130 bytes=7 failure=None
+credit_publish received=595..=601
+check_deadline now=130
+read at=131 bytes=7 failure=None
+credit_publish received=602..=608
+check_deadline now=131
+read at=132 bytes=7 failure=None
+credit_publish received=609..=615
+check_deadline now=132
+read at=133 bytes=7 failure=None
+credit_publish received=616..=622
+check_deadline now=133
+read at=134 bytes=7 failure=None
+credit_publish received=623..=629
+check_deadline now=134
+read at=135 bytes=7 failure=None
+credit_publish received=630..=636
+check_deadline now=135
+read at=136 bytes=5 failure=None
+credit_publish received=637..=640
+credit_close_record epoch=1 received=641 now=136
+revoke_reason_at WorkerGeneration(1) now=136 reason=LinkClosed
+revoke_epoch epoch=1
+credit_close epoch=1
+check_deadline now=136
+owner_session epoch=1 session=AAECAwQFBgcICQoLDA0ODw host=BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc device=EBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8 WorkerGeneration(1)
+owner_frame epoch=1 sequence=2 wire=214 bytes="{\"command\":\"status\"}\n"
+final current=0 authenticated=0
+credit received=None terminal=None
+failure=None

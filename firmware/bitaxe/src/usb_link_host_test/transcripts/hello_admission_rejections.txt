@@ -1,0 +1,16 @@
+check_deadline now=0
+read at=0 bytes=246 failure=None
+check_deadline now=0
+read at=10 bytes=208 failure=None
+check_deadline now=10
+read at=20 bytes=256 failure=None
+check_deadline now=20
+read at=30 bytes=266 failure=None
+check_deadline now=30
+read at=40 bytes=246 failure=None
+check_deadline now=40
+read at=50 bytes=0 failure=None
+check_deadline now=50
+final current=0 authenticated=0
+credit received=None terminal=None
+failure=None

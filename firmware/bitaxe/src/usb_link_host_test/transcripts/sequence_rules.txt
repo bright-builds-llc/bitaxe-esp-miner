@@ -1,0 +1,64 @@
+check_deadline now=0
+read at=0 bytes=246 failure=None
+entropy bytes=16
+entropy bytes=32
+begin_link now=0 -> Some(WorkerGeneration(1))
+credit_begin epoch=1
+trace epoch=1 sequence=0 stage=Hello wire=246
+writer_hello epoch=1 session=AAECAwQFBgcICQoLDA0ODw payload={"appElfSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","deviceNonce":"EBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8","firmwareSourceCommit":"0123456789abcdef0123456789abcdef01234567","hostNonce":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc","op":"hello_ack","receiveWindowBytes":2048,"receivedBytes":0,"serialManifest":{"baudRate":115200,"foregroundOnly":true,"framing":"utf8_ndjson","heartbeatIntervalMilliseconds":1000,"heartbeatTimeoutMilliseconds":2800,"hostToDeviceReceiveWindowBytes":2048,"maximumControlPayloadBytes":65536,"maximumHostWriteChunkBytes":1024,"maximumWireFrameBytes":66560,"payloadIntegrity":"sha256_exact_utf8_json","poolDifficultyHintProfile":"worker-stratum-difficulty-hint-v1","profile":"bwg-worker-serial/0.2","qualificationAttemptProfile":"worker-qualification-attempt-v1","recordWriteTimeoutMilliseconds":2000,"transport":"esp32s3_usb_serial_jtag"}}
+check_deadline now=0
+read at=10 bytes=214 failure=None
+credit_publish received=1..=213
+trace epoch=1 sequence=0 stage=ValidationRejected wire=214
+revoke_reason_at WorkerGeneration(1) now=10 reason=LinkClosed
+revoke_epoch epoch=1
+credit_close epoch=1
+check_deadline now=10
+owner_session epoch=1 session=AAECAwQFBgcICQoLDA0ODw host=BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc device=EBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8 WorkerGeneration(1)
+read at=20 bytes=246 failure=Some("usb_rx_failure schema=v1 stage=sequence observed_bytes=214 redacted=true")
+entropy bytes=16
+entropy bytes=32
+begin_link now=20 -> Some(WorkerGeneration(2))
+credit_begin epoch=2
+trace epoch=2 sequence=0 stage=Hello wire=246
+writer_hello epoch=2 session=MDEyMzQ1Njc4OTo7PD0-Pw payload={"appElfSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","deviceNonce":"QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8","firmwareSourceCommit":"0123456789abcdef0123456789abcdef01234567","hostNonce":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc","op":"hello_ack","receiveWindowBytes":2048,"receivedBytes":0,"serialManifest":{"baudRate":115200,"foregroundOnly":true,"framing":"utf8_ndjson","heartbeatIntervalMilliseconds":1000,"heartbeatTimeoutMilliseconds":2800,"hostToDeviceReceiveWindowBytes":2048,"maximumControlPayloadBytes":65536,"maximumHostWriteChunkBytes":1024,"maximumWireFrameBytes":66560,"payloadIntegrity":"sha256_exact_utf8_json","poolDifficultyHintProfile":"worker-stratum-difficulty-hint-v1","profile":"bwg-worker-serial/0.2","qualificationAttemptProfile":"worker-qualification-attempt-v1","recordWriteTimeoutMilliseconds":2000,"transport":"esp32s3_usb_serial_jtag"}}
+check_deadline now=20
+read at=30 bytes=428 failure=None
+credit_publish received=1..=213
+trace epoch=2 sequence=5 stage=Validated wire=214
+credit_publish received=214
+trace epoch=2 sequence=5 stage=EnqueueStarted wire=214
+trace epoch=2 sequence=5 stage=Enqueued wire=214
+credit_publish received=215..=427
+trace epoch=2 sequence=0 stage=ValidationRejected wire=214
+revoke_reason_at WorkerGeneration(2) now=30 reason=LinkClosed
+revoke_epoch epoch=2
+credit_close epoch=2
+check_deadline now=30
+owner_session epoch=2 session=MDEyMzQ1Njc4OTo7PD0-Pw host=BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc device=QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8 WorkerGeneration(2)
+owner_frame epoch=2 sequence=5 wire=214 bytes="{\"command\":\"status\"}\n"
+read at=40 bytes=246 failure=Some("usb_rx_failure schema=v1 stage=sequence observed_bytes=214 redacted=true")
+entropy bytes=16
+entropy bytes=32
+begin_link now=40 -> Some(WorkerGeneration(3))
+credit_begin epoch=3
+trace epoch=3 sequence=0 stage=Hello wire=246
+writer_hello epoch=3 session=YGFiY2RlZmdoaWprbG1ubw payload={"appElfSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","deviceNonce":"cHFyc3R1dnd4eXp7fH1-f4CBgoOEhYaHiImKi4yNjo8","firmwareSourceCommit":"0123456789abcdef0123456789abcdef01234567","hostNonce":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc","op":"hello_ack","receiveWindowBytes":2048,"receivedBytes":0,"serialManifest":{"baudRate":115200,"foregroundOnly":true,"framing":"utf8_ndjson","heartbeatIntervalMilliseconds":1000,"heartbeatTimeoutMilliseconds":2800,"hostToDeviceReceiveWindowBytes":2048,"maximumControlPayloadBytes":65536,"maximumHostWriteChunkBytes":1024,"maximumWireFrameBytes":66560,"payloadIntegrity":"sha256_exact_utf8_json","poolDifficultyHintProfile":"worker-stratum-difficulty-hint-v1","profile":"bwg-worker-serial/0.2","qualificationAttemptProfile":"worker-qualification-attempt-v1","recordWriteTimeoutMilliseconds":2000,"transport":"esp32s3_usb_serial_jtag"}}
+check_deadline now=40
+read at=50 bytes=437 failure=None
+credit_publish received=1..=213
+trace epoch=3 sequence=3 stage=Validated wire=214
+credit_publish received=214
+trace epoch=3 sequence=3 stage=EnqueueStarted wire=214
+trace epoch=3 sequence=3 stage=Enqueued wire=214
+credit_publish received=215..=436
+trace epoch=3 sequence=0 stage=ValidationRejected wire=223
+revoke_reason_at WorkerGeneration(3) now=50 reason=LinkClosed
+revoke_epoch epoch=3
+credit_close epoch=3
+check_deadline now=50
+owner_session epoch=3 session=YGFiY2RlZmdoaWprbG1ubw host=BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc device=cHFyc3R1dnd4eXp7fH1-f4CBgoOEhYaHiImKi4yNjo8 WorkerGeneration(3)
+owner_frame epoch=3 sequence=3 wire=214 bytes="{\"command\":\"status\"}\n"
+final current=0 authenticated=0
+credit received=None terminal=None
+failure=Some("usb_rx_failure schema=v1 stage=sequence observed_bytes=223 redacted=true")
