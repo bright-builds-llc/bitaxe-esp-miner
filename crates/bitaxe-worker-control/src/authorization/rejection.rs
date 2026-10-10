@@ -4,10 +4,10 @@
 //! the boot-lifetime verifier, and a reboot clears it. It never records key ids,
 //! sequences, lease or challenge ids, bindings, or authorization bytes.
 
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 
 use super::LeaseAuthorizationError;
-use crate::StateFingerprint;
+use crate::{RestorationReason, StateFingerprint};
 
 /// Signed operation whose authorization was rejected.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -69,6 +69,16 @@ pub struct AuthorizationRejectionRecord {
     pub signature: SignatureAttribution,
     pub context: ContextAttribution,
     pub replay_guard: ReplayGuardAttribution,
+    /// The safe stop this rejection itself triggered; `none` when it stopped nothing.
+    #[serde(rename = "safeStop", serialize_with = "safe_stop_label")]
+    pub maybe_safe_stop: Option<RestorationReason>,
+}
+
+fn safe_stop_label<S: Serializer>(
+    maybe_reason: &Option<RestorationReason>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(maybe_reason.map_or("none", RestorationReason::category))
 }
 
 /// RAM-only rejection attribution plus whether this boot advanced the high-water.
@@ -76,6 +86,9 @@ pub struct AuthorizationRejectionRecord {
 pub struct AuthorizationRejectionLog {
     boot_rejections: u32,
     maybe_last: Option<AuthorizationRejectionRecord>,
+    // Only the rejection just recorded may receive its safe stop, and only once,
+    // so a later disconnect or unrelated stop can never rewrite the record.
+    last_awaits_safe_stop: bool,
     high_water_advanced_this_boot: bool,
 }
 
@@ -85,6 +98,7 @@ impl AuthorizationRejectionLog {
         Self {
             boot_rejections: 0,
             maybe_last: None,
+            last_awaits_safe_stop: false,
             high_water_advanced_this_boot: false,
         }
     }
@@ -106,10 +120,25 @@ impl AuthorizationRejectionLog {
             signature,
             context,
             replay_guard,
+            maybe_safe_stop: None,
         });
+        self.last_awaits_safe_stop = true;
+    }
+
+    /// Records the safe stop the rejection just recorded triggered; a no-op otherwise.
+    #[cold]
+    #[inline(never)]
+    pub(crate) fn attribute_safe_stop(&mut self, reason: RestorationReason) {
+        if !std::mem::take(&mut self.last_awaits_safe_stop) {
+            return;
+        }
+        if let Some(last) = self.maybe_last.as_mut() {
+            last.maybe_safe_stop = Some(reason);
+        }
     }
 
     pub(crate) fn mark_high_water_advanced(&mut self) {
+        self.last_awaits_safe_stop = false;
         self.high_water_advanced_this_boot = true;
     }
 
@@ -135,7 +164,7 @@ pub trait AuthorizationRejectionSource {
     fn high_water_fingerprint(&self) -> Result<Option<StateFingerprint>, LeaseAuthorizationError>;
 }
 
-/// Exact `worker-authorization-rejection-review-v1` result body.
+/// Exact `worker-authorization-rejection-review-v2` result body.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthorizationRejectionReview {
@@ -163,7 +192,7 @@ pub fn authorization_rejection_review(
         .high_water_fingerprint()?
         .ok_or(LeaseAuthorizationError::Persistence)?;
     Ok(Some(AuthorizationRejectionReview {
-        schema: "worker-authorization-rejection-review-v1",
+        schema: "worker-authorization-rejection-review-v2",
         boot_rejections: log.boot_rejections(),
         last: log.maybe_last(),
         high_water: HighWaterReview {

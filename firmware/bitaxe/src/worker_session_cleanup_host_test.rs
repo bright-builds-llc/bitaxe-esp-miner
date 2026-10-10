@@ -2,6 +2,8 @@
 //! Actual session cleanup and durable budget adapter with synthetic NVS/owner boundaries.
 #[path = "production_mining_session/admission_diagnostics.rs"]
 mod admission_diagnostics;
+#[path = "worker_session_cleanup_host_test/boot_evidence.rs"]
+mod boot_evidence;
 #[path = "bwg_worker_session.rs"]
 mod bwg_worker_session;
 #[path = "production_mining_session/revocation.rs"]

@@ -6,10 +6,11 @@ use std::rc::Rc;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use bitaxe_worker_control::{
-    AcceptedSequenceStore, DeviceIdentity, FirmwareSourceCommit, LeaseAuthorizationError,
-    LeaseDeadlines, PossessionRequest, RestorationReason, SequenceStoreResult, StateFingerprint,
-    WorkLeaseAuthorityTrust, WorkLeaseAuthorizationVerifier, WorkerControl, WorkerControlError,
-    WorkerLeaseGrant, WorkerLeaseRenewal, WorkerSession, WorkerSessionError,
+    AcceptedSequenceStore, BootResetCause, DeviceIdentity, FirmwareSourceCommit,
+    LeaseAuthorizationError, LeaseDeadlines, PossessionRequest, RestorationReason,
+    SequenceStoreResult, StateFingerprint, WorkLeaseAuthorityTrust, WorkLeaseAuthorizationVerifier,
+    WorkerControl, WorkerControlError, WorkerLeaseGrant, WorkerLeaseRenewal, WorkerSession,
+    WorkerSessionError,
 };
 use ed25519_dalek::{Signer, SigningKey};
 use serde_json::{json, Value};
@@ -88,9 +89,16 @@ impl AcceptedSequenceStore for PersistedStore {
 #[derive(Default)]
 pub struct CountingSession {
     pub events: Vec<&'static str>,
+    pub maybe_reset_cause: Option<BootResetCause>,
+    pub reset_cause_reads: std::cell::Cell<usize>,
 }
 
 impl WorkerSession for CountingSession {
+    fn boot_reset_cause(&self) -> BootResetCause {
+        self.reset_cause_reads.set(self.reset_cause_reads.get() + 1);
+        self.maybe_reset_cause.unwrap_or(BootResetCause::Other)
+    }
+
     fn start(&mut self, _: &WorkerLeaseGrant, _: LeaseDeadlines) -> Result<(), WorkerSessionError> {
         self.events.push("start");
         Ok(())
@@ -131,10 +139,27 @@ pub fn trust() -> WorkLeaseAuthorityTrust {
 
 /// One boot: a fresh verifier and controller over the persisted store.
 pub fn boot(store: &PersistedStore, maybe_restoration: Option<RestorationReason>) -> Worker {
+    boot_with_session(store, maybe_restoration, CountingSession::default())
+}
+
+/// One boot whose session reports the given reset category.
+pub fn boot_with_cause(store: &PersistedStore, cause: BootResetCause) -> Worker {
+    let session = CountingSession {
+        maybe_reset_cause: Some(cause),
+        ..CountingSession::default()
+    };
+    boot_with_session(store, None, session)
+}
+
+fn boot_with_session(
+    store: &PersistedStore,
+    maybe_restoration: Option<RestorationReason>,
+    session: CountingSession,
+) -> Worker {
     WorkerControl::new(
         DeviceIdentity::from_seed(DEVICE_SEED),
         WorkLeaseAuthorizationVerifier::new(trust(), store.clone()),
-        CountingSession::default(),
+        session,
         maybe_restoration,
         bitaxe_worker_control::FirmwareIdentity::new(source_commit(), &"b".repeat(64))
             .expect("firmware identity"),
@@ -238,12 +263,13 @@ pub fn send(worker: &mut Worker, frame: &[u8], now: u64) -> Result<Value, Worker
 }
 
 pub fn review(worker: &mut Worker, now: u64) -> Value {
+    reviewed(worker, "authorization_rejection_review", now)["result"].clone()
+}
+
+/// Prepares one idle review with `payload: {}` and returns the whole response.
+pub fn reviewed(worker: &mut Worker, review_command: &str, now: u64) -> Value {
     let prepared = worker
-        .prepare_frame(
-            &command("authorization_rejection_review", Some(&json!({}))),
-            now,
-        )
+        .prepare_frame(&command(review_command, Some(&json!({}))), now)
         .expect("idle review");
-    let response: Value = serde_json::from_slice(prepared.frame()).expect("review JSON");
-    response["result"].clone()
+    serde_json::from_slice(prepared.frame()).expect("review JSON")
 }

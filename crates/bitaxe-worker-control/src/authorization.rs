@@ -335,6 +335,10 @@ impl<S: AcceptedSequenceStore> crate::session::LeaseAuthorizationVerifier
         );
     }
 
+    fn attribute_rejection_safe_stop(&mut self, reason: crate::RestorationReason) {
+        self.rejections.attribute_safe_stop(reason);
+    }
+
     fn verify_start(
         &mut self,
         grant: &WorkerLeaseGrant,

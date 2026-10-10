@@ -38,7 +38,7 @@ fn empty_log_reviews_as_zero_rejections_with_a_null_last_record() {
     assert_eq!(
         serde_json::to_value(review).expect("review JSON"),
         json!({
-            "schema": "worker-authorization-rejection-review-v1",
+            "schema": "worker-authorization-rejection-review-v2",
             "bootRejections": 0,
             "last": null,
             "highWater": {"advancedThisBoot": false, "fingerprintSha256": "ab".repeat(32)},
@@ -73,10 +73,11 @@ fn review_reports_the_latest_record_with_its_boot_ordinal() {
     assert_eq!(
         serde_json::to_value(review).expect("review JSON"),
         json!({
-            "schema": "worker-authorization-rejection-review-v1",
+            "schema": "worker-authorization-rejection-review-v2",
             "bootRejections": 2,
             "last": {"ordinal": 2, "operation": "renew", "signature": "valid",
-                "context": "current", "replayGuard": "at_or_below_durable_high_water"},
+                "context": "current", "replayGuard": "at_or_below_durable_high_water",
+                "safeStop": "none"},
             "highWater": {"advancedThisBoot": true, "fingerprintSha256": "ab".repeat(32)},
         })
     );
@@ -142,4 +143,70 @@ fn a_missing_high_water_fingerprint_fails_as_persistence() {
         review.expect_err("fingerprint required"),
         LeaseAuthorizationError::Persistence
     );
+}
+
+fn recorded_renewal_rejection() -> AuthorizationRejectionLog {
+    let mut log = AuthorizationRejectionLog::default();
+    log.record(
+        AuthorizationOperation::Renew,
+        SignatureAttribution::Valid,
+        ContextAttribution::Current,
+        ReplayGuardAttribution::AtOrBelowDurableHighWater,
+    );
+    log
+}
+
+fn safe_stop_label(log: &AuthorizationRejectionLog) -> serde_json::Value {
+    serde_json::to_value(log.maybe_last().expect("recorded")).expect("record JSON")["safeStop"]
+        .clone()
+}
+
+#[test]
+fn the_safe_stop_a_rejection_triggered_is_recorded_with_it() {
+    // Arrange
+    let mut log = recorded_renewal_rejection();
+
+    // Act
+    log.attribute_safe_stop(RestorationReason::ControlFailed);
+
+    // Assert
+    assert_eq!(safe_stop_label(&log), "control_failed");
+}
+
+#[test]
+fn a_later_safe_stop_never_rewrites_the_recorded_one() {
+    // Arrange
+    let mut log = recorded_renewal_rejection();
+    log.attribute_safe_stop(RestorationReason::ControlFailed);
+
+    // Act
+    log.attribute_safe_stop(RestorationReason::ConnectivityLost);
+
+    // Assert
+    assert_eq!(safe_stop_label(&log), "control_failed");
+}
+
+#[test]
+fn a_safe_stop_after_an_acceptance_never_attributes_the_older_rejection() {
+    // Arrange
+    let mut log = recorded_renewal_rejection();
+    log.mark_high_water_advanced();
+
+    // Act
+    log.attribute_safe_stop(RestorationReason::ControlFailed);
+
+    // Assert
+    assert_eq!(safe_stop_label(&log), "none");
+}
+
+#[test]
+fn a_safe_stop_without_any_rejection_records_nothing() {
+    // Arrange
+    let mut log = AuthorizationRejectionLog::default();
+
+    // Act
+    log.attribute_safe_stop(RestorationReason::ControlFailed);
+
+    // Assert
+    assert_eq!((log.boot_rejections(), log.maybe_last()), (0, None));
 }

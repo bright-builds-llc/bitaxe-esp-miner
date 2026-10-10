@@ -1530,6 +1530,7 @@ rust_test(
         "src/worker_acceptance_budget.rs",
         "src/worker_qualification_budget.rs",
         "src/worker_soak_budget.rs",
+        "src/worker_session_cleanup_host_test/boot_evidence.rs",
         "src/worker_session_cleanup_host_test/qualification.rs",
         "src/worker_session_cleanup_host_test/soak.rs",
         "src/production_mining_session/revocation.rs",

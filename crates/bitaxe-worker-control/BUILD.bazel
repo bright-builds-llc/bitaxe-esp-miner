@@ -140,6 +140,7 @@ rust_test(
     name = "restoration_diagnostics_tests",
     srcs = [
         "tests/restoration_diagnostics.rs",
+        "tests/restoration_diagnostics/boot_review.rs",
         "tests/restoration_diagnostics/support.rs",
         "tests/restoration_diagnostics/verifier.rs",
     ],

@@ -1,4 +1,6 @@
 //! BWG-007 durable-replay attribution: N1-N4 plus read-only and no-write guarantees.
+#[path = "restoration_diagnostics/boot_review.rs"]
+mod boot_review;
 #[path = "restoration_diagnostics/support.rs"]
 mod support;
 #[path = "restoration_diagnostics/verifier.rs"]
@@ -42,9 +44,10 @@ fn record(
     signature: &str,
     context: &str,
     replay_guard: &str,
+    safe_stop: &str,
 ) -> Value {
     json!({"ordinal":ordinal,"operation":operation,"signature":signature,"context":context,
-        "replayGuard":replay_guard})
+        "replayGuard":replay_guard,"safeStop":safe_stop})
 }
 
 /// Boot 1 accepts Start(1) under C0 and pauses; boot 2 reacquires with the persisted store.
@@ -106,7 +109,8 @@ fn n1_durable_replay_after_reboot_is_attributed_to_the_persisted_high_water() {
             "start",
             "valid",
             "mismatch",
-            "at_or_below_durable_high_water"
+            "at_or_below_durable_high_water",
+            "none"
         )
     );
     assert_eq!(review["highWater"]["advancedThisBoot"], false);
@@ -150,7 +154,14 @@ fn n2_a_start_after_context_expiry_is_attributed_as_expired() {
     assert_eq!(rejected.expect_err("context expired"), "admission_required");
     assert_eq!(
         last(&review),
-        record(1, "start", "not_evaluated", "expired", "not_evaluated")
+        record(
+            1,
+            "start",
+            "not_evaluated",
+            "expired",
+            "not_evaluated",
+            "none"
+        )
     );
     assert_eq!(store.counts(), StoreCounts::default());
     assert!(worker.session().events.is_empty());
@@ -177,7 +188,7 @@ fn n3_a_start_for_a_previous_context_is_attributed_as_a_fresh_mismatch() {
     );
     assert_eq!(
         last(&review),
-        record(2, "start", "valid", "mismatch", "fresh")
+        record(2, "start", "valid", "mismatch", "fresh", "none")
     );
     assert_eq!(review["bootRejections"], 2);
     assert_eq!(store.counts().compare_and_store, 0);
@@ -210,7 +221,8 @@ fn n4_an_in_context_renewal_replay_is_attributed_and_safe_stops() {
             "renew",
             "valid",
             "current",
-            "at_or_below_durable_high_water"
+            "at_or_below_durable_high_water",
+            "control_failed"
         )
     );
     assert_eq!(review["highWater"]["advancedThisBoot"], true);
@@ -218,6 +230,69 @@ fn n4_an_in_context_renewal_replay_is_attributed_and_safe_stops() {
         worker.session().events,
         ["start", "renew", "control_failed"]
     );
+}
+
+#[test]
+fn n4_keeps_its_safe_stop_through_a_later_lease_and_disconnect() {
+    // Arrange
+    let store = PersistedStore::default();
+    let mut worker = boot(&store, None);
+    let c3 = possess(&mut worker, 1, 1_000);
+    start(&mut worker, &c3, 5, 1_000).expect("fresh Start");
+    renew(&mut worker, &c3, 6, 21_000).expect("renewal R1");
+    let _ = renew(&mut worker, &c3, 6, 22_000);
+    let c4 = possess(&mut worker, 2, 22_001);
+    start(&mut worker, &c4, 7, 22_001).expect("later fresh Start");
+
+    // Act
+    worker.disconnect(23_000).expect("disconnect safe stops");
+    possess(&mut worker, 3, 23_001);
+    let review = review(&mut worker, 23_001);
+
+    // Assert
+    assert_eq!(last(&review)["safeStop"], "control_failed");
+    assert_eq!(last(&review)["ordinal"], 1);
+    assert_eq!(
+        worker.session().events,
+        [
+            "start",
+            "renew",
+            "control_failed",
+            "start",
+            "connectivity_lost"
+        ]
+    );
+}
+
+#[test]
+fn a_disconnect_after_a_rejection_that_stopped_nothing_keeps_none() {
+    // Arrange
+    let store = PersistedStore::default();
+    let mut worker = boot(&store, None);
+    let c1 = possess(&mut worker, 1, 1_000);
+    let _ = start(&mut worker, &c1, 1, 61_001);
+
+    // Act
+    worker.disconnect(61_002).expect("disconnect");
+    possess(&mut worker, 2, 61_003);
+    let review = review(&mut worker, 61_003);
+
+    // Assert
+    assert_eq!(last(&review)["safeStop"], "none");
+}
+
+#[test]
+fn the_rejection_review_reports_schema_v2() {
+    // Arrange
+    let store = PersistedStore::default();
+    let mut worker = boot(&store, None);
+    possess(&mut worker, 1, 1_000);
+
+    // Act
+    let review = review(&mut worker, 1_000);
+
+    // Assert
+    assert_eq!(review["schema"], "worker-authorization-rejection-review-v2");
 }
 
 #[test]

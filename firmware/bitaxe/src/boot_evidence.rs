@@ -309,6 +309,11 @@ pub fn operator_snapshot_reset_reason_category() -> ResetReasonCategory {
     reset_reason()
 }
 
+/// Returns this boot's closed reset category, or none before boot evidence initializes.
+pub(crate) fn maybe_reset_reason_category() -> Option<ResetReasonCategory> {
+    RESET_REASON.get().copied()
+}
+
 /// Returns one closed reboot discriminator for the current Worker mount.
 pub fn worker_usb_boot_marker() -> String {
     bitaxe_api::boot_identity::WorkerUsbBootMarker::new(

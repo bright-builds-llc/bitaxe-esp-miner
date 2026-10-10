@@ -34,6 +34,16 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         self.verifier.record_context_rejection(operation, context);
     }
 
+    /// Only a verifier rejection is recorded, so only it receives the safe stop that
+    /// `renew` runs next; attributing first keeps the record independent of the stop.
+    /// Inlined: the out-of-line log write is already cold, and an extra call frame
+    /// measurably widened the signed Renew dispatcher.
+    #[inline]
+    pub(super) fn attribute_renewal_rejection(&mut self) {
+        self.verifier
+            .attribute_rejection_safe_stop(RestorationReason::ControlFailed);
+    }
+
     /// Reviews need fresh possession, no lease and no pending cleanup or admission.
     pub(super) fn require_review_idle(&self, now: u64) -> Result<(), WorkerControlError> {
         self.required_start_context(now)?;

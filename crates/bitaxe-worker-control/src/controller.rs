@@ -3,6 +3,7 @@ mod confirmation;
 mod response_types;
 use response_types::PreparedEffect;
 pub use response_types::PreparedResponse;
+mod boot_review;
 mod cooling;
 mod frame;
 mod inspection;
@@ -403,6 +404,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             }
             "acceptance_budget_review" => self.review_acceptance_budget(&request, now)?,
             "clock_discontinuity_stimulus_review" => self.review_clock_stimulus(&request, now)?,
+            "boot_review" => self.review_boot(&request, now)?,
             "authorization_rejection_review" => {
                 self.review_authorization_rejections(&request, now)?
             }
@@ -529,6 +531,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             || self
                 .verifier
                 .verify_renewal(&renewal, &challenge_id, &context)
+                .inspect_err(|_| self.attribute_renewal_rejection())
                 .is_err();
         if authentication_failed {
             self.safe_stop(RestorationReason::ControlFailed, now)?;

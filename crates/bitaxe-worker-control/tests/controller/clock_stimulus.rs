@@ -460,3 +460,19 @@ fn the_review_requires_an_exactly_empty_payload() {
     // Assert
     assert_eq!(category(refused), "invalid_request");
 }
+
+#[test]
+fn a_session_without_a_reset_cause_reports_other_in_the_boot_review() {
+    // Arrange
+    let mut worker = admitted_worker();
+    let frame = command_frame("boot_review", Some(json!({})));
+
+    // Act
+    let review = result(&worker.prepare_frame(&frame, 1_001).expect("boot review"));
+
+    // Assert
+    assert_eq!(
+        review,
+        json!({"schema":"worker-boot-review-v1","resetCause":"other"})
+    );
+}

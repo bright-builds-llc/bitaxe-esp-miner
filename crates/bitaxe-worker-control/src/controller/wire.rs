@@ -56,6 +56,7 @@ impl ControllerRequest {
                 | "clock_discontinuity_stimulus"
                 | "clock_discontinuity_stimulus_review"
                 | "authorization_rejection_review"
+                | "boot_review"
         )
     }
 

@@ -1,6 +1,8 @@
 //! Pure possession-bound BWG Worker-control state machine.
 
 mod authorization;
+mod boot_reset_cause;
+pub use boot_reset_cause::BootResetCause;
 mod clock_stimulus;
 mod codec;
 mod controller;

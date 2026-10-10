@@ -28,6 +28,10 @@ pub trait LeaseAuthorizationVerifier {
     ) {
     }
 
+    /// Attributes the safe stop the rejection it just recorded triggered. RAM-only;
+    /// it must not touch durable state or rewrite an older record.
+    fn attribute_rejection_safe_stop(&mut self, _reason: RestorationReason) {}
+
     fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
     fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
     fn verify_start(
@@ -206,6 +210,11 @@ pub trait WorkerSession {
         &self,
     ) -> Result<Option<crate::cadence::CadenceEndpoint>, WorkerSessionError> {
         Ok(None)
+    }
+
+    /// This boot's closed reset category; adapters that cannot observe it report `other`.
+    fn boot_reset_cause(&self) -> crate::BootResetCause {
+        crate::BootResetCause::Other
     }
 
     /// Returns only bounded, non-secret qualification observations; never authority.

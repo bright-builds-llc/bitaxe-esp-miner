@@ -156,6 +156,19 @@ impl WorkerSession for ProductionWorkerSession {
             .map_err(|_| WorkerSessionError::Rejected)
     }
 
+    fn boot_reset_cause(&self) -> bitaxe_worker_control::BootResetCause {
+        use bitaxe_api::boot_identity::ResetReasonCategory;
+        use bitaxe_worker_control::BootResetCause;
+        match crate::boot_evidence::maybe_reset_reason_category() {
+            Some(ResetReasonCategory::PowerOn) => BootResetCause::PowerOn,
+            Some(ResetReasonCategory::SoftwareCpu) => BootResetCause::SoftwareCpu,
+            Some(ResetReasonCategory::Watchdog) => BootResetCause::Watchdog,
+            Some(ResetReasonCategory::Panic) => BootResetCause::Panic,
+            Some(ResetReasonCategory::Brownout) => BootResetCause::Brownout,
+            Some(ResetReasonCategory::Other) | None => BootResetCause::Other,
+        }
+    }
+
     fn status_evidence(&self) -> Option<serde_json::Value> {
         crate::production_mining_session::status_evidence(self.maybe_generation)
     }
