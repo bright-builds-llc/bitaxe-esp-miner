@@ -1,5 +1,7 @@
 //! Real WorkerSession adapter; modeled I/O supplies facts and stores production ledgers.
-use crate::{actuation::RuntimeBoardAdapter, authorization, SimulationError};
+use crate::{
+    actuation::RuntimeBoardAdapter, authorization, serial_link::SerialHost, SimulationError,
+};
 mod v2;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use bitaxe_runtime::mining_actuation::{execute_preparation, execute_safe_shutdown};
@@ -23,8 +25,27 @@ pub(crate) struct Session {
     pub seed: u64,
     pub maybe_v2_record: Rc<RefCell<Option<bitaxe_worker_control::v2::V2Record>>>,
     pub maybe_encrypted_share: Option<crate::v2::EncryptedShareFacts>,
+    pub link: SerialHost,
 }
 impl Session {
+    /// Delivers a controller request through the framed serial link.
+    pub(crate) fn request(
+        &mut self,
+        command: &str,
+        payload: Value,
+    ) -> Result<Vec<u8>, SimulationError> {
+        let mut value = json!({"protocolVersion":"bwg-worker-controller/0.4","requestId":"serial_simulation","command":command});
+        if !payload.is_null() {
+            value["payload"] = payload;
+        }
+        self.deliver(&serde_json::to_vec(&value)?)
+    }
+    pub(crate) fn deliver(&mut self, payload: &[u8]) -> Result<Vec<u8>, SimulationError> {
+        self.link.deliver(&mut self.actuation, payload)
+    }
+    pub(crate) fn link_close_check(&mut self) -> crate::ProfileCheck {
+        self.link.close_check(&mut self.actuation)
+    }
     fn persist(&mut self, ledger: QualificationLedger) -> Result<(), WorkerSessionError> {
         let bytes = serde_json::to_vec(&ledger).map_err(|_| WorkerSessionError::Rejected)?;
         self.actuation
@@ -153,6 +174,9 @@ impl WorkerSession for Session {
 }
 
 pub(crate) type Controller = WorkerControl<authorization::Verifier, Session>;
+pub(crate) const FIRMWARE_SOURCE_COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+pub(crate) const APP_ELF_SHA256: &str =
+    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 struct ControllerAuthority {
     identity: DeviceIdentity,
     verifier: authorization::Verifier,
@@ -208,38 +232,31 @@ fn assemble_controller(
         seed,
         maybe_v2_record: Rc::new(RefCell::new(None)),
         maybe_encrypted_share: None,
+        link: SerialHost::new(seed),
     };
     WorkerControl::new(authority.identity, authority.verifier, session, restoration,
-        FirmwareIdentity::new(FirmwareSourceCommit::parse(&"a".repeat(40)).map_err(|_| SimulationError::Boundary("identity"))?, &"b".repeat(64))
+        FirmwareIdentity::new(FirmwareSourceCommit::parse(FIRMWARE_SOURCE_COMMIT).map_err(|_| SimulationError::Boundary("identity"))?, APP_ELF_SHA256)
         .map_err(|_| SimulationError::Boundary("identity"))?,
         json!({"protocolVersion":"bwg-worker-controller/0.4","transportProfile":"bwg-worker-serial/0.2"}),
         &URL_SAFE_NO_PAD.encode([1;32])).map(Box::new).map_err(|_| SimulationError::Boundary("controller"))
 }
 
-pub(crate) fn frame(command: &str, payload: Value) -> Result<Vec<u8>, SimulationError> {
-    let mut value = json!({"protocolVersion":"bwg-worker-controller/0.4","requestId":"serial_simulation","command":command});
-    if !payload.is_null() {
-        value["payload"] = payload;
-    }
-    let mut bytes = serde_json::to_vec(&value)?;
-    bytes.push(b'\n');
-    Ok(bytes)
-}
+/// Opens the framed link, then proves possession over it; returns the transcript
+/// binding and the possession request payload for replay checks.
 pub(crate) fn possession(worker: &mut Controller) -> Result<(String, Vec<u8>), SimulationError> {
-    let session = URL_SAFE_NO_PAD.encode([2; 16]);
-    let nonce = URL_SAFE_NO_PAD.encode([3; 32]);
+    let serial = {
+        let session = worker.session_mut();
+        session.link.hello(&mut session.actuation)?
+    };
     worker
-        .begin_serial_session(
-            bitaxe_worker_control::serial::SerialSessionBinding::parse(&session, &nonce, &nonce)
-                .map_err(|_| SimulationError::Boundary("serial_binding"))?,
-        )
+        .begin_serial_session(serial.clone())
         .map_err(|_| SimulationError::Boundary("serial_binding"))?;
     let request = json!({"profile":"bwg-worker-possession/0.2","requestId":"pos_simulation","command":"prove_possession",
         "payload":{"purpose":"initial_admission","possessionNonce":URL_SAFE_NO_PAD.encode([4;32]),
         "challengeBindingSha256":URL_SAFE_NO_PAD.encode([5;32]),"controllerCapabilitySha256":worker.capability_sha256(),
-        "sessionId":session,"hostNonce":nonce,"deviceNonce":nonce,"serialManifestSha256":URL_SAFE_NO_PAD.encode([1;32])}});
-    let mut bytes = serde_json::to_vec(&request)?;
-    bytes.push(b'\n');
+        "sessionId":serial.session_id,"hostNonce":serial.host_nonce,"deviceNonce":serial.device_nonce,"serialManifestSha256":URL_SAFE_NO_PAD.encode([1;32])}});
+    let payload = serde_json::to_vec(&request)?;
+    let bytes = worker.session_mut().deliver(&payload)?;
     let prepared = worker
         .prepare_frame(&bytes, worker.session().actuation.now_ms())
         .map_err(|e| SimulationError::Boundary(e.category()))?;
@@ -250,5 +267,6 @@ pub(crate) fn possession(worker: &mut Controller) -> Result<(String, Vec<u8>), S
     worker
         .confirm_sent(prepared)
         .map_err(|_| SimulationError::Boundary("possession_delivery"))?;
-    Ok((binding, bytes))
+    worker.session().link.authenticate();
+    Ok((binding, payload))
 }

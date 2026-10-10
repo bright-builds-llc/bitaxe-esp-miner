@@ -154,22 +154,24 @@ fn execute_controller_scenario(
         board.borrow_mut().storage.reject_writes = true;
     }
     if name == "replay-challenge" {
+        let replayed = worker.session_mut().deliver(&possession)?;
         let rejected = worker
-            .prepare_frame(&possession, 100)
+            .prepare_frame(&replayed, 100)
             .err()
             .map(|e| e.category());
+        let link = worker.session_mut().link_close_check();
         return Ok(result(
             name,
             seed,
             &worker,
             "invalid_proof",
             rejected.unwrap_or("unexpected_success"),
-            vec![],
+            vec![link],
         ));
     }
     if name == "healthy-lifecycle" {
         let now = worker.session().actuation.now_ms();
-        let query = controller::frame(
+        let query = worker.session_mut().request(
             "stratum_v2_status",
             json!({"schema":"worker-stratum-v2-query-v1","scope":"share","attemptId":null}),
         )?;
@@ -180,14 +182,12 @@ fn execute_controller_scenario(
             .confirm_sent_at(observation, now)
             .map_err(|_| SimulationError::Boundary("v2_observation_delivery"))?;
     }
-    let start = controller::frame(
-        "start_lease",
-        authorization::signed_start_for_profile(
-            &binding,
-            worker.session().ledger.next_ordinal(),
-            name == "healthy-lifecycle",
-        )?,
+    let start_payload = authorization::signed_start_for_profile(
+        &binding,
+        worker.session().ledger.next_ordinal(),
+        name == "healthy-lifecycle",
     )?;
+    let start = worker.session_mut().request("start_lease", start_payload)?;
     let prepared = worker.prepare_frame(&start, 100);
     let actual = match prepared {
         Ok(reply) => {
@@ -209,7 +209,9 @@ fn execute_controller_scenario(
         _ => "started",
     };
     let mut extra = vec![];
-    if name == "heartbeat-loss" && actual == "started" {
+    let heartbeat_loss = name == "heartbeat-loss" && actual == "started";
+    if heartbeat_loss {
+        worker.session_mut().actuation.host_heartbeats = false;
         worker
             .session_mut()
             .actuation
@@ -232,11 +234,27 @@ fn execute_controller_scenario(
             },
             detail: timing.revocation_reason.label().into(),
         });
+        let session = worker.session_mut();
+        session.link.supervise(&mut session.actuation);
+        let timed_out = session.link.maybe_failure()
+            == Some(bitaxe_worker_control::serial::link::SerialLinkFailure::HeartbeatTimeout);
+        extra.push(ProfileCheck {
+            id: "link_heartbeat_timeout".into(),
+            status: if timed_out {
+                CheckStatus::Passed
+            } else {
+                CheckStatus::Failed
+            },
+            detail: "framed_link_closed_at_liveness_deadline".into(),
+        });
     }
-    if actual == "started" {
+    // A closed link delivers nothing more; the owner cleanup below still runs.
+    if actual == "started" && !heartbeat_loss {
         let now = worker.session().actuation.now_ms();
-        let status =
-            worker.prepare_frame(&controller::frame("status", serde_json::Value::Null)?, now);
+        let status_request = worker
+            .session_mut()
+            .request("status", serde_json::Value::Null)?;
+        let status = worker.prepare_frame(&status_request, now);
         extra.push(ProfileCheck {
             id: "authenticated_status".into(),
             status: if status.is_ok() {
@@ -251,10 +269,10 @@ fn execute_controller_scenario(
             }
             .into(),
         });
-        let stop = worker.prepare_frame(
-            &controller::frame("restore", json!({"reason":"paused"}))?,
-            now,
-        );
+        let stop_request = worker
+            .session_mut()
+            .request("restore", json!({"reason":"paused"}))?;
+        let stop = worker.prepare_frame(&stop_request, now);
         if name == "stop-rejection" {
             extra.push(ProfileCheck {
                 id: "stop_rejected".into(),
@@ -279,6 +297,9 @@ fn execute_controller_scenario(
     }
     if name == "persistence-failure" {
         board.borrow_mut().storage.reject_writes = false;
+    }
+    if !heartbeat_loss {
+        extra.push(worker.session_mut().link_close_check());
     }
     // Cleanup is independently evaluated even after the scenario's earliest error.
     worker.session_mut().reject_stop = false;

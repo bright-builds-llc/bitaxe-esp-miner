@@ -4,7 +4,7 @@ import { runPrivate } from '../virtual-emulator/process.mjs';
 import { newEvidenceRoot, doctor } from '../virtual-emulator/setup.mjs';
 import { buildGuest } from '../virtual-emulator/build.mjs';
 import { runGuest } from '../virtual-emulator/run.mjs';
-import { SCENARIOS, SEEDS, REQUIRED_COVERAGE, VERSION, qualify } from './profiles.mjs';
+import { SCENARIOS, SEEDS, REQUIRED_COVERAGE, VERSION, qualify, framedLinkCoverage } from './profiles.mjs';
 import { sourceBindings, packageBinding, sha } from './bindings.mjs';
 import { lifecycle } from './lifecycle.mjs';
 import { nativeAudits } from './audits.mjs';
@@ -84,6 +84,7 @@ export async function runCorpus(binary, repo, options) {
     try { rows.push(await hostRun(binary, repo, scenario, seed, join(root, `host-${scenario}-${seed}`), manifestPath)); }
     catch { rows.push({ backend: 'host', scenario, seed, status: 'failed', category: 'host_boundary' }); }
   }
+  Object.assign(coverage.find(row => row.id === 'framed-serial-link'), framedLinkCoverage(rows));
   await componentCoverage(repo, root, null, coverage);
   // Establish host coverage before spending target attempts. Component probes have
   // their own published contracts; missing host integration never admits a retry.

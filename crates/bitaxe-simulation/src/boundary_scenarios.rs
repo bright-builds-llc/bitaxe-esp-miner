@@ -37,13 +37,10 @@ pub(crate) fn run_cancel_matrix(name: &str, seed: u64) -> Result<ScenarioResult,
             PreparationStep::EnableAsic
         };
         let now = worker.session().actuation.now_ms();
-        let start = worker.prepare_frame(
-            &controller::frame(
-                "start_lease",
-                authorization::signed_start(&binding, worker.session().ledger.next_ordinal())?,
-            )?,
-            now,
-        );
+        let start_payload =
+            authorization::signed_start(&binding, worker.session().ledger.next_ordinal())?;
+        let start_request = worker.session_mut().request("start_lease", start_payload)?;
+        let start = worker.prepare_frame(&start_request, now);
         let correctly_rejected = start.is_err()
             && worker
                 .session()
@@ -54,6 +51,7 @@ pub(crate) fn run_cancel_matrix(name: &str, seed: u64) -> Result<ScenarioResult,
                     failure.phase == expected.label()
                         && failure.category == "injected_preparation_cancellation"
                 });
+        let link = worker.session_mut().link_close_check();
         let now = worker.session().actuation.now_ms();
         let close = worker.disconnect(now);
         let safety = {
@@ -63,6 +61,7 @@ pub(crate) fn run_cancel_matrix(name: &str, seed: u64) -> Result<ScenarioResult,
         checks.push(ProfileCheck {
             id: format!("{}_{}", name, index + 1),
             status: if correctly_rejected
+                && link.status == CheckStatus::Passed
                 && close.is_ok()
                 && !worker.has_active_lease()
                 && !worker.session().ledger.pending()
@@ -72,7 +71,7 @@ pub(crate) fn run_cancel_matrix(name: &str, seed: u64) -> Result<ScenarioResult,
             } else {
                 CheckStatus::Failed
             },
-            detail: "earliest_cancellation_and_independent_release".into(),
+            detail: "earliest_cancellation_link_close_and_independent_release".into(),
         });
         if primary.is_none() {
             primary = worker.session().actuation.maybe_earliest_failure.clone();
@@ -107,7 +106,7 @@ pub(crate) fn run_retained_or_snapshot(
     })?));
     let mut worker = controller::controller(board.clone(), name)?;
     controller::possession(&mut worker)?;
-    let query = controller::frame(
+    let query = worker.session_mut().request(
         "stratum_v2_status",
         json!({"schema":"worker-stratum-v2-query-v1","scope":"share","attemptId":if name=="retained-record-missing" {serde_json::Value::String(base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD,[9;16]))} else {serde_json::Value::Null}}),
     )?;
@@ -124,8 +123,10 @@ pub(crate) fn run_retained_or_snapshot(
     };
     let phase = worker.session().diagnostic_phases.borrow().last().copied();
     worker.session_mut().fail_v2_snapshot = false;
+    let link = worker.session_mut().link_close_check();
     let closed = worker.disconnect(100).is_ok();
     let mut checks = vec![
+        link,
         ProfileCheck {
             id: "retained_snapshot_boundary".into(),
             status: if actual == expected
@@ -180,6 +181,7 @@ pub(crate) fn run_close_rejection(seed: u64) -> Result<ScenarioResult, Simulatio
     })?));
     let mut worker = controller::controller(board.clone(), "close-rejection")?;
     controller::possession(&mut worker)?;
+    let link = worker.session_mut().link_close_check();
     board.borrow_mut().control.connect()?;
     board.borrow_mut().control.reject_close = true;
     let current = worker.disconnect(100).is_ok();
@@ -192,6 +194,7 @@ pub(crate) fn run_close_rejection(seed: u64) -> Result<ScenarioResult, Simulatio
         scenario: "close-rejection".into(),
         seed,
         checks: vec![
+            link,
             ProfileCheck {
                 id: "independent_close_rejection".into(),
                 status: if current && rejected && retained && released {

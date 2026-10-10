@@ -173,3 +173,46 @@ fn split_initialization_preserves_diagnostic_checkpoint_order_and_result() {
     );
     assert_eq!(observed, normal);
 }
+
+#[test]
+fn controller_scenarios_cross_the_framed_serial_link() {
+    // Arrange
+    let without_controller = [
+        "heap-fragmented",
+        "internal-allocation-failure",
+        "fixture-completion-failure",
+        "live-writer",
+        "heartbeat-loss",
+    ];
+    for name in bitaxe_simulation::scenario_names()
+        .iter()
+        .filter(|name| !without_controller.contains(name))
+    {
+        // Act
+        let result = run_scenario(name, 1).expect("scenario");
+        // Assert
+        let link: Vec<_> = result
+            .checks
+            .iter()
+            .filter(|check| check.id == "serial_link" || check.id.starts_with("cancel-"))
+            .collect();
+        assert!(!link.is_empty(), "{name}: {result:?}");
+        assert!(
+            link.iter().all(|check| check.status == CheckStatus::Passed),
+            "{name}: {result:?}"
+        );
+    }
+}
+
+#[test]
+fn heartbeat_loss_closes_the_framed_link_at_its_liveness_deadline() {
+    // Arrange / Act
+    let result = run_scenario("heartbeat-loss", 1).expect("scenario");
+    // Assert
+    let check = result
+        .checks
+        .iter()
+        .find(|check| check.id == "link_heartbeat_timeout")
+        .expect("link timeout check");
+    assert_eq!(check.status, CheckStatus::Passed);
+}

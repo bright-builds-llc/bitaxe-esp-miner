@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseArguments } from './main.mjs';
-import { SCENARIOS, SEEDS, REQUIRED_COVERAGE, qualify, requiredProfiles } from './profiles.mjs';
+import { SCENARIOS, SEEDS, REQUIRED_COVERAGE, qualify, requiredProfiles, framedLinkCoverage } from './profiles.mjs';
 import { lifecycle } from './lifecycle.mjs';
 import { parityFromLedger } from './parity.mjs';
 
@@ -111,4 +111,26 @@ test('report parity comes from the latest ledger record', () => {
 test('an empty or malformed parity ledger fails visibly', () => {
   assert.throws(() => parityFromLedger('\n'), /parity_ledger_empty/);
   assert.throws(() => parityFromLedger('{"schema_version":"other","verified_total":1,"active_total":2}\n'), /parity_ledger_invalid/);
+});
+test('passing host link checks mark the framed serial link covered', () => {
+  // Arrange
+  const rows = [
+    { backend: 'host', status: 'passed', result: { checks: [{ id: 'serial_link', status: 'passed' }] } },
+    { backend: 'host', status: 'passed', result: { checks: [{ id: 'link_heartbeat_timeout', status: 'passed' }] } },
+    { backend: 'host', status: 'unsupported', result: { checks: [{ id: 'serial_link', status: 'passed' }, { id: 'live', status: 'unsupported' }] } },
+    { backend: 'qemu', status: 'unsupported' },
+  ];
+  // Act
+  const coverage = framedLinkCoverage(rows);
+  // Assert
+  assert.equal(coverage.status, 'passed');
+});
+test('a failed link check or failed host row blocks framed link coverage', () => {
+  const failedCheck = [{ backend: 'host', status: 'passed', result: { checks: [{ id: 'serial_link', status: 'failed' }] } }];
+  const failedRow = [{ backend: 'host', status: 'failed', result: { checks: [{ id: 'serial_link', status: 'passed' }] } }];
+  assert.equal(framedLinkCoverage(failedCheck).status, 'failed');
+  assert.equal(framedLinkCoverage(failedRow).status, 'failed');
+});
+test('host rows without link checks leave framed link coverage unsupported', () => {
+  assert.equal(framedLinkCoverage([{ backend: 'host', status: 'passed', result: { checks: [] } }]).status, 'unsupported');
 });

@@ -10,7 +10,7 @@ export const SCENARIOS = Object.freeze([
   'fixture-completion-failure', 'live-writer',
 ]);
 export const REQUIRED_COVERAGE = Object.freeze([
-  'encrypted-fixture-share-ack', 'gate-page-http-seams', 'bounded-real-allocation-paths',
+  'encrypted-fixture-share-ack', 'framed-serial-link', 'gate-page-http-seams', 'bounded-real-allocation-paths',
   'all-step-cancellation', 'descendant-listener-release', 'model-conformance-mutations',
   'target-panic-core-decode', 'target-reset-persistence', 'target-resolved-memory-routing',
   'host-target-semantic-agreement',
@@ -45,4 +45,19 @@ export function qualify(rows, coverage, bindings) {
   if (!bindings?.production?.app_elf_sha256) blockers.push({ category: 'production_package_missing' });
   if (bindings?.source_dirty !== false) blockers.push({ category: 'source_not_frozen' });
   return { qualified: blockers.length === 0, blockers, mode: blockers.length ? 'observation' : 'qualified', hardware_qualified: false };
+}
+
+const LINK_CHECKS = new Set(['serial_link', 'link_heartbeat_timeout']);
+/**
+ * Host scenarios must cross the shared firmware link core and every link check must pass.
+ * Rows that are unsupported for unrelated non-claims still contribute their link checks.
+ */
+export function framedLinkCoverage(rows) {
+  const host = rows.filter(row => row.backend === 'host');
+  if (!host.length || host.some(row => row.status !== 'passed' && row.status !== 'unsupported')) return { status: 'failed', category: 'host_rows_incomplete' };
+  const checks = host.flatMap(row => row.result?.checks ?? []).filter(check => LINK_CHECKS.has(check.id));
+  if (!checks.length) return { status: 'unsupported', category: 'link_not_exercised' };
+  return checks.every(check => check.status === 'passed')
+    ? { status: 'passed', category: 'production_link_core_exercised' }
+    : { status: 'failed', category: 'link_check_failed' };
 }

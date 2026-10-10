@@ -37,6 +37,11 @@ pub(crate) struct RuntimeBoardAdapter {
     maybe_reply: Option<Vec<u8>>,
     pub maybe_cancel_preparation: Option<PreparationStep>,
     pub maybe_fail_shutdown: Option<SafeShutdownStep>,
+    /// False models a host that stopped sending link heartbeats.
+    pub host_heartbeats: bool,
+    /// Link heartbeat instants awaiting replay through the serial link receiver.
+    pub link_heartbeats: Vec<u64>,
+    last_link_heartbeat: u64,
 }
 impl RuntimeBoardAdapter {
     pub fn profile() -> MiningHardwareProfile {
@@ -51,6 +56,7 @@ impl RuntimeBoardAdapter {
         let generation = gate
             .begin_link(board.borrow().now_ms())
             .ok_or(SimulationError::Boundary("generation"))?;
+        let started_ms = board.borrow().now_ms();
         Ok(Self {
             board,
             gate,
@@ -63,6 +69,9 @@ impl RuntimeBoardAdapter {
             maybe_reply: None,
             maybe_cancel_preparation: None,
             maybe_fail_shutdown: None,
+            host_heartbeats: true,
+            link_heartbeats: Vec::with_capacity(64),
+            last_link_heartbeat: started_ms,
         })
     }
     pub fn now_ms(&self) -> u64 {
@@ -127,6 +136,11 @@ impl RuntimeBoardAdapter {
                 .map_err(model_error)?;
             if heartbeat {
                 self.gate.heartbeat(self.generation, next);
+            }
+            // The browser host sends link heartbeats each second whatever the device does.
+            if self.host_heartbeats && next.saturating_sub(self.last_link_heartbeat) >= 1000 {
+                self.link_heartbeats.push(next);
+                self.last_link_heartbeat = next;
             }
             self.gate.check_deadline(next);
             let facts = self.observations()?;

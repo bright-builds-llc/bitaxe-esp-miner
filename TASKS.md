@@ -782,9 +782,15 @@ supervisor, which alone may flip `gate-page-http-seams`.
   5,600 bytes and the refactored ELF 5,536 of a 6,144-byte budget, with the same
   envelope-parse deepest path; the control-owner audit is unchanged at 10,256 and
   no runtime realignment callers exist.
-- [ ] Drive simulation scenarios through the core; add a `framed-serial-link`
-  coverage row while `gate-page-http-seams` stays unsupported.
-- [ ] Run the affected Bazel and ordered Cargo checks, firmware build/package,
+- [x] Drive simulation scenarios through the core; add a `framed-serial-link`
+  coverage row while `gate-page-http-seams` stays unsupported. Every
+  controller-backed scenario now opens a Hello, sends sequenced Control records,
+  replays the host's one-second heartbeats at their original instants (keeping
+  envelope parsing out of the deep preparation stack) and ends with a clean Close
+  checked as `serial_link`. `heartbeat-loss` now closes the link at its liveness
+  deadline (`link_heartbeat_timeout`) and, like the firmware, delivers no further
+  status or restore frames; owner cleanup is still checked.
+- [x] Run the affected Bazel and ordered Cargo checks, firmware build/package,
   native audits, redaction/reference/parity/standards checks; commit and push.
 
 Authorization: repository source, tests, fixtures, documentation, build, package,
@@ -792,9 +798,23 @@ static ELF audits, host-backend virtual runs, commit and push only. No detector,
 USB/device session, flash, monitor, emulator effect gate, credentials, network
 discovery, mining or other hardware effect. No parity promotion.
 
-Verification: pending. Completion review: pending. Residual risk to record: the
-refactored firmware link meets hardware only in a later, separately contracted
-hardware task.
+Verification: ordered Cargo fmt/Clippy (`-D warnings`)/build/tests; all 325
+Bazel tests (`just test`); the 21 pinned link transcripts; `just build`,
+`just package`, the virtual guest Xtensa build (`just virtual-emulator build`,
+compile and frame audit only); link, control and realignment native audits;
+host-backend `just virtual-board run` rows for healthy-lifecycle, heartbeat-loss
+and cancel-preparation; native USB ownership, redaction, reference, parity and
+Bright Builds checks.
+
+Completion review: increment 1 is complete. Firmware and simulation share one
+inbound link implementation, pinned byte-for-byte to the previous firmware
+behavior, and the virtual corpus now exercises it. Residual risks and non-claims:
+the refactored firmware link has not met hardware; it does so only in a later,
+separately contracted hardware task. QEMU host/target agreement and the target
+main-stack margin were not rerun for the changed scenarios. The outbound writer,
+the pinned Gate controller, the Gate page and the HTTP supervisor remain
+unexercised, so `gate-page-http-seams` stays unsupported and qualification
+stays false. Next: increment 2 (outbound writer core).
 
 ## Future
 

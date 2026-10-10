@@ -6,6 +6,7 @@ mod controller;
 pub mod noise_probe;
 mod resource_scenarios;
 mod scenarios;
+mod serial_link;
 pub mod v2;
 
 pub use scenarios::{run_scenario, run_scenario_with_observer, scenario_names};
