@@ -12,15 +12,18 @@ export async function componentCoverage(repo, root, targetManifest, coverage) {
     set('model-conformance-mutations', 'passed', 'independent_model_corpus_passed');
   } catch { set('model-conformance-mutations', 'failed', 'component_suite_failed'); }
   // The pinned Gate controller admits, queries and closes a real-time virtual device process.
+  let leases = true;
   try {
     await runPrivate('bazel', ['test', '//scripts:virtual_board_gate_serial_test'], root, 'gate-controller-serial', { cwd: repo, timeoutMs: 300000 });
     set('gate-controller-serial', 'passed', 'pinned_gate_controller_admitted_virtual_device');
-  } catch { set('gate-controller-serial', 'failed', 'gate_controller_suite_failed'); }
-  // The served pinned page and the real no-mining supervisor drive the same device (no lease flows).
+  } catch { set('gate-controller-serial', 'failed', 'gate_controller_suite_failed'); leases = false; }
+  // The served pinned page and the real no-mining supervisor drive the same device.
   try {
     await runPrivate('bazel', ['test', '//scripts:virtual_board_gate_page_test'], root, 'gate-page-http-seams', { cwd: repo, timeoutMs: 300000 });
     set('gate-page-http-seams', 'passed', 'served_gate_page_and_supervisor_drove_virtual_device');
-  } catch { set('gate-page-http-seams', 'failed', 'gate_page_suite_failed'); }
+  } catch { set('gate-page-http-seams', 'failed', 'gate_page_suite_failed'); leases = false; }
+  // Both suites also run signed leases (Start, Renew, Stop, Close with a lease) under a throwaway authority.
+  set('gate-lease-flows', leases ? 'passed' : 'failed', leases ? 'throwaway_authority_leases_crossed_gate_page_supervisor_and_controller' : 'gate_lease_suite_failed');
   if (!targetManifest) return;
   for (const [id, commands] of [['target-reset-persistence', ['status', 'allocation', 'restart']], ['target-panic-core-decode', ['status', 'panic']]]) {
     const path = join(root, id); await mkdir(path, { mode: 0o700 });

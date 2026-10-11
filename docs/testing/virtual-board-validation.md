@@ -104,14 +104,36 @@ the served bytes under Bun with browser globals shimmed. A trusted Connect click
 admits the device through the page's own browser serial runtime; a refresh and
 Close follow, and every published state passes the supervisor's `/record` judge.
 `gate-page-http-seams` passes only when `//scripts:virtual_board_gate_page_test`
-passes. Non-claims: no lease flow (Start, Renew, Restore) crosses the page,
-supervisor or Gate; `physical_host_owner_release` (close-rejection) stays
-unsupported because a rejected restore exists only under a lease; the browser is
-shimmed, not Chromium; Bun comes from the host PATH; port 48765 and the owner's
-Gate tab are never used.
+passes.
+
+Leases cross the same seams. Each test run generates a throwaway lease authority
+with the pinned Gate's `worker-development-authority.ts init` in a private
+temporary directory; no existing key is read. The virtual deployment trust pairs
+the firmware's update authority, so the real signed capability still verifies,
+with that throwaway work-lease authority, and the device verifies leases with it
+(`serve-serial --trust`), as firmware does with the trust it compiles in. The
+production `signAttempt` composition signs one normal qualification attempt per
+control session. The Gate controller starts, renews and restores it, and closes
+with a lease active; the served page, behind a test-only loopback lease
+supervisor that reuses the production client and `/record` judge, prepares,
+loads and starts the window, renews on its own cadence, then stops and closes,
+or closes with the lease active. The device begins a revocation generation per
+Hello, renews by extending the gate's lease deadline, reports Gate-shaped
+`worker-qualification-v1` evidence, and services its link and writer at board
+time while the owner prepares and shuts down, as the firmware link and writer
+threads do. `gate-lease-flows` passes only when both Gate tests pass.
+
+Non-claims: the lease supervisor is test-only and has no campaign lineage,
+preflight, pool input, cooling or budget review, so the production campaign and
+iterative supervisors' preflight is not exercised; owner stack headroom in the
+device's evidence is modeled, not measured, its watchdog is reported absent and
+no work is dispatched; `physical_host_owner_release` (close-rejection) stays
+unsupported because no virtual flow yet rejects a restore under a lease; the
+browser is shimmed, not Chromium; Bun comes from the host PATH; port 48765 and the
+owner's Gate tab are never used.
 
 Current unsupported coverage includes encrypted fixture/share/ACK integration,
-real Gate/page/HTTP seams, capability-specific interception of real allocation
+the close-rejection owner release, capability-specific interception of real allocation
 paths, retained V2 status serialization, and several composed timing/recovery/
 process-ownership scenarios. The active task records exact target execution
 failures and remaining blockers. Models and simulator passes cannot establish

@@ -91,11 +91,10 @@ The following remain required, failed or unsupported:
   not replace it.
 - Capability-specific failure injection into actual parser/snapshot/serializer
   allocation paths, distinct from predicted model budgets.
-- Lease flows (Start, Renew, Restore) through the Gate page, supervisor and
-  controller, and the close-rejection owner release that depends on them. The
-  served page, the no-mining supervisor and the Gate controller already admit,
-  query and close a virtual device process over the shared firmware link and
-  writer cores.
+- The close-rejection owner release: a restore rejected under a lease, with the
+  host releasing its port owner. Leases themselves (Start, Renew, Stop, Close
+  with a lease) already cross the served page, a test-only lease supervisor and
+  the Gate controller to a virtual device process under a throwaway authority.
 - Full fixture natural completion, historical ownership, listener/serial release
   and live-writer scenarios through one consolidated production lifecycle runner.
 - Complete mandatory host/target corpus agreement, qualification and matching-report

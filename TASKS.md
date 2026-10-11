@@ -742,10 +742,10 @@ production native audits, reference/redaction/standards/Markdown/diff checks.
 Final verification receipts and public summary accompany the committed milestone.
 Completion review: not complete; do not archive. Explicit remaining blockers are
 missing actual margin/call-closure proof, strict live fixture/header/nonce vector,
-real allocation interception, lease flows (Start, Renew, Restore) and the
-close-rejection owner release through the Gate page, supervisor and controller
-(the no-lease Gate/page/HTTP/framed-I/O integration is complete in increments 1-4
-below), consolidated production lifecycle/ownership profiles, full
+real allocation interception, the close-rejection owner release (a restore
+rejected under a lease) through the Gate page, supervisor and controller (the
+Gate/page/HTTP/framed-I/O integration and lease flows are complete in increments
+1-5 below), consolidated production lifecycle/ownership profiles, full
 qualified host/target corpus and mandatory matching-report rollout. The
 corrected-target panic is resolved in emulation (campaign004). Missing
 calibration remains an explicit fidelity non-claim. Accepted-share stays active,
@@ -1007,6 +1007,59 @@ close-rejection rows still block qualification; the browser is shimmed in Bun,
 not Chromium; Bun comes from the host PATH; the supervisor context's package
 fields are synthetic and its frozen-source check is not applicable to the
 virtual device; port 48765 and the owner's Gate tab were never used.
+Qualification stays false.
+
+Framed-link integration, increment 5 | 2026-10-11 | Plan recorded at start
+
+Objective: carry lease flows through the Gate. A throwaway lease authority from
+the pinned Gate's development-authority script (generated in a private temporary
+directory, never the owner's) signs a qualification-attempt Start and its
+renewals; the served acceptance page, a loopback lease supervisor built from the
+production signing and judging modules, and the Gate controller drive the
+virtual device through Start, Renew, Stop and Close, and through Close with an
+active lease.
+
+- [x] Device: a fresh revocation generation per Hello on the real-time device;
+  a runtime deployment trust (`serve-serial --trust`); renewal; Gate-valid
+  `worker-qualification-v1` evidence; link and writer service while the owner
+  actuates; lease outcome fields; tests over a scripted port.
+- [x] Gate harness: the throwaway authority and virtual deployment trust, the
+  lease supervisor, page and controller lease cases.
+- [x] Coverage row `gate-lease-flows`, docs and non-claims; affected and full
+  checks; commit and push.
+
+Authorization: repository source, tests, documentation, build, host processes
+(the device child, Bun page and signer processes, a loopback supervisor on an
+ephemeral port), commit and push only. No browser, Web Serial, hardware, USB,
+network beyond loopback, port 48765 or the owner's Gate tab, QEMU run, owner
+authority keys, credentials or parity promotion.
+
+Verification: ordered Cargo fmt/Clippy (`-D warnings`)/build/tests, including 18
+real-time device tests over a scripted port (nine lease cases: Start with the link
+live through preparation, a host silent during preparation, running evidence,
+renewal, restore, Close with a lease, Close during preparation, an untrusted
+authority); all 330 Bazel tests (`just test`) with
+`//scripts:virtual_board_gate_serial_test` (six cases, three with leases) and
+`//scripts:virtual_board_gate_page_test` (eight cases, three with leases); both
+Gate tests four runs each at eight parallel jobs, all passing; the simulation
+scenario corpus passing; `just build`, `just package`, `just virtual-emulator
+build` (compile and guest frame audit only: 992/4,208 bytes, unchanged);
+redaction, reference, parity and Bright Builds checks.
+
+Completion review: lease flows cross the Gate. Under a throwaway authority the
+pinned Gate controller starts, renews and restores a signed qualification attempt
+and closes with one active; the served pinned page, behind a test-only loopback
+lease supervisor that reuses the production `signAttempt`, client and `/record`
+judge, prepares, loads, starts, renews on its own cadence, stops and closes, or
+closes with the lease active; every published state passes the judge, and the
+device restores cleanly each time. `gate-lease-flows` is a required coverage row
+set from both Gate tests. Non-claims: the lease supervisor has no campaign
+lineage, preflight, pool input or cooling and budget reviews, so the production
+supervisors' preflight is not exercised; the device's owner stack headroom is
+modeled, its watchdog is reported absent and it dispatches no work;
+`physical_host_owner_release` stays unsupported (`rejected_lease_restore_not_integrated`)
+and close-rejection still blocks qualification; the browser is shimmed in Bun; Bun
+comes from the host PATH; port 48765 and the owner's Gate tab were never used.
 Qualification stays false.
 
 ## Future
