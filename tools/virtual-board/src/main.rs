@@ -1,5 +1,6 @@
 //! Host scenario CLI. Physical device discovery is absent from this binary.
 mod evidence;
+mod serve;
 #[path = "../snapshot.rs"]
 mod snapshot;
 use anyhow::Result;
@@ -27,6 +28,17 @@ enum Command {
         #[arg(long)]
         workspace_root: Option<PathBuf>,
     },
+    /// Serve one real-time virtual device session on stdin/stdout.
+    ServeSerial {
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+        /// The signed capability the device advertises.
+        #[arg(long)]
+        capability: PathBuf,
+        /// A new file for the session outcome (categories and counts only).
+        #[arg(long)]
+        outcome: Option<PathBuf>,
+    },
 }
 fn execute(cli: Cli) -> Result<bool> {
     match cli.command {
@@ -48,6 +60,11 @@ fn execute(cli: Cli) -> Result<bool> {
                 .unwrap_or(std::env::current_dir()?);
             evidence::run(&root, &evidence_dir, &scenario, seed, manifest.as_deref())
         }
+        Command::ServeSerial {
+            seed,
+            capability,
+            outcome,
+        } => serve::serve(seed, &capability, outcome.as_deref()),
     }
 }
 fn main() {

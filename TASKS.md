@@ -914,7 +914,11 @@ HTTP supervisor stay out of scope; `gate-page-http-seams` stays unsupported.
   possession, baseline status without simulation evidence, device heartbeat
   liveness, rejection then revocation, EOF without Close, and a refused second
   Hello.
-- [ ] Add `serve-serial` to `tools/virtual-board` with a real-process test.
+- [x] Add `serve-serial` to `tools/virtual-board` with a real-process test.
+  `serve-serial --seed=N --capability=PATH [--outcome=PATH]` steps the device
+  every 10 ms on the wall clock, writes only protocol bytes to stdout, and on
+  stdin EOF writes a new mode-0600 outcome (categories, counts, capability
+  digest) and exits 0 only for a clean session.
 - [ ] Add the Bun Gate driver with process-group ownership and tests for
   admission, an untrusted capability and device loss.
 - [ ] Add a required `gate-controller-serial` coverage row, update the docs, run

@@ -15,6 +15,7 @@ sha2.workspace = true
 tracing = "0.1"
 
 [dev-dependencies]
+bitaxe-worker-control = { path = "../../crates/bitaxe-worker-control" }
 tempfile.workspace = true
 
 [build-dependencies]

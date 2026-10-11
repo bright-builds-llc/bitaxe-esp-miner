@@ -448,6 +448,7 @@ dependencies = [
  "anyhow",
  "bitaxe-simulation",
  "bitaxe-virtual-board",
+ "bitaxe-worker-control",
  "clap",
  "serde",
  "serde_json",
