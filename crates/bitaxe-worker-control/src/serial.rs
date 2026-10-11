@@ -12,6 +12,7 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde::{Deserialize, Serialize};
 use serde_json::{value::RawValue, Value};
 use sha2::{Digest, Sha256};
+use std::io::Write as _;
 use thiserror::Error;
 use zeroize::Zeroize;
 
@@ -130,7 +131,54 @@ pub enum SerialError {
     Integrity,
 }
 
-impl SerialEnvelope {
+/// A validated record borrowing its frame, so receiving one copies nothing. Canonical
+/// records never escape their strings; an escaped field is invalid, not copied.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct SerialRecord<'a> {
+    pub profile: &'a str,
+    pub kind: SerialKind,
+    #[serde(borrow, deserialize_with = "required_borrowed_session_id")]
+    pub session_id: Option<&'a str>,
+    pub sequence: u32,
+    payload_bytes: u32,
+    payload_sha256: &'a str,
+    #[serde(borrow)]
+    pub payload: &'a RawValue,
+}
+
+impl<'a> SerialRecord<'a> {
+    /// Parses one bounded UTF-8 JSON object followed by a single LF.
+    pub fn parse(bytes: &'a [u8]) -> Result<Self, SerialError> {
+        if bytes.len() > MAXIMUM_WIRE_FRAME_BYTES {
+            return Err(SerialError::Oversized);
+        }
+        let payload = bytes.strip_suffix(b"\n").ok_or(SerialError::Invalid)?;
+        if payload.contains(&b'\n') || payload.contains(&b'\r') {
+            return Err(SerialError::Invalid);
+        }
+        let record: Self = serde_json::from_slice(payload).map_err(|_| SerialError::Invalid)?;
+        if record.profile != SERIAL_PROFILE
+            || !record.payload.get().starts_with('{')
+            || record.session_id.is_some_and(|id| !canonical_nonce(id, 16))
+        {
+            return Err(SerialError::Invalid);
+        }
+        if record.kind == SerialKind::Control
+            && record.payload.get().len() > MAXIMUM_CONTROL_PAYLOAD_BYTES
+        {
+            return Err(SerialError::Oversized);
+        }
+        if record.payload.get().len() != record.payload_bytes as usize
+            || !canonical_nonce(record.payload_sha256, 32)
+            || record.payload_sha256
+                != URL_SAFE_NO_PAD.encode(Sha256::digest(record.payload.get().as_bytes()))
+        {
+            return Err(SerialError::Integrity);
+        }
+        Ok(record)
+    }
+
     /// Recognizes a closed session payload; callers must still validate its session and sequence.
     #[must_use]
     pub fn is_close(&self) -> bool {
@@ -150,42 +198,41 @@ impl SerialEnvelope {
         self.kind == SerialKind::Session
             && serde_json::from_str::<Close>(self.payload.get()).is_ok()
     }
+}
 
-    /// Parses one bounded UTF-8 JSON object followed by a single LF.
-    pub fn parse(bytes: &[u8]) -> Result<Self, SerialError> {
-        if bytes.len() > MAXIMUM_WIRE_FRAME_BYTES {
-            return Err(SerialError::Oversized);
+impl SerialEnvelope {
+    /// Recognizes a closed session payload; callers must still validate its session and sequence.
+    #[must_use]
+    pub fn is_close(&self) -> bool {
+        SerialRecord {
+            profile: &self.profile,
+            kind: self.kind,
+            session_id: self.session_id.as_deref(),
+            sequence: self.sequence,
+            payload_bytes: self.payload_bytes,
+            payload_sha256: &self.payload_sha256,
+            payload: &self.payload,
         }
-        let payload = bytes.strip_suffix(b"\n").ok_or(SerialError::Invalid)?;
-        if payload.contains(&b'\n') || payload.contains(&b'\r') {
-            return Err(SerialError::Invalid);
-        }
-        let envelope: Self = serde_json::from_slice(payload).map_err(|_| SerialError::Invalid)?;
-        if envelope.profile != SERIAL_PROFILE
-            || !envelope.payload.get().starts_with('{')
-            || envelope
-                .session_id
-                .as_ref()
-                .is_some_and(|id| !canonical_nonce(id, 16))
-        {
-            return Err(SerialError::Invalid);
-        }
-        if envelope.kind == SerialKind::Control
-            && envelope.payload.get().len() > MAXIMUM_CONTROL_PAYLOAD_BYTES
-        {
-            return Err(SerialError::Oversized);
-        }
-        if envelope.payload.get().len() != envelope.payload_bytes as usize
-            || !canonical_nonce(&envelope.payload_sha256, 32)
-            || envelope.payload_sha256
-                != URL_SAFE_NO_PAD.encode(Sha256::digest(envelope.payload.get().as_bytes()))
-        {
-            return Err(SerialError::Integrity);
-        }
-        Ok(envelope)
+        .is_close()
     }
 
-    /// Wraps a raw JSON payload without escaping or reinterpreting its values.
+    /// Parses one bounded record into an owned envelope; see [`SerialRecord::parse`].
+    pub fn parse(bytes: &[u8]) -> Result<Self, SerialError> {
+        let record = SerialRecord::parse(bytes)?;
+        Ok(Self {
+            profile: record.profile.to_owned(),
+            kind: record.kind,
+            session_id: record.session_id.map(str::to_owned),
+            sequence: record.sequence,
+            payload_bytes: record.payload_bytes,
+            payload_sha256: record.payload_sha256.to_owned(),
+            payload: record.payload.to_owned(),
+        })
+    }
+
+    /// Wraps a raw JSON payload without escaping or reinterpreting its values. The
+    /// record is written into one buffer reserved recoverably at its bound, so an
+    /// exhausted heap is `Unavailable`, never an abort.
     pub fn encode(
         kind: SerialKind,
         session_id: Option<&str>,
@@ -200,22 +247,63 @@ impl SerialEnvelope {
             session_id: Option<&'a str>,
             sequence: u32,
             payload_bytes: usize,
-            payload_sha256: String,
+            payload_sha256: &'a str,
             payload: &'a RawValue,
         }
-        let mut bytes = serde_json::to_vec(&Wire {
+        let mut digest = [0u8; 43];
+        URL_SAFE_NO_PAD
+            .encode_slice(Sha256::digest(payload.get().as_bytes()), &mut digest)
+            .map_err(|_| SerialError::Invalid)?;
+        let payload_sha256 = std::str::from_utf8(&digest).map_err(|_| SerialError::Invalid)?;
+        let bound = payload
+            .get()
+            .len()
+            .checked_add(ENVELOPE_OVERHEAD_BYTES)
+            .filter(|bound| *bound <= MAXIMUM_WIRE_FRAME_BYTES)
+            .ok_or(SerialError::Oversized)?;
+        let mut bytes = Vec::new();
+        bitaxe_core::fallible::reserve_exact(&mut bytes, bound, ENCODE_SITE)
+            .map_err(|_| SerialError::Unavailable)?;
+        let wire = Wire {
             profile: SERIAL_PROFILE,
             kind,
             session_id,
             sequence,
             payload_bytes: payload.get().len(),
-            payload_sha256: URL_SAFE_NO_PAD.encode(Sha256::digest(payload.get().as_bytes())),
+            payload_sha256,
             payload,
-        })
-        .map_err(|_| SerialError::Invalid)?;
-        bytes.push(b'\n');
-        Self::parse(&bytes)?;
+        };
+        serde_json::to_writer(ReservedWriter(&mut bytes), &wire)
+            .map_err(|_| SerialError::Oversized)?;
+        ReservedWriter(&mut bytes)
+            .write_all(b"\n")
+            .map_err(|_| SerialError::Oversized)?;
+        SerialRecord::parse(&bytes)?;
         Ok(bytes)
+    }
+}
+
+/// Every envelope field but the payload: profile, kind, session id, sequence, payload
+/// length and digest, and their keys, with room to spare.
+const ENVELOPE_OVERHEAD_BYTES: usize = 256;
+
+/// One outbound record's buffer.
+pub const ENCODE_SITE: bitaxe_core::fallible::Site = bitaxe_core::fallible::Site("serial.encode");
+
+/// Writes only into capacity already reserved; it never grows the buffer.
+struct ReservedWriter<'a>(&'a mut Vec<u8>);
+
+impl std::io::Write for ReservedWriter<'_> {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if bytes.len() > self.0.capacity() - self.0.len() {
+            return Err(std::io::ErrorKind::WriteZero.into());
+        }
+        self.0.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 
@@ -294,4 +382,10 @@ fn required_session_id<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<String>, D::Error> {
     Option::<String>::deserialize(deserializer)
+}
+
+fn required_borrowed_session_id<'de: 'a, 'a, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<&'a str>, D::Error> {
+    Option::<&'a str>::deserialize(deserializer)
 }

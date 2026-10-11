@@ -1,6 +1,6 @@
 use bitaxe_worker_control::serial::{
-    SerialEnvelope, SerialError, SerialFrameAccumulator, SerialKind, SerialSessionBinding,
-    MAXIMUM_CONTROL_PAYLOAD_BYTES, MAXIMUM_WIRE_FRAME_BYTES,
+    SerialEnvelope, SerialError, SerialFrameAccumulator, SerialKind, SerialRecord,
+    SerialSessionBinding, MAXIMUM_CONTROL_PAYLOAD_BYTES, MAXIMUM_WIRE_FRAME_BYTES,
 };
 use serde_json::value::RawValue;
 
@@ -292,4 +292,61 @@ fn signed_manifest_advertises_exact_difficulty_hint_profile() {
         "worker-stratum-difficulty-hint-v1"
     );
     assert_eq!(digest, "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU");
+}
+
+#[test]
+fn the_largest_envelope_fits_its_reserved_buffer() {
+    // Arrange
+    let payload = format!(
+        r#"{{"p":"{}"}}"#,
+        "x".repeat(MAXIMUM_CONTROL_PAYLOAD_BYTES - 8)
+    );
+    let raw = RawValue::from_string(payload).expect("payload");
+    // Act
+    let encoded = SerialEnvelope::encode(
+        SerialKind::Diagnostic,
+        Some("AAAAAAAAAAAAAAAAAAAAAA"),
+        u32::MAX,
+        &raw,
+    );
+    // Assert
+    let bytes = encoded.expect("largest record");
+    assert!(bytes.len() <= MAXIMUM_WIRE_FRAME_BYTES);
+    assert!(SerialRecord::parse(&bytes).is_ok());
+}
+
+#[test]
+fn a_payload_beyond_the_frame_bound_is_oversized() {
+    // Arrange
+    let payload = format!(r#"{{"p":"{}"}}"#, "x".repeat(MAXIMUM_WIRE_FRAME_BYTES));
+    let raw = RawValue::from_string(payload).expect("payload");
+    // Act
+    let encoded = SerialEnvelope::encode(SerialKind::Diagnostic, None, 1, &raw);
+    // Assert
+    assert_eq!(encoded.err(), Some(SerialError::Oversized));
+}
+
+#[test]
+fn a_received_record_borrows_its_payload() {
+    // Arrange
+    let bytes = record(r#"{"command":"status"}"#);
+    // Act
+    let parsed = SerialRecord::parse(&bytes).expect("record");
+    // Assert
+    let payload = parsed.payload.get().as_bytes().as_ptr();
+    assert!(bytes.as_ptr_range().contains(&payload));
+    assert_eq!(parsed.payload.get(), r#"{"command":"status"}"#);
+}
+
+#[test]
+fn an_escaped_envelope_string_is_invalid() {
+    // Arrange: the profile spells one letter as a JSON escape; no canonical encoder does.
+    let bytes = record("{}");
+    let text = String::from_utf8(bytes)
+        .expect("utf8")
+        .replacen("bwg-", "\\u0062wg-", 1);
+    // Act
+    let parsed = SerialRecord::parse(text.as_bytes());
+    // Assert
+    assert_eq!(parsed.err(), Some(SerialError::Invalid));
 }

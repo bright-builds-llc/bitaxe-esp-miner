@@ -1125,7 +1125,7 @@ in-process scenarios dropping their always-unsupported "actual allocator" checks
   in `bitaxe_fault_provenance`, whose failure callback flags such records in the
   history ring and leaves the legacy first-failure slot to fatal failures; every
   production `try_reserve` site in firmware and its shared crates uses the seam.
-- [ ] Typed sites: the link receiver parses envelopes without an infallible
+- [x] Typed sites: the link receiver parses envelopes without an infallible
   payload copy and reports frame-buffer exhaustion as a typed link failure;
   `V2Record` snapshots fallibly; `SerialEnvelope::encode` writes through a bounded,
   fallible buffer. Stack audits and characterization transcripts re-run.

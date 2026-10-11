@@ -1,5 +1,5 @@
 use super::*;
-use crate::serial::ReceiveCreditMailbox;
+use crate::serial::{ReceiveCreditMailbox, SerialEnvelope};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde_json::value::RawValue;
 use std::cell::{Cell, RefCell};

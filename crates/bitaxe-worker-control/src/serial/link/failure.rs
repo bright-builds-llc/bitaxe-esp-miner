@@ -16,10 +16,11 @@ pub enum SerialLinkFailure {
     SessionRevoked = 10,
     Integrity = 11,
     ReceiveCounter = 12,
+    FrameAllocation = 13,
 }
 
 impl SerialLinkFailure {
-    const ALL: [Self; 12] = [
+    const ALL: [Self; 13] = [
         Self::Read,
         Self::Framing,
         Self::Envelope,
@@ -32,6 +33,7 @@ impl SerialLinkFailure {
         Self::SessionRevoked,
         Self::Integrity,
         Self::ReceiveCounter,
+        Self::FrameAllocation,
     ];
 
     #[must_use]
@@ -62,6 +64,7 @@ impl SerialLinkFailure {
             Self::SessionRevoked => "session_revoked",
             Self::Integrity => "integrity",
             Self::ReceiveCounter => "receive_counter",
+            Self::FrameAllocation => "frame_allocation",
         }
     }
 }
@@ -86,6 +89,7 @@ mod tests {
             (10, "session_revoked"),
             (11, "integrity"),
             (12, "receive_counter"),
+            (13, "frame_allocation"),
         ];
         // Act
         let actual: Vec<(u8, &str)> = SerialLinkFailure::ALL
@@ -99,7 +103,7 @@ mod tests {
     #[test]
     fn unknown_codes_have_no_failure() {
         assert_eq!(SerialLinkFailure::from_code(0), None);
-        assert_eq!(SerialLinkFailure::from_code(13), None);
+        assert_eq!(SerialLinkFailure::from_code(14), None);
         assert_eq!(
             SerialLinkFailure::from_code(11),
             Some(SerialLinkFailure::Integrity)

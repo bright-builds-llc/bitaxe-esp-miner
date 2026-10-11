@@ -406,13 +406,13 @@ impl SerialRecordWriter {
             .sequence
             .checked_add(1)
             .ok_or(SerialWriteError::SequenceExhausted)?;
-        let raw: Box<RawValue> =
-            serde_json::from_slice(payload).map_err(SerialWriteError::Payload)?;
+        // Borrowed, so validating the payload copies nothing.
+        let raw: &RawValue = serde_json::from_slice(payload).map_err(SerialWriteError::Payload)?;
         self.emit(
             admission,
             kind,
             self.sequence,
-            &raw,
+            raw,
             maybe_correlation,
             purpose,
             view,

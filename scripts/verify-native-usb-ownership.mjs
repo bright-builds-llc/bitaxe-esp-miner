@@ -20,7 +20,7 @@ if (cargo.includes("esp_tinyusb") || cargo.includes("usb_phy_handoff")) throw ne
 const config = read("firmware/bitaxe/sdkconfig.defaults");
 if (/^CONFIG_TINYUSB[^\n]*=y$/mu.test(config)) throw new Error("TinyUSB is enabled");
 requireText("firmware/bitaxe/src/bwg_worker_usb/link.rs", ["check_deadline", "usb_runtime::read", "SerialLinkReceiver", "impl SerialLinkEffects"]);
-requireText("crates/bitaxe-worker-control/src/serial/link.rs", ["SerialEnvelope", "heartbeat", "liveness.poll", "HOST_RECEIVE_WINDOW_BYTES"]);
+requireText("crates/bitaxe-worker-control/src/serial/link.rs", ["SerialRecord::parse", "heartbeat", "liveness.poll", "HOST_RECEIVE_WINDOW_BYTES"]);
 requireText("firmware/bitaxe/src/bwg_worker_usb/writer.rs", ["usb_runtime::write", "impl SerialOutputSink", "SerialRecordWriter"]);
 requireText("crates/bitaxe-worker-control/src/serial/writer.rs", ["SerialEnvelope::encode", "finish_terminal", "fn permits", "LONG_RECORD_HEARTBEAT_BYTES"]);
 requireText("AGENTS.md", ["ADR-0021", "docs/hardware/native-usb-ownership.md"]);

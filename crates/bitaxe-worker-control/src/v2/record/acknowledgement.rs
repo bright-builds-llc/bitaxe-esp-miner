@@ -116,6 +116,19 @@ mod tests {
         }
     }
     #[test]
+    fn a_fallible_snapshot_equals_the_record() {
+        // Arrange
+        let mut r = prepared();
+        r.event(Stage::Revoked, Some(2500), None, None, None, None);
+        // Act
+        let snapshot = r.try_snapshot().expect("snapshot");
+        // Assert
+        assert_eq!(
+            serde_json::to_value(&snapshot).expect("json"),
+            serde_json::to_value(r.snapshot()).expect("json")
+        );
+    }
+    #[test]
     fn actual_ack_survives_revocation_and_owner_retirement_without_authority_change() {
         // Arrange
         let mut r = prepared();

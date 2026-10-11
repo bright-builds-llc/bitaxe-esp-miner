@@ -344,7 +344,7 @@ fn control_copy_allocation_failure_records_control_allocation() {
 }
 
 #[test]
-fn frame_copy_allocation_failure_records_framing() {
+fn frame_copy_allocation_failure_records_frame_allocation() {
     // Arrange
     let (mut receiver, effects) = established();
     let record = padded_control(4003);
@@ -353,6 +353,9 @@ fn frame_copy_allocation_failure_records_framing() {
     receiver.receive(&record, &effects);
     ARMED_SIZE.with(|armed| armed.set(0));
     // Assert
-    assert_eq!(effects.failure.get(), Some(SerialLinkFailure::Framing));
+    assert_eq!(
+        effects.failure.get(),
+        Some(SerialLinkFailure::FrameAllocation)
+    );
     assert_eq!(receiver.maybe_epoch(), None);
 }

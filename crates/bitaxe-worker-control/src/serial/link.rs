@@ -12,8 +12,8 @@ pub use failure::SerialLinkFailure;
 
 use super::trace::{SerialTraceCorrelation, SerialTraceStage};
 use super::{
-    canonical_nonce, serial_manifest, SerialEnvelope, SerialError, SerialFrameAccumulator,
-    SerialKind, SerialLinkLiveness, SerialReceiveProgress, SerialSessionBinding,
+    canonical_nonce, serial_manifest, SerialError, SerialFrameAccumulator, SerialKind,
+    SerialLinkLiveness, SerialReceiveProgress, SerialRecord, SerialSessionBinding,
     HOST_RECEIVE_WINDOW_BYTES, MAXIMUM_WIRE_FRAME_BYTES,
 };
 use serde::Deserialize;
@@ -177,16 +177,24 @@ impl<G: Copy> SerialLinkReceiver<G> {
         };
         let frame_bytes = self.observed_bytes;
         self.observed_bytes = 0;
-        let Ok(frame) = result else {
-            if let Some(link) = self.maybe_link.as_ref() {
-                rejected(effects, link.epoch, frame_bytes);
-                effects.record_failure(SerialLinkFailure::Framing, frame_bytes);
+        let frame = match result {
+            Ok(frame) => frame,
+            Err(error) => {
+                if let Some(link) = self.maybe_link.as_ref() {
+                    rejected(effects, link.epoch, frame_bytes);
+                    let failure = if error == SerialError::Unavailable {
+                        SerialLinkFailure::FrameAllocation
+                    } else {
+                        SerialLinkFailure::Framing
+                    };
+                    effects.record_failure(failure, frame_bytes);
+                }
+                self.close(effects);
+                return;
             }
-            self.close(effects);
-            return;
         };
         let frame = Zeroizing::new(frame);
-        let envelope = match SerialEnvelope::parse(&frame) {
+        let envelope = match SerialRecord::parse(&frame) {
             Ok(envelope) => envelope,
             Err(error) => {
                 // Boot text is permissible before hello; corrupt established input revokes.
@@ -208,7 +216,7 @@ impl<G: Copy> SerialLinkReceiver<G> {
 
     fn receive_record<E: SerialLinkEffects<Generation = G>>(
         &mut self,
-        envelope: SerialEnvelope,
+        envelope: SerialRecord<'_>,
         frame_bytes: usize,
         effects: &E,
     ) {
@@ -225,7 +233,7 @@ impl<G: Copy> SerialLinkReceiver<G> {
         let Some(link) = self.maybe_link.as_mut() else {
             return;
         };
-        if envelope.session_id.as_deref() != Some(link.binding.session_id.as_str())
+        if envelope.session_id != Some(link.binding.session_id.as_str())
             || envelope.sequence <= link.sequence
         {
             rejected(effects, link.epoch, frame_bytes);
@@ -271,7 +279,7 @@ impl<G: Copy> SerialLinkReceiver<G> {
 
     fn heartbeat<E: SerialLinkEffects<Generation = G>>(
         &mut self,
-        envelope: &SerialEnvelope,
+        envelope: &SerialRecord<'_>,
         frame_bytes: usize,
         effects: &E,
     ) {
@@ -307,7 +315,7 @@ impl<G: Copy> SerialLinkReceiver<G> {
 
     fn control<E: SerialLinkEffects<Generation = G>>(
         &mut self,
-        envelope: &SerialEnvelope,
+        envelope: &SerialRecord<'_>,
         correlation: SerialTraceCorrelation,
         frame_bytes: usize,
         effects: &E,
@@ -353,7 +361,7 @@ impl<G: Copy> SerialLinkReceiver<G> {
 }
 
 fn hello<G: Copy, E: SerialLinkEffects<Generation = G>>(
-    envelope: SerialEnvelope,
+    envelope: SerialRecord<'_>,
     next_epoch: &mut u32,
     wire_bytes: usize,
     effects: &E,

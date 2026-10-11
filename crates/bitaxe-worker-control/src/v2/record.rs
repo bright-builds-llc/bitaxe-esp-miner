@@ -1,8 +1,11 @@
 use super::*;
-use bitaxe_core::fallible::{reserve_exact, Site};
+use bitaxe_core::fallible::{reserve_exact, try_string, Site};
+use std::collections::TryReserveError;
 
 /// The bounded record vectors, reserved once at admission.
 pub const RECORD_SITE: Site = Site("v2.record");
+/// Every copy a status snapshot makes of the retained record.
+pub const SNAPSHOT_SITE: Site = Site("v2.snapshot");
 mod acknowledgement;
 pub use acknowledgement::ObservedAcknowledgement;
 
@@ -132,8 +135,33 @@ impl V2Record {
     pub fn has_stage(&self, stage: Stage) -> bool {
         self.record.events.iter().any(|e| e.kind == stage)
     }
+    /// An infallible copy for owners that tolerate aborting on exhaustion.
     pub fn snapshot(&self) -> DeviceRecord {
         self.record.clone()
+    }
+    /// The status-path copy: every allocation it makes is recoverable.
+    pub fn try_snapshot(&self) -> Result<DeviceRecord, TryReserveError> {
+        let record = &self.record;
+        Ok(DeviceRecord {
+            attempt_id: try_string(&record.attempt_id, SNAPSHOT_SITE)?,
+            maybe_job_commitment: try_optional(record.maybe_job_commitment.as_deref())?,
+            events: try_collect(&record.events, |event| {
+                Ok(Event {
+                    maybe_payload_sha256: try_optional(event.maybe_payload_sha256.as_deref())?,
+                    ..*event
+                })
+            })?,
+            timings: try_collect(&record.timings, |timing| Ok(timing.clone()))?,
+            share_facts: try_collect(&record.share_facts, |share| {
+                Ok(ShareFact {
+                    work_fields_sha256: try_string(&share.work_fields_sha256, SNAPSHOT_SITE)?,
+                    ..*share
+                })
+            })?,
+            secondary_failures: try_collect(&record.secondary_failures, |failure| Ok(*failure))?,
+            resources: record.resources.clone(),
+            ..*record
+        })
     }
     pub fn binding(&self) -> (u64, u64, u64) {
         (
@@ -413,4 +441,22 @@ impl V2Record {
         self.record.maybe_outcome = Some(outcome);
         self.record.maybe_terminal_at_device_us = now;
     }
+}
+
+fn try_optional(maybe_text: Option<&str>) -> Result<Option<String>, TryReserveError> {
+    maybe_text
+        .map(|text| try_string(text, SNAPSHOT_SITE))
+        .transpose()
+}
+
+fn try_collect<T, U>(
+    items: &[T],
+    mut copy: impl FnMut(&T) -> Result<U, TryReserveError>,
+) -> Result<Vec<U>, TryReserveError> {
+    let mut copies = Vec::new();
+    reserve_exact(&mut copies, items.len(), SNAPSHOT_SITE)?;
+    for item in items {
+        copies.push(copy(item)?);
+    }
+    Ok(copies)
 }

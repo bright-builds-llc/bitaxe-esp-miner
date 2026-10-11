@@ -101,7 +101,9 @@ impl WorkerSession for Session {
             .maybe_v2_record
             .borrow()
             .as_ref()
-            .map(|record| record.snapshot());
+            .map(bitaxe_worker_control::v2::V2Record::try_snapshot)
+            .transpose()
+            .map_err(|_| WorkerSessionError::Rejected)?;
         Ok(Some(bitaxe_worker_control::v2::V2Status {
             schema: "worker-stratum-v2-status-v1",
             scope,

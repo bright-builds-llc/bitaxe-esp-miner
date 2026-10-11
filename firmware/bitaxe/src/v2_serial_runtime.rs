@@ -61,7 +61,9 @@ pub(crate) fn status(
         .maybe_record
         .as_ref()
         .filter(|r| r.scope() == scope)
-        .map(V2Record::snapshot);
+        .map(V2Record::try_snapshot)
+        .transpose()
+        .map_err(|_| WorkerSessionError::Rejected)?;
     if maybe_record.is_none() && time.is_none() {
         return Err(WorkerSessionError::Rejected);
     }
