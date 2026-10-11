@@ -1,0 +1,35 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+
+rust_library(
+    name = "bap_client_lib",
+    srcs = glob(
+        ["src/**/*.rs"],
+        exclude = ["src/main.rs"],
+    ),
+    crate_name = "bap_client",
+    crate_root = "src/lib.rs",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-core:bitaxe_core",
+        "@crates//:libc",
+    ],
+)
+
+rust_test(
+    name = "tests",
+    crate = ":bap_client_lib",
+    deps = ["@crates//:tempfile"],
+)
+
+rust_binary(
+    name = "bap_client",
+    srcs = ["src/main.rs"],
+    edition = "2021",
+    deps = [
+        ":bap_client_lib",
+        "//crates/bitaxe-core:bitaxe_core",
+        "@crates//:anyhow",
+        "@crates//:clap",
+        "@crates//:serde_json",
+    ],
+)

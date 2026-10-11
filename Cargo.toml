@@ -15,6 +15,7 @@ members = [
     "crates/bitaxe-worker-control",
     "firmware/bitaxe",
     "firmware/virtual-ultra205",
+    "tools/bap-client",
     "tools/flash",
     "tools/virtual-board",
     "tools/device-session",

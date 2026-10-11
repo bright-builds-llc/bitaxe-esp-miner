@@ -1,0 +1,22 @@
+[package]
+name = "bap-client"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "bap_client"
+
+[[bin]]
+name = "bap-client"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+bitaxe-core = { path = "../../crates/bitaxe-core" }
+clap.workspace = true
+libc.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

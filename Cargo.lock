@@ -148,6 +148,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b7e4c2464d97fe331d41de9d5db0def0a96f4d823b8b32a2efd503578988973"
 
 [[package]]
+name = "bap-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitaxe-core",
+ "clap",
+ "libc",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

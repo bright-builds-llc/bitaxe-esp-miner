@@ -1190,9 +1190,23 @@ accessory.
 - [ ] With the owner, identify the Ultra 205 BAP connector, its pinout and
       logic level from the pinned reference and board documentation, and the
       owner's adapter model; write connection guidance for the board and the
-      macOS host.
+      macOS host. Done 2026-10-11 under the owner's wiring-guidance
+      authorization: J6 per the `ultra-205` schematic, in
+      `docs/hardware/bap-uart-connection.md`. Pending: the adapter model and
+      its 3.3 V logic setting.
 - [ ] Add a repo-owned host BAP client for request, subscribe, unsubscribe and
       set, with privacy rules for the Wi-Fi `ssid` and `password` parameters.
+      Plan: a `tools/bap-client` crate reusing `bitaxe_core::bap` framing; a pure
+      exchange core (frame building, response matching, timeouts, redaction)
+      tested over fake transports and a pseudo-terminal; a macOS raw 115200 8-N-1
+      adapter that opens only an explicit `/dev/cu.*` adapter node; `ssid` and
+      `password` values accepted only from a mode-0600 file, never argv, and
+      never printed; category-only output; a `just bap` command. No hardware
+      use until the contract is authorized. Implemented 2026-10-11 (software
+      only): 25 tests over a scripted link and a pseudo-terminal, including a
+      hang-up reported as an error; the CLI refuses the board's USB node,
+      credentials on the command line, unconfirmed settings and ASIC settings
+      without an allowance before opening any port. Live use pending.
 - [ ] Write a complete hardware contract covering electrical safety, allowed
       settings, restoration of changed settings, evidence and stop conditions.
 - [ ] Run it, review independently and promote the BAP rows if the evidence

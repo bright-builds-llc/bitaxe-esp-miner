@@ -544,6 +544,11 @@ virtual-emulator *args:
 virtual-board *args:
     bazel run //scripts:virtual_board -- {{ args }}
 
+# Host BAP client over a USB-to-UART adapter (docs/hardware/bap-uart-connection.md).
+# It adds no authority: device traffic needs the active task's hardware contract.
+bap *args:
+    bazel run //tools/bap-client:bap_client -- {{ args }}
+
 qualify-virtual-board *args:
     bazel run //scripts:virtual_board -- qualify {{ args }}
 
