@@ -20,7 +20,7 @@ export async function makeCorpusFixture(t) {
   for (const path of entries) { const bytes = Buffer.from(`// published synthetic source ${path}\n`); await put(resolve(firmwareRoot, path), bytes);
     sourceInventory.push({ path, sha256: sha256(bytes), length: bytes.length }); retained.set(`snapshot/source/${path}`, bytes); }
   const git = args => run("git", args, { cwd: firmwareRoot, timeout: 10000 });
-  await git(["init", "-q"]); await git(["add", "scripts", "firmware"]);
+  await git(["init", "-q"]); await git(["add", "--all"]);
   await git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "Synthetic published sources"]);
   anchors.commit = (await git(["rev-parse", "HEAD"])).stdout.trim(); await git(["update-ref", "refs/remotes/origin/main", anchors.commit]);
   const kinds = ["firmware_elf", "firmware_ota_image", "www_spiffs_image", "factory_merged_image", "partition_table", "otadata_initial", "bootloader", "partition_table_binary"];

@@ -49,7 +49,7 @@ js_binary(
     data = [
         "verify-native-usb-ownership.mjs",
         "//:native_usb_ownership_guard_inputs",
-        "//crates/bitaxe-worker-control:native_usb_link_core",
+        "//crates/bitaxe-worker-control:native_usb_serial_core",
         "//firmware/bitaxe:native_usb_ownership_sources",
     ],
     entry_point = "verify-native-usb-ownership.mjs",
@@ -62,7 +62,7 @@ js_test(
     data = [
         "verify-native-usb-ownership.mjs",
         "//:native_usb_ownership_guard_inputs",
-        "//crates/bitaxe-worker-control:native_usb_link_core",
+        "//crates/bitaxe-worker-control:native_usb_serial_core",
         "//firmware/bitaxe:native_usb_ownership_sources",
     ],
     entry_point = "verify-native-usb-ownership.mjs",
@@ -786,6 +786,7 @@ js_library(
         ":str005_noise_serial_sources",
         "//:str005_v2_serial_contract_inputs",
         "//:usb_bootstrap_measure_contract_inputs",
+        "//crates/bitaxe-worker-control:native_usb_serial_core",
         "//firmware/bitaxe:usb_bootstrap_writer_audit_sources",
         "//firmware/bitaxe:bwg_deployment_trust_js",
         "//crates/bitaxe-stratum:v2_qualification_vectors",
@@ -1044,6 +1045,7 @@ js_library(
     deps = [
         ":str005_v2_serial_sources",
         "//:usb_bootstrap_measure_contract_inputs",
+        "//crates/bitaxe-worker-control:native_usb_serial_core",
         "//firmware/bitaxe:usb_bootstrap_writer_audit_sources",
         "//firmware/bitaxe:bwg_deployment_trust_js",
     ],

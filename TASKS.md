@@ -835,10 +835,22 @@ in the firmware adapter.
   partial-output tracking) and pins 22 transcripts. New `just audit-writer-stack`
   on the pre-refactor ELF: deepest normal path 5,536 of 6,144 bytes (608
   headroom) through credit, `next_record`, `emit` and envelope encode.
-- [ ] Extract the core with unit and pinned Gate device-record vector tests;
+- [x] Extract the core with unit and pinned Gate device-record vector tests;
   reduce firmware `writer.rs` to an adapter with identical transcripts.
-- [ ] Update source-ownership tests, the native USB ownership verifier, the
-  bootstrap writer audit and source inventories; compare the stack audit.
+  `bitaxe_worker_control::serial::writer` (`SerialRecordWriter`, a `&self`
+  `SerialWriterView` plus a `&mut` `SerialOutputSink`) has 30 unit tests, and
+  `:serial_writer_tests` reproduces the pinned Gate device `heartbeat` and
+  `receive_credit` wire strings byte for byte. All 22 writer transcripts and the
+  21 link transcripts are unchanged; the real-thread startup harness passes.
+- [x] Update source-ownership tests, the native USB ownership verifier, the
+  bootstrap writer audit and source inventories; compare the stack audit. The
+  bootstrap writer audit now selects the core and the adapter's trait impls
+  (frame sum 5,424 of 7,680, decode complete after replacing a purpose `match`
+  jump table with table loads), and its synthetic corpus fixture stages every
+  source. The writer thread measures 5,616 bytes against the 5,536 baseline
+  (6,144 budget; an inline hint made it worse and was reverted), the link thread
+  5,568, the control owner is unchanged at 10,256, and no realignment callers
+  exist.
 - [ ] Emit simulated device records through the core, check them with a Gate-rule
   host peer (`serial_output`), and require it in `framed-serial-link` coverage.
 - [ ] Run the affected Bazel and ordered Cargo checks, firmware build/package,

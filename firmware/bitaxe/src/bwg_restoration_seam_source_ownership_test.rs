@@ -8,6 +8,8 @@ const USB_SOURCE: &str = include_str!("bwg_worker_usb.rs");
 const LINK_SOURCE: &str = include_str!("bwg_worker_usb/link.rs");
 const LINK_CORE_SOURCE: &str =
     include_str!("../../../crates/bitaxe-worker-control/src/serial/link.rs");
+const WRITER_CORE_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-worker-control/src/serial/writer.rs");
 const WRITER_SOURCE: &str = include_str!("bwg_worker_usb/writer.rs");
 const SESSION_SOURCE: &str = include_str!("bwg_worker_session.rs");
 const NVS_SOURCE: &str = include_str!("bwg_worker_nvs.rs");
@@ -117,7 +119,7 @@ fn heartbeat_and_link_deadlines_read_real_uptime() {
     assert!(LINK_SOURCE.contains("fn now_ms(&self) -> u64 {\n        crate::runtime_uptime::millis()\n    }"));
     assert_eq!(LINK_SOURCE.matches("runtime_uptime::millis()").count(), 2);
     assert!(LINK_CORE_SOURCE.contains(heartbeat));
-    for source in [LINK_SOURCE, LINK_CORE_SOURCE] {
+    for source in [LINK_SOURCE, LINK_CORE_SOURCE, WRITER_CORE_SOURCE] {
         assert!(!source.contains("WorkerControl"));
         assert!(!source.contains("ClockStimulus") && !source.contains("clock_stimulus"));
     }

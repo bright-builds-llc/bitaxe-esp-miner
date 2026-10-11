@@ -17,6 +17,7 @@ export const V2_NATIVE_SOURCE_FILES = Object.freeze([
   "firmware/bitaxe/src/usb_tx_measurement.rs",
   "firmware/bitaxe/src/usb_write_failure.rs",
   "firmware/bitaxe/src/bwg_worker_usb/writer.rs",
+  "crates/bitaxe-worker-control/src/serial/writer.rs",
   "firmware/bitaxe/src/noise_serial_runtime.rs",
   "firmware/bitaxe/src/noise_serial_runtime/channel.rs",
   "firmware/bitaxe/src/production_mining_session.rs",

@@ -4,6 +4,7 @@ pub mod link;
 mod liveness;
 mod receive;
 pub mod trace;
+pub mod writer;
 pub use liveness::SerialLinkLiveness;
 pub use receive::{ReceiveCreditMailbox, SerialReceiveProgress};
 

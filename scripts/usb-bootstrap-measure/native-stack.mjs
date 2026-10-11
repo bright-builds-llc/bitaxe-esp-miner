@@ -9,14 +9,18 @@ import { check, sha256 } from "./values.mjs";
 
 const run = promisify(execFile);
 const WRITER = "bitaxe_firmware::bwg_worker_usb::writer::";
+// The shared outbound record core and the adapter's trait implementations run on the writer thread.
+const CORE = "bitaxe_worker_control::serial::writer::";
+const ADAPTER_IMPLS = "<bitaxe_firmware::bwg_worker_usb::writer::";
 const RUNTIME = "bitaxe_firmware::usb_runtime::";
-const ROLES = { run: `${WRITER}run`, emit: `${WRITER}emit`, write: `${RUNTIME}write_measured_if`,
+const ROLES = { run: `${WRITER}run`, emit: `${CORE}SerialRecordWriter::emit`, write: `${RUNTIME}write_measured_if`,
   marker: `${RUNTIME}measurement::Retained::marker`, record: `${RUNTIME}measurement::Retained::record` };
 export const USB_STACK_AUDIT_SOURCES = Object.freeze(["scripts/usb-bootstrap-measure/native-stack.mjs",
   "scripts/telemetry-stack-audit.mjs", "scripts/noise-native-calls.mjs", "scripts/noise-native-disassembly.mjs",
   "firmware/bitaxe/src/bwg_worker_usb.rs", "firmware/bitaxe/src/bwg_worker_usb/writer.rs",
+  "crates/bitaxe-worker-control/src/serial/writer.rs",
   "firmware/bitaxe/src/usb_runtime.rs", "firmware/bitaxe/src/usb_tx_measurement.rs"]);
-export const selectedUsbWriter = symbol => symbol.startsWith(WRITER) || symbol.startsWith(RUNTIME);
+export const selectedUsbWriter = symbol => [WRITER, CORE, ADAPTER_IMPLS, RUNTIME].some(prefix => symbol.startsWith(prefix));
 
 /** Sum all selected standalone frames, conservatively including mutually exclusive branches.
  * Missing standalone symbols are reported as absent-or-inlined, never fabricated as zero-cost bodies.

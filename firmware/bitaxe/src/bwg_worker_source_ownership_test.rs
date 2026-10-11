@@ -55,6 +55,7 @@ fn fixed_serial_driver_has_one_writer_and_no_phy_switching() {
     let writer = include_str!("bwg_worker_usb/writer.rs");
     let link = include_str!("bwg_worker_usb/link.rs");
     let link_core = include_str!("../../../crates/bitaxe-worker-control/src/serial/link.rs");
+    let writer_core = include_str!("../../../crates/bitaxe-worker-control/src/serial/writer.rs");
 
     // Act / Assert
     assert_eq!(
@@ -73,7 +74,7 @@ fn fixed_serial_driver_has_one_writer_and_no_phy_switching() {
     );
     assert!(USB_RUNTIME_SOURCE.contains("usb_serial_jtag_read_bytes"));
     assert!(USB_RUNTIME_SOURCE.contains("usb_serial_jtag_write_bytes"));
-    for source in [USB_RUNTIME_SOURCE, USB_SOURCE, writer, link, link_core] {
+    for source in [USB_RUNTIME_SOURCE, USB_SOURCE, writer, link, link_core, writer_core] {
         assert!(!source.contains("tinyusb_driver_install"));
         assert!(!source.contains("restart_into_rom_downloader"));
         assert!(!source.contains("LineCoding"));
@@ -87,10 +88,16 @@ fn fixed_serial_driver_has_one_writer_and_no_phy_switching() {
     assert!(link.contains("RevocationReason::LinkClosed"));
     assert_eq!(link.matches("crate::usb_runtime::read(").count(), 1);
     assert!(link_core.contains("link.liveness.poll(now_ms)"));
-    // The shared core performs no transport, thread or blocking effect of its own.
+    // The shared cores perform no transport, thread or blocking effect of their own.
     for effect in ["usb_runtime", "sleep(", "std::thread", "to_vec("] {
         assert!(!link_core.contains(effect), "{effect}");
     }
+    for effect in ["usb_runtime", "sleep(", "std::thread", "recv_timeout", "send_control"] {
+        assert!(!writer_core.contains(effect), "{effect}");
+    }
+    assert_eq!(writer.matches("crate::usb_runtime::write_measured_if(").count(), 2);
+    assert!(writer.contains("recv_timeout(Duration::from_millis(10))"));
+    assert!(writer_core.contains("checked_add(1)"));
     assert!(writer.contains("MAXIMUM") || writer.contains("DIAGNOSTIC_BYTES"));
 }
 

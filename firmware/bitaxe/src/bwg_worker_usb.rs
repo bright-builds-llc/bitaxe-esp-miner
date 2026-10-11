@@ -14,7 +14,7 @@ use crate::production_mining_session::revocation::{self, WorkerGeneration};
 use crate::startup::BootMiningBaselineConfirmed;
 use bitaxe_runtime::queue::{self, Receiver, SyncSender};
 use bitaxe_worker_control::serial::trace::{SerialTraceCorrelation, SerialTraceStage};
-use bitaxe_worker_control::serial::{ReceiveCreditMailbox, SerialKind, SerialSessionBinding};
+use bitaxe_worker_control::serial::{ReceiveCreditMailbox, SerialSessionBinding};
 use bitaxe_worker_control::{
     load_or_generate_device_identity, WorkLeaseAuthorityTrust, WorkLeaseAuthorizationVerifier,
     WorkerControl,

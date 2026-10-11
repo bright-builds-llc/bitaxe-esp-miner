@@ -1,7 +1,6 @@
 //! Runs the production serial writer loop against a scripted clock, queue and
 //! transport, and pins its ordered output and effects.
 use bitaxe_worker_control::serial::trace::{SerialTraceCorrelation, SerialTraceStage};
-use bitaxe_worker_control::serial::SerialKind;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::mpsc;

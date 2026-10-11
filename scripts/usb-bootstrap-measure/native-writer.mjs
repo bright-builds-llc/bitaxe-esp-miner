@@ -17,7 +17,7 @@ export function validateWriter(value, context) {
   for (const frame of value.frames) { object(frame, ["address", "symbol", "entryBytes"]); uint(frame.address); check(frame.address > 0 && frame.address <= 0xffffffff, "bootstrap_writer_audit"); check(typeof frame.symbol === "string" && selectedUsbWriter(frame.symbol), "bootstrap_writer_audit"); uint(frame.entryBytes); }
   check(value.frames.reduce((sum, frame) => sum + frame.entryBytes, 0) === value.selectedFrameSumBytes && value.frames.filter(row => row.symbol === "bitaxe_firmware::bwg_worker_usb::writer::run").length === 1, "bootstrap_writer_audit");
   object(value.roles, ["run", "emit", "write", "marker", "record"]);
-  const symbols = { run: "bitaxe_firmware::bwg_worker_usb::writer::run", emit: "bitaxe_firmware::bwg_worker_usb::writer::emit",
+  const symbols = { run: "bitaxe_firmware::bwg_worker_usb::writer::run", emit: "bitaxe_worker_control::serial::writer::SerialRecordWriter::emit",
     write: "bitaxe_firmware::usb_runtime::write_measured_if", marker: "bitaxe_firmware::usb_runtime::measurement::Retained::marker", record: "bitaxe_firmware::usb_runtime::measurement::Retained::record" };
   for (const [role, symbol] of Object.entries(symbols)) check(value.roles[role] === (value.frames.some(frame => frame.symbol === symbol) ? "standalone_measured" : "absent_or_inlined"), "bootstrap_writer_audit");
   check(Object.values(value.roles).every(role => ["standalone_measured", "absent_or_inlined"].includes(role)) && value.roles.run === "standalone_measured", "bootstrap_writer_audit");
