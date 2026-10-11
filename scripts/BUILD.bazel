@@ -1219,6 +1219,19 @@ js_test(
 )
 
 js_binary(
+    name = "audit_writer_stack",
+    entry_point = "audit-writer-stack.mjs",
+    data = ["control-stack-audit.mjs", "link-stack-audit.mjs", "writer-stack-audit.mjs", ":virtual_emulator_sources"],
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "writer_stack_audit_test",
+    entry_point = "writer-stack-audit.test.mjs",
+    data = ["control-stack-audit.mjs", "link-stack-audit.mjs", "writer-stack-audit.mjs", ":virtual_emulator_sources"],
+)
+
+js_binary(
     name = "audit_link_stack",
     entry_point = "audit-link-stack.mjs",
     data = ["control-stack-audit.mjs", "link-stack-audit.mjs", ":virtual_emulator_sources"],

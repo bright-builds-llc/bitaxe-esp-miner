@@ -1,0 +1,11 @@
+write #1 BootstrapDiagnostic/BootIdentity bytes=102
+abandon #1 Write queued=0
+revoke_epoch epoch=0 revoked=true
+write #2 BootstrapDiagnostic/BootIdentity bytes=102
+wire #2 "usb_reboot_discriminator schema=v1 boot_ordinal=2 reset_reason=software_cpu uptime_ms=1 redacted=true\n"
+write #3 BootstrapDiagnostic/StatisticsStartup bytes=56
+wire #3 "statistics_startup schema=v1 state=failed redacted=true\n"
+write #4 BootstrapDiagnostic/StartupProgress bytes=104
+wire #4 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=250 redacted=true\n"
+receipts 
+final current=0 partial=false

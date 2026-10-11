@@ -1,0 +1,17 @@
+link_begin epoch=1
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+trace epoch=1 sequence=0 stage=WriterStarted wire=247
+write #1 Hello/Protocol bytes=247
+observe epoch=1 sequence=0 Queued queued=247/247
+observe epoch=1 sequence=0 Completed queued=247/247
+wire #1 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"afgi4Tw0DUB7fh0S2QFsNzDcPghQ3UROAAPrftndsgM\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}\n"
+link_publish received=5
+trace epoch=1 sequence=0 stage=WriterStarted wire=235
+write #2 ReceiveCredit/Protocol bytes=235
+observe epoch=1 sequence=0 Abandoned queued=0/235
+abandon #2 Write queued=0
+revoke_epoch epoch=1 revoked=true
+write #3 BootstrapDiagnostic/StartupProgress bytes=102
+wire #3 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=0 redacted=true\n"
+receipts 
+final current=0 partial=false

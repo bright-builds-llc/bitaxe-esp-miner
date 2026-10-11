@@ -1,0 +1,32 @@
+link_begin epoch=1
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+trace epoch=1 sequence=0 stage=WriterStarted wire=247
+write #1 Hello/Protocol bytes=247
+observe epoch=1 sequence=0 Queued queued=247/247
+observe epoch=1 sequence=0 Completed queued=247/247
+wire #1 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"afgi4Tw0DUB7fh0S2QFsNzDcPghQ3UROAAPrftndsgM\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}\n"
+deliver control epoch=1 request_sequence=1 bytes=1500
+trace epoch=1 sequence=1 stage=WriterStarted wire=1696
+write #2 ControlReply/Protocol bytes=1696
+observe epoch=1 sequence=1 Queued queued=512/1696
+link_revoke epoch=1
+revoke_epoch epoch=1 revoked=true
+observe epoch=1 sequence=1 Abandoned queued=512/1696
+abandon #2 Cancelled queued=512
+revoke_epoch epoch=1 revoked=false
+link_begin epoch=2
+deliver hello epoch=2 session=AQEBAQEBAQEBAQEBAQEBAQ
+write #3 Resynchronization/Resynchronization bytes=1
+wire #3 "\n"
+trace epoch=2 sequence=0 stage=WriterStarted wire=247
+write #4 Hello/Protocol bytes=247
+observe epoch=2 sequence=0 Queued queued=247/247
+observe epoch=2 sequence=0 Completed queued=247/247
+wire #4 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AQEBAQEBAQEBAQEBAQEBAQ\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"XaoILcFWk2DTAc2iKEaU90vTflGv_0UlB1F5oAHdBgk\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AQEBAQEBAQEBAQEBAQEBAQ\"}}\n"
+trace epoch=2 sequence=0 stage=WriterStarted wire=310
+write #5 Diagnostic/StartupProgress bytes=310
+observe epoch=2 sequence=0 Queued queued=310/310
+observe epoch=2 sequence=0 Completed queued=310/310
+wire #5 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"diagnostic\",\"sessionId\":\"AQEBAQEBAQEBAQEBAQEBAQ\",\"sequence\":1,\"payloadBytes\":112,\"payloadSha256\":\"SetMd9_Jzr_La8_nEgwzc0jczIcNaIxSHxzS7B6BmWw\",\"payload\":{\"line\":\"usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=0 redacted=true\"}}\n"
+receipts Ok(false)
+final current=2 partial=false

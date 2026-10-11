@@ -1,0 +1,44 @@
+link_begin epoch=1
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+trace epoch=1 sequence=0 stage=WriterStarted wire=247
+write #1 Hello/Protocol bytes=247
+observe epoch=1 sequence=0 Queued queued=247/247
+observe epoch=1 sequence=0 Completed queued=247/247
+wire #1 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"afgi4Tw0DUB7fh0S2QFsNzDcPghQ3UROAAPrftndsgM\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}\n"
+link_publish received=10
+trace epoch=1 sequence=0 stage=WriterStarted wire=236
+write #2 ReceiveCredit/Protocol bytes=236
+observe epoch=1 sequence=0 Queued queued=236/236
+observe epoch=1 sequence=0 Completed queued=236/236
+wire #2 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":1,\"payloadBytes\":42,\"payloadSha256\":\"jDuTDVzEFe75pWPgYtgidUi5j_9W2Tl9NP-naa75CiI\",\"payload\":{\"op\":\"receive_credit\",\"receivedBytes\":10}}\n"
+trace epoch=1 sequence=0 stage=WriterStarted wire=310
+write #3 Diagnostic/StartupProgress bytes=310
+observe epoch=1 sequence=0 Queued queued=310/310
+observe epoch=1 sequence=0 Completed queued=310/310
+wire #3 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"diagnostic\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":2,\"payloadBytes\":112,\"payloadSha256\":\"SetMd9_Jzr_La8_nEgwzc0jczIcNaIxSHxzS7B6BmWw\",\"payload\":{\"line\":\"usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=0 redacted=true\"}}\n"
+deliver control epoch=1 request_sequence=1 bytes=20
+trace epoch=1 sequence=1 stage=WriterStarted wire=214
+write #4 ControlReply/Protocol bytes=214
+observe epoch=1 sequence=1 Queued queued=214/214
+observe epoch=1 sequence=1 Completed queued=214/214
+wire #4 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"control\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":3,\"payloadBytes\":20,\"payloadSha256\":\"3b4aAzjNLDB3WgYdJjgJ0mwghGXaxFNFy3PgSIKU9qw\",\"payload\":{\"p\":\"xxxxxxxxxxxx\"}}\n"
+link_begin epoch=2
+deliver hello epoch=2 session=AQEBAQEBAQEBAQEBAQEBAQ
+trace epoch=2 sequence=0 stage=WriterStarted wire=247
+write #5 Hello/Protocol bytes=247
+observe epoch=2 sequence=0 Queued queued=247/247
+observe epoch=2 sequence=0 Completed queued=247/247
+wire #5 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AQEBAQEBAQEBAQEBAQEBAQ\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"XaoILcFWk2DTAc2iKEaU90vTflGv_0UlB1F5oAHdBgk\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AQEBAQEBAQEBAQEBAQEBAQ\"}}\n"
+link_publish received=4
+trace epoch=2 sequence=0 stage=WriterStarted wire=235
+write #6 ReceiveCredit/Protocol bytes=235
+observe epoch=2 sequence=0 Queued queued=235/235
+observe epoch=2 sequence=0 Completed queued=235/235
+wire #6 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AQEBAQEBAQEBAQEBAQEBAQ\",\"sequence\":1,\"payloadBytes\":41,\"payloadSha256\":\"-QbNzOwXs92TU0_qn9kjk6iMElB6ZCu_Y-rOZIk7sFg\",\"payload\":{\"op\":\"receive_credit\",\"receivedBytes\":4}}\n"
+trace epoch=2 sequence=0 stage=WriterStarted wire=251
+write #7 Diagnostic/Admission bytes=251
+observe epoch=2 sequence=0 Queued queued=251/251
+observe epoch=2 sequence=0 Completed queued=251/251
+wire #7 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"diagnostic\",\"sessionId\":\"AQEBAQEBAQEBAQEBAQEBAQ\",\"sequence\":2,\"payloadBytes\":54,\"payloadSha256\":\"iS_tnW4-lGZpHtkmVCDhtGcSXf-P_BBv1gap_njl-7E\",\"payload\":{\"line\":\"worker_admission fixture=true redacted=true\"}}\n"
+receipts Ok(true)
+final current=2 partial=false

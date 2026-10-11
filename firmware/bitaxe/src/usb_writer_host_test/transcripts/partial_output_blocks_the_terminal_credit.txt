@@ -1,0 +1,32 @@
+link_begin epoch=1
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+trace epoch=1 sequence=0 stage=WriterStarted wire=247
+write #1 Hello/Protocol bytes=247
+observe epoch=1 sequence=0 Queued queued=247/247
+observe epoch=1 sequence=0 Completed queued=247/247
+wire #1 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"afgi4Tw0DUB7fh0S2QFsNzDcPghQ3UROAAPrftndsgM\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}\n"
+link_publish received=20
+trace epoch=1 sequence=0 stage=WriterStarted wire=236
+write #2 ReceiveCredit/Protocol bytes=236
+observe epoch=1 sequence=0 Queued queued=236/236
+observe epoch=1 sequence=0 Completed queued=236/236
+wire #2 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":1,\"payloadBytes\":42,\"payloadSha256\":\"MB1uoJkYTHsTkF6CugWvtJv5fPlpbKSFsvr4Q5IwEOo\",\"payload\":{\"op\":\"receive_credit\",\"receivedBytes\":20}}\n"
+trace epoch=1 sequence=0 stage=WriterStarted wire=310
+write #3 Diagnostic/StartupProgress bytes=310
+observe epoch=1 sequence=0 Queued queued=310/310
+observe epoch=1 sequence=0 Completed queued=310/310
+wire #3 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"diagnostic\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":2,\"payloadBytes\":112,\"payloadSha256\":\"SetMd9_Jzr_La8_nEgwzc0jczIcNaIxSHxzS7B6BmWw\",\"payload\":{\"line\":\"usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=0 redacted=true\"}}\n"
+deliver control epoch=1 request_sequence=1 bytes=1500
+trace epoch=1 sequence=1 stage=WriterStarted wire=1696
+write #4 ControlReply/Protocol bytes=1696
+observe epoch=1 sequence=1 Queued queued=512/1696
+link_close_record epoch=1 received=21
+revoke_epoch epoch=1 revoked=true
+observe epoch=1 sequence=1 Abandoned queued=512/1696
+abandon #4 Cancelled queued=512
+revoke_epoch epoch=1 revoked=false
+credit_finish_terminal epoch=1
+write #5 BootstrapDiagnostic/Admission bytes=44
+wire #5 "worker_admission fixture=true redacted=true\n"
+receipts Ok(false)
+final current=0 partial=true

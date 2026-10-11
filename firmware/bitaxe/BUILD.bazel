@@ -1438,6 +1438,33 @@ rust_test(
 
 
 rust_test(
+    name = "usb_writer_characterization_tests",
+    srcs = [
+        "src/usb_writer_host_test.rs",
+        "src/usb_writer_host_test/fakes.rs",
+        "src/usb_writer_host_test/scripts.rs",
+        "src/bwg_worker_usb/writer.rs",
+        "src/bwg_worker_usb/rx_diagnostics.rs",
+        "src/bwg_worker_usb/startup_diagnostics.rs",
+        "src/usb_tx_measurement.rs",
+        "src/usb_write_failure.rs",
+    ],
+    compile_data = glob(["src/usb_writer_host_test/transcripts/*.txt"], allow_empty = True),
+    crate_root = "src/usb_writer_host_test.rs",
+    crate_name = "usb_writer_characterization_tests",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-core:bitaxe_core",
+        "//crates/bitaxe-runtime:bitaxe_runtime",
+        "//crates/bitaxe-worker-control:bitaxe_worker_control",
+        "@crates//:anyhow",
+        "@crates//:serde_json",
+        "@crates//:zeroize",
+    ],
+)
+
+rust_test(
     name = "usb_link_characterization_tests",
     srcs = [
         "src/usb_link_host_test.rs",

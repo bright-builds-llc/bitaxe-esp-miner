@@ -1,0 +1,7 @@
+link_begin epoch=2
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+write #1 BootstrapDiagnostic/StartupProgress bytes=102
+abandon #1 Cancelled queued=0
+revoke_epoch epoch=0 revoked=false
+receipts 
+final current=2 partial=false

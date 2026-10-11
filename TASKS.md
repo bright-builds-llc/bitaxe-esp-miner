@@ -816,6 +816,45 @@ the pinned Gate controller, the Gate page and the HTTP supervisor remain
 unexercised, so `gate-page-http-seams` stays unsupported and qualification
 stays false. Next: increment 2 (outbound writer core).
 
+Framed-link integration, increment 2 | 2026-10-11 | Owner-approved plan
+
+Objective: share the outbound `bwg-worker-serial/0.2` writer decisions. Extract
+hello_ack, device heartbeats, receive and terminal credit, control replies,
+output admission, sequencing and framed-versus-bootstrap diagnostics from
+firmware `bwg_worker_usb/writer.rs` into a pure
+`bitaxe-worker-control::serial::writer` core, prove byte-identical output, and
+make the simulated device emit real device-to-host records that a Rust host peer
+checks against the pinned Gate rules. Firmware-only diagnostics scheduling stays
+in the firmware adapter.
+
+- [x] Add a deterministic writer characterization harness with pinned
+  transcripts and a writer-thread stack audit; record the pre-refactor baseline.
+  `//firmware/bitaxe:usb_writer_characterization_tests` runs the unchanged
+  writer loop against a scripted clock, queue and production-shaped transport
+  (per-chunk, pre-drain and post-flush admission checks, real `WriteFailure`s,
+  partial-output tracking) and pins 22 transcripts. New `just audit-writer-stack`
+  on the pre-refactor ELF: deepest normal path 5,536 of 6,144 bytes (608
+  headroom) through credit, `next_record`, `emit` and envelope encode.
+- [ ] Extract the core with unit and pinned Gate device-record vector tests;
+  reduce firmware `writer.rs` to an adapter with identical transcripts.
+- [ ] Update source-ownership tests, the native USB ownership verifier, the
+  bootstrap writer audit and source inventories; compare the stack audit.
+- [ ] Emit simulated device records through the core, check them with a Gate-rule
+  host peer (`serial_output`), and require it in `framed-serial-link` coverage.
+- [ ] Run the affected Bazel and ordered Cargo checks, firmware build/package,
+  guest build, native audits, host-backend runs and repository gates; commit and
+  push.
+
+Authorization: repository source, tests, fixtures, documentation, build,
+package, static ELF audits, host-backend virtual runs, commit and push only. No
+detector, USB/device session, flash, monitor, QEMU run, emulator effect gate,
+credentials, network discovery, mining or other hardware effect. No parity
+promotion. The spilled-call-target audit fix belongs to a separate session; this
+increment does not edit `scripts/virtual-emulator/noise-stack-audit.mjs` or
+`scripts/link-stack-audit.mjs`.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-parity-bap-live-accessory-verification | 2026-10-06 | Verify BAP over a USB-to-UART adapter

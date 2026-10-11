@@ -1,0 +1,12 @@
+write #1 BootstrapDiagnostic/StartupProgress bytes=102
+wire #1 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=0 redacted=true\n"
+queue diagnostic accepted=true
+write #2 BootstrapDiagnostic/Admission bytes=44
+wire #2 "worker_admission fixture=true redacted=true\n"
+write #3 BootstrapDiagnostic/StartupProgress bytes=104
+abandon #3 Write queued=0
+revoke_epoch epoch=0 revoked=true
+write #4 BootstrapDiagnostic/RetainedDiagnostic bytes=55
+wire #4 "internal_heap fixture=true uptime_ms=500 redacted=true\n"
+receipts 
+final current=0 partial=false

@@ -1,0 +1,72 @@
+link_begin epoch=1
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+trace epoch=1 sequence=0 stage=WriterStarted wire=247
+write #1 Hello/Protocol bytes=247
+observe epoch=1 sequence=0 Queued queued=247/247
+observe epoch=1 sequence=0 Completed queued=247/247
+wire #1 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"afgi4Tw0DUB7fh0S2QFsNzDcPghQ3UROAAPrftndsgM\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}\n"
+deliver control epoch=1 request_sequence=1 bytes=1500
+trace epoch=1 sequence=1 stage=WriterStarted wire=1696
+write #2 ControlReply/Protocol bytes=1696
+observe epoch=1 sequence=1 Queued queued=512/1696
+link_revoke epoch=1
+revoke_epoch epoch=1 revoked=true
+observe epoch=1 sequence=1 Abandoned queued=512/1696
+abandon #2 Cancelled queued=512
+revoke_epoch epoch=1 revoked=false
+write #3 BootstrapDiagnostic/StartupProgress bytes=104
+wire #3 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=100 redacted=true\n"
+write #4 BootstrapDiagnostic/Admission bytes=44
+wire #4 "worker_admission fixture=true redacted=true\n"
+write #5 BootstrapDiagnostic/RetainedDiagnostic bytes=55
+wire #5 "internal_heap fixture=true uptime_ms=300 redacted=true\n"
+write #6 DiagnosticReplay/RetainedDiagnostic bytes=48
+wire #6 "usb_runtime_identity fixture=true redacted=true\n"
+write #7 BootstrapDiagnostic/StartupProgress bytes=104
+wire #7 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=600 redacted=true\n"
+write #8 BootstrapDiagnostic/StartupProgress bytes=105
+wire #8 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=1100 redacted=true\n"
+write #9 BootstrapDiagnostic/Admission bytes=44
+wire #9 "worker_admission fixture=true redacted=true\n"
+write #10 BootstrapDiagnostic/StartupProgress bytes=105
+wire #10 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=1600 redacted=true\n"
+write #11 BootstrapDiagnostic/StartupProgress bytes=105
+wire #11 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=2100 redacted=true\n"
+write #12 BootstrapDiagnostic/Admission bytes=44
+wire #12 "worker_admission fixture=true redacted=true\n"
+write #13 BootstrapDiagnostic/StartupProgress bytes=105
+wire #13 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=2600 redacted=true\n"
+write #14 BootstrapDiagnostic/StartupProgress bytes=105
+wire #14 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=3100 redacted=true\n"
+write #15 BootstrapDiagnostic/Admission bytes=44
+wire #15 "worker_admission fixture=true redacted=true\n"
+write #16 BootstrapDiagnostic/StartupProgress bytes=105
+wire #16 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=3600 redacted=true\n"
+write #17 BootstrapDiagnostic/StartupProgress bytes=105
+wire #17 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=4100 redacted=true\n"
+write #18 BootstrapDiagnostic/Admission bytes=44
+wire #18 "worker_admission fixture=true redacted=true\n"
+write #19 BootstrapDiagnostic/StartupProgress bytes=105
+wire #19 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=4600 redacted=true\n"
+write #20 BootstrapDiagnostic/StartupProgress bytes=105
+wire #20 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=5100 redacted=true\n"
+write #21 BootstrapDiagnostic/Admission bytes=44
+wire #21 "worker_admission fixture=true redacted=true\n"
+write #22 DiagnosticReplay/RetainedDiagnostic bytes=103
+wire #22 "usb_tx_failure schema=v1 stage=cancelled elapsed_ms=0 queued_bytes=512 record_bytes=1696 redacted=true\n"
+write #23 BootstrapDiagnostic/StartupProgress bytes=105
+wire #23 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=5600 redacted=true\n"
+write #24 BootstrapDiagnostic/StartupProgress bytes=105
+wire #24 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=6100 redacted=true\n"
+write #25 BootstrapDiagnostic/Admission bytes=44
+wire #25 "worker_admission fixture=true redacted=true\n"
+write #26 BootstrapDiagnostic/StartupProgress bytes=105
+wire #26 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=6600 redacted=true\n"
+write #27 BootstrapDiagnostic/StartupProgress bytes=105
+wire #27 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=7100 redacted=true\n"
+write #28 BootstrapDiagnostic/Admission bytes=44
+wire #28 "worker_admission fixture=true redacted=true\n"
+write #29 BootstrapDiagnostic/StartupProgress bytes=105
+wire #29 "usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=7600 redacted=true\n"
+receipts Ok(false)
+final current=0 partial=true

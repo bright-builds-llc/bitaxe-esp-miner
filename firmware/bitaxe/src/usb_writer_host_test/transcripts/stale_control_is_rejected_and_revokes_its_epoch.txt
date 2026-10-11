@@ -1,0 +1,17 @@
+link_begin epoch=1
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+trace epoch=1 sequence=0 stage=WriterStarted wire=247
+write #1 Hello/Protocol bytes=247
+observe epoch=1 sequence=0 Queued queued=247/247
+observe epoch=1 sequence=0 Completed queued=247/247
+wire #1 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"afgi4Tw0DUB7fh0S2QFsNzDcPghQ3UROAAPrftndsgM\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}\n"
+deliver control epoch=7 request_sequence=1 bytes=20
+trace epoch=7 sequence=1 stage=WriterRejected wire=0
+revoke_epoch epoch=7 revoked=false
+trace epoch=1 sequence=0 stage=WriterStarted wire=310
+write #2 Diagnostic/StartupProgress bytes=310
+observe epoch=1 sequence=0 Queued queued=310/310
+observe epoch=1 sequence=0 Completed queued=310/310
+wire #2 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"diagnostic\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":1,\"payloadBytes\":112,\"payloadSha256\":\"SetMd9_Jzr_La8_nEgwzc0jczIcNaIxSHxzS7B6BmWw\",\"payload\":{\"line\":\"usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=0 redacted=true\"}}\n"
+receipts Ok(false)
+final current=1 partial=false

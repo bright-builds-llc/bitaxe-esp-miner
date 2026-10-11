@@ -1,0 +1,26 @@
+link_begin epoch=1
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+trace epoch=1 sequence=0 stage=WriterStarted wire=247
+write #1 Hello/Protocol bytes=247
+observe epoch=1 sequence=0 Queued queued=247/247
+observe epoch=1 sequence=0 Completed queued=247/247
+wire #1 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"afgi4Tw0DUB7fh0S2QFsNzDcPghQ3UROAAPrftndsgM\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}\n"
+link_publish received=30
+deliver control epoch=1 request_sequence=5 bytes=11
+trace epoch=1 sequence=0 stage=WriterStarted wire=236
+write #2 ReceiveCredit/Protocol bytes=236
+observe epoch=1 sequence=0 Queued queued=236/236
+observe epoch=1 sequence=0 Completed queued=236/236
+wire #2 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":1,\"payloadBytes\":42,\"payloadSha256\":\"4hEzqqIirbwQPsJq8vRHuwYwBdLSBh_8eWhvNWka4jE\",\"payload\":{\"op\":\"receive_credit\",\"receivedBytes\":30}}\n"
+trace epoch=1 sequence=5 stage=WriterStarted wire=205
+write #3 ControlReply/Protocol bytes=205
+observe epoch=1 sequence=5 Queued queued=205/205
+observe epoch=1 sequence=5 Completed queued=205/205
+wire #3 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"control\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":2,\"payloadBytes\":11,\"payloadSha256\":\"QGLtr3UPuAdOfoPgyQKMlOMkaKi28WFHdDKO8EUVD5M\",\"payload\":{\"ok\":true}}\n"
+trace epoch=1 sequence=0 stage=WriterStarted wire=310
+write #4 Diagnostic/StartupProgress bytes=310
+observe epoch=1 sequence=0 Queued queued=310/310
+observe epoch=1 sequence=0 Completed queued=310/310
+wire #4 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"diagnostic\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":3,\"payloadBytes\":112,\"payloadSha256\":\"SetMd9_Jzr_La8_nEgwzc0jczIcNaIxSHxzS7B6BmWw\",\"payload\":{\"line\":\"usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=0 redacted=true\"}}\n"
+receipts Ok(true)
+final current=1 partial=false

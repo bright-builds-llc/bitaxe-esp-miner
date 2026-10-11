@@ -1,0 +1,24 @@
+link_begin epoch=1
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+trace epoch=1 sequence=0 stage=WriterStarted wire=247
+write #1 Hello/Protocol bytes=247
+observe epoch=1 sequence=0 Queued queued=247/247
+observe epoch=1 sequence=0 Completed queued=247/247
+wire #1 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"afgi4Tw0DUB7fh0S2QFsNzDcPghQ3UROAAPrftndsgM\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}\n"
+trace epoch=1 sequence=0 stage=WriterStarted wire=312
+write #2 Diagnostic/StartupProgress bytes=312
+observe epoch=1 sequence=0 Queued queued=312/312
+observe epoch=1 sequence=0 Completed queued=312/312
+wire #2 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"diagnostic\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":1,\"payloadBytes\":114,\"payloadSha256\":\"-dqpuo9fh3csVLreHSFSvnZmgu1MtTV25mYEqcLbJ3o\",\"payload\":{\"line\":\"usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=999 redacted=true\"}}\n"
+trace epoch=1 sequence=0 stage=WriterStarted wire=251
+write #3 Diagnostic/Admission bytes=251
+observe epoch=1 sequence=0 Queued queued=251/251
+observe epoch=1 sequence=0 Completed queued=251/251
+wire #3 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"diagnostic\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":2,\"payloadBytes\":54,\"payloadSha256\":\"iS_tnW4-lGZpHtkmVCDhtGcSXf-P_BBv1gap_njl-7E\",\"payload\":{\"line\":\"worker_admission fixture=true redacted=true\"}}\n"
+trace epoch=1 sequence=0 stage=WriterStarted wire=197
+write #4 Heartbeat/Protocol bytes=197
+observe epoch=1 sequence=0 Queued queued=197/197
+observe epoch=1 sequence=0 Completed queued=197/197
+wire #4 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"heartbeat\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":3,\"payloadBytes\":2,\"payloadSha256\":\"RBNvo1WzZ4oRRq0W9-hknpT7T8If536DEMBg9hyq_4o\",\"payload\":{}}\n"
+receipts 
+final current=1 partial=false

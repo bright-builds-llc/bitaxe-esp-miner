@@ -1,0 +1,21 @@
+link_begin epoch=1
+deliver hello epoch=1 session=AAAAAAAAAAAAAAAAAAAAAA
+trace epoch=1 sequence=0 stage=WriterStarted wire=247
+write #1 Hello/Protocol bytes=247
+observe epoch=1 sequence=0 Queued queued=247/247
+observe epoch=1 sequence=0 Completed queued=247/247
+wire #1 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"session\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":0,\"payloadBytes\":53,\"payloadSha256\":\"afgi4Tw0DUB7fh0S2QFsNzDcPghQ3UROAAPrftndsgM\",\"payload\":{\"op\":\"hello_ack\",\"session\":\"AAAAAAAAAAAAAAAAAAAAAA\"}}\n"
+trace epoch=1 sequence=0 stage=WriterStarted wire=313
+write #2 Diagnostic/StartupProgress bytes=313
+observe epoch=1 sequence=0 Queued queued=313/313
+observe epoch=1 sequence=0 Completed queued=313/313
+wire #2 "{\"profile\":\"bwg-worker-serial/0.2\",\"kind\":\"diagnostic\",\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"sequence\":1,\"payloadBytes\":115,\"payloadSha256\":\"_ChEbrCBwvnE1rMXZUtmqSuuuKFxMBSsZI4Hb8aPi-Y\",\"payload\":{\"line\":\"usb_startup schema=v1 stage=early_identity state=entered first_failure=none uptime_ms=1000 redacted=true\"}}\n"
+trace epoch=1 sequence=0 stage=WriterStarted wire=197
+write #3 Heartbeat/Protocol bytes=197
+observe epoch=1 sequence=0 Abandoned queued=0/197
+abandon #3 Write queued=0
+revoke_epoch epoch=1 revoked=true
+write #4 BootstrapDiagnostic/Admission bytes=44
+wire #4 "worker_admission fixture=true redacted=true\n"
+receipts 
+final current=0 partial=false
