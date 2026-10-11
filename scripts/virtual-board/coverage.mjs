@@ -11,6 +11,11 @@ export async function componentCoverage(repo, root, targetManifest, coverage) {
     root, 'component-tests', { cwd: repo, timeoutMs: 120000 });
     set('model-conformance-mutations', 'passed', 'independent_model_corpus_passed');
   } catch { set('model-conformance-mutations', 'failed', 'component_suite_failed'); }
+  // The pinned Gate controller admits, queries and closes a real-time virtual device process.
+  try {
+    await runPrivate('bazel', ['test', '//scripts:virtual_board_gate_serial_test'], root, 'gate-controller-serial', { cwd: repo, timeoutMs: 300000 });
+    set('gate-controller-serial', 'passed', 'pinned_gate_controller_admitted_virtual_device');
+  } catch { set('gate-controller-serial', 'failed', 'gate_controller_suite_failed'); }
   if (!targetManifest) return;
   for (const [id, commands] of [['target-reset-persistence', ['status', 'allocation', 'restart']], ['target-panic-core-decode', ['status', 'panic']]]) {
     const path = join(root, id); await mkdir(path, { mode: 0o700 });

@@ -91,9 +91,10 @@ The following remain required, failed or unsupported:
   not replace it.
 - Capability-specific failure injection into actual parser/snapshot/serializer
   allocation paths, distinct from predicted model budgets.
-- Production Gate/page/HTTP integration through virtual I/O. Inbound and outbound
-  framing already run through the shared firmware link and writer cores, checked
-  by a Rust stand-in for the Gate's rules.
+- Production Gate page and HTTP integration through virtual I/O. Inbound and
+  outbound framing run through the shared firmware link and writer cores, and the
+  pinned Gate serial controller already admits a virtual device process; lease
+  flows through the Gate remain unexercised.
 - Full fixture natural completion, historical ownership, listener/serial release
   and live-writer scenarios through one consolidated production lifecycle runner.
 - Complete mandatory host/target corpus agreement, qualification and matching-report

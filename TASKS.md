@@ -928,7 +928,7 @@ HTTP supervisor stay out of scope; `gate-page-http-seams` stays unsupported.
   baseline status, clean close; device outcome clean, exit 0, group released),
   refuses the firmware capability under the Gate fixture trust (only `discover`
   answered), and reports a killed device with a transport-loss category.
-- [ ] Add a required `gate-controller-serial` coverage row, update the docs, run
+- [x] Add a required `gate-controller-serial` coverage row, update the docs, run
   the affected Bazel, ordered Cargo and repository checks; commit and push.
 
 Authorization: repository source, tests, documentation, build, host processes
@@ -936,7 +936,27 @@ Authorization: repository source, tests, documentation, build, host processes
 push only. No hardware, USB, Web Serial, browser, network, QEMU run, credentials
 or parity promotion.
 
-Verification: pending. Completion review: pending.
+Verification: ordered Cargo fmt/Clippy (`-D warnings`)/build/tests including the
+`StdioDevice` unit tests and `serve-serial` real-process tests; all 329 Bazel
+tests (`just test`) including `//scripts:virtual_board_gate_serial_test` (three
+cases against the pinned Gate, each under a second); `just build`,
+`just package`, `just virtual-emulator build` (compile and guest frame audit
+only: 992/4,208 bytes, unchanged); host-backend `just virtual-board run` for
+healthy-lifecycle (unsupported only for its existing strict-share non-claim)
+and heartbeat-loss (passed); redaction, reference, parity and Bright Builds
+checks.
+
+Completion review: increment 3 is complete. The pinned Gate's own serial
+controller admits, queries and cleanly closes a real-time virtual device that
+runs the shared firmware link and writer cores, refuses it under a trust that
+did not sign its capability, and reports its loss. Residual risks and
+non-claims: Bun comes from the host PATH, as in the existing Gate fixtures, so
+the test is not hermetic; no lease flow (Start/Renew needs a signing authority)
+crosses the Gate; one logical session per device process; the tests run on the
+wall clock with generous bounds. The device's possession is self-asserted on
+initial admission, as the Gate allows. `gate-page-http-seams` stays unsupported
+and qualification stays false. Next: increment 4 (the Gate page and loopback
+HTTP supervisor over this device).
 
 ## Future
 

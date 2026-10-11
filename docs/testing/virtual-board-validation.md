@@ -87,8 +87,17 @@ firmware `bwg_worker_usb/writer.rs`): the hello_ack, device heartbeats, receive 
 terminal credit, and control replies or rejections. A Rust host peer applies the
 pinned Gate rules to that output (`serial_output`). The required
 `framed-serial-link` coverage row passes only when every host link and output check
-passes. The pinned Gate controller, page and HTTP supervisor are not yet exercised;
-the Rust peer stands in for the Gate until they are.
+passes. The Rust peer is a fast in-process stand-in.
+
+The pinned Gate serial controller itself (`bitaxe-turnstile-system`, run by Bun
+through its injectable serial runtime) drives a real-time virtual device process,
+`tools/virtual-board serve-serial`, over the child's stdio: Hello, signed
+capability `discover`, `prove_possession`, heartbeat, baseline `status` and a
+clean `close()`. The device serves the firmware's signed capability and the Gate
+trusts the firmware deployment-trust update keys. The required
+`gate-controller-serial` coverage row passes only when
+`//scripts:virtual_board_gate_serial_test` passes. Lease flows, the Gate page and
+the loopback HTTP supervisor are not yet exercised.
 
 Current unsupported coverage includes encrypted fixture/share/ACK integration,
 real Gate/page/HTTP seams, capability-specific interception of real allocation
