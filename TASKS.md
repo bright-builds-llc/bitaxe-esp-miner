@@ -958,6 +958,32 @@ initial admission, as the Gate allows. `gate-page-http-seams` stays unsupported
 and qualification stays false. Next: increment 4 (the Gate page and loopback
 HTTP supervisor over this device).
 
+Framed-link integration, increment 4 | 2026-10-11 | Owner-approved plan
+
+Objective: exercise the Gate page and loopback HTTP seams. The pinned acceptance
+page, built from the pinned Gate sources and served by the unmodified production
+no-mining supervisor (`createNoMiningSupervisor`) on an ephemeral loopback port,
+runs from the served bytes under Bun with browser globals shimmed and drives the
+real-time virtual device: configure, a trusted Connect click (Hello, signed
+`discover`, possession, heartbeat, baseline status), a refresh and Close, with
+every published state recorded through the supervisor's own client and judge.
+Owner decision: this no-lease run flips `gate-page-http-seams` to passed, with
+the non-claims recorded below.
+
+- [x] Add the page driver and test: browser shims, the pinned bundle and page
+  served by the real supervisor, and cases for admission, an untrusted
+  capability, device loss, a foreign origin and privacy.
+- [ ] Set `gate-page-http-seams` from the test, update docs and the close-rejection
+  non-claim, run the affected and full checks; commit and push.
+
+Authorization: repository source, tests, documentation, build, host processes
+(the device child, the Bun page driver, a loopback supervisor on an ephemeral
+port), commit and push only. No browser, Web Serial, hardware, USB, network
+beyond loopback, port 48765 or the owner's Gate tab, QEMU run, credentials or
+parity promotion.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-parity-bap-live-accessory-verification | 2026-10-06 | Verify BAP over a USB-to-UART adapter

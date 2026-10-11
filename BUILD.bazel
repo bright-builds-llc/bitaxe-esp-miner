@@ -317,6 +317,13 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+# The pinned Gate source commit, read by virtual-board page tests.
+js_library(
+    name = "gate_pin_inputs",
+    srcs = ["MODULE.bazel"],
+    visibility = ["//scripts:__pkg__"],
+)
+
 js_library(
     name = "str005_noise_serial_contract_inputs",
     srcs = [

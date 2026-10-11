@@ -138,6 +138,10 @@ js_library(
     name = "ultra205_signed_capability_js",
     srcs = ["conformance/bwg-worker-deployment-trust-0.2/signed-capability.json"],
 )
+js_library(
+    name = "worker_serial_acceptance_page_js",
+    srcs = ["conformance/bwg-worker-serial-0.2/acceptance.html"],
+)
 """,
     sha256 = "6a66e233d0a73545e80e2250a46689de6c3e6aaddc1c6f7d38e46c6d3ce9ec39",
     strip_prefix = "bitaxe-turnstile-system-d9023cb176336f74ebea20c2bb6f35319e489a75",
