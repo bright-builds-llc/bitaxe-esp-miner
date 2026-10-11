@@ -1701,6 +1701,28 @@ js_binary(
     visibility = ["//visibility:public"],
 )
 js_test(
+    name = "virtual_board_gate_serial_test",
+    args = [
+        "--device=$(rootpath //tools/virtual-board:virtual_board)",
+        "--gate-package=$(rootpath @bwg_gate_contract//:package_json_js)",
+        "--capability=$(rootpath //firmware/bitaxe:bwg_ultra205_capability_js)",
+        "--firmware-trust=$(rootpath //firmware/bitaxe:bwg_deployment_trust_js)",
+        "--gate-trust=$(rootpath @bwg_gate_contract//:worker_deployment_trust_js)",
+    ],
+    data = [
+        ":virtual_board_sources",
+        "//firmware/bitaxe:bwg_deployment_trust_js",
+        "//firmware/bitaxe:bwg_ultra205_capability_js",
+        "//tools/virtual-board:virtual_board",
+        "@bwg_gate_contract//:package_json_js",
+        "@bwg_gate_contract//:restart_acceptance_sources_js",
+        "@bwg_gate_contract//:worker_deployment_trust_js",
+    ],
+    entry_point = "virtual-board/gate-serial/gate-serial.test.mjs",
+    env_inherit = ["PATH"],
+)
+
+js_test(
     name = "virtual_board_test",
     entry_point = "virtual-board/main.test.mjs",
     data = [":virtual_board_sources", ":virtual_emulator_sources", ":core_dump_sources"],

@@ -919,8 +919,15 @@ HTTP supervisor stay out of scope; `gate-page-http-seams` stays unsupported.
   every 10 ms on the wall clock, writes only protocol bytes to stdout, and on
   stdin EOF writes a new mode-0600 outcome (categories, counts, capability
   digest) and exits 0 only for a clean session.
-- [ ] Add the Bun Gate driver with process-group ownership and tests for
+- [x] Add the Bun Gate driver with process-group ownership and tests for
   admission, an untrusted capability and device loss.
+  `//scripts:virtual_board_gate_serial_test` runs the pinned Gate's
+  `createWebSerialWorkerController` (real-time injected runtime, in-memory
+  continuity, firmware deployment-trust update keys) over a `WorkerSerialPort`
+  on a detached `serve-serial` child. The Gate admits the device (ready,
+  baseline status, clean close; device outcome clean, exit 0, group released),
+  refuses the firmware capability under the Gate fixture trust (only `discover`
+  answered), and reports a killed device with a transport-loss category.
 - [ ] Add a required `gate-controller-serial` coverage row, update the docs, run
   the affected Bazel, ordered Cargo and repository checks; commit and push.
 
