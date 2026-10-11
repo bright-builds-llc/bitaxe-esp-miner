@@ -1169,16 +1169,19 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-## Future
-
 ### task-parity-bap-live-accessory-verification | 2026-10-06 | Verify BAP over a USB-to-UART adapter
 
-Status: Future, owner-gated. The owner has USB-to-UART adapters for
-development (recorded in `AGENTS.md` under Direct UART And Pin-Manipulation
-Authorization) and asked to revisit this later. Do not select it
-automatically: it starts only when the owner explicitly activates it, and the
-direct-UART rule still requires fresh explicit authorization before any
-connection guidance or hardware use.
+Status: Active. The owner activated this task on 2026-10-11. The owner has
+USB-to-UART adapters for development (recorded in `AGENTS.md` under Direct UART
+And Pin-Manipulation Authorization). Activation is not direct-UART authorization:
+connection guidance, adapter use and hardware use each still require fresh
+explicit owner authorization. Software-only work (reading the pinned reference,
+the host BAP client, the hardware contract draft) may proceed now.
+
+Reference facts (pinned `reference/esp-miner`): BAP uses UART2 at 115200 8-N-1
+with TX on GPIO39 and RX on GPIO40 (`main/Kconfig.projbuild` defaults,
+`main/bap/bap_uart.c`); ESP32-S3 GPIOs are 3.3 V logic. The Ultra 205 connector
+and its pinout are not in the pinned reference and need the board documentation.
 
 Scope: promote `BAP-001` and `BAP-002` from `implemented` with live evidence
 for the Ultra 205 accessory port, using a host-side adapter in place of an
@@ -1195,9 +1198,13 @@ accessory.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
       holds.
 
-Authorization: none until owner activation and explicit direct-UART
-authorization.
+Authorization: repository source, tests, documentation, build, commit and push
+for the software-only items. No connection guidance, adapter use, board power
+or UART traffic, detector, flash or settings change until the owner gives
+explicit direct-UART authorization for that step.
 Verification: pending. Completion review: pending.
+
+## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 
