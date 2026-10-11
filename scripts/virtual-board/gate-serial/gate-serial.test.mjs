@@ -97,3 +97,26 @@ test('the virtual device refuses a lease its deployment trust did not authorize'
   assert.equal(result.outcome.outcome.lease_pending, false);
   assert.equal(result.device.released, true);
 });
+
+test('when the device rejects the close-time restore, the Gate still releases its port and the device restores itself', async () => {
+  // Arrange / Act
+  const result = await gate('lease-restore-rejected', options['firmware-trust'], authority.trustPath);
+  // Assert
+  assert.equal(result.started, 'mining');
+  assert.deepEqual([result.closed, result.lock_held_after_close], [false, false]);
+  const outcome = result.outcome.outcome;
+  assert.deepEqual([outcome.rejected_restorations, outcome.restorations, outcome.lease_pending], [1, 1, false]);
+  assert.deepEqual([result.device.code, result.device.killed, result.device.released], [2, false, true]);
+});
+
+test('when the native port close is rejected, the Gate keeps ownership and the device restores independently', async () => {
+  // Arrange / Act
+  const result = await gate('lease-port-close-rejected', options['firmware-trust'], authority.trustPath);
+  // Assert
+  assert.equal(result.started, 'mining');
+  assert.deepEqual([result.closed, result.lock_held_after_close], [false, true]);
+  const outcome = result.outcome.outcome;
+  assert.deepEqual([outcome.rejected_restorations, outcome.restorations, outcome.lease_pending], [0, 1, false]);
+  assert.equal(result.outcome.clean, true, JSON.stringify(result.outcome));
+  assert.deepEqual([result.device.code, result.device.killed, result.device.released], [0, false, true]);
+});

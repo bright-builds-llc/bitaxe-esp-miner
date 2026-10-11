@@ -38,6 +38,9 @@ enum Command {
         /// The deployment trust whose work-lease authority verifies leases.
         #[arg(long)]
         trust: PathBuf,
+        /// A device-side fault to inject into the session.
+        #[arg(long, value_enum)]
+        fault: Option<serve::Fault>,
         /// A new file for the session outcome (categories and counts only).
         #[arg(long)]
         outcome: Option<PathBuf>,
@@ -67,11 +70,13 @@ fn execute(cli: Cli) -> Result<bool> {
             seed,
             capability,
             trust,
+            fault,
             outcome,
         } => serve::serve(&serve::ServeInputs {
             seed,
             capability: &capability,
             trust: &trust,
+            maybe_fault: fault,
             maybe_outcome: outcome.as_deref(),
         }),
     }

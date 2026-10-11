@@ -175,3 +175,34 @@ fn a_start_from_an_untrusted_authority_is_refused() {
     assert!(!host.ok("serial_start_lease"));
     assert_eq!(host.device.outcome().leases_started, 0);
 }
+
+#[test]
+fn a_rejected_restore_is_answered_and_ends_the_session() {
+    // Arrange
+    let mut host = Host::with_fault(StdioFault::RejectRestore);
+    host.start_lease();
+    // Act
+    host.request("restore", Some(json!({"reason":"tab_closed"})));
+    // Assert
+    let reply = host.reply("serial_restore").expect("restore reply");
+    assert_eq!(reply["ok"], false, "{reply}");
+    assert_eq!(host.device.outcome().rejected_restorations, 1);
+}
+
+#[test]
+fn after_a_rejected_restore_the_device_restores_without_the_host() {
+    // Arrange
+    let mut host = Host::with_fault(StdioFault::RejectRestore);
+    host.start_lease();
+    // Act
+    host.request("restore", Some(json!({"reason":"tab_closed"})));
+    host.idle_until(host.now + 1_000);
+    // Assert
+    let outcome = host.device.outcome();
+    assert_eq!(
+        (outcome.rejected_restorations, outcome.restorations),
+        (1, 1)
+    );
+    assert!(!outcome.lease_pending, "{outcome:?}");
+    assert!(!outcome.clean(), "a rejected restore is never clean");
+}

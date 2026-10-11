@@ -20,6 +20,7 @@ use super::{LinkState, OwnerEvent, SimEffects, DEVICE_ENTROPY};
 use crate::actuation::LinkPump;
 use crate::controller::{self, Controller, ControllerProfile, StatusEvidence};
 use crate::SimulationError;
+use bitaxe_runtime::mining_actuation::SafeShutdownStep;
 use bitaxe_runtime::revocation::RevocationReason;
 use bitaxe_virtual_board::{BoardConfig, VirtualBoard};
 use bitaxe_worker_control::serial::link::SerialLinkReceiver;
@@ -43,6 +44,8 @@ pub struct StdioOutcome {
     pub leases_started: u32,
     pub renewals: u32,
     pub restorations: u32,
+    /// Restorations whose safe shutdown failed; the device keeps the lease to restore.
+    pub rejected_restorations: u32,
     /// A reserved qualification attempt the device never finished restoring.
     pub lease_pending: bool,
     pub maybe_link_failure: Option<String>,
@@ -97,6 +100,15 @@ pub struct StdioConfig {
     pub capability: Value,
     /// The deployment trust whose work-lease authority verifies leases.
     pub trust_json: String,
+    pub maybe_fault: Option<StdioFault>,
+}
+
+/// A device-side fault a host-facing scenario injects.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StdioFault {
+    /// The first restoration of a started lease cannot prove cooling, so the device
+    /// rejects it after removing power; a later restoration completes.
+    RejectRestore,
 }
 
 pub struct StdioDevice {
@@ -120,6 +132,10 @@ impl StdioDevice {
             maybe_trust_json: Some(config.trust_json),
         };
         let mut worker = controller::controller_with(board, "serial-stdio", profile)?;
+        if config.maybe_fault == Some(StdioFault::RejectRestore) {
+            worker.session_mut().maybe_restore_fault =
+                Some(SafeShutdownStep::WaitForFreshTemperatureAtOrBelow45C);
+        }
         let actuation = &mut worker.session_mut().actuation;
         actuation.host_heartbeats = false;
         // Firmware boots with no generation; each Hello begins one.
@@ -167,6 +183,7 @@ impl StdioDevice {
         outcome.leases_started = session.starts;
         outcome.renewals = session.renewals;
         outcome.restorations = session.restorations;
+        outcome.rejected_restorations = session.rejected_restorations;
         outcome.lease_pending = session.ledger.pending();
         outcome
     }

@@ -5,7 +5,9 @@ use crate::{
 mod evidence;
 mod v2;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use bitaxe_runtime::mining_actuation::{execute_preparation, execute_safe_shutdown};
+use bitaxe_runtime::mining_actuation::{
+    execute_preparation, execute_safe_shutdown, SafeShutdownStep,
+};
 use bitaxe_virtual_board::VirtualBoard;
 use bitaxe_worker_control::{
     DeviceIdentity, FirmwareIdentity, FirmwareSourceCommit, LeaseDeadlines, PreparedResponse,
@@ -33,6 +35,9 @@ pub(crate) struct Session {
     pub starts: u32,
     pub renewals: u32,
     pub restorations: u32,
+    pub rejected_restorations: u32,
+    /// A shutdown step that fails once in the first restoration of a started lease.
+    pub maybe_restore_fault: Option<SafeShutdownStep>,
 }
 
 /// What a status reply carries as device evidence.
@@ -148,6 +153,9 @@ impl WorkerSession for Session {
         if grant.maybe_v2().is_some() {
             self.run_encrypted_share(grant)?;
         }
+        if let Some(step) = self.maybe_restore_fault.take() {
+            self.actuation.maybe_fail_shutdown = Some(step);
+        }
         self.starts += 1;
         Ok(())
     }
@@ -177,8 +185,10 @@ impl WorkerSession for Session {
         self.actuation
             .gate
             .revoke_at(self.actuation.generation, self.actuation.now_ms());
-        execute_safe_shutdown(&mut self.actuation)
-            .map_err(|_| WorkerSessionError::SafeStopFailed)?;
+        if execute_safe_shutdown(&mut self.actuation).is_err() {
+            self.rejected_restorations += 1;
+            return Err(WorkerSessionError::SafeStopFailed);
+        }
         self.persist(
             self.ledger
                 .finish()
@@ -312,6 +322,8 @@ fn assemble_controller(
         starts: 0,
         renewals: 0,
         restorations: 0,
+        rejected_restorations: 0,
+        maybe_restore_fault: None,
     };
     WorkerControl::new(
         authority.identity,

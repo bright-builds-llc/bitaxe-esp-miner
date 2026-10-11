@@ -91,15 +91,24 @@ struct Host {
 
 impl Host {
     fn new() -> Self {
-        Self::with_trust(crate::authorization::synthetic_trust_json().expect("trust"))
+        Self::build(synthetic_trust(), None)
     }
 
     fn with_trust(trust_json: String) -> Self {
+        Self::build(trust_json, None)
+    }
+
+    fn with_fault(fault: StdioFault) -> Self {
+        Self::build(synthetic_trust(), Some(fault))
+    }
+
+    fn build(trust_json: String, maybe_fault: Option<StdioFault>) -> Self {
         let wire = Rc::new(RefCell::new(Wire::default()));
         let config = StdioConfig {
             seed: 1,
             capability: json!({"fixture": "capability"}),
             trust_json,
+            maybe_fault,
         };
         let device =
             StdioDevice::new(config, Box::new(ScriptedPort(Rc::clone(&wire)))).expect("device");
@@ -226,6 +235,10 @@ impl Host {
         wire.peer.settle(self.now);
         wire.peer.check()
     }
+}
+
+fn synthetic_trust() -> String {
+    crate::authorization::synthetic_trust_json().expect("trust")
 }
 
 fn encode(kind: SerialKind, maybe_session: Option<&str>, sequence: u32, payload: &str) -> Vec<u8> {

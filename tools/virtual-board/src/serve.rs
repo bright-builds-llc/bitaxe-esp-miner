@@ -6,7 +6,7 @@
 //! holds categories and counts only.
 
 use anyhow::{Context, Result};
-use bitaxe_simulation::{PortInput, StdioConfig, StdioDevice, StdioPort};
+use bitaxe_simulation::{PortInput, StdioConfig, StdioDevice, StdioFault, StdioPort};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::cell::RefCell;
@@ -27,7 +27,15 @@ pub struct ServeInputs<'a> {
     pub seed: u64,
     pub capability: &'a Path,
     pub trust: &'a Path,
+    pub maybe_fault: Option<Fault>,
     pub maybe_outcome: Option<&'a Path>,
+}
+
+/// Faults a host-facing scenario may inject.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub enum Fault {
+    /// The first restoration of a started lease fails its cooling proof.
+    RejectRestore,
 }
 
 /// Serves one logical session; `Ok(true)` when it was admitted, restored and closed cleanly.
@@ -47,6 +55,9 @@ pub fn serve(inputs: &ServeInputs<'_>) -> Result<bool> {
         seed: inputs.seed,
         capability,
         trust_json: trust_json.clone(),
+        maybe_fault: inputs
+            .maybe_fault
+            .map(|Fault::RejectRestore| StdioFault::RejectRestore),
     };
     let mut device = StdioDevice::new(config, Box::new(SharedHost(Rc::clone(&host))))?;
     loop {
@@ -74,6 +85,7 @@ pub fn serve(inputs: &ServeInputs<'_>) -> Result<bool> {
             "seed": inputs.seed,
             "capability_sha256": hex(&Sha256::digest(&capability_bytes)),
             "trust_sha256": hex(&Sha256::digest(trust_json.as_bytes())),
+            "fault": inputs.maybe_fault.map(|Fault::RejectRestore| "reject_restore"),
             "clean": outcome.clean(),
             "outcome": outcome,
             "hardware_qualified": false,

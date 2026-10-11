@@ -192,3 +192,32 @@ test('the lease supervisor delivers a signed window once', async () => {
   assert.ok((await first.json()).grant.qualificationAttempt);
   assert.equal(second.status, 400);
 });
+
+test('when the device rejects the close-time restore, the page records it, releases the port and the device restores itself', async () => {
+  // Arrange
+  const supervisor = await superviseLeases('lease-restore-rejected');
+  // Act
+  const { result, recorded } = await page('lease-restore-rejected', supervisor);
+  // Assert
+  assert.ok(recorded.some(state => state.status === 'running'), 'the lease ran');
+  assert.deepEqual([result.final.status, result.final.failure, result.final.serialOwnershipReleased], ['failed', 'close_failed', true]);
+  assert.ok(recorded.some(state => state.failure === 'close_failed' && state.serialOwnershipReleased), 'the supervisor recorded it');
+  const outcome = result.outcome.outcome;
+  assert.deepEqual([outcome.rejected_restorations, outcome.restorations, outcome.lease_pending], [1, 1, false]);
+  assert.deepEqual([result.device.code, result.device.killed, result.device.released, result.lock_held], [2, false, true, false]);
+});
+
+test('when the native port close is rejected, the page keeps ownership until unload and the device restores independently', async () => {
+  // Arrange
+  const supervisor = await superviseLeases('lease-port-close-rejected');
+  // Act
+  const { result, recorded } = await page('lease-port-close-rejected', supervisor);
+  // Assert
+  assert.deepEqual([result.final.status, result.final.failure, result.final.serialOwnershipReleased], ['failed', 'close_failed', false]);
+  assert.equal(result.lock_held, true, 'ownership is kept while the native port stays open');
+  assert.ok(recorded.some(state => state.failure === 'close_failed' && !state.serialOwnershipReleased), 'the supervisor recorded it');
+  const outcome = result.outcome.outcome;
+  assert.deepEqual([outcome.rejected_restorations, outcome.restorations, outcome.lease_pending], [0, 1, false]);
+  assert.equal(result.outcome.clean, true, JSON.stringify(result.outcome));
+  assert.deepEqual([result.device.code, result.device.killed, result.device.released], [0, false, true]);
+});

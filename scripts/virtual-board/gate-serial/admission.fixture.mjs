@@ -16,16 +16,20 @@ const { createWebSerialWorkerController } = await load('webserial-worker-control
 const { workerSerialFailureCategory } = await load('worker-serial-errors');
 const trust = JSON.parse(await readFile(options.trust, 'utf8'));
 
+// Close-rejection modes: the device rejects the close-time restore, or the platform
+// rejects the native port close.
+const RESTORE_REJECTED = options.mode === 'lease-restore-rejected';
+const PORT_CLOSE_REJECTED = options.mode === 'lease-port-close-rejected';
 const outcomePath = join(options.work, 'outcome.json');
 const device = startDevice({ binary: options.device, seed: 7, capability: options.capability, trust: options['device-trust'],
-  outcome: outcomePath, stderrPath: join(options.work, 'device.stderr') });
-let maybeStored;
+  outcome: outcomePath, stderrPath: join(options.work, 'device.stderr'), maybeFault: RESTORE_REJECTED ? 'reject-restore' : undefined });
+let maybeStored, lockHeld = false;
 const runtime = {
-  serial: { requestPort: async () => childPort(device) },
+  serial: { requestPort: async () => childPort(device, { rejectClose: PORT_CLOSE_REJECTED }) },
   foreground: () => true,
   userActivation: () => true,
   now: () => performance.now(),
-  acquireLock: async () => () => {},
+  acquireLock: async () => { lockHeld = true; return () => { lockHeld = false; }; },
   subscribeForegroundLoss: () => () => {},
   every(milliseconds, listener) { const timer = setInterval(listener, milliseconds); return () => clearInterval(timer); },
 };
@@ -46,7 +50,7 @@ const controller = createWebSerialWorkerController({
 });
 
 const result = { mode: options.mode, timings_ms: {} };
-/** Start, then renew and restore (`lease`), or leave the lease for Close to restore (`lease-close`). */
+/** Start, then renew and restore (`lease`), or leave the lease for Close to restore (every other lease mode). */
 async function lease() {
   const sign = authoritySigner({ gateRoot: options['gate-root'], directory: options.authority });
   const { controlSessionBindingSha256: binding } = await controller.prepareWorkerLeaseAuthorizationContext('start');
@@ -55,7 +59,7 @@ async function lease() {
   try {
     result.started = (await controller.startLease(window.grant)).state;
     mark('started');
-    if (options.mode === 'lease-close') return;
+    if (options.mode !== 'lease') return;
     result.renewed = (await controller.renewLease(window.renewals[0])).state;
     result.restored = (await controller.restore('cancelled')).state;
   } catch (error) {
@@ -82,8 +86,11 @@ try {
   }
 } finally {
   mark('commands');
-  await controller.close();
+  try { await controller.close(); result.closed = true; } catch { result.closed = false; }
   mark('close');
+  result.lock_held_after_close = lockHeld;
+  // Unloading the page releases what a rejected native close left open.
+  if (PORT_CLOSE_REJECTED && !device.child.stdin.destroyed) device.child.stdin.end();
   result.device = await releaseDevice(device);
   mark('release');
 }

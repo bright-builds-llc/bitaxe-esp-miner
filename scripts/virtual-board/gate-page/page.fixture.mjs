@@ -13,10 +13,14 @@ const options = Object.fromEntries(process.argv.slice(2).map(argument => {
 // The no-mining supervisor injects its own client; the lease supervisor the production one.
 const LEASE = options.mode.startsWith('lease');
 const SERVED_SCRIPTS = ['/dist/worker-serial-acceptance/worker-serial-acceptance.js', LEASE ? '/client.mjs' : '/no-mining-client.mjs'];
+// Close-rejection modes: the device rejects the close-time restore, or the platform
+// rejects the native port close.
+const RESTORE_REJECTED = options.mode === 'lease-restore-rejected';
+const PORT_CLOSE_REJECTED = options.mode === 'lease-port-close-rejected';
 const outcomePath = join(options.work, 'outcome.json');
 const device = startDevice({ binary: options.device, seed: 7, capability: options.capability, trust: options['device-trust'], outcome: outcomePath,
-  stderrPath: join(options.work, 'device.stderr') });
-const browser = installBrowser({ origin: options.origin, port: childPort(device) });
+  stderrPath: join(options.work, 'device.stderr'), maybeFault: RESTORE_REJECTED ? 'reject-restore' : undefined });
+const browser = installBrowser({ origin: options.origin, port: childPort(device, { rejectClose: PORT_CLOSE_REJECTED }) });
 
 async function until(predicate, boundMs, category) {
   for (const started = performance.now(); !predicate();) {
@@ -54,7 +58,7 @@ for (const file of files) await import(pathToFileURL(file).href);
 const result = { mode: options.mode, statuses: [] };
 /**
  * Prepare, load and start a signed window as the operator's buttons do; then wait for the
- * page's own first renewal and stop (`lease`), or leave the lease to Close (`lease-close`).
+ * page's own first renewal and stop (`lease`), or leave the lease to Close (every other lease mode).
  */
 async function lease() {
   const page = globalThis.workerAcceptance;
@@ -63,7 +67,7 @@ async function lease() {
   observe();
   await page.startWindow();
   observe();
-  if (options.mode === 'lease-close') return;
+  if (options.mode !== 'lease') return;
   // A refresh publishes after each renewal; the next tick is a second away, so Stop never races it.
   await until(() => published().renewalsConfirmed >= 1 || !published().running, 40000, 'renewal_unconfirmed');
   result.renewals = published().renewalsConfirmed;
@@ -88,7 +92,10 @@ try {
   }
   observe();
   click('close');
-  await until(() => state().serialOwnershipReleased || state().status === 'closed', 20000, 'close_unsettled');
+  // A rejected close ends `failed` (the Close button records `close_failed`); ownership is
+  // kept while a rejected native close leaves the port open.
+  await until(() => ['closed', 'failed'].includes(state().status) && (state().serialOwnershipReleased || PORT_CLOSE_REJECTED),
+    20000, 'close_unsettled');
   observe();
   await (globalThis.noMiningSupervisor ?? globalThis.recoverySupervisor).flush();
   result.records_flushed = true;
@@ -98,6 +105,8 @@ try {
   result.final = Object.fromEntries(['status', 'connected', 'serialOwnershipReleased', 'deviceLeaseInactive', 'failure',
     'admissionFailureStage', 'serialFailureCategory'].map(key => [key, final[key] ?? null]));
   result.lock_held = browser.lockHeld();
+  // Unloading the page releases what a rejected native close left open.
+  if (PORT_CLOSE_REJECTED && !device.child.stdin.destroyed) device.child.stdin.end();
   result.device = await releaseDevice(device);
 }
 try { result.outcome = JSON.parse(await readFile(outcomePath, 'utf8')); } catch (error) {
