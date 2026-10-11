@@ -38,7 +38,7 @@ const HOST_ENTROPY: u64 = 0x5e71_a1b0_57a7_e5ed;
 const DEVICE_ENTROPY: u64 = 0xde71_ce0e_7a1b_1e55;
 
 enum OwnerEvent {
-    Session(SerialSessionBinding),
+    Session(SerialSessionBinding, WorkerGeneration),
     Frame(SerialTraceCorrelation, Vec<u8>),
 }
 
@@ -53,8 +53,9 @@ struct LinkState {
     maybe_replay_ms: Cell<Option<u64>>,
     /// An admitted Hello waiting for the device writer, as in the firmware output queue.
     pending_hello: RefCell<Option<(u32, String, Value)>>,
-    /// True when link heartbeats themselves refresh the revocation gate, as in firmware.
-    apply_heartbeats: Cell<bool>,
+    /// A real-time device, as in firmware: each Hello begins its own revocation
+    /// generation and link heartbeats themselves refresh the gate.
+    real_time: Cell<bool>,
 }
 
 impl LinkState {
@@ -108,7 +109,8 @@ impl SerialHost {
         self.replay_heartbeats(actuation);
         self.peer.hello_sent(&host_nonce, actuation.now_ms());
         self.send(actuation, SerialKind::Session, None, 0, &payload)?;
-        let Some(OwnerEvent::Session(binding)) = self.state.owner.borrow_mut().pop_front() else {
+        let Some(OwnerEvent::Session(binding, _)) = self.state.owner.borrow_mut().pop_front()
+        else {
             return Err(SimulationError::Boundary("serial_hello"));
         };
         self.host_sequence = 0;
@@ -363,14 +365,18 @@ impl SerialLinkEffects for SimEffects<'_> {
     fn revoke_epoch(&self, epoch: u32) {
         self.state.revoke(epoch);
     }
-    /// The simulated board begins its generation at boot; Hello binds that generation.
-    fn begin_generation(&self, _now_ms: u64) -> Option<WorkerGeneration> {
-        Some(self.actuation.generation)
+    /// In-process scenarios begin their generation at boot and Hello binds it; a
+    /// real-time device begins one per Hello, refused while another is held.
+    fn begin_generation(&self, now_ms: u64) -> Option<WorkerGeneration> {
+        if !self.state.real_time.get() {
+            return Some(self.actuation.generation);
+        }
+        self.actuation.gate.begin_link(now_ms)
     }
     /// In-process scenarios already applied this heartbeat to the gate at the same
     /// instant through the actuation model; a real-time device applies it here.
     fn heartbeat_generation(&self, generation: WorkerGeneration, now_ms: u64) -> bool {
-        if !self.state.apply_heartbeats.get() {
+        if !self.state.real_time.get() {
             return true;
         }
         self.actuation.gate.heartbeat(generation, now_ms)
@@ -410,9 +416,9 @@ impl SerialLinkEffects for SimEffects<'_> {
         &self,
         _epoch: u32,
         binding: SerialSessionBinding,
-        _: WorkerGeneration,
+        generation: WorkerGeneration,
     ) -> bool {
-        self.enqueue(OwnerEvent::Session(binding))
+        self.enqueue(OwnerEvent::Session(binding, generation))
     }
     fn enqueue_control(
         &self,

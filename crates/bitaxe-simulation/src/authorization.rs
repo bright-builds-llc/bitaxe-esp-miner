@@ -60,13 +60,24 @@ fn key(seed: [u8; 32]) -> Value {
         "alg":"Ed25519","use":"sig","key_ops":["verify"]})
 }
 
+/// The synthetic deployment trust whose lease key only this module signs with.
 #[inline(never)]
-pub(crate) fn verifier(board: Rc<RefCell<VirtualBoard>>) -> Result<Verifier, SimulationError> {
+pub(crate) fn synthetic_trust_json() -> Result<String, SimulationError> {
     let trust = json!({"profile":"bwg-worker-deployment-trust/0.2",
         "updateAuthority":{"issuer":"simulation-update","audience":"bwg-reference-firmware-capability/0.2","role":"update_authority","keys":[key([12;32])]},
         "workLeaseAuthority":{"profile":"bwg-worker-deployment-trust/0.2","issuer":"simulation-lease","audience":"bwg-worker-controller/0.4","role":"work_lease_authority","keys":[key([11;32])]}});
-    let trust = WorkLeaseAuthorityTrust::from_deployment_json(&serde_json::to_string(&trust)?)
-        .map_err(|_| SimulationError::Boundary("synthetic_trust"))?;
+    Ok(serde_json::to_string(&trust)?)
+}
+
+/// Verifies leases against a deployment trust document, as firmware does with the
+/// one it compiles in; the board's storage holds the accepted sequence.
+#[inline(never)]
+pub(crate) fn verifier(
+    board: Rc<RefCell<VirtualBoard>>,
+    trust_json: &str,
+) -> Result<Verifier, SimulationError> {
+    let trust = WorkLeaseAuthorityTrust::from_deployment_json(trust_json)
+        .map_err(|_| SimulationError::Boundary("deployment_trust"))?;
     Ok(WorkLeaseAuthorizationVerifier::new(
         trust,
         SequenceStore(board),
@@ -95,14 +106,35 @@ pub(crate) fn signed_start_for_profile(
             "endpoint":format!("stratum+tcp://{}:{}/",crate::v2::SYNTHETIC_ENDPOINT_HOST,crate::v2::SYNTHETIC_ENDPOINT_PORT),
             "authorityPublicKey":URL_SAFE_NO_PAD.encode(crate::v2::synthetic_authority_public_key()),"userIdentity":crate::v2::SYNTHETIC_USER_IDENTITY});
     }
+    request["authorization"] = authorize("start", &request, binding, 1)?.into();
+    Ok(request)
+}
+
+/// A renewal of the synthetic Start's lease under the next accepted sequence.
+#[cfg(test)]
+pub(crate) fn signed_renewal(binding: &str, sequence: u64) -> Result<Value, SimulationError> {
+    let mut request = json!({"protocolVersion":"bwg-worker-controller/0.4","leaseId":"simulation_lease",
+        "durationMilliseconds":60000,"renewAfterMilliseconds":20000});
+    request["authorization"] = authorize("renew", &request, binding, sequence)?.into();
+    Ok(request)
+}
+
+/// The synthetic lease key's compact JWS over one request bound to the control session.
+fn authorize(
+    operation: &str,
+    request: &Value,
+    binding: &str,
+    sequence: u64,
+) -> Result<String, SimulationError> {
     let digest = json!({"activeChallengeId":"simulation_challenge","audience":"bwg-worker-controller/0.4",
-        "issuer":"simulation-lease","operation":"start","profile":"bwg-worker-lease-authorization/0.2","request":request});
+        "issuer":"simulation-lease","operation":operation,"profile":"bwg-worker-lease-authorization/0.2","request":request});
     let protected = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&json!({"alg":"Ed25519","kid":"simulation-lease","typ":"bwg-worker-lease-authorization+jws"}))?);
     let claims = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&json!({"controlSessionBindingSha256":binding,
-        "operation":"start","requestSha256":URL_SAFE_NO_PAD.encode(Sha256::digest(serde_json::to_vec(&digest)?)),"sequence":"1"}))?);
+        "operation":operation,"requestSha256":URL_SAFE_NO_PAD.encode(Sha256::digest(serde_json::to_vec(&digest)?)),"sequence":sequence.to_string()}))?);
     let input = format!("{protected}.{claims}");
     let signature = SigningKey::from_bytes(&[11; 32]).sign(input.as_bytes());
-    request["authorization"] =
-        format!("{input}.{}", URL_SAFE_NO_PAD.encode(signature.to_bytes())).into();
-    Ok(request)
+    Ok(format!(
+        "{input}.{}",
+        URL_SAFE_NO_PAD.encode(signature.to_bytes())
+    ))
 }

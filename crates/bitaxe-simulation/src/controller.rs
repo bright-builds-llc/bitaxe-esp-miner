@@ -2,6 +2,7 @@
 use crate::{
     actuation::RuntimeBoardAdapter, authorization, serial_link::SerialHost, SimulationError,
 };
+mod evidence;
 mod v2;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use bitaxe_runtime::mining_actuation::{execute_preparation, execute_safe_shutdown};
@@ -26,8 +27,21 @@ pub(crate) struct Session {
     pub maybe_v2_record: Rc<RefCell<Option<bitaxe_worker_control::v2::V2Record>>>,
     pub maybe_encrypted_share: Option<crate::v2::EncryptedShareFacts>,
     pub link: SerialHost,
-    /// False omits the simulation observation, which is not a Gate qualification record.
-    pub report_status_evidence: bool,
+    pub evidence: StatusEvidence,
+    /// The revocation generation that reserved the current qualification attempt.
+    pub maybe_attempt_generation: Option<u32>,
+    pub starts: u32,
+    pub renewals: u32,
+    pub restorations: u32,
+}
+
+/// What a status reply carries as device evidence.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum StatusEvidence {
+    /// The in-process observation the scenario checks read; no Gate accepts it.
+    Simulation,
+    /// The Gate-shaped `worker-qualification-v1` record firmware reports.
+    Qualification,
 }
 impl Session {
     /// Delivers a controller request through the framed serial link.
@@ -110,6 +124,7 @@ impl WorkerSession for Session {
                 .map_err(|_| WorkerSessionError::Rejected)?,
         )?;
         let generation = self.actuation.generation;
+        self.maybe_attempt_generation = Some(generation.raw());
         if !self
             .actuation
             .gate
@@ -133,14 +148,27 @@ impl WorkerSession for Session {
         if grant.maybe_v2().is_some() {
             self.run_encrypted_share(grant)?;
         }
+        self.starts += 1;
         Ok(())
     }
+    /// Extends the active generation's lease deadline, as the firmware owner does; the
+    /// allowance was charged in full at Start.
     fn renew(
         &mut self,
         _renewal: &WorkerLeaseRenewal,
-        _deadlines: LeaseDeadlines,
+        deadlines: LeaseDeadlines,
     ) -> Result<(), WorkerSessionError> {
-        Err(WorkerSessionError::Rejected)
+        let generation = self.actuation.generation;
+        if !self.actuation.gate.permits(Some(generation))
+            || !self
+                .actuation
+                .gate
+                .set_lease_deadline(generation, deadlines.expires_at_monotonic_milliseconds())
+        {
+            return Err(WorkerSessionError::Rejected);
+        }
+        self.renewals += 1;
+        Ok(())
     }
     fn safe_stop(&mut self, _reason: RestorationReason) -> Result<(), WorkerSessionError> {
         if self.reject_stop {
@@ -162,6 +190,7 @@ impl WorkerSession for Session {
         if let Some(record) = self.maybe_v2_record.borrow_mut().as_mut() {
             record.release_fence(Some(self.actuation.now_ms() * 1000));
         }
+        self.restorations += 1;
         Ok(())
     }
     fn qualification_attempt_review(&self) -> Result<Option<Value>, WorkerSessionError> {
@@ -171,8 +200,8 @@ impl WorkerSession for Session {
         ))
     }
     fn status_evidence(&self) -> Option<Value> {
-        if !self.report_status_evidence {
-            return None;
+        if self.evidence == StatusEvidence::Qualification {
+            return evidence::qualification(self);
         }
         let facts = self.actuation.board.borrow().peripherals.sample;
         Some(
@@ -195,9 +224,13 @@ struct ControllerAuthority {
 #[inline(never)]
 fn prepare_controller_authority(
     board: Rc<RefCell<VirtualBoard>>,
+    maybe_trust_json: Option<&str>,
 ) -> Result<ControllerAuthority, SimulationError> {
     let identity = prepare_device_identity();
-    let verifier = authorization::verifier(board)?;
+    let verifier = match maybe_trust_json {
+        Some(trust_json) => authorization::verifier(board, trust_json)?,
+        None => authorization::verifier(board, &authorization::synthetic_trust_json()?)?,
+    };
     Ok(ControllerAuthority { identity, verifier })
 }
 
@@ -210,7 +243,9 @@ fn prepare_device_identity() -> DeviceIdentity {
 pub(crate) struct ControllerProfile {
     pub capability: Value,
     pub manifest_sha256: String,
-    pub report_status_evidence: bool,
+    pub evidence: StatusEvidence,
+    /// The deployment trust that verifies leases; `None` uses the synthetic one.
+    pub maybe_trust_json: Option<String>,
 }
 
 impl ControllerProfile {
@@ -219,7 +254,8 @@ impl ControllerProfile {
         Self {
             capability: json!({"protocolVersion":"bwg-worker-controller/0.4","transportProfile":"bwg-worker-serial/0.2"}),
             manifest_sha256: URL_SAFE_NO_PAD.encode([1; 32]),
-            report_status_evidence: true,
+            evidence: StatusEvidence::Simulation,
+            maybe_trust_json: None,
         }
     }
 }
@@ -238,7 +274,8 @@ pub(crate) fn controller_with(
     scenario: &str,
     profile: ControllerProfile,
 ) -> Result<Box<Controller>, SimulationError> {
-    let authority = prepare_controller_authority(board.clone())?;
+    let authority =
+        prepare_controller_authority(board.clone(), profile.maybe_trust_json.as_deref())?;
     assemble_controller(board, scenario, authority, profile)
 }
 
@@ -270,7 +307,11 @@ fn assemble_controller(
         maybe_v2_record: Rc::new(RefCell::new(None)),
         maybe_encrypted_share: None,
         link: SerialHost::new(seed),
-        report_status_evidence: profile.report_status_evidence,
+        evidence: profile.evidence,
+        maybe_attempt_generation: None,
+        starts: 0,
+        renewals: 0,
+        restorations: 0,
     };
     WorkerControl::new(
         authority.identity,

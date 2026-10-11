@@ -215,9 +215,9 @@ pub(crate) fn run_close_rejection(seed: u64) -> Result<ScenarioResult, Simulatio
             ProfileCheck {
                 id: "physical_host_owner_release".into(),
                 status: CheckStatus::Unsupported,
-                // The page and supervisor seams run without a lease; a rejected
-                // restore exists only under a lease, which no virtual flow signs.
-                detail: "lease_restore_owner_release_not_integrated".into(),
+                // Leases cross the Gate page, supervisor and controller, but no
+                // virtual flow yet rejects a restore under one.
+                detail: "rejected_lease_restore_not_integrated".into(),
             },
         ],
         expected_outcome: "close_rejected_then_released".into(),

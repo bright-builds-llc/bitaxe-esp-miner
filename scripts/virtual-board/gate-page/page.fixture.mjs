@@ -10,9 +10,11 @@ const options = Object.fromEntries(process.argv.slice(2).map(argument => {
   if (!match) throw Error('fixture_arguments');
   return [match[1], match[2]];
 }));
-const SERVED_SCRIPTS = ['/dist/worker-serial-acceptance/worker-serial-acceptance.js', '/no-mining-client.mjs'];
+// The no-mining supervisor injects its own client; the lease supervisor the production one.
+const LEASE = options.mode.startsWith('lease');
+const SERVED_SCRIPTS = ['/dist/worker-serial-acceptance/worker-serial-acceptance.js', LEASE ? '/client.mjs' : '/no-mining-client.mjs'];
 const outcomePath = join(options.work, 'outcome.json');
-const device = startDevice({ binary: options.device, seed: 7, capability: options.capability, outcome: outcomePath,
+const device = startDevice({ binary: options.device, seed: 7, capability: options.capability, trust: options['device-trust'], outcome: outcomePath,
   stderrPath: join(options.work, 'device.stderr') });
 const browser = installBrowser({ origin: options.origin, port: childPort(device) });
 
@@ -50,6 +52,24 @@ for (const [index, path] of scripts.entries()) {
 for (const file of files) await import(pathToFileURL(file).href);
 
 const result = { mode: options.mode, statuses: [] };
+/**
+ * Prepare, load and start a signed window as the operator's buttons do; then wait for the
+ * page's own first renewal and stop (`lease`), or leave the lease to Close (`lease-close`).
+ */
+async function lease() {
+  const page = globalThis.workerAcceptance;
+  await page.prepareStartAuthorization();
+  await page.loadSignedWindow();
+  observe();
+  await page.startWindow();
+  observe();
+  if (options.mode === 'lease-close') return;
+  // A refresh publishes after each renewal; the next tick is a second away, so Stop never races it.
+  await until(() => published().renewalsConfirmed >= 1 || !published().running, 40000, 'renewal_unconfirmed');
+  result.renewals = published().renewalsConfirmed;
+  observe();
+  await page.stop();
+}
 const observe = () => { const status = state().status; if (result.statuses.at(-1) !== status) result.statuses.push(status); };
 const watcher = setInterval(observe, 5);
 try {
@@ -61,14 +81,16 @@ try {
     process.kill(-device.child.pid, 'SIGKILL');
     await globalThis.workerAcceptance.refresh().catch(() => {});
     await until(() => !state().connected, 10000, 'loss_unobserved');
+  } else if (published().connected && LEASE) {
+    await lease();
   } else if (published().connected) {
     await globalThis.workerAcceptance.refresh();
   }
   observe();
   click('close');
-  await until(() => state().serialOwnershipReleased || state().status === 'closed', 10000, 'close_unsettled');
+  await until(() => state().serialOwnershipReleased || state().status === 'closed', 20000, 'close_unsettled');
   observe();
-  await globalThis.noMiningSupervisor.flush();
+  await (globalThis.noMiningSupervisor ?? globalThis.recoverySupervisor).flush();
   result.records_flushed = true;
 } finally {
   clearInterval(watcher);

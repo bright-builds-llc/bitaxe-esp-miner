@@ -42,7 +42,14 @@ pub(crate) struct RuntimeBoardAdapter {
     /// Link heartbeat instants awaiting replay through the serial link receiver.
     pub link_heartbeats: Vec<u64>,
     last_link_heartbeat: u64,
+    /// A real-time device's link and writer service while the owner actuates, as the
+    /// firmware link and writer threads run beside the owner; its link heartbeats then
+    /// refresh the gate instead of the modeled ones.
+    pub maybe_pump: Option<LinkPump>,
 }
+
+/// One pass of a real-time device's link and writer at the adapter's board time.
+pub(crate) type LinkPump = Rc<dyn Fn(&RuntimeBoardAdapter)>;
 impl RuntimeBoardAdapter {
     pub fn profile() -> MiningHardwareProfile {
         MiningHardwareProfile::ultra_205_bm1366(400, 1100, 100)
@@ -72,6 +79,7 @@ impl RuntimeBoardAdapter {
             host_heartbeats: true,
             link_heartbeats: Vec::with_capacity(64),
             last_link_heartbeat: started_ms,
+            maybe_pump: None,
         })
     }
     pub fn now_ms(&self) -> u64 {
@@ -134,7 +142,9 @@ impl RuntimeBoardAdapter {
                 .borrow_mut()
                 .advance_to(next)
                 .map_err(model_error)?;
-            if heartbeat {
+            if let Some(pump) = self.maybe_pump.clone() {
+                pump(self);
+            } else if heartbeat {
                 self.gate.heartbeat(self.generation, next);
             }
             // The browser host sends link heartbeats each second whatever the device does.

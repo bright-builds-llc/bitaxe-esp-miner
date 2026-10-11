@@ -4,11 +4,14 @@ import { openSync, closeSync } from 'node:fs';
 
 export const DEVICE_FILTER = Object.freeze({ usbVendorId: 0x303a, usbProductId: 0x1001 });
 
-/** Starts the built device binary as its own process group; stderr goes to a private file. */
-export function startDevice({ binary, seed, capability, outcome, stderrPath }) {
+/**
+ * Starts the built device binary as its own process group; stderr goes to a private file.
+ * `trust` is the deployment trust the device verifies leases with.
+ */
+export function startDevice({ binary, seed, capability, trust, outcome, stderrPath }) {
   const stderr = openSync(stderrPath, 'wx', 0o600);
   try {
-    const child = spawn(binary, ['serve-serial', `--seed=${seed}`, `--capability=${capability}`, `--outcome=${outcome}`],
+    const child = spawn(binary, ['serve-serial', `--seed=${seed}`, `--capability=${capability}`, `--trust=${trust}`, `--outcome=${outcome}`],
       { detached: true, stdio: ['pipe', 'pipe', stderr] });
     const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
     return { child, exited };

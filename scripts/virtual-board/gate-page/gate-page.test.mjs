@@ -9,7 +9,9 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { createNoMiningSupervisor } from '../../fixed-usb-qualification/no-mining-server.mjs';
-import { buildFirmwareTree, buildGateTree, pinnedGateCommit, virtualNoMiningContext } from './assets.mjs';
+import { authoritySigner, throwawayAuthority } from '../lease-authority.mjs';
+import { buildFirmwareTree, buildGateTree, DEVICE_IDENTITY, pinnedGateCommit, virtualNoMiningContext } from './assets.mjs';
+import { createLeaseSupervisor, LEASE_RECORD } from './lease-supervisor.mjs';
 
 const run = promisify(execFile);
 const options = Object.fromEntries(process.argv.slice(2).map(argument => {
@@ -19,20 +21,29 @@ const options = Object.fromEntries(process.argv.slice(2).map(argument => {
 }));
 const fixture = resolve(dirname(fileURLToPath(import.meta.url)), 'page.fixture.mjs');
 const TRANSPORT_LOSS = new Set(['credit_closed', 'disconnected', 'liveness_lost', 'read_failed', 'write_failed', 'closed']);
-let root, gateRoot, commit;
+let root, gateRoot, commit, authority;
 const servers = [];
+const gateSource = () => dirname(options['gate-package']);
 
 before(async () => {
   root = await mkdtemp(join(tmpdir(), 'virtual-board-gate-page-'));
   commit = await pinnedGateCommit(options['module-bazel']);
   gateRoot = join(root, 'gate');
-  await buildGateTree({ gateSource: dirname(options['gate-package']), pagesSource: dirname(options.page), commit, gateRoot });
+  await buildGateTree({ gateSource: gateSource(), pagesSource: dirname(options.page), commit, gateRoot });
   // A freshly built executable can be held at first launch; never let that hit the Hello deadline.
   await run(options.device, ['list'], { timeout: 120000 });
+  authority = await throwawayAuthority({ gateRoot: gateSource(), root, firmwareTrustPath: options['firmware-trust'] });
 });
 after(async () => {
   for (const server of servers) { server.closeAllConnections(); await new Promise(done => server.close(done)); }
 });
+
+async function listen(server) {
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  servers.push(server);
+  return `http://127.0.0.1:${server.address().port}`;
+}
 
 /** A real supervisor on an ephemeral loopback port publishing `trust`. */
 async function supervise(name, trust) {
@@ -42,24 +53,35 @@ async function supervise(name, trust) {
   const context = await virtualNoMiningContext({ gateRoot, firmwareRoot, commit });
   // The virtual context has no git checkout or physical package to re-verify.
   const server = await createNoMiningSupervisor({ privateRoot, context }, { verifyFrozen: async () => {} });
-  server.listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  servers.push(server);
-  return { origin: `http://127.0.0.1:${server.address().port}`, privateRoot };
+  return { origin: await listen(server), privateRoot, deviceTrust: options['firmware-trust'],
+    records: () => readRecords(privateRoot, /^no-mining-state-[0-9]{4}\.json$/u, record => record.state) };
 }
 
-async function records(privateRoot) {
-  const files = (await readdir(privateRoot)).filter(file => /^no-mining-state-[0-9]{4}\.json$/u.test(file)).sort();
-  return Promise.all(files.map(async file => JSON.parse(await readFile(join(privateRoot, file), 'utf8')).state));
+/** The lease supervisor publishing the virtual deployment trust its throwaway authority signs under. */
+async function superviseLeases(name) {
+  const privateRoot = join(root, `records-${name}`);
+  await mkdir(privateRoot, { mode: 0o700 });
+  const context = { schema: 'virtual-board-lease-context-v1', gate_commit: commit, ...DEVICE_IDENTITY };
+  const trust = JSON.parse(await readFile(authority.trustPath, 'utf8'));
+  const server = await createLeaseSupervisor({ privateRoot, context, gateRoot, trust,
+    sign: authoritySigner({ gateRoot: gateSource(), directory: authority.directory }) });
+  return { origin: await listen(server), privateRoot, deviceTrust: authority.trustPath,
+    records: () => readRecords(privateRoot, LEASE_RECORD, record => record.value) };
 }
 
-async function page(mode, trust) {
-  const supervisor = await supervise(mode, trust);
+async function readRecords(privateRoot, pattern, select) {
+  const files = (await readdir(privateRoot)).filter(file => pattern.test(file)).sort();
+  return Promise.all(files.map(async file => select(JSON.parse(await readFile(join(privateRoot, file), 'utf8')))));
+}
+const records = supervisor => supervisor.records();
+
+async function page(mode, trustOrSupervisor) {
+  const supervisor = typeof trustOrSupervisor === 'string' ? await supervise(mode, trustOrSupervisor) : trustOrSupervisor;
   const work = join(root, `page-${mode}`);
   await mkdir(work, { mode: 0o700 });
   const { stdout } = await run('bun', [fixture, `--origin=${supervisor.origin}`, `--device=${options.device}`,
-    `--capability=${options.capability}`, `--mode=${mode}`, `--work=${work}`], { timeout: 90000 });
-  return { result: JSON.parse(stdout), recorded: await records(supervisor.privateRoot), supervisor, work };
+    `--capability=${options.capability}`, `--device-trust=${supervisor.deviceTrust}`, `--mode=${mode}`, `--work=${work}`], { timeout: 120000 });
+  return { result: JSON.parse(stdout), recorded: await records(supervisor), supervisor, work };
 }
 
 test('the served page admits the virtual device, reports to the supervisor and closes cleanly', async () => {
@@ -103,7 +125,7 @@ test('the supervisor refuses a record from another origin', async () => {
     headers: { origin: 'http://127.0.0.1:1', 'content-type': 'application/json' }, body: '{"state":{}}' });
   // Assert
   assert.equal(response.status, 400);
-  assert.deepEqual(await records(supervisor.privateRoot), []);
+  assert.deepEqual(await records(supervisor), []);
 });
 
 test('page results are category-only and every written file is private', async () => {
@@ -121,4 +143,52 @@ test('page results are category-only and every written file is private', async (
     }
   };
   for (const directory of [work, supervisor.privateRoot]) await check(directory);
+});
+
+test('the served page starts, renews and stops a signed lease through the lease supervisor', async () => {
+  // Arrange
+  const supervisor = await superviseLeases('lease');
+  // Act
+  const { result, recorded } = await page('lease', supervisor);
+  // Assert
+  const statuses = recorded.map(state => state.status);
+  for (const status of ['window_loaded', 'running', 'stopping', 'baseline_confirmed', 'closed']) assert.ok(statuses.includes(status), status);
+  assert.ok(recorded.some(state => state.running && state.qualification?.owner_resources?.phase === 'active'), 'running evidence recorded');
+  assert.ok(result.renewals >= 1, JSON.stringify(result));
+  assert.equal(result.final.failure, null);
+  const outcome = result.outcome.outcome;
+  assert.ok(outcome.leases_started === 1 && outcome.renewals >= 1 && outcome.restorations === 1, JSON.stringify(outcome));
+  assert.equal(result.outcome.clean, true, JSON.stringify(result.outcome));
+  assert.deepEqual([result.device.code, result.device.released, result.lock_held], [0, true, false]);
+});
+
+test('closing the served page with an active lease restores the virtual device', async () => {
+  // Arrange
+  const supervisor = await superviseLeases('lease-close');
+  // Act
+  const { result, recorded } = await page('lease-close', supervisor);
+  // Assert
+  assert.ok(recorded.some(state => state.status === 'running'), 'the lease ran');
+  assert.equal(result.final.status, 'closed');
+  assert.equal(recorded.at(-1).status, 'closed');
+  const outcome = result.outcome.outcome;
+  assert.deepEqual([outcome.leases_started, outcome.restorations, outcome.lease_pending], [1, 1, false]);
+  assert.equal(result.outcome.clean, true, JSON.stringify(result.outcome));
+  assert.deepEqual([result.device.code, result.device.released, result.lock_held], [0, true, false]);
+});
+
+test('the lease supervisor delivers a signed window once', async () => {
+  // Arrange
+  const supervisor = await superviseLeases('one-shot');
+  const post = (path, value) => fetch(`${supervisor.origin}${path}`, { method: 'POST',
+    headers: { origin: supervisor.origin, 'content-type': 'application/json' }, body: JSON.stringify(value) });
+  await post('/activate', {});
+  await post('/authorization-context', { controlSessionBindingSha256: 'A'.repeat(43) });
+  // Act
+  const first = await fetch(`${supervisor.origin}/window-artifacts`);
+  const second = await fetch(`${supervisor.origin}/window-artifacts`);
+  // Assert
+  assert.equal(first.status, 200);
+  assert.ok((await first.json()).grant.qualificationAttempt);
+  assert.equal(second.status, 400);
 });

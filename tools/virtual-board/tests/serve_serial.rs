@@ -22,6 +22,11 @@ fn start() -> Session {
         .arg("serve-serial")
         .arg("--seed=3")
         .arg(format!("--capability={}", capability.display()))
+        .arg(concat!(
+            "--trust=",
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../firmware/bitaxe/bwg/deployment-trust.json"
+        ))
         .arg(format!(
             "--outcome={}",
             directory.path().join("outcome.json").display()

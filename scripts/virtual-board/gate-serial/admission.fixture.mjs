@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { childPort, releaseDevice, startDevice, DEVICE_FILTER } from './child-port.mjs';
+import { authoritySigner, signVirtualAttempt } from '../lease-authority.mjs';
 
 const options = Object.fromEntries(process.argv.slice(2).map(argument => {
   const match = /^--([a-z-]+)=(.*)$/u.exec(argument);
@@ -16,8 +17,8 @@ const { workerSerialFailureCategory } = await load('worker-serial-errors');
 const trust = JSON.parse(await readFile(options.trust, 'utf8'));
 
 const outcomePath = join(options.work, 'outcome.json');
-const device = startDevice({ binary: options.device, seed: 7, capability: options.capability, outcome: outcomePath,
-  stderrPath: join(options.work, 'device.stderr') });
+const device = startDevice({ binary: options.device, seed: 7, capability: options.capability, trust: options['device-trust'],
+  outcome: outcomePath, stderrPath: join(options.work, 'device.stderr') });
 let maybeStored;
 const runtime = {
   serial: { requestPort: async () => childPort(device) },
@@ -34,16 +35,33 @@ const continuity = {
   establish: async value => { maybeStored = value; },
   clear: async () => { maybeStored = undefined; },
 };
+const CHALLENGE_ID = 'challenge_virtual_board_gate_serial';
 const controller = createWebSerialWorkerController({
   deviceFilter: DEVICE_FILTER,
   trustedUpdateKeys: trust.updateAuthority.keys,
-  continuityScope: { challengeId: 'challenge_virtual_board_gate_serial', retentionExpiryUnixSeconds: 2_000_000_000 },
+  continuityScope: { challengeId: CHALLENGE_ID, retentionExpiryUnixSeconds: 2_000_000_000 },
   expectedFirmwareSourceCommit: 'a'.repeat(40),
   expectedAppElfSha256: 'b'.repeat(64),
   [workerSerialTestRuntime]: { runtime, continuity },
 });
 
 const result = { mode: options.mode, timings_ms: {} };
+/** Start, then renew and restore (`lease`), or leave the lease for Close to restore (`lease-close`). */
+async function lease() {
+  const sign = authoritySigner({ gateRoot: options['gate-root'], directory: options.authority });
+  const { controlSessionBindingSha256: binding } = await controller.prepareWorkerLeaseAuthorizationContext('start');
+  const window = await signVirtualAttempt({ challengeId: CHALLENGE_ID, binding, sign });
+  mark('signed');
+  try {
+    result.started = (await controller.startLease(window.grant)).state;
+    mark('started');
+    if (options.mode === 'lease-close') return;
+    result.renewed = (await controller.renewLease(window.renewals[0])).state;
+    result.restored = (await controller.restore('cancelled')).state;
+  } catch (error) {
+    result.category = workerSerialFailureCategory(error);
+  }
+}
 const started = performance.now();
 const mark = phase => { result.timings_ms[phase] = Math.round(performance.now() - started); };
 try {
@@ -57,6 +75,8 @@ try {
   if (result.permission === 'ready' && options.mode === 'loss') {
     process.kill(-device.child.pid, 'SIGKILL');
     try { await controller.status(); result.status = 'unexpected'; } catch (error) { result.category = workerSerialFailureCategory(error); }
+  } else if (result.permission === 'ready' && options.mode.startsWith('lease')) {
+    await lease();
   } else if (result.permission === 'ready') {
     result.state = (await controller.status()).state;
   }

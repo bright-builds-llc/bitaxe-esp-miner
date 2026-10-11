@@ -35,6 +35,9 @@ enum Command {
         /// The signed capability the device advertises.
         #[arg(long)]
         capability: PathBuf,
+        /// The deployment trust whose work-lease authority verifies leases.
+        #[arg(long)]
+        trust: PathBuf,
         /// A new file for the session outcome (categories and counts only).
         #[arg(long)]
         outcome: Option<PathBuf>,
@@ -63,8 +66,14 @@ fn execute(cli: Cli) -> Result<bool> {
         Command::ServeSerial {
             seed,
             capability,
+            trust,
             outcome,
-        } => serve::serve(seed, &capability, outcome.as_deref()),
+        } => serve::serve(&serve::ServeInputs {
+            seed,
+            capability: &capability,
+            trust: &trust,
+            maybe_outcome: outcome.as_deref(),
+        }),
     }
 }
 fn main() {
