@@ -152,3 +152,6 @@ test('Gate controller, page, lease and close-rejection coverage are required qua
   assert.ok(REQUIRED_COVERAGE.includes('gate-lease-flows'));
   assert.ok(REQUIRED_COVERAGE.includes('gate-close-rejection-release'));
 });
+test('real allocation interception is a required qualification row', () => {
+  assert.ok(REQUIRED_COVERAGE.includes('bounded-real-allocation-paths'));
+});

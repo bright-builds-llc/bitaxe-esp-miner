@@ -370,6 +370,7 @@ dependencies = [
  "base64",
  "bitaxe-api",
  "bitaxe-asic",
+ "bitaxe-core",
  "bitaxe-runtime",
  "bitaxe-safety",
  "bitaxe-stratum",

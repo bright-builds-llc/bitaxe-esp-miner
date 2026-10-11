@@ -89,8 +89,6 @@ The following remain required, failed or unsupported:
 - Corrected Xtensa healthy lifecycle and sufficient native stack margin.
 - Strict live fixture/header/nonce qualification; the generic public vector does
   not replace it.
-- Capability-specific failure injection into actual parser/snapshot/serializer
-  allocation paths, distinct from predicted model budgets.
 - Full fixture natural completion, historical ownership, listener/serial release
   and live-writer scenarios through one consolidated production lifecycle runner.
 - Complete mandatory host/target corpus agreement, qualification and matching-report

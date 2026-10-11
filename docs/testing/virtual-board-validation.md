@@ -55,9 +55,36 @@ readings; none identifies the cause of the retained physical status001 failure.
 
 Model capability budgets and actual target allocator measurements are separate.
 The retained 3,451-byte free / 2,176-byte largest-block observation is a pressure
-profile, not a reconstruction of the device free-list. Default routing constants
-match the retained 2,048-byte threshold and 98,304-byte reserve; each candidate
-must independently bind its resolved SDK configuration.
+profile, not a reconstruction of the device free-list. Default routing matches the
+firmware configuration (`CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0`: a default-capability
+allocation of any size tries PSRAM, then internal memory) and the 98,304-byte
+internal reserve; each candidate must independently bind its resolved SDK
+configuration.
+
+Real allocations are intercepted separately from that model. Production code marks
+each recoverable reservation with a named site (`bitaxe_core::fallible`). In the
+`//crates/bitaxe-simulation:real_allocation_tests` binary, a capability-aware test
+allocator routes every attempt made at an armed site by the same rule
+(`bitaxe_virtual_board::memory::route`) and fails it only when each routed
+capability is exhausted, so PSRAM exhaustion alone falls back to internal memory as
+on the device. Each class runs through its real production code, and the virtual
+device keeps running:
+- **parser:** the receive frame buffer, its frame copy and the control copy end the
+  session with typed link failures (`frame_allocation`, `control_allocation`). The
+  link receiver parses a borrowed record, so receiving copies no payload;
+- **snapshot:** `V2Record::try_snapshot`, the V2 status copy, fails typed;
+- **serializer:** `SerialEnvelope::encode` reserves one bounded buffer recoverably
+  and fails `Unavailable`; the device revokes the session without a reply.
+
+On firmware the same regions mark the task in the fault-provenance recorder, which
+keeps a recovered failure in its history and leaves the boot's fatal first-failure
+receipt to unhandled ones. `bounded-real-allocation-paths` passes only when the
+interception, link, seam and provenance-model tests pass. Non-claims: these are host
+allocator faults through shared production code, not ESP-IDF TLSF behaviour or
+device heap measurements; the V2 status reply's later serialization
+(`serde_json::to_value`), the controller's reply serialization, Hello's small strings
+and other unmarked allocations still abort on exhaustion; firmware's recoverable
+marking is build- and model-verified, not hardware-verified.
 
 ## Qualification and rollout
 
@@ -150,8 +177,7 @@ browser is shimmed, not Chromium; Bun comes from the host PATH; port 48765 and t
 owner's Gate tab are never used.
 
 Current unsupported coverage includes encrypted fixture/share/ACK integration,
-capability-specific interception of real allocation
-paths, retained V2 status serialization, and several composed timing/recovery/
+retained V2 status serialization, and several composed timing/recovery/
 process-ownership scenarios. The active task records exact target execution
 failures and remaining blockers. Models and simulator passes cannot establish
 physical electrical, RF, USB timing or hardware parity. Virtual runs promote no

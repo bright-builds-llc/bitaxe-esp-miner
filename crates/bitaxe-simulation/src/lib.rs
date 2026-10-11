@@ -4,6 +4,8 @@ mod authorization;
 mod boundary_scenarios;
 mod controller;
 pub mod noise_probe;
+#[cfg(test)]
+mod real_allocation;
 mod resource_scenarios;
 mod scenarios;
 mod serial_link;

@@ -6,6 +6,7 @@ use bitaxe_worker_control::serial::{SerialEnvelope, SerialFrameAccumulator, Seri
 use serde_json::{json, value::RawValue};
 use std::collections::VecDeque;
 
+mod allocation;
 mod lease;
 
 const HOST_NONCE: [u8; 32] = [9; 32];

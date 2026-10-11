@@ -5,7 +5,7 @@ mod release;
 pub use release::ShareRelease;
 mod wire;
 pub use input::*;
-pub use record::{ObservedAcknowledgement, V2Record};
+pub use record::{ObservedAcknowledgement, V2Record, RECORD_SITE, SNAPSHOT_SITE};
 pub use wire::*;
 pub const AUTHORITY_US: u64 = 120_000_000;
 pub const OBSERVATION_US: u64 = 125_000_000;

@@ -1,4 +1,7 @@
-use bitaxe_virtual_board::memory::{AllocationError, Capability, CapabilityHeap, FailureRule};
+use bitaxe_virtual_board::memory::{
+    route, AllocationError, Capability, CapabilityHeap, FailureRule,
+    FIRMWARE_DEFAULT_INTERNAL_THRESHOLD,
+};
 
 #[test]
 fn pressure_profile_preserves_measured_total_and_largest() {
@@ -172,4 +175,29 @@ fn old_boot_ticket_cannot_free_new_allocation_with_reused_id() {
     assert_eq!(result, Err(AllocationError::UnknownTicket));
     assert_eq!(heap.snapshot(Capability::Internal), before);
     heap.free(new).expect("new token remains valid");
+}
+
+#[test]
+fn a_small_default_allocation_uses_psram_first_as_firmware_routes_it() {
+    // Arrange
+    let mut heap = CapabilityHeap::healthy();
+    let psram_before = heap.snapshot(Capability::Psram).free_bytes;
+    let internal_before = heap.snapshot(Capability::Internal).free_bytes;
+    // Act
+    let ticket = heap.allocate(64, 8, Capability::Default, "small");
+    // Assert
+    assert!(ticket.is_ok());
+    assert!(heap.snapshot(Capability::Psram).free_bytes < psram_before);
+    assert_eq!(
+        heap.snapshot(Capability::Internal).free_bytes,
+        internal_before
+    );
+}
+
+#[test]
+fn default_routing_falls_back_from_psram_to_internal() {
+    // Arrange / Act
+    let order = route(Capability::Default, 64, FIRMWARE_DEFAULT_INTERNAL_THRESHOLD);
+    // Assert
+    assert_eq!(order, [Capability::Psram, Capability::Internal]);
 }

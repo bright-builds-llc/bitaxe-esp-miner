@@ -741,10 +741,10 @@ stale-source/build regressions, process/listener and evidence regressions, five
 production native audits, reference/redaction/standards/Markdown/diff checks.
 Final verification receipts and public summary accompany the committed milestone.
 Completion review: not complete; do not archive. Explicit remaining blockers are
-missing actual margin/call-closure proof, strict live fixture/header/nonce vector,
-real allocation interception (the Gate/page/HTTP/framed-I/O integration, lease
-flows and the close-rejection owner release are complete in increments 1-6
-below), consolidated production lifecycle/ownership profiles, full
+missing actual margin/call-closure proof, strict live fixture/header/nonce vector
+(the Gate/page/HTTP/framed-I/O integration, lease flows, the close-rejection owner
+release and real allocation interception are complete in increments 1-7 below),
+consolidated production lifecycle/ownership profiles, full
 qualified host/target corpus and mandatory matching-report rollout. The
 corrected-target panic is resolved in emulation (campaign004). Missing
 calibration remains an explicit fidelity non-claim. Accepted-share stays active,
@@ -1129,7 +1129,7 @@ in-process scenarios dropping their always-unsupported "actual allocator" checks
   payload copy and reports frame-buffer exhaustion as a typed link failure;
   `V2Record` snapshots fallibly; `SerialEnvelope::encode` writes through a bounded,
   fallible buffer. Stack audits and characterization transcripts re-run.
-- [ ] Interception: a capability-aware host test allocator (firmware routes these
+- [x] Interception: a capability-aware host test allocator (firmware routes these
   allocations PSRAM-first) fails real allocations by site through the production
   code and the virtual device; `bounded-real-allocation-paths` is set from it; the
   board model's default routing matches firmware; docs and non-claims; affected
@@ -1139,7 +1139,35 @@ Authorization: repository source, tests, documentation, build and host processes
 commit and push only. No hardware, USB, flashing, QEMU run, credentials or parity
 promotion; firmware changes are build- and host-verified only.
 
-Verification: pending. Completion review: pending.
+Verification: ordered Cargo fmt/Clippy (`-D warnings`)/build/tests; all 331 Bazel
+tests (`just test`) including the new `//crates/bitaxe-simulation:real_allocation_tests`
+(12 cases: allocator routing and fallback, the frame buffer, V2 snapshot and encode
+sites, and the virtual device ending typed on control-copy, frame-copy and encode
+exhaustion and surviving PSRAM-only exhaustion), the C provenance model (three new
+cases), the core-dump provenance validator (two new cases) and the native binary
+audit fixture; `just build`, `just package`; native audits on the built ELF: link
+5,248 and writer 5,392 bytes (down from 5,568 and 5,616), control 10,256 unchanged,
+no runtime realignment callers, fault provenance passing with the recoverable entry
+points in its IRAM closure (192 added bytes, one callback CAS); `just
+virtual-emulator build` (compile and guest frame audit only: 992/4,208 bytes,
+unchanged); redaction, reference, parity and Bright Builds checks. One Cargo test
+run, made while a full Bazel suite ran concurrently, counted failure lines that
+three later runs did not reproduce; the recorded runs pass.
+
+Completion review: real allocation interception is in place and the fatal
+provenance receipt is protected. Every production reservation runs in a named
+recoverable region; on firmware the recorder flags those failures in its history
+and leaves the first-failure receipt to unhandled ones. The receive envelope is
+parsed without a payload copy, the V2 snapshot and the outbound encode allocate
+only recoverably, and receive-buffer exhaustion is the new pinned link failure
+`frame_allocation`. A capability-aware test allocator, routing as firmware does,
+fails these real sites typed, including inside the running virtual device. The
+in-process scenarios dropped their always-unsupported actual-allocator checks and
+`bounded-real-allocation-paths` is set from the real tests. Non-claims: host
+allocator faults, not ESP-IDF TLSF behaviour; V2 status `to_value`, controller
+reply serialization, Hello strings and other unmarked allocations still abort on
+exhaustion; firmware recoverable marking is not hardware-verified. The parent's
+named-phase allocation profile item stays open. Qualification stays false.
 
 ## Future
 

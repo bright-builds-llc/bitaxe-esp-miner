@@ -27,6 +27,13 @@ export async function componentCoverage(repo, root, targetManifest, coverage) {
   set('gate-lease-flows', leases ? 'passed' : 'failed', leases ? 'throwaway_authority_leases_crossed_gate_page_supervisor_and_controller' : 'gate_lease_suite_failed');
   set('gate-close-rejection-release', leases ? 'passed' : 'failed',
     leases ? 'gate_owner_release_and_independent_device_restoration_after_close_rejections' : 'gate_close_rejection_suite_failed');
+  // Real production allocations (receive buffer, V2 snapshot, envelope encode) fail by site under a
+  // capability-aware allocator, end typed in the device, and never claim the fatal provenance receipt.
+  try {
+    await runPrivate('bazel', ['test', '//crates/bitaxe-simulation:real_allocation_tests', '//crates/bitaxe-worker-control:serial_link_tests',
+      '//crates/bitaxe-core:tests', '//scripts:fault_provenance_host_test'], root, 'bounded-real-allocation-paths', { cwd: repo, timeoutMs: 300000 });
+    set('bounded-real-allocation-paths', 'passed', 'real_parser_snapshot_serializer_allocations_failed_typed_by_capability');
+  } catch { set('bounded-real-allocation-paths', 'failed', 'real_allocation_suite_failed'); }
   if (!targetManifest) return;
   for (const [id, commands] of [['target-reset-persistence', ['status', 'allocation', 'restart']], ['target-panic-core-decode', ['status', 'panic']]]) {
     const path = join(root, id); await mkdir(path, { mode: 0o700 });

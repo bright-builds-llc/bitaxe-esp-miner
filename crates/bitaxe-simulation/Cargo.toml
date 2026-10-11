@@ -22,3 +22,6 @@ noise_sv2.workspace = true
 rand.workspace = true
 zeroize.workspace = true
 bitaxe-stratum-v2-fixture = { path = "../../tools/stratum-v2-fixture" }
+
+[dev-dependencies]
+bitaxe-core = { path = "../bitaxe-core" }

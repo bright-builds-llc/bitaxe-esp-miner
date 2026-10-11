@@ -1,4 +1,4 @@
-//! Resource model checks explicitly separated from actual allocator injection.
+//! Resource model checks. Real allocations are failed by site in `real_allocation` tests.
 use crate::{CheckStatus, Failure, ProfileCheck, ScenarioResult, SCENARIO_VERSION};
 use bitaxe_virtual_board::memory::{AllocationError, Capability, CapabilityHeap, FailureRule};
 
@@ -32,22 +32,15 @@ pub(crate) fn run(name: &str, seed: u64) -> ScenarioResult {
         schema: SCENARIO_VERSION.into(),
         scenario: name.into(),
         seed,
-        checks: vec![
-            ProfileCheck {
-                id: "capability_budget".into(),
-                status: if rejected && before == after && heap.live_allocations() == 0 {
-                    CheckStatus::Passed
-                } else {
-                    CheckStatus::Failed
-                },
-                detail: category.into(),
+        checks: vec![ProfileCheck {
+            id: "capability_budget".into(),
+            status: if rejected && before == after && heap.live_allocations() == 0 {
+                CheckStatus::Passed
+            } else {
+                CheckStatus::Failed
             },
-            ProfileCheck {
-                id: "actual_allocator_fault_injection".into(),
-                status: CheckStatus::Unsupported,
-                detail: "production_allocation_interception_not_integrated".into(),
-            },
-        ],
+            detail: category.into(),
+        }],
         expected_outcome: if name == "heap-fragmented" {
             "allocation_exhausted"
         } else {

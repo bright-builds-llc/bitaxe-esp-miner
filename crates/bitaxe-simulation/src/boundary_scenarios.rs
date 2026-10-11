@@ -130,7 +130,7 @@ pub(crate) fn run_retained_or_snapshot(
     let link = worker.session_mut().link_close_check();
     let output = worker.session_mut().output_check(true);
     let closed = worker.disconnect(100).is_ok();
-    let mut checks = vec![
+    let checks = vec![
         link,
         output,
         ProfileCheck {
@@ -154,13 +154,8 @@ pub(crate) fn run_retained_or_snapshot(
             detail: "missing_history_did_not_block_current_release".into(),
         },
     ];
-    if name == "status-allocation-failure" {
-        checks.push(ProfileCheck {
-            id: "real_retained_clone_allocation_failure".into(),
-            status: CheckStatus::Unsupported,
-            detail: "snapshot_adapter_rejection_only".into(),
-        });
-    }
+    // The real retained-clone failure is proven by the capability-aware allocator tests
+    // (`real_allocation_tests`), which this deterministic scenario binary does not link.
     Ok(ScenarioResult {
         schema: SCENARIO_VERSION.into(),
         scenario: name.into(),

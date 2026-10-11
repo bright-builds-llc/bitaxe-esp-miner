@@ -27,7 +27,19 @@ rust_library(
     ],
 )
 
-rust_test(name = "tests", crate = ":bitaxe_simulation")
+rust_test(
+    name = "tests",
+    crate = ":bitaxe_simulation",
+    deps = ["//crates/bitaxe-core:bitaxe_core"],
+)
+
+# Real production allocation sites failed by site under the capability-aware test allocator.
+rust_test(
+    name = "real_allocation_tests",
+    args = ["real_allocation::", "stdio::tests::allocation::"],
+    crate = ":bitaxe_simulation",
+    deps = ["//crates/bitaxe-core:bitaxe_core"],
+)
 
 rust_test(
     name = "scenario_tests",

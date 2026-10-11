@@ -11,6 +11,29 @@ pub enum Capability {
     Default,
 }
 
+/// Firmware routes a default-capability allocation of any size to PSRAM first
+/// (`CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0` in `firmware/bitaxe/sdkconfig.defaults`).
+pub const FIRMWARE_DEFAULT_INTERNAL_THRESHOLD: usize = 0;
+
+/// The capabilities an allocation may use, in the order the allocator tries them.
+/// Default allocations at or below `internal_threshold` bytes try internal memory first.
+#[must_use]
+pub const fn route(
+    capability: Capability,
+    bytes: usize,
+    internal_threshold: usize,
+) -> &'static [Capability] {
+    match capability {
+        Capability::Default if bytes <= internal_threshold => {
+            &[Capability::Internal, Capability::Psram]
+        }
+        Capability::Default => &[Capability::Psram, Capability::Internal],
+        Capability::Internal => &[Capability::Internal],
+        Capability::Dma => &[Capability::Dma],
+        Capability::Psram => &[Capability::Psram],
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HeapSnapshot {
     pub free_bytes: usize,
@@ -133,7 +156,7 @@ impl CapabilityHeap {
             allocations: BTreeMap::new(),
             attempt: 0,
             next_ticket: 1,
-            default_internal_threshold: 2048,
+            default_internal_threshold: FIRMWARE_DEFAULT_INTERNAL_THRESHOLD,
             failure_rules: Vec::new(),
         }
     }
@@ -176,16 +199,7 @@ impl CapabilityHeap {
         }) {
             return Err(AllocationError::Injected);
         }
-        let candidates: &[Capability] = match capability {
-            Capability::Default if bytes <= self.default_internal_threshold => {
-                &[Capability::Internal, Capability::Psram]
-            }
-            Capability::Default => &[Capability::Psram, Capability::Internal],
-            Capability::Internal => &[Capability::Internal],
-            Capability::Dma => &[Capability::Dma],
-            Capability::Psram => &[Capability::Psram],
-        };
-        for selected in candidates {
+        for selected in route(capability, bytes, self.default_internal_threshold) {
             let region = if *selected == Capability::Psram {
                 &mut self.psram
             } else {
