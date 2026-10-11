@@ -1,4 +1,8 @@
 use super::*;
+use bitaxe_core::fallible::{reserve_exact, Site};
+
+/// The bounded record vectors, reserved once at admission.
+pub const RECORD_SITE: Site = Site("v2.record");
 mod acknowledgement;
 pub use acknowledgement::ObservedAcknowledgement;
 
@@ -23,13 +27,13 @@ impl V2Record {
             return None;
         }
         let mut events = Vec::new();
-        events.try_reserve_exact(MAX_EVENTS).ok()?;
+        reserve_exact(&mut events, MAX_EVENTS, RECORD_SITE).ok()?;
         let mut share_facts = Vec::new();
-        share_facts.try_reserve_exact(MAX_SHARES).ok()?;
+        reserve_exact(&mut share_facts, MAX_SHARES, RECORD_SITE).ok()?;
         let mut secondary_failures = Vec::new();
-        secondary_failures.try_reserve_exact(MAX_FAILURES).ok()?;
+        reserve_exact(&mut secondary_failures, MAX_FAILURES, RECORD_SITE).ok()?;
         let mut timings = Vec::new();
-        timings.try_reserve_exact(13).ok()?;
+        reserve_exact(&mut timings, 13, RECORD_SITE).ok()?;
         for operation in Operation::ALL {
             timings.push(Timing {
                 operation,

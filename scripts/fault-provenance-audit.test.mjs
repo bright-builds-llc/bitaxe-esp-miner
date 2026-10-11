@@ -6,7 +6,7 @@ function fixture() {
   const add = (name, size, where = address) => { const value = { name, size, address: where }; entries.push(value); address += 256; return value; };
   add('_coredump_dram_start', 0, 0x3fc90000); add('_coredump_dram_end', 0, 0x3fca0000);
   add('BITAXE_PANIC_FRAME_RECORD', 192, 0x3fc90000); add('BITAXE_ALLOCATION_HISTORY', 1536, 0x3fc90100);
-  for (const [index, name] of ['owners', 'legacy_allocation', 'legacy_context', 'legacy_source_lo', 'legacy_source_hi', 'legacy_claim', 'identity', 'snapshot', 'checks', 'capture_active'].entries()) add(name, 4, 0x3fc91000 + index * 4);
+  for (const [index, name] of ['owners', 'recoverables', 'legacy_allocation', 'legacy_context', 'legacy_source_lo', 'legacy_source_hi', 'legacy_claim', 'identity', 'snapshot', 'checks', 'capture_active'].entries()) add(name, 4, 0x3fc91000 + index * 4);
   add('BITAXE_FAULT_COMPILED_SOURCE', 8, 0x3c010000); const abi = add('BITAXE_FAULT_PROVENANCE_ABI', 128, 0x3c010100);
   [0x50464131, 1, 48, 36, 112, 12, 0, 4, 8, 12, 24, 28, 32, 0, 4, 8, 12, 16, 80, 84, 0, 4, 8].forEach((x, i) => literals.set(abi.address + i * 4, x));
   literals.set(abi.address + 28 * 4, 65536); literals.set(abi.address + 31 * 4, 0x50465231);

@@ -35,6 +35,8 @@ export function provenanceFixture(kind = 'real') {
       const sequence = index === 0 ? 1 : count - ((count - index) % 8);
       const record = [sequence, 0x414c4c31, sequence, 0, ...source, 17, 0, 1, 8192, 0x804, tcb, 42, pc, 1, 5, 2, pc, 1, 0];
       if (kind === 'allocation-early' && index === 0) { record[6] = 0; record[18] = 3; }
+      if (kind === 'allocation-recoverable' && index === 0) { record[18] = 17; allocations[19] = 2; }
+      if (kind === 'allocation-recoverable-isr' && index === 0) { record[18] = 24; record.fill(0, 14, 18); }
       record[19] = rolling(record.slice(1, 19));
       if (kind === 'allocation-torn' && index === 4) record[0] = 0;
       if (kind === 'allocation-checksum' && index === 4) record[19]++;

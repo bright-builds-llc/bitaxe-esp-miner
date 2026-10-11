@@ -14,7 +14,8 @@ uint32_t fault_test_isr(void) { return test_isr; }
 static uint32_t allocation[4], context[8];
 static void reset(void) {
     memset((void *)BITAXE_ALLOCATION_HISTORY, 0, sizeof(BITAXE_ALLOCATION_HISTORY));
-    memset(owners, 0, sizeof(owners)); memset(allocation, 0, sizeof(allocation)); memset(context, 0, sizeof(context));
+    memset(owners, 0, sizeof(owners)); memset(recoverables, 0, sizeof(recoverables));
+    memset(allocation, 0, sizeof(allocation)); memset(context, 0, sizeof(context));
     test_core = 0; test_task = 0x123400; test_cycles = 10; test_isr = 0;
     bitaxe_allocation_set_legacy(allocation, context, 0x12345678, 0x90abcdef);
     bitaxe_allocation_set_identity(0x12345678, 0x90abcdef, 23, 0);
@@ -99,8 +100,46 @@ static void identity_and_legacy_abi_are_exact(void) {
     bitaxe_allocation_set_identity(0x12345678, 0x90abcdef, 0, 0); bitaxe_allocation_failure_record(1, 4, NULL);
     assert((recent(0, 2)[18] & 2) != 0); // Unbound early boot is not attributed later.
 }
+static void a_recoverable_failure_never_claims_the_fatal_receipt(void) {
+    // Arrange
+    reset(); bitaxe_allocation_recoverable_begin();
+    // Act
+    bitaxe_allocation_failure_record(66560, 0x1800, NULL);
+    bitaxe_allocation_recoverable_end();
+    bitaxe_allocation_failure_record(4096, 0x804, NULL);
+    // Assert
+    assert(valid(first(0)) && first(0)[9] == 66560 && (first(0)[18] & 16) != 0);
+    assert(valid(recent(0, 2)) && recent(0, 2)[9] == 4096 && (recent(0, 2)[18] & 16) == 0);
+    assert(allocation[0] == 0x42584146 && allocation[1] == 4096); // The fatal receipt is the unhandled failure.
+}
+static void recoverable_regions_nest_per_task_and_skip_interrupts(void) {
+    // Arrange
+    reset(); bitaxe_allocation_recoverable_begin(); bitaxe_allocation_recoverable_begin();
+    // Act / Assert: still recoverable after the inner end; never for another task or an ISR.
+    bitaxe_allocation_recoverable_end(); bitaxe_allocation_failure_record(64, 0x1800, NULL);
+    assert((first(0)[18] & 16) != 0);
+    test_task++; bitaxe_allocation_failure_record(64, 0x1800, NULL);
+    assert((recent(0, 2)[18] & 16) == 0);
+    test_task--; test_isr = 1; bitaxe_allocation_failure_record(64, 0x1800, NULL);
+    assert((recent(0, 3)[18] & 16) == 0);
+    test_isr = 0; bitaxe_allocation_recoverable_end(); bitaxe_allocation_recoverable_end();
+    bitaxe_allocation_failure_record(64, 0x1800, NULL);
+    assert((recent(0, 4)[18] & 16) == 0 && recoverables[0].task == 0);
+}
+static void a_full_recoverable_registry_is_explicit_and_stays_fatal(void) {
+    // Arrange
+    reset();
+    for (uint32_t i = 1; i <= RECOVERABLE_SLOTS; ++i) { test_task = 0x123400 + i; bitaxe_allocation_recoverable_begin(); }
+    // Act
+    test_task = 0x123400; bitaxe_allocation_recoverable_begin(); bitaxe_allocation_failure_record(64, 0x1800, NULL);
+    // Assert
+    assert((BITAXE_ALLOCATION_HISTORY[HEADER_WORDS + 3] & 2) != 0);
+    assert((first(0)[18] & 16) == 0 && allocation[1] == 64);
+}
 int main(void) {
     first_and_latest_are_per_core(); owner_phase_never_leaks_to_other_tasks_or_isr();
     wraps_torn_writes_and_saturation_are_explicit(); migration_and_registry_exhaustion_do_not_invent_owners(); identity_and_legacy_abi_are_exact();
+    a_recoverable_failure_never_claims_the_fatal_receipt(); recoverable_regions_nest_per_task_and_skip_interrupts();
+    a_full_recoverable_registry_is_explicit_and_stays_fatal();
     puts("allocation_provenance_host_passed"); return 0;
 }

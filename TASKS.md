@@ -1111,6 +1111,36 @@ injected (one cooling-proof failure, a harness port refusal), page unload is
 modeled by ending the device's input, and the increment 5 non-claims stand.
 Qualification stays false for the remaining parent blockers.
 
+Framed-link integration, increment 7 | 2026-10-11 | Owner-approved scope
+
+Objective: real allocation interception. Owner decisions: type the three real
+allocation classes at the receive-envelope parse, the V2 record snapshot and the
+outbound envelope encode; fix fault provenance now so a recovered allocation
+failure never claims the once-per-boot fatal slot; and make the claim a required
+coverage row set from host tests with a capability-aware test allocator, with the
+in-process scenarios dropping their always-unsupported "actual allocator" checks.
+
+- [x] Seam and provenance: `bitaxe_core::fallible` marks recoverable allocation
+  regions by site; firmware installs hooks that open a per-task recoverable region
+  in `bitaxe_fault_provenance`, whose failure callback flags such records in the
+  history ring and leaves the legacy first-failure slot to fatal failures; every
+  production `try_reserve` site in firmware and its shared crates uses the seam.
+- [ ] Typed sites: the link receiver parses envelopes without an infallible
+  payload copy and reports frame-buffer exhaustion as a typed link failure;
+  `V2Record` snapshots fallibly; `SerialEnvelope::encode` writes through a bounded,
+  fallible buffer. Stack audits and characterization transcripts re-run.
+- [ ] Interception: a capability-aware host test allocator (firmware routes these
+  allocations PSRAM-first) fails real allocations by site through the production
+  code and the virtual device; `bounded-real-allocation-paths` is set from it; the
+  board model's default routing matches firmware; docs and non-claims; affected
+  and full checks; commit and push.
+
+Authorization: repository source, tests, documentation, build and host processes,
+commit and push only. No hardware, USB, flashing, QEMU run, credentials or parity
+promotion; firmware changes are build- and host-verified only.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-parity-bap-live-accessory-verification | 2026-10-06 | Verify BAP over a USB-to-UART adapter

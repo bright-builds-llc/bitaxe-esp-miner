@@ -251,9 +251,12 @@ fn spawn_worker(
     // One reusable slot keeps large receive-result/command values off the
     // persistent caller stack while the lane runs borrowed cryptography.
     let mut command_slot = Vec::new();
-    command_slot
-        .try_reserve_exact(1)
-        .map_err(|_| io::Error::from(io::ErrorKind::OutOfMemory))?;
+    bitaxe_core::fallible::reserve_exact(
+        &mut command_slot,
+        1,
+        bitaxe_core::fallible::Site("firmware.pool_transport.command_slot"),
+    )
+    .map_err(|_| io::Error::from(io::ErrorKind::OutOfMemory))?;
     let (sender, receiver) = queue::sync_channel(COMMAND_CAPACITY);
     let borrow = std::sync::Arc::new(NoiseBorrowHandle::new(sender));
     let worker_borrow = borrow.worker();

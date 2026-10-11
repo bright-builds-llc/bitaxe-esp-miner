@@ -122,7 +122,14 @@ pub(crate) fn nonce_observed(generation: PoolSessionGeneration, result: Bm1366No
     {
         return;
     }
-    if data.pending_nonces.len() >= 16 || data.pending_nonces.try_reserve(1).is_err() {
+    if data.pending_nonces.len() >= 16
+        || bitaxe_core::fallible::reserve(
+            &mut data.pending_nonces,
+            1,
+            bitaxe_core::fallible::Site("firmware.v2.pending_nonce"),
+        )
+        .is_err()
+    {
         if let Some(r) = data.maybe_record.as_mut() {
             r.fail(Stage::Nonce, FailureCategory::Evidence, Some(now));
         }

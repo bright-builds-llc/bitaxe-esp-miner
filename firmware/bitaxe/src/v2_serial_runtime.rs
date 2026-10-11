@@ -95,7 +95,12 @@ fn prepare_input(stratum: V2Stratum) -> Option<Vec<Input>> {
     let authority =
         bitaxe_worker_control::noise::canonical_bytes::<32>(&stratum.authority_public_key)?;
     let mut config = Vec::new();
-    config.try_reserve_exact(1).ok()?;
+    bitaxe_core::fallible::reserve_exact(
+        &mut config,
+        1,
+        bitaxe_core::fallible::Site("firmware.v2.session_config"),
+    )
+    .ok()?;
     config.push(bitaxe_stratum::v2::session::SessionConfig {
         endpoint_host: endpoint.ip().to_string(),
         endpoint_port: endpoint.port(),
@@ -109,7 +114,12 @@ fn prepare_input(stratum: V2Stratum) -> Option<Vec<Input>> {
         minimum_extranonce_size: 0,
     });
     let mut input = Vec::new();
-    input.try_reserve_exact(1).ok()?;
+    bitaxe_core::fallible::reserve_exact(
+        &mut input,
+        1,
+        bitaxe_core::fallible::Site("firmware.v2.input"),
+    )
+    .ok()?;
     input.push(Input {
         endpoint,
         authority,

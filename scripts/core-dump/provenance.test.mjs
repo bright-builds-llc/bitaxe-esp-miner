@@ -20,7 +20,7 @@ for (const kind of ['real', 'fake']) test(`real vendor decoder verifies copied o
   assert.equal((await stat(resolve(root, 'result/provenance.private.json'))).mode & 0o777, 0o600);
   assert.equal(JSON.parse(await readFile(resolve(root, 'result/provenance.private.json'))).panic_words.length, 48);
 });
-for (const kind of ['bad-pointer', 'bad-pc', 'wrong-source', 'wrong-boot', 'torn', 'bad-note', 'missing-memory', 'overlap', 'allocation-torn', 'allocation-checksum']) test(`provenance rejects ${kind}`, async t => {
+for (const kind of ['bad-pointer', 'bad-pc', 'wrong-source', 'wrong-boot', 'torn', 'bad-note', 'missing-memory', 'overlap', 'allocation-torn', 'allocation-checksum', 'allocation-recoverable-isr']) test(`provenance rejects ${kind}`, async t => {
   const { result } = await run(t, kind); assert.equal(result.status, 1); assert.equal(result.stdout, '');
 });
 
@@ -43,4 +43,14 @@ test('torn allocation history preserves independent raw captured panic bytes wit
 test('last full internal-DRAM frame span is readable at the inclusive SDK boundary', async t => {
   const { result } = await run(t, 'last-span'); assert.equal(result.status, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).original_frame_meaningful, true);
+});
+
+test('a recoverable allocation failure and a full recoverable registry are reported, not rejected', async t => {
+  // Arrange / Act
+  const { result } = await run(t, 'allocation-recoverable');
+  // Assert
+  assert.equal(result.status, 0, result.stderr);
+  const summary = JSON.parse(result.stdout);
+  assert.equal(summary.allocation_recoverable_records, 1);
+  assert.deepEqual([summary.allocation_recoverable_registry_full, summary.allocation_registry_full], [true, false]);
 });

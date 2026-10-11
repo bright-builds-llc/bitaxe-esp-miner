@@ -9,7 +9,7 @@ anyhow.workspace = true
 bitaxe-api = { path = "../../crates/bitaxe-api" }
 bitaxe-asic = { path = "../../crates/bitaxe-asic" }
 bitaxe-config = { path = "../../crates/bitaxe-config" }
-bitaxe-core = { path = "../../crates/bitaxe-core" }
+bitaxe-core = { path = "../../crates/bitaxe-core", features = ["native-fault-provenance"] }
 bitaxe-runtime = { path = "../../crates/bitaxe-runtime" }
 bitaxe-safety = { path = "../../crates/bitaxe-safety" }
 bitaxe-stratum = { path = "../../crates/bitaxe-stratum" }

@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+bitaxe-core = { path = "../bitaxe-core" }
 base64.workspace = true
 curve25519-dalek.workspace = true
 ed25519-dalek.workspace = true

@@ -20,6 +20,12 @@ pub const MAXIMUM_CONTROL_PAYLOAD_BYTES: usize = 65_536;
 pub const MAXIMUM_WIRE_FRAME_BYTES: usize = 66_560;
 pub const HEARTBEAT_TIMEOUT_MILLISECONDS: u64 = 2_800;
 pub const HOST_RECEIVE_WINDOW_BYTES: u32 = 2048;
+/// The receive buffer, reserved once at its frame bound and kept for reuse.
+pub const FRAME_BUFFER_SITE: bitaxe_core::fallible::Site =
+    bitaxe_core::fallible::Site("serial.frame_buffer");
+/// The exact-length copy of each completed receive frame.
+pub const FRAME_COPY_SITE: bitaxe_core::fallible::Site =
+    bitaxe_core::fallible::Site("serial.frame_copy");
 pub const MAXIMUM_HOST_WRITE_CHUNK_BYTES: u32 = 1024;
 pub const RECORD_WRITE_TIMEOUT_MILLISECONDS: u64 = 2000;
 
@@ -234,10 +240,9 @@ impl SerialFrameAccumulator {
             self.discarding = true;
             return Some(Err(SerialError::Oversized));
         }
+        let unreserved = MAXIMUM_WIRE_FRAME_BYTES - self.bytes.len();
         if self.bytes.len() == self.bytes.capacity()
-            && self
-                .bytes
-                .try_reserve_exact(MAXIMUM_WIRE_FRAME_BYTES - self.bytes.len())
+            && bitaxe_core::fallible::reserve_exact(&mut self.bytes, unreserved, FRAME_BUFFER_SITE)
                 .is_err()
         {
             self.clear();
@@ -251,13 +256,13 @@ impl SerialFrameAccumulator {
         // Keep the receive allocation for the next record. Only the initialized
         // prefix holds secrets; completed ownership uses an exact-length buffer.
         let mut frame = Vec::new();
-        let result = frame
-            .try_reserve_exact(self.bytes.len())
-            .map(|()| {
-                frame.extend_from_slice(&self.bytes);
-                frame
-            })
-            .map_err(|_| SerialError::Unavailable);
+        let result =
+            bitaxe_core::fallible::reserve_exact(&mut frame, self.bytes.len(), FRAME_COPY_SITE)
+                .map(|()| {
+                    frame.extend_from_slice(&self.bytes);
+                    frame
+                })
+                .map_err(|_| SerialError::Unavailable);
         self.clear();
         Some(result)
     }

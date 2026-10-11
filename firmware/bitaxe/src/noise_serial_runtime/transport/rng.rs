@@ -13,7 +13,12 @@ pub(crate) fn prepare<E>(
     fill: impl FnOnce(&mut [u8]) -> Result<(), E>,
 ) -> Result<Vec<StdRng>, Failure> {
     prepare_with(fill, |slot| {
-        slot.try_reserve_exact(1).map_err(|_| Failure::Allocation)
+        bitaxe_core::fallible::reserve_exact(
+            slot,
+            1,
+            bitaxe_core::fallible::Site("firmware.noise.rng"),
+        )
+        .map_err(|_| Failure::Allocation)
     })
 }
 fn prepare_with<E>(

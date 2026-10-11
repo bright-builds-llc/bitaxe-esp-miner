@@ -18,6 +18,7 @@ rust_library(
     edition = "2021",
     visibility = ["//visibility:public"],
     deps = [
+        "//crates/bitaxe-core:bitaxe_core",
         "@crates//:base64",
         "@crates//:curve25519-dalek",
         "@crates//:ed25519-dalek",

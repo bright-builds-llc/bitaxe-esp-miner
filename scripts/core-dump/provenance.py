@@ -107,7 +107,8 @@ def validate_allocations(data, source, boot):
     for core in range(2):
         offset = 16 + core * 184
         seq, flags, overwritten, reserved = data[offset:offset + 4]
-        if flags & ~1 or reserved > 1 or flags & 1 and seq != 0xffffffff or overwritten != max(0, seq - 8):
+        # Bit 0 of the registry word: owner registry full; bit 1: recoverable registry full.
+        if flags & ~1 or reserved & ~3 or flags & 1 and seq != 0xffffffff or overwritten != max(0, seq - 8):
             raise ValueError('provenance_allocation_count')
         if 0 < seq <= 8 and data[offset + 4:offset + 24] != data[offset + 24:offset + 44]:
             raise ValueError('provenance_allocation_first_join')
@@ -120,11 +121,12 @@ def validate_allocations(data, source, boot):
             expected = 1 if index == 0 else seq - ((seq - index) % 8)
             if record[0] != expected or record[2] != expected or record[1] != 0x414c4c31 or record[3] != core or record[19] != rolling(record[1:19]):
                 raise ValueError('provenance_allocation_integrity')
-            if record[4:6] != source or record[18] & ~15 or record[15] > 9 or (record[6:8] != boot and not (record[6:8] == [0, 0] and record[18] & 2)):
+            # Bit 4 marks a failure inside a recoverable region, which never claims the fatal receipt.
+            if record[4:6] != source or record[18] & ~31 or record[15] > 9 or (record[6:8] != boot and not (record[6:8] == [0, 0] and record[18] & 2)):
                 raise ValueError('provenance_allocation_identity')
             if bool(record[18] & 2) != (record[6:8] == [0, 0]) or bool(record[18] & 4) != bool(record[18] & 1 and record[16] == 0xffffffff):
                 raise ValueError('provenance_allocation_flags')
-            if record[18] & 8 and record[18] & 1 or (not record[18] & 1 and any(record[14:18])) or (record[18] & 1 and (record[11] == 0 or record[14] == 0)):
+            if record[18] & 16 and record[18] & 8 or record[18] & 8 and record[18] & 1 or (not record[18] & 1 and any(record[14:18])) or (record[18] & 1 and (record[11] == 0 or record[14] == 0)):
                 raise ValueError('provenance_allocation_owner')
             records.append(record)
     return records
@@ -211,5 +213,7 @@ def verify(program_path, core_path, output, expected_elf):
                 'allocation_records_verified': len({(row[3], row[2]) for row in allocations}),
                 'allocation_early_unbound_records': len({(row[3], row[2]) for row in allocations if row[18] & 2}),
                 'allocation_history_overwritten': any(allocation_words[18 + core * 184] > 0 for core in range(2)),
-                'allocation_registry_full': any(allocation_words[19 + core * 184] != 0 for core in range(2)), 'self_test_provenance_qualified': cutoff['self_test_marked'],
+                'allocation_recoverable_records': len({(row[3], row[2]) for row in allocations if row[18] & 16}),
+                'allocation_registry_full': any(allocation_words[19 + core * 184] & 1 for core in range(2)),
+                'allocation_recoverable_registry_full': any(allocation_words[19 + core * 184] & 2 for core in range(2)), 'self_test_provenance_qualified': cutoff['self_test_marked'],
                 'provenance_verifier_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}

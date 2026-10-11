@@ -1,5 +1,8 @@
 use super::StatisticsSample;
 
+const SAMPLES_SITE: bitaxe_core::fallible::Site =
+    bitaxe_core::fallible::Site("api.statistics.samples");
+
 /// Exact upstream statistics history capacity.
 pub const MAX_STATISTICS_SAMPLES: usize = 720;
 
@@ -84,8 +87,8 @@ impl StatisticsHistory {
         if self.samples.capacity() >= MAX_STATISTICS_SAMPLES {
             return Ok(());
         }
-        self.samples
-            .try_reserve_exact(MAX_STATISTICS_SAMPLES - self.samples.len())
+        let additional = MAX_STATISTICS_SAMPLES - self.samples.len();
+        bitaxe_core::fallible::reserve_exact(&mut self.samples, additional, SAMPLES_SITE)
             .map_err(|_| StatisticsHistoryError::CapacityUnavailable)
     }
 

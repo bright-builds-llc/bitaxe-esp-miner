@@ -62,6 +62,8 @@ rust_library(
         "src/bap/tests.rs",
         "src/bap/wire.rs",
         "src/display.rs",
+        "src/fallible.rs",
+        "src/fallible/tests.rs",
         "src/hashrate.rs",
         "src/hashrate/tests.rs",
         "src/input.rs",

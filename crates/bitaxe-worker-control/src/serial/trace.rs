@@ -286,12 +286,15 @@ impl SerialTrace {
     pub fn snapshot(&self) -> SerialTraceSnapshot {
         let mut current_events = Vec::new();
         let mut previous_events = Vec::new();
-        if current_events
-            .try_reserve_exact(SERIAL_TRACE_CAPACITY)
+        let site = bitaxe_core::fallible::Site("serial.trace_snapshot");
+        if bitaxe_core::fallible::reserve_exact(&mut current_events, SERIAL_TRACE_CAPACITY, site)
             .is_err()
-            || previous_events
-                .try_reserve_exact(SERIAL_TRACE_CAPACITY)
-                .is_err()
+            || bitaxe_core::fallible::reserve_exact(
+                &mut previous_events,
+                SERIAL_TRACE_CAPACITY,
+                site,
+            )
+            .is_err()
         {
             return self.unavailable();
         }

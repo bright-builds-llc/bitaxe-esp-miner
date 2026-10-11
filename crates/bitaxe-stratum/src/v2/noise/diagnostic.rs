@@ -93,13 +93,21 @@ pub trait Observer {
     }
     /// Bounds the receive allocation before reading any act-two bytes.
     fn reserve_act_two(&mut self, buffer: &mut Vec<u8>) -> Result<(), Failure> {
-        buffer
-            .try_reserve_exact(ACT_TWO_LEN)
-            .map_err(|_| Failure::Allocation)
+        bitaxe_core::fallible::reserve_exact(
+            buffer,
+            ACT_TWO_LEN,
+            bitaxe_core::fallible::Site("stratum.noise.act_two"),
+        )
+        .map_err(|_| Failure::Allocation)
     }
     /// Uses the actual fallible allocation boundary; tests may inject its failure.
     fn reserve_transport(&mut self, slot: &mut Vec<super::NoiseTransport>) -> Result<(), Failure> {
-        slot.try_reserve_exact(1).map_err(|_| Failure::Allocation)
+        bitaxe_core::fallible::reserve_exact(
+            slot,
+            1,
+            bitaxe_core::fallible::Site("stratum.noise.transport"),
+        )
+        .map_err(|_| Failure::Allocation)
     }
     /// Optional observation hook; it neither grants authority nor interrupts crypto.
     fn entering_crypto(&mut self, _operation: CryptoOperation) {}

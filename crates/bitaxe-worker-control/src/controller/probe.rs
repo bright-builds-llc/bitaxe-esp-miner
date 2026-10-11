@@ -20,10 +20,12 @@ pub(super) fn response(
         return Err(WorkerControlError::InvalidRequest);
     }
     let extra = payload.response_padding_bytes - payload.padding.len();
-    payload
-        .padding
-        .try_reserve_exact(extra)
-        .map_err(|_| WorkerControlError::SessionFailed)?;
+    let padding = &mut payload.padding;
+    bitaxe_core::fallible::recoverable(
+        bitaxe_core::fallible::Site("control.probe_padding"),
+        || padding.try_reserve_exact(extra),
+    )
+    .map_err(|_| WorkerControlError::SessionFailed)?;
     for _ in 0..extra {
         payload.padding.push('x');
     }

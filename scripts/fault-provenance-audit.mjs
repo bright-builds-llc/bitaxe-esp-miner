@@ -3,7 +3,8 @@ const check = (ok, code) => { if (!ok) throw Error(code); };
 const iram = n => n >= 0x40370000 && n < 0x403e0000;
 const dram = n => n >= 0x3fc88000 && n < 0x3fd00000;
 export const ROOTS = ['bitaxe_capture_original_panic', '__wrap_esp_core_dump_check_task', '__wrap_esp_core_dump_port_set_crashed_tcb',
-  'bitaxe_allocation_failure_record', 'bitaxe_fault_owner_begin', 'bitaxe_fault_owner_end', 'bitaxe_fault_command_begin', 'bitaxe_fault_enter_phase'];
+  'bitaxe_allocation_failure_record', 'bitaxe_fault_owner_begin', 'bitaxe_fault_owner_end', 'bitaxe_fault_command_begin', 'bitaxe_fault_enter_phase',
+  'bitaxe_allocation_recoverable_begin', 'bitaxe_allocation_recoverable_end'];
 const forbidden = /malloc|calloc|realloc|free$|printf|log_write|mutex|Semaphore|EnterCritical|ExitCritical|spinlock|panic_abort|assert|alloc_error|__atomic_.*_8/iu;
 /** Native IRAM call closure and literal/data placement; no unknown indirect edge is permitted. */
 export function auditFaultProvenance({ entries, functions, word, romLeaf }) {
@@ -12,7 +13,7 @@ export function auditFaultProvenance({ entries, functions, word, romLeaf }) {
   for (const [name, size] of [['BITAXE_PANIC_FRAME_RECORD', 192], ['BITAXE_ALLOCATION_HISTORY', 1536]]) {
     const symbol = one(name); check(symbol.size === size && dram(symbol.address) && symbol.address >= regionStart && symbol.address + size <= regionEnd, 'fault_audit_capture_region');
   }
-  for (const name of ['owners', 'legacy_allocation', 'legacy_context', 'legacy_source_lo', 'legacy_source_hi', 'legacy_claim', 'identity', 'snapshot', 'checks', 'capture_active']) {
+  for (const name of ['owners', 'recoverables', 'legacy_allocation', 'legacy_context', 'legacy_source_lo', 'legacy_source_hi', 'legacy_claim', 'identity', 'snapshot', 'checks', 'capture_active']) {
     const item = one(name); check(item.size > 0 && dram(item.address) && dram(item.address + item.size - 1), 'fault_audit_state_dram');
   }
   const abi = one('BITAXE_FAULT_PROVENANCE_ABI'); check(abi.size === 128, 'fault_audit_abi');

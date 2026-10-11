@@ -756,6 +756,7 @@ rust_test(
     crate_root = "src/production_transport_host_test.rs",
     edition = "2021",
     deps = [
+        "//crates/bitaxe-core:bitaxe_core",
         "//crates/bitaxe-runtime:bitaxe_runtime",
         "//crates/bitaxe-asic:bitaxe_asic",
         "//crates/bitaxe-stratum:bitaxe_stratum",
@@ -875,7 +876,10 @@ rust_test(
     crate_name = "sensor_source_ownership_tests",
     crate_root = "src/sensor_source_ownership_test.rs",
     edition = "2021",
-    deps = ["//crates/bitaxe-runtime:bitaxe_runtime"],
+    deps = [
+        "//crates/bitaxe-core:bitaxe_core",
+        "//crates/bitaxe-runtime:bitaxe_runtime",
+    ],
 )
 
 rust_test(
@@ -1720,7 +1724,7 @@ rust_test(
     srcs = ["src/noise_serial_runtime/transport/rng.rs"],
     crate_root = "src/noise_serial_runtime/transport/rng.rs",
     edition = "2021",
-    deps = ["@crates//:rand", "@crates//:zeroize"],
+    deps = ["//crates/bitaxe-core:bitaxe_core", "@crates//:rand", "@crates//:zeroize"],
 )
 
 rust_test(

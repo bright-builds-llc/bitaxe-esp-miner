@@ -28,7 +28,12 @@ pub fn run_channel(
     observer: &mut impl ChannelObserver,
 ) -> Result<(), Failure> {
     let mut slot = Vec::new();
-    slot.try_reserve_exact(1).map_err(|_| Failure::Allocation)?;
+    bitaxe_core::fallible::reserve_exact(
+        &mut slot,
+        1,
+        bitaxe_core::fallible::Site("stratum.v2.session"),
+    )
+    .map_err(|_| Failure::Allocation)?;
     initialize_session(&mut slot, config)?;
     let session = slot.first_mut().ok_or(Failure::Io)?;
     let setup = session.start().map_err(|_| Failure::Io)?;
@@ -171,9 +176,12 @@ fn finish_frame(
         return Err(Failure::Extra);
     }
     let mut payload = Vec::new();
-    payload
-        .try_reserve_exact(length)
-        .map_err(|_| Failure::Allocation)?;
+    bitaxe_core::fallible::reserve_exact(
+        &mut payload,
+        length,
+        bitaxe_core::fallible::Site("stratum.v2.payload"),
+    )
+    .map_err(|_| Failure::Allocation)?;
     payload.resize(length, 0);
     read_remaining(stream, &mut payload, observer, start)?;
     observer.operation_started(Operation::PayloadDecrypt);

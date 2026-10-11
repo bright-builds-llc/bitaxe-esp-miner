@@ -20,6 +20,10 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use zeroize::Zeroizing;
 
+/// The owner-queue copy of an admitted control payload.
+pub const CONTROL_COPY_SITE: bitaxe_core::fallible::Site =
+    bitaxe_core::fallible::Site("serial.control_copy");
+
 /// Effects the link receiver performs; each call mirrors one firmware collaborator.
 pub trait SerialLinkEffects {
     /// Opaque revocation generation bound to one admitted link.
@@ -311,7 +315,9 @@ impl<G: Copy> SerialLinkReceiver<G> {
         effects.trace(correlation, SerialTraceStage::EnqueueStarted, frame_bytes);
         let payload = envelope.payload.get().as_bytes();
         let mut frame = Vec::new();
-        if frame.try_reserve_exact(payload.len() + 1).is_err() {
+        if bitaxe_core::fallible::reserve_exact(&mut frame, payload.len() + 1, CONTROL_COPY_SITE)
+            .is_err()
+        {
             effects.trace(correlation, SerialTraceStage::EnqueueRejected, frame_bytes);
             effects.record_failure(SerialLinkFailure::ControlAllocation, frame_bytes);
             self.close(effects);

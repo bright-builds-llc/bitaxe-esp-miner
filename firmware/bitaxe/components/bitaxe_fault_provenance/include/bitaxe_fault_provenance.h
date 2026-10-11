@@ -18,6 +18,9 @@ void bitaxe_allocation_set_identity(uint32_t source_lo, uint32_t source_hi, uint
 void bitaxe_allocation_set_legacy(void *allocation, void *context, uint32_t source_lo, uint32_t source_hi);
 void bitaxe_allocation_set_stage(uint32_t stage);
 void bitaxe_allocation_failure_record(size_t size, uint32_t caps, const char *function_name);
+/* Brackets an allocation whose failure the calling task handles; nests per task. */
+void bitaxe_allocation_recoverable_begin(void);
+void bitaxe_allocation_recoverable_end(void);
 void bitaxe_fault_owner_begin(void);
 void bitaxe_fault_owner_end(void);
 void bitaxe_fault_command_begin(void);

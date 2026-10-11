@@ -48,6 +48,9 @@ extern uint32_t fault_test_isr(void);
 #define CORE_COUNT 2U
 #define SLOTS 8U
 #define OWNER_SLOTS 8U
+#define RECOVERABLE_SLOTS 8U
+#define RECOVERABLE_FLAG 16U
+#define RECOVERABLE_FULL 2U
 #define READY 0xa110ca7eU
 COREDUMP_DRAM_ATTR volatile uint32_t BITAXE_ALLOCATION_HISTORY[384];
 static DRAM_ATTR volatile uint32_t *legacy_allocation;
@@ -57,6 +60,9 @@ static DRAM_ATTR uint32_t legacy_claim;
 struct owner { uint32_t task, tag, command, phase, site; };
 static DRAM_ATTR struct owner owners[OWNER_SLOTS];
 _Static_assert(_Alignof(struct owner) >= 4, "Owner CAS alignment");
+// Tasks inside a recoverable allocation region: their failures are handled, not fatal.
+struct recoverable { uint32_t task, depth; };
+static DRAM_ATTR struct recoverable recoverables[RECOVERABLE_SLOTS];
 
 static inline __attribute__((always_inline)) uint32_t rotate(uint32_t value, uint32_t shift) {
     return (value << shift) | (value >> (32U - shift));
@@ -83,6 +89,13 @@ static struct owner *IRAM_ATTR current_owner(uint32_t task) {
     if (task == 0) return NULL;
     for (uint32_t i = 0; i < OWNER_SLOTS; ++i)
         if (__atomic_load_n(&owners[i].task, __ATOMIC_ACQUIRE) == task) return &owners[i];
+    return NULL;
+}
+
+static struct recoverable *IRAM_ATTR recoverable_of(uint32_t task) {
+    if (task == 0) return NULL;
+    for (uint32_t i = 0; i < RECOVERABLE_SLOTS; ++i)
+        if (__atomic_load_n(&recoverables[i].task, __ATOMIC_ACQUIRE) == task) return &recoverables[i];
     return NULL;
 }
 
@@ -121,6 +134,24 @@ void bitaxe_allocation_set_identity(uint32_t source_lo, uint32_t source_hi, uint
 void IRAM_ATTR bitaxe_allocation_set_stage(uint32_t stage) {
     if (stage >= 1 && stage <= 8) BITAXE_ALLOCATION_HISTORY[11] = stage;
 }
+// Task context only. A full registry leaves the region unmarked and says so per core.
+void IRAM_ATTR bitaxe_allocation_recoverable_begin(void) {
+    uint32_t mask = LOCAL_MASK(), task = TASK();
+    if (task) {
+        struct recoverable *found = recoverable_of(task);
+        for (uint32_t i = 0; !found && i < RECOVERABLE_SLOTS; ++i) {
+            if (claim_once(&recoverables[i].task, 0, task)) found = &recoverables[i];
+        }
+        if (found) { if (found->depth != UINT32_MAX) ++found->depth; }
+        else { uint32_t core = CORE(); if (core < CORE_COUNT) BITAXE_ALLOCATION_HISTORY[HEADER_WORDS + core * CORE_WORDS + 3] |= RECOVERABLE_FULL; }
+    }
+    LOCAL_RESTORE(mask);
+}
+void IRAM_ATTR bitaxe_allocation_recoverable_end(void) {
+    uint32_t mask = LOCAL_MASK(); struct recoverable *found = recoverable_of(TASK());
+    if (found && found->depth && --found->depth == 0) __atomic_store_n(&found->task, 0, __ATOMIC_RELEASE);
+    LOCAL_RESTORE(mask);
+}
 void IRAM_ATTR bitaxe_fault_owner_begin(void) {
     uint32_t mask = LOCAL_MASK(), task = TASK();
     if (task) {
@@ -153,7 +184,7 @@ static void IRAM_ATTR commit_record(volatile uint32_t *destination, const uint32
     for (uint32_t i = 1; i < RECORD_WORDS; ++i) destination[i] = record[i];
     BARRIER(); destination[0] = record[2];
 }
-static void IRAM_ATTR record_history(uint32_t size, uint32_t caps, const char *name) {
+static void IRAM_ATTR record_history(uint32_t size, uint32_t caps, const char *name, uint32_t recoverable) {
     uint32_t mask = LOCAL_MASK(), core = CORE(), task = TASK();
     if (core < CORE_COUNT && BITAXE_ALLOCATION_HISTORY[12] == READY) {
         volatile uint32_t *store = &BITAXE_ALLOCATION_HISTORY[HEADER_WORDS + core * CORE_WORDS];
@@ -170,7 +201,7 @@ static void IRAM_ATTR record_history(uint32_t size, uint32_t caps, const char *n
             record[14] = owner ? owner->tag : 0; record[15] = owner ? owner->phase : 0;
             record[16] = owner ? owner->command : 0; record[17] = owner ? owner->site : 0;
             record[18] = (owner ? 1U : 0U) | ((!record[6] && !record[7]) ? 2U : 0U) |
-                ((owner && owner->command == UINT32_MAX) ? 4U : 0U) | (in_isr ? 8U : 0U);
+                ((owner && owner->command == UINT32_MAX) ? 4U : 0U) | (in_isr ? 8U : 0U) | recoverable;
             record[19] = checksum(record, 1, 19);
             store[0] = sequence; store[2] = sequence > SLOTS ? sequence - SLOTS : 0;
             if (sequence == 1) commit_record(store + 4, record);
@@ -185,8 +216,11 @@ void IRAM_ATTR bitaxe_allocation_failure_record(size_t size, uint32_t caps, cons
 #else
     uint32_t bytes = (uint32_t)size;
 #endif
-    record_history(bytes, caps, name);
-    if (!legacy_allocation || !legacy_context || !claim_once(&legacy_claim, 0, 1)) return;
+    // An interrupt never runs inside a task's recoverable region.
+    uint32_t recoverable = !IN_ISR() && recoverable_of(TASK()) ? RECOVERABLE_FLAG : 0U;
+    record_history(bytes, caps, name, recoverable);
+    // Only an unhandled failure may become the boot's fatal first-failure receipt.
+    if (recoverable || !legacy_allocation || !legacy_context || !claim_once(&legacy_claim, 0, 1)) return;
     // Preserve the legacy first-failure RTC ABI, including its independent integrity checks.
     legacy_allocation[0] = 0; legacy_allocation[1] = bytes; legacy_allocation[2] = caps;
     legacy_allocation[3] = rotate(0x42584146U, 7) ^ rotate(bytes, 17) ^ rotate(caps, 23);

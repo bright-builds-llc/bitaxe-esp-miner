@@ -96,14 +96,14 @@ fn normalize_retained_record(record: &str) -> Result<String, RetainedPairError> 
     }
 
     let mut normalized = String::new();
-    normalized
-        .try_reserve_exact(
-            record
-                .len()
-                .checked_add(1)
-                .ok_or(RetainedPairError::SizeOverflow)?,
-        )
-        .map_err(|_| RetainedPairError::StorageUnavailable)?;
+    let capacity = record
+        .len()
+        .checked_add(1)
+        .ok_or(RetainedPairError::SizeOverflow)?;
+    bitaxe_core::fallible::recoverable(bitaxe_core::fallible::Site("api.logs.normalized"), || {
+        normalized.try_reserve_exact(capacity)
+    })
+    .map_err(|_| RetainedPairError::StorageUnavailable)?;
     normalized.push_str(record);
     normalized.push('\n');
     Ok(normalized)
@@ -161,7 +161,11 @@ impl RetainedLogBuffer {
     /// Creates an empty retained log buffer with a specific capacity.
     pub fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError> {
         let mut buffer = Vec::new();
-        buffer.try_reserve_exact(capacity)?;
+        bitaxe_core::fallible::reserve_exact(
+            &mut buffer,
+            capacity,
+            bitaxe_core::fallible::Site("api.logs.buffer"),
+        )?;
         buffer.resize(capacity, 0);
 
         Ok(Self {
