@@ -96,8 +96,19 @@ capability `discover`, `prove_possession`, heartbeat, baseline `status` and a
 clean `close()`. The device serves the firmware's signed capability and the Gate
 trusts the firmware deployment-trust update keys. The required
 `gate-controller-serial` coverage row passes only when
-`//scripts:virtual_board_gate_serial_test` passes. Lease flows, the Gate page and
-the loopback HTTP supervisor are not yet exercised.
+`//scripts:virtual_board_gate_serial_test` passes.
+
+The pinned acceptance page itself, built from the pinned Gate sources and served
+by the unmodified no-mining supervisor on an ephemeral loopback port, runs from
+the served bytes under Bun with browser globals shimmed. A trusted Connect click
+admits the device through the page's own browser serial runtime; a refresh and
+Close follow, and every published state passes the supervisor's `/record` judge.
+`gate-page-http-seams` passes only when `//scripts:virtual_board_gate_page_test`
+passes. Non-claims: no lease flow (Start, Renew, Restore) crosses the page,
+supervisor or Gate; `physical_host_owner_release` (close-rejection) stays
+unsupported because a rejected restore exists only under a lease; the browser is
+shimmed, not Chromium; Bun comes from the host PATH; port 48765 and the owner's
+Gate tab are never used.
 
 Current unsupported coverage includes encrypted fixture/share/ACK integration,
 real Gate/page/HTTP seams, capability-specific interception of real allocation

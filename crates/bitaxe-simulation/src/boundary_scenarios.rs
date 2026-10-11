@@ -215,7 +215,9 @@ pub(crate) fn run_close_rejection(seed: u64) -> Result<ScenarioResult, Simulatio
             ProfileCheck {
                 id: "physical_host_owner_release".into(),
                 status: CheckStatus::Unsupported,
-                detail: "browser_http_owner_seam_not_integrated".into(),
+                // The page and supervisor seams run without a lease; a rejected
+                // restore exists only under a lease, which no virtual flow signs.
+                detail: "lease_restore_owner_release_not_integrated".into(),
             },
         ],
         expected_outcome: "close_rejected_then_released".into(),

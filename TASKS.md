@@ -742,8 +742,10 @@ production native audits, reference/redaction/standards/Markdown/diff checks.
 Final verification receipts and public summary accompany the committed milestone.
 Completion review: not complete; do not archive. Explicit remaining blockers are
 missing actual margin/call-closure proof, strict live fixture/header/nonce vector,
-real allocation interception, production Gate/page/HTTP/framed-I/O integration
-(in progress below), consolidated production lifecycle/ownership profiles, full
+real allocation interception, lease flows (Start, Renew, Restore) and the
+close-rejection owner release through the Gate page, supervisor and controller
+(the no-lease Gate/page/HTTP/framed-I/O integration is complete in increments 1-4
+below), consolidated production lifecycle/ownership profiles, full
 qualified host/target corpus and mandatory matching-report rollout. The
 corrected-target panic is resolved in emulation (campaign004). Missing
 calibration remains an explicit fidelity non-claim. Accepted-share stays active,
@@ -973,8 +975,12 @@ the non-claims recorded below.
 - [x] Add the page driver and test: browser shims, the pinned bundle and page
   served by the real supervisor, and cases for admission, an untrusted
   capability, device loss, a foreign origin and privacy.
-- [ ] Set `gate-page-http-seams` from the test, update docs and the close-rejection
-  non-claim, run the affected and full checks; commit and push.
+- [x] Set `gate-page-http-seams` from the test, update docs and the close-rejection
+  non-claim, run the affected and full checks; commit and push. Under full-suite
+  load the driver's refresh raced the page's own connect-time status (the Gate
+  correctly refused it with `operation_active`); the driver now waits on the
+  page's published state, and both Gate tests pass 8 of 8 under 8-way parallel
+  runs.
 
 Authorization: repository source, tests, documentation, build, host processes
 (the device child, the Bun page driver, a loopback supervisor on an ephemeral
@@ -982,7 +988,26 @@ port), commit and push only. No browser, Web Serial, hardware, USB, network
 beyond loopback, port 48765 or the owner's Gate tab, QEMU run, credentials or
 parity promotion.
 
-Verification: pending. Completion review: pending.
+Verification: ordered Cargo fmt/Clippy (`-D warnings`)/build/tests; all 330
+Bazel tests (`just test`) including `//scripts:virtual_board_gate_page_test`
+(five cases, built from the pinned archive's sources) and the unchanged
+no-mining supervisor tests; both Gate tests 8 of 8 under 8-way parallel runs;
+`just build`, `just package`, `just virtual-emulator build` (compile and guest
+frame audit only: 992/4,208 bytes, unchanged); redaction, reference, parity and
+Bright Builds checks.
+
+Completion review: increment 4 is complete and `gate-page-http-seams` is set
+from a real run: the served pinned page and the unmodified no-mining supervisor
+admit, refresh and close the virtual device, record every published state
+through the supervisor's judge, record an untrusted capability and device loss,
+and refuse a foreign origin. Non-claims: no lease flow (Start, Renew, Restore)
+crosses the page, supervisor or Gate, so `physical_host_owner_release` stays
+unsupported (now detailed as `lease_restore_owner_release_not_integrated`) and
+close-rejection rows still block qualification; the browser is shimmed in Bun,
+not Chromium; Bun comes from the host PATH; the supervisor context's package
+fields are synthetic and its frozen-source check is not applicable to the
+virtual device; port 48765 and the owner's Gate tab were never used.
+Qualification stays false.
 
 ## Future
 

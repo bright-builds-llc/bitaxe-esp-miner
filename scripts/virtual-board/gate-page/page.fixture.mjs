@@ -23,6 +23,12 @@ async function until(predicate, boundMs, category) {
   }
 }
 const state = () => globalThis.workerAcceptance.state();
+// What the page last published, as the supervisor sees it; connect publishes only once
+// its baseline status has settled, while `state()` reports `connected` before that.
+const published = () => {
+  const text = browser.byId('state').textContent;
+  return text ? JSON.parse(text) : {};
+};
 const click = id => browser.byId(id).dispatch('click', { isTrusted: true });
 
 // Load the page's module graph from the served bytes, in document order, from a directory
@@ -50,12 +56,12 @@ try {
   await until(() => state().status === 'configured', 10000, 'page_not_configured');
   observe();
   click('connect');
-  await until(() => state().connected || state().failure !== undefined, 20000, 'connect_unsettled');
-  if (state().connected && options.mode === 'loss') {
+  await until(() => published().connected || published().failure !== undefined, 20000, 'connect_unsettled');
+  if (published().connected && options.mode === 'loss') {
     process.kill(-device.child.pid, 'SIGKILL');
     await globalThis.workerAcceptance.refresh().catch(() => {});
     await until(() => !state().connected, 10000, 'loss_unobserved');
-  } else if (state().connected) {
+  } else if (published().connected) {
     await globalThis.workerAcceptance.refresh();
   }
   observe();
