@@ -13,6 +13,7 @@
 
 mod device;
 mod gate_peer;
+pub(crate) mod stdio;
 
 use crate::actuation::RuntimeBoardAdapter;
 use crate::{CheckStatus, ProfileCheck, SimulationError};
@@ -38,7 +39,7 @@ const DEVICE_ENTROPY: u64 = 0xde71_ce0e_7a1b_1e55;
 
 enum OwnerEvent {
     Session(SerialSessionBinding),
-    Frame(Vec<u8>),
+    Frame(SerialTraceCorrelation, Vec<u8>),
 }
 
 #[derive(Default)]
@@ -52,6 +53,8 @@ struct LinkState {
     maybe_replay_ms: Cell<Option<u64>>,
     /// An admitted Hello waiting for the device writer, as in the firmware output queue.
     pending_hello: RefCell<Option<(u32, String, Value)>>,
+    /// True when link heartbeats themselves refresh the revocation gate, as in firmware.
+    apply_heartbeats: Cell<bool>,
 }
 
 impl LinkState {
@@ -123,7 +126,7 @@ impl SerialHost {
             .map_err(|_| SimulationError::Boundary("serial_payload"))?;
         self.send_in_session(actuation, SerialKind::Control, payload)?;
         match self.state.owner.borrow_mut().pop_front() {
-            Some(OwnerEvent::Frame(frame)) => Ok(frame),
+            Some(OwnerEvent::Frame(_, frame)) => Ok(frame),
             _ => Err(SimulationError::Boundary(self.closed_category())),
         }
     }
@@ -364,9 +367,13 @@ impl SerialLinkEffects for SimEffects<'_> {
     fn begin_generation(&self, _now_ms: u64) -> Option<WorkerGeneration> {
         Some(self.actuation.generation)
     }
-    /// The actuation model already applied this heartbeat to the gate at the same instant.
-    fn heartbeat_generation(&self, _generation: WorkerGeneration, _now_ms: u64) -> bool {
-        true
+    /// In-process scenarios already applied this heartbeat to the gate at the same
+    /// instant through the actuation model; a real-time device applies it here.
+    fn heartbeat_generation(&self, generation: WorkerGeneration, now_ms: u64) -> bool {
+        if !self.state.apply_heartbeats.get() {
+            return true;
+        }
+        self.actuation.gate.heartbeat(generation, now_ms)
     }
     fn close_generation(&self, generation: WorkerGeneration, now_ms: u64) {
         self.actuation
@@ -409,11 +416,11 @@ impl SerialLinkEffects for SimEffects<'_> {
     }
     fn enqueue_control(
         &self,
-        _correlation: SerialTraceCorrelation,
+        correlation: SerialTraceCorrelation,
         _wire_bytes: usize,
         mut frame: Zeroizing<Vec<u8>>,
     ) -> bool {
-        self.enqueue(OwnerEvent::Frame(std::mem::take(&mut *frame)))
+        self.enqueue(OwnerEvent::Frame(correlation, std::mem::take(&mut *frame)))
     }
     fn firmware_source_commit(&self) -> &str {
         crate::controller::FIRMWARE_SOURCE_COMMIT

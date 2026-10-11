@@ -117,10 +117,13 @@ fn a_full_owner_queue_closes_the_link() {
     // Arrange
     let (mut host, mut actuation) = admitted(1);
     for _ in 0..OWNER_CAPACITY {
-        host.state
-            .owner
-            .borrow_mut()
-            .push_back(OwnerEvent::Frame(Vec::new()));
+        host.state.owner.borrow_mut().push_back(OwnerEvent::Frame(
+            SerialTraceCorrelation {
+                epoch: 0,
+                request_sequence: 0,
+            },
+            Vec::new(),
+        ));
     }
     // Act
     let _ = host.deliver(&mut actuation, b"{}");

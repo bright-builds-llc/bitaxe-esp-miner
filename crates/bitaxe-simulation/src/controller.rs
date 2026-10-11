@@ -26,6 +26,8 @@ pub(crate) struct Session {
     pub maybe_v2_record: Rc<RefCell<Option<bitaxe_worker_control::v2::V2Record>>>,
     pub maybe_encrypted_share: Option<crate::v2::EncryptedShareFacts>,
     pub link: SerialHost,
+    /// False omits the simulation observation, which is not a Gate qualification record.
+    pub report_status_evidence: bool,
 }
 impl Session {
     /// Delivers a controller request through the framed serial link.
@@ -169,6 +171,9 @@ impl WorkerSession for Session {
         ))
     }
     fn status_evidence(&self) -> Option<Value> {
+        if !self.report_status_evidence {
+            return None;
+        }
         let facts = self.actuation.board.borrow().peripherals.sample;
         Some(
             json!({"schema":"simulation-observation-v1","sampled_at_ms":facts.sampled_at_ms,"fan_rpm":facts.fan_rpm,
@@ -201,13 +206,40 @@ fn prepare_device_identity() -> DeviceIdentity {
     DeviceIdentity::from_seed([7; 32])
 }
 
+/// What the controller advertises and reports.
+pub(crate) struct ControllerProfile {
+    pub capability: Value,
+    pub manifest_sha256: String,
+    pub report_status_evidence: bool,
+}
+
+impl ControllerProfile {
+    /// The in-process scenario profile; nothing outside the simulation verifies it.
+    fn simulation() -> Self {
+        Self {
+            capability: json!({"protocolVersion":"bwg-worker-controller/0.4","transportProfile":"bwg-worker-serial/0.2"}),
+            manifest_sha256: URL_SAFE_NO_PAD.encode([1; 32]),
+            report_status_evidence: true,
+        }
+    }
+}
+
 #[inline(never)]
 pub(crate) fn controller(
     board: Rc<RefCell<VirtualBoard>>,
     scenario: &str,
 ) -> Result<Box<Controller>, SimulationError> {
+    controller_with(board, scenario, ControllerProfile::simulation())
+}
+
+#[inline(never)]
+pub(crate) fn controller_with(
+    board: Rc<RefCell<VirtualBoard>>,
+    scenario: &str,
+    profile: ControllerProfile,
+) -> Result<Box<Controller>, SimulationError> {
     let authority = prepare_controller_authority(board.clone())?;
-    assemble_controller(board, scenario, authority)
+    assemble_controller(board, scenario, authority, profile)
 }
 
 #[inline(never)]
@@ -215,6 +247,7 @@ fn assemble_controller(
     board: Rc<RefCell<VirtualBoard>>,
     scenario: &str,
     authority: ControllerAuthority,
+    profile: ControllerProfile,
 ) -> Result<Box<Controller>, SimulationError> {
     let ledger = board
         .borrow()
@@ -237,12 +270,24 @@ fn assemble_controller(
         maybe_v2_record: Rc::new(RefCell::new(None)),
         maybe_encrypted_share: None,
         link: SerialHost::new(seed),
+        report_status_evidence: profile.report_status_evidence,
     };
-    WorkerControl::new(authority.identity, authority.verifier, session, restoration,
-        FirmwareIdentity::new(FirmwareSourceCommit::parse(FIRMWARE_SOURCE_COMMIT).map_err(|_| SimulationError::Boundary("identity"))?, APP_ELF_SHA256)
+    WorkerControl::new(
+        authority.identity,
+        authority.verifier,
+        session,
+        restoration,
+        FirmwareIdentity::new(
+            FirmwareSourceCommit::parse(FIRMWARE_SOURCE_COMMIT)
+                .map_err(|_| SimulationError::Boundary("identity"))?,
+            APP_ELF_SHA256,
+        )
         .map_err(|_| SimulationError::Boundary("identity"))?,
-        json!({"protocolVersion":"bwg-worker-controller/0.4","transportProfile":"bwg-worker-serial/0.2"}),
-        &URL_SAFE_NO_PAD.encode([1;32])).map(Box::new).map_err(|_| SimulationError::Boundary("controller"))
+        profile.capability,
+        &profile.manifest_sha256,
+    )
+    .map(Box::new)
+    .map_err(|_| SimulationError::Boundary("controller"))
 }
 
 /// Sends the reply, or the correlated rejection, through the device writer, as the

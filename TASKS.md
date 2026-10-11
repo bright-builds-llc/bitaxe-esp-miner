@@ -895,6 +895,38 @@ pinned Gate. `gate-page-http-seams` stays unsupported and qualification stays
 false. Next: increment 3 (stdio virtual device driven by the pinned Gate
 controller).
 
+Framed-link integration, increment 3 | 2026-10-11 | Owner-approved plan
+
+Objective: drive a virtual device with the real pinned Gate controller. A
+`tools/virtual-board serve-serial` child speaks `bwg-worker-serial/0.2` on
+stdin/stdout through the shared link and writer cores and the simulated
+`WorkerControl`; the pinned Gate TypeScript controller (Bun, through its
+injectable serial runtime) admits it end to end: Hello, signed capability
+`discover`, `prove_possession`, heartbeat, baseline `status`, a further
+`status()` and a clean `close()`. Lease flows, the Gate page and the loopback
+HTTP supervisor stay out of scope; `gate-page-http-seams` stays unsupported.
+
+- [x] Add a real-time `StdioDevice` to `bitaxe-simulation` that serves the
+  firmware's signed capability, the real serial manifest digest and no
+  simulation status evidence, and mirrors the firmware owner's reply,
+  rejection and revocation handling. Eight in-crate tests drive it with real
+  host records and the Gate-rule peer: clean admission and Close, accepted
+  possession, baseline status without simulation evidence, device heartbeat
+  liveness, rejection then revocation, EOF without Close, and a refused second
+  Hello.
+- [ ] Add `serve-serial` to `tools/virtual-board` with a real-process test.
+- [ ] Add the Bun Gate driver with process-group ownership and tests for
+  admission, an untrusted capability and device loss.
+- [ ] Add a required `gate-controller-serial` coverage row, update the docs, run
+  the affected Bazel, ordered Cargo and repository checks; commit and push.
+
+Authorization: repository source, tests, documentation, build, host processes
+(the virtual device child and Bun running the pinned Gate code), commit and
+push only. No hardware, USB, Web Serial, browser, network, QEMU run, credentials
+or parity promotion.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-parity-bap-live-accessory-verification | 2026-10-06 | Verify BAP over a USB-to-UART adapter
