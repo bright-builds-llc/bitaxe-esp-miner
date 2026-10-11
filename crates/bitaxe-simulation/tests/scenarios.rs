@@ -216,3 +216,35 @@ fn heartbeat_loss_closes_the_framed_link_at_its_liveness_deadline() {
         .expect("link timeout check");
     assert_eq!(check.status, CheckStatus::Passed);
 }
+
+#[test]
+fn device_output_meets_gate_rules_in_every_controller_scenario() {
+    // Arrange
+    let without_controller = [
+        "heap-fragmented",
+        "internal-allocation-failure",
+        "fixture-completion-failure",
+        "live-writer",
+        "cancel-preparation",
+        "cancel-shutdown",
+    ];
+    for name in bitaxe_simulation::scenario_names()
+        .iter()
+        .filter(|name| !without_controller.contains(name))
+    {
+        // Act
+        let result = run_scenario(name, 19).expect("scenario");
+        // Assert
+        let output = result
+            .checks
+            .iter()
+            .find(|check| check.id == "serial_output")
+            .unwrap_or_else(|| panic!("{name} judges device output"));
+        assert_eq!(
+            output.status,
+            CheckStatus::Passed,
+            "{name}: {}",
+            output.detail
+        );
+    }
+}

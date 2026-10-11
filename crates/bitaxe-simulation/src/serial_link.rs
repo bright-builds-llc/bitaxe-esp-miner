@@ -6,6 +6,13 @@
 //! their timestamps and replayed through the receiver, in order and at those times,
 //! before any later link event; envelope parsing therefore stays out of the deep
 //! preparation stack that the target margin audit measures.
+//!
+//! Device output crosses the shared firmware writer core: the hello_ack, device
+//! heartbeats, receive and terminal credit, and control replies are encoded as the
+//! firmware encodes them and checked by a host peer that applies the pinned Gate rules.
+
+mod device;
+mod gate_peer;
 
 use crate::actuation::RuntimeBoardAdapter;
 use crate::{CheckStatus, ProfileCheck, SimulationError};
@@ -15,6 +22,7 @@ use bitaxe_worker_control::serial::link::{
     SerialLinkEffects, SerialLinkFailure, SerialLinkReceiver,
 };
 use bitaxe_worker_control::serial::trace::{SerialTraceCorrelation, SerialTraceStage};
+use bitaxe_worker_control::serial::writer::{SerialRecordWriter, SerialWriteError};
 use bitaxe_worker_control::serial::{
     ReceiveCreditMailbox, SerialEnvelope, SerialKind, SerialSessionBinding,
 };
@@ -42,6 +50,17 @@ struct LinkState {
     device_entropy: Cell<u64>,
     owner: RefCell<VecDeque<OwnerEvent>>,
     maybe_replay_ms: Cell<Option<u64>>,
+    /// An admitted Hello waiting for the device writer, as in the firmware output queue.
+    pending_hello: RefCell<Option<(u32, String, Value)>>,
+}
+
+impl LinkState {
+    fn revoke(&self, epoch: u32) {
+        if self.current.get() == epoch {
+            self.current.set(0);
+            self.credit.close(epoch);
+        }
+    }
 }
 
 /// Host transport plus the device-side link receiver it feeds.
@@ -51,6 +70,10 @@ pub(crate) struct SerialHost {
     host_entropy: u64,
     host_sequence: u32,
     maybe_session_id: Option<String>,
+    writer: SerialRecordWriter,
+    wire: Vec<u8>,
+    peer: gate_peer::GatePeer,
+    maybe_output_failure: Option<&'static str>,
 }
 
 impl SerialHost {
@@ -63,6 +86,10 @@ impl SerialHost {
             host_entropy: seed ^ HOST_ENTROPY,
             host_sequence: 0,
             maybe_session_id: None,
+            writer: SerialRecordWriter::new(),
+            wire: Vec::new(),
+            peer: gate_peer::GatePeer::default(),
+            maybe_output_failure: None,
         }
     }
 
@@ -73,11 +100,10 @@ impl SerialHost {
     ) -> Result<SerialSessionBinding, SimulationError> {
         let mut nonce = [0u8; 32];
         fill(&mut self.host_entropy, &mut nonce);
-        let payload = format!(
-            r#"{{"op":"hello","hostNonce":"{}"}}"#,
-            URL_SAFE_NO_PAD.encode(nonce)
-        );
+        let host_nonce = URL_SAFE_NO_PAD.encode(nonce);
+        let payload = format!(r#"{{"op":"hello","hostNonce":"{host_nonce}"}}"#);
         self.replay_heartbeats(actuation);
+        self.peer.hello_sent(&host_nonce, actuation.now_ms());
         self.send(actuation, SerialKind::Session, None, 0, &payload)?;
         let Some(OwnerEvent::Session(binding)) = self.state.owner.borrow_mut().pop_front() else {
             return Err(SimulationError::Boundary("serial_hello"));
@@ -100,6 +126,45 @@ impl SerialHost {
             Some(OwnerEvent::Frame(frame)) => Ok(frame),
             _ => Err(SimulationError::Boundary(self.closed_category())),
         }
+    }
+
+    /// Sends the device's reply to the last delivered request through the writer core.
+    pub(crate) fn reply(&mut self, actuation: &mut RuntimeBoardAdapter, frame: &[u8]) {
+        // Heartbeats exchanged while the request ran precede its reply on the wire.
+        self.replay_heartbeats(actuation);
+        let correlation = SerialTraceCorrelation {
+            epoch: self.state.current.get(),
+            request_sequence: self.host_sequence,
+        };
+        let view = device::SimWriterView {
+            state: &self.state,
+            actuation,
+        };
+        let mut sink = device::WireSink(&mut self.wire);
+        let result = self
+            .writer
+            .control(correlation, frame, |_| true, &view, &mut sink);
+        note_output(&mut self.maybe_output_failure, result);
+        let now = view_now(&self.state, actuation);
+        self.peer.device_bytes(&std::mem::take(&mut self.wire), now);
+    }
+
+    /// Checks every device record the host observed; `settle` applies the host clock now.
+    pub(crate) fn output_check(
+        &mut self,
+        actuation: &mut RuntimeBoardAdapter,
+        settle: bool,
+    ) -> ProfileCheck {
+        if settle {
+            self.replay_heartbeats(actuation);
+            self.peer.settle(actuation.now_ms());
+        }
+        let mut check = self.peer.check();
+        if let Some(category) = self.maybe_output_failure {
+            check.status = CheckStatus::Failed;
+            check.detail = category.into();
+        }
+        check
     }
 
     /// The owner confirmed possession: admitted heartbeats now refresh liveness.
@@ -126,12 +191,8 @@ impl SerialHost {
             && self
                 .send_in_session(actuation, SerialKind::Session, close)
                 .is_ok();
-        let terminal = maybe_epoch.and_then(|epoch| {
-            self.state
-                .credit
-                .maybe_terminal_bytes(epoch, actuation.now_ms())
-        });
-        let held = sent && terminal.is_some() && self.receiver.maybe_epoch().is_none();
+        // The device writer consumes the terminal receipt; the host peer saw the credit.
+        let held = sent && self.peer.terminal_credited() && self.receiver.maybe_epoch().is_none();
         ProfileCheck {
             id: "serial_link".into(),
             status: if held && self.state.failure.get().is_none() {
@@ -189,12 +250,54 @@ impl SerialHost {
         let raw = RawValue::from_string(payload.to_owned())?;
         let record = SerialEnvelope::encode(kind, maybe_session, sequence, &raw)
             .map_err(|_| SimulationError::Boundary("serial_encode"))?;
+        let now = view_now(&self.state, actuation);
+        // Hello is uncredited; every later host record is counted against the window.
+        if maybe_session.is_some() {
+            let parsed: Value = serde_json::from_str(payload)?;
+            let maybe_request_id = (kind == SerialKind::Control)
+                .then(|| {
+                    parsed
+                        .get("requestId")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned)
+                })
+                .flatten();
+            let close =
+                kind == SerialKind::Session && parsed.get("op") == Some(&Value::from("close"));
+            self.peer
+                .host_record(record.len(), maybe_request_id, close, now);
+        }
         let effects = SimEffects {
             state: &self.state,
             actuation,
         };
         self.receiver.receive(&record, &effects);
+        self.pump(actuation, now);
         Ok(())
+    }
+
+    /// One device writer pass at `at_ms`: heartbeat, credit, then a waiting Hello ack.
+    fn pump(&mut self, actuation: &RuntimeBoardAdapter, at_ms: u64) {
+        let view = device::SimWriterView {
+            state: &self.state,
+            actuation,
+        };
+        let mut sink = device::WireSink(&mut self.wire);
+        let heartbeat = self.writer.heartbeat_if_due(at_ms, &view, &mut sink);
+        note_output(&mut self.maybe_output_failure, heartbeat);
+        let credit = self.writer.receive_credit(&view, &mut sink);
+        note_output(&mut self.maybe_output_failure, credit);
+        let maybe_hello = self.state.pending_hello.borrow_mut().take();
+        if let Some((epoch, session_id, payload)) = maybe_hello {
+            if let Some(result) = self
+                .writer
+                .hello(epoch, session_id, &payload, &view, &mut sink)
+            {
+                note_output(&mut self.maybe_output_failure, result);
+            }
+        }
+        self.peer
+            .device_bytes(&std::mem::take(&mut self.wire), at_ms);
     }
 
     /// Feeds each queued heartbeat at the instant the host sent it.
@@ -222,7 +325,9 @@ impl SerialHost {
                 actuation,
             };
             self.receiver.supervise(at_ms, &effects);
+            self.peer.host_record(record.len(), None, false, at_ms);
             self.receiver.receive(&record, &effects);
+            self.pump(actuation, at_ms);
             self.state.maybe_replay_ms.set(None);
         }
     }
@@ -253,10 +358,7 @@ impl SerialLinkEffects for SimEffects<'_> {
         self.state.authenticated.get()
     }
     fn revoke_epoch(&self, epoch: u32) {
-        if self.state.current.get() == epoch {
-            self.state.current.set(0);
-            self.state.credit.close(epoch);
-        }
+        self.state.revoke(epoch);
     }
     /// The simulated board begins its generation at boot; Hello binds that generation.
     fn begin_generation(&self, _now_ms: u64) -> Option<WorkerGeneration> {
@@ -319,7 +421,8 @@ impl SerialLinkEffects for SimEffects<'_> {
     fn app_elf_sha256(&self) -> String {
         crate::controller::APP_ELF_SHA256.to_owned()
     }
-    fn send_hello_ack(&self, _epoch: u32, _session_id: &str, _payload: Value) -> bool {
+    fn send_hello_ack(&self, epoch: u32, session_id: &str, payload: Value) -> bool {
+        *self.state.pending_hello.borrow_mut() = Some((epoch, session_id.to_owned(), payload));
         true
     }
 }
@@ -332,6 +435,20 @@ impl SimEffects<'_> {
         }
         owner.push_back(event);
         true
+    }
+}
+
+fn view_now(state: &LinkState, actuation: &RuntimeBoardAdapter) -> u64 {
+    state
+        .maybe_replay_ms
+        .get()
+        .unwrap_or_else(|| actuation.now_ms())
+}
+
+/// Keeps the first device output failure; the writer core has already revoked its epoch.
+fn note_output<E>(slot: &mut Option<&'static str>, result: Result<(), SerialWriteError<E>>) {
+    if result.is_err() && slot.is_none() {
+        *slot = Some("device_output_failed");
     }
 }
 

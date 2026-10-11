@@ -47,17 +47,18 @@ export function qualify(rows, coverage, bindings) {
   return { qualified: blockers.length === 0, blockers, mode: blockers.length ? 'observation' : 'qualified', hardware_qualified: false };
 }
 
-const LINK_CHECKS = new Set(['serial_link', 'link_heartbeat_timeout']);
+const LINK_CHECKS = new Set(['serial_link', 'link_heartbeat_timeout', 'serial_output']);
 /**
- * Host scenarios must cross the shared firmware link core and every link check must pass.
- * Rows that are unsupported for unrelated non-claims still contribute their link checks.
+ * Host scenarios must cross the shared firmware link and writer cores, the host peer
+ * must judge device output, and every such check must pass. Rows that are unsupported
+ * for unrelated non-claims still contribute their link checks.
  */
 export function framedLinkCoverage(rows) {
   const host = rows.filter(row => row.backend === 'host');
   if (!host.length || host.some(row => row.status !== 'passed' && row.status !== 'unsupported')) return { status: 'failed', category: 'host_rows_incomplete' };
   const checks = host.flatMap(row => row.result?.checks ?? []).filter(check => LINK_CHECKS.has(check.id));
   if (!checks.length) return { status: 'unsupported', category: 'link_not_exercised' };
-  return checks.every(check => check.status === 'passed')
-    ? { status: 'passed', category: 'production_link_core_exercised' }
-    : { status: 'failed', category: 'link_check_failed' };
+  if (checks.some(check => check.status !== 'passed')) return { status: 'failed', category: 'link_check_failed' };
+  if (!checks.some(check => check.id === 'serial_output')) return { status: 'unsupported', category: 'device_output_not_exercised' };
+  return { status: 'passed', category: 'production_link_cores_exercised' };
 }

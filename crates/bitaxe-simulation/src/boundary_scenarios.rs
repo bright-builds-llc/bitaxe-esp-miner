@@ -41,6 +41,7 @@ pub(crate) fn run_cancel_matrix(name: &str, seed: u64) -> Result<ScenarioResult,
             authorization::signed_start(&binding, worker.session().ledger.next_ordinal())?;
         let start_request = worker.session_mut().request("start_lease", start_payload)?;
         let start = worker.prepare_frame(&start_request, now);
+        let start = controller::answer(&mut worker, &start_request, start);
         let correctly_rejected = start.is_err()
             && worker
                 .session()
@@ -52,6 +53,7 @@ pub(crate) fn run_cancel_matrix(name: &str, seed: u64) -> Result<ScenarioResult,
                         && failure.category == "injected_preparation_cancellation"
                 });
         let link = worker.session_mut().link_close_check();
+        let output = worker.session_mut().output_check(true);
         let now = worker.session().actuation.now_ms();
         let close = worker.disconnect(now);
         let safety = {
@@ -62,6 +64,7 @@ pub(crate) fn run_cancel_matrix(name: &str, seed: u64) -> Result<ScenarioResult,
             id: format!("{}_{}", name, index + 1),
             status: if correctly_rejected
                 && link.status == CheckStatus::Passed
+                && output.status == CheckStatus::Passed
                 && close.is_ok()
                 && !worker.has_active_lease()
                 && !worker.session().ledger.pending()
@@ -112,6 +115,7 @@ pub(crate) fn run_retained_or_snapshot(
     )?;
     worker.session_mut().fail_v2_snapshot = name == "status-allocation-failure";
     let reply = worker.prepare_frame(&query, 100);
+    let reply = controller::answer(&mut worker, &query, reply);
     let actual = reply
         .err()
         .map(|error| error.category())
@@ -124,9 +128,11 @@ pub(crate) fn run_retained_or_snapshot(
     let phase = worker.session().diagnostic_phases.borrow().last().copied();
     worker.session_mut().fail_v2_snapshot = false;
     let link = worker.session_mut().link_close_check();
+    let output = worker.session_mut().output_check(true);
     let closed = worker.disconnect(100).is_ok();
     let mut checks = vec![
         link,
+        output,
         ProfileCheck {
             id: "retained_snapshot_boundary".into(),
             status: if actual == expected
@@ -182,6 +188,7 @@ pub(crate) fn run_close_rejection(seed: u64) -> Result<ScenarioResult, Simulatio
     let mut worker = controller::controller(board.clone(), "close-rejection")?;
     controller::possession(&mut worker)?;
     let link = worker.session_mut().link_close_check();
+    let output = worker.session_mut().output_check(true);
     board.borrow_mut().control.connect()?;
     board.borrow_mut().control.reject_close = true;
     let current = worker.disconnect(100).is_ok();
@@ -195,6 +202,7 @@ pub(crate) fn run_close_rejection(seed: u64) -> Result<ScenarioResult, Simulatio
         seed,
         checks: vec![
             link,
+            output,
             ProfileCheck {
                 id: "independent_close_rejection".into(),
                 status: if current && rejected && retained && released {

@@ -851,9 +851,15 @@ in the firmware adapter.
   (6,144 budget; an inline hint made it worse and was reverted), the link thread
   5,568, the control owner is unchanged at 10,256, and no realignment callers
   exist.
-- [ ] Emit simulated device records through the core, check them with a Gate-rule
+- [x] Emit simulated device records through the core, check them with a Gate-rule
   host peer (`serial_output`), and require it in `framed-serial-link` coverage.
-- [ ] Run the affected Bazel and ordered Cargo checks, firmware build/package,
+  The simulated device acknowledges Hello, heartbeats, credits and replies (or
+  rejects) through `SerialRecordWriter`; device heartbeats are replayed with host
+  heartbeats at their original instants, and queued heartbeats now precede a
+  long request's reply. Every controller scenario, including heartbeat-loss,
+  reports a passing `serial_output`; a missing or failed one keeps
+  `framed-serial-link` unsupported or failed.
+- [x] Run the affected Bazel and ordered Cargo checks, firmware build/package,
   guest build, native audits, host-backend runs and repository gates; commit and
   push.
 
@@ -865,7 +871,29 @@ promotion. The spilled-call-target audit fix belongs to a separate session; this
 increment does not edit `scripts/virtual-emulator/noise-stack-audit.mjs` or
 `scripts/link-stack-audit.mjs`.
 
-Verification: pending. Completion review: pending.
+Verification: ordered Cargo fmt/Clippy (`-D warnings`)/build/tests; all 328
+Bazel tests (`just test`); 22 writer and 21 link characterization transcripts
+unchanged; `:serial_writer_tests` Gate device vectors; 53 simulation unit tests
+including the Gate peer, and the 35-seed scenario corpus with no failed checks;
+`just build`, `just virtual-emulator build` (compile and guest frame audit only:
+992/4,208 bytes, unchanged); writer, link, control and realignment native audits
+plus the bootstrap writer audit on the new ELF; `just verify-native-usb-ownership`;
+host-backend `just virtual-board run` for healthy-lifecycle, heartbeat-loss,
+max-status, replay-challenge and cancel-preparation with passing `serial_link`
+and `serial_output`; redaction, reference, parity and Bright Builds checks.
+
+Completion review: increment 2 is complete. Firmware and simulation now share
+both directions of the serial link, pinned byte for byte to the previous
+firmware, and the virtual corpus judges device output against the Gate's rules.
+Residual risks and non-claims: the refactored firmware writer has not met
+hardware; it does so only in a later, separately contracted hardware task. The
+writer thread is 80 bytes deeper (5,616 of 6,144). QEMU host/target agreement
+and the target main-stack margin were not rerun. The simulation does not revoke
+the link after a rejection reply as the firmware owner does, models no partial
+output or diagnostics schedule, and its Rust peer is an interim stand-in for the
+pinned Gate. `gate-page-http-seams` stays unsupported and qualification stays
+false. Next: increment 3 (stdio virtual device driven by the pinned Gate
+controller).
 
 ## Future
 

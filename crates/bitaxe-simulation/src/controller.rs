@@ -7,9 +7,9 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use bitaxe_runtime::mining_actuation::{execute_preparation, execute_safe_shutdown};
 use bitaxe_virtual_board::VirtualBoard;
 use bitaxe_worker_control::{
-    DeviceIdentity, FirmwareIdentity, FirmwareSourceCommit, LeaseDeadlines, QualificationLedger,
-    RestorationReason, WorkerControl, WorkerLeaseGrant, WorkerLeaseRenewal, WorkerSession,
-    WorkerSessionError,
+    DeviceIdentity, FirmwareIdentity, FirmwareSourceCommit, LeaseDeadlines, PreparedResponse,
+    QualificationLedger, RestorationReason, WorkerControl, WorkerControlError, WorkerLeaseGrant,
+    WorkerLeaseRenewal, WorkerSession, WorkerSessionError,
 };
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -45,6 +45,10 @@ impl Session {
     }
     pub(crate) fn link_close_check(&mut self) -> crate::ProfileCheck {
         self.link.close_check(&mut self.actuation)
+    }
+    /// Device records observed by the host peer; `settle` applies the host clock now.
+    pub(crate) fn output_check(&mut self, settle: bool) -> crate::ProfileCheck {
+        self.link.output_check(&mut self.actuation, settle)
     }
     fn persist(&mut self, ledger: QualificationLedger) -> Result<(), WorkerSessionError> {
         let bytes = serde_json::to_vec(&ledger).map_err(|_| WorkerSessionError::Rejected)?;
@@ -241,6 +245,27 @@ fn assemble_controller(
         &URL_SAFE_NO_PAD.encode([1;32])).map(Box::new).map_err(|_| SimulationError::Boundary("controller"))
 }
 
+/// Sends the reply, or the correlated rejection, through the device writer, as the
+/// firmware owner does, and hands the prepared result back unchanged.
+pub(crate) fn answer(
+    worker: &mut Controller,
+    request: &[u8],
+    prepared: Result<PreparedResponse, WorkerControlError>,
+) -> Result<PreparedResponse, WorkerControlError> {
+    let maybe_frame = match &prepared {
+        Ok(response) => Some(response.frame().to_vec()),
+        Err(error) => worker
+            .prepare_rejection(request, error)
+            .ok()
+            .map(|rejection| rejection.frame().to_vec()),
+    };
+    if let Some(frame) = maybe_frame {
+        let session = worker.session_mut();
+        session.link.reply(&mut session.actuation, &frame);
+    }
+    prepared
+}
+
 /// Opens the framed link, then proves possession over it; returns the transcript
 /// binding and the possession request payload for replay checks.
 pub(crate) fn possession(worker: &mut Controller) -> Result<(String, Vec<u8>), SimulationError> {
@@ -257,9 +282,9 @@ pub(crate) fn possession(worker: &mut Controller) -> Result<(String, Vec<u8>), S
         "sessionId":serial.session_id,"hostNonce":serial.host_nonce,"deviceNonce":serial.device_nonce,"serialManifestSha256":URL_SAFE_NO_PAD.encode([1;32])}});
     let payload = serde_json::to_vec(&request)?;
     let bytes = worker.session_mut().deliver(&payload)?;
-    let prepared = worker
-        .prepare_frame(&bytes, worker.session().actuation.now_ms())
-        .map_err(|e| SimulationError::Boundary(e.category()))?;
+    let prepared = worker.prepare_frame(&bytes, worker.session().actuation.now_ms());
+    let prepared =
+        answer(worker, &bytes, prepared).map_err(|e| SimulationError::Boundary(e.category()))?;
     let response: Value = serde_json::from_slice(prepared.frame())?;
     let transcript =
         json!({"profile":"bwg-worker-control-session/0.2","request":request,"response":response});

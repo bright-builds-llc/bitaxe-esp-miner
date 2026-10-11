@@ -81,10 +81,14 @@ failure-only recovery continue through their existing independent contracts.
 Host scenarios reach the Controller only through the production inbound serial
 link core (`bitaxe_worker_control::serial::link`, shared with firmware
 `bwg_worker_usb/link.rs`): real `bwg-worker-serial/0.2` Hello, sequenced Control
-records, replayed one-second heartbeats and a clean Close. The required
-`framed-serial-link` coverage row passes only when every host link check passes.
-The outbound writer, the pinned Gate controller, page and HTTP supervisor are not
-yet exercised.
+records, replayed one-second heartbeats and a clean Close. Device output crosses
+the production writer core (`bitaxe_worker_control::serial::writer`, shared with
+firmware `bwg_worker_usb/writer.rs`): the hello_ack, device heartbeats, receive and
+terminal credit, and control replies or rejections. A Rust host peer applies the
+pinned Gate rules to that output (`serial_output`). The required
+`framed-serial-link` coverage row passes only when every host link and output check
+passes. The pinned Gate controller, page and HTTP supervisor are not yet exercised;
+the Rust peer stands in for the Gate until they are.
 
 Current unsupported coverage includes encrypted fixture/share/ACK integration,
 real Gate/page/HTTP seams, capability-specific interception of real allocation

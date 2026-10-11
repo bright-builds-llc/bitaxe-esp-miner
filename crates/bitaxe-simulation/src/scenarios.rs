@@ -155,18 +155,19 @@ fn execute_controller_scenario(
     }
     if name == "replay-challenge" {
         let replayed = worker.session_mut().deliver(&possession)?;
-        let rejected = worker
-            .prepare_frame(&replayed, 100)
+        let prepared = worker.prepare_frame(&replayed, 100);
+        let rejected = controller::answer(&mut worker, &replayed, prepared)
             .err()
             .map(|e| e.category());
         let link = worker.session_mut().link_close_check();
+        let output = worker.session_mut().output_check(true);
         return Ok(result(
             name,
             seed,
             &worker,
             "invalid_proof",
             rejected.unwrap_or("unexpected_success"),
-            vec![link],
+            vec![link, output],
         ));
     }
     if name == "healthy-lifecycle" {
@@ -175,8 +176,8 @@ fn execute_controller_scenario(
             "stratum_v2_status",
             json!({"schema":"worker-stratum-v2-query-v1","scope":"share","attemptId":null}),
         )?;
-        let observation = worker
-            .prepare_frame(&query, now)
+        let prepared = worker.prepare_frame(&query, now);
+        let observation = controller::answer(&mut worker, &query, prepared)
             .map_err(|_| SimulationError::Boundary("v2_observation"))?;
         worker
             .confirm_sent_at(observation, now)
@@ -189,6 +190,7 @@ fn execute_controller_scenario(
     )?;
     let start = worker.session_mut().request("start_lease", start_payload)?;
     let prepared = worker.prepare_frame(&start, 100);
+    let prepared = controller::answer(&mut worker, &start, prepared);
     let actual = match prepared {
         Ok(reply) => {
             worker
@@ -247,6 +249,8 @@ fn execute_controller_scenario(
             },
             detail: "framed_link_closed_at_liveness_deadline".into(),
         });
+        // The host stopped; only device records sent before the loss are judged.
+        extra.push(worker.session_mut().output_check(false));
     }
     // A closed link delivers nothing more; the owner cleanup below still runs.
     if actual == "started" && !heartbeat_loss {
@@ -255,6 +259,7 @@ fn execute_controller_scenario(
             .session_mut()
             .request("status", serde_json::Value::Null)?;
         let status = worker.prepare_frame(&status_request, now);
+        let status = controller::answer(&mut worker, &status_request, status);
         extra.push(ProfileCheck {
             id: "authenticated_status".into(),
             status: if status.is_ok() {
@@ -273,6 +278,7 @@ fn execute_controller_scenario(
             .session_mut()
             .request("restore", json!({"reason":"paused"}))?;
         let stop = worker.prepare_frame(&stop_request, now);
+        let stop = controller::answer(&mut worker, &stop_request, stop);
         if name == "stop-rejection" {
             extra.push(ProfileCheck {
                 id: "stop_rejected".into(),
@@ -300,6 +306,7 @@ fn execute_controller_scenario(
     }
     if !heartbeat_loss {
         extra.push(worker.session_mut().link_close_check());
+        extra.push(worker.session_mut().output_check(true));
     }
     // Cleanup is independently evaluated even after the scenario's earliest error.
     worker.session_mut().reject_stop = false;

@@ -115,7 +115,7 @@ test('an empty or malformed parity ledger fails visibly', () => {
 test('passing host link checks mark the framed serial link covered', () => {
   // Arrange
   const rows = [
-    { backend: 'host', status: 'passed', result: { checks: [{ id: 'serial_link', status: 'passed' }] } },
+    { backend: 'host', status: 'passed', result: { checks: [{ id: 'serial_link', status: 'passed' }, { id: 'serial_output', status: 'passed' }] } },
     { backend: 'host', status: 'passed', result: { checks: [{ id: 'link_heartbeat_timeout', status: 'passed' }] } },
     { backend: 'host', status: 'unsupported', result: { checks: [{ id: 'serial_link', status: 'passed' }, { id: 'live', status: 'unsupported' }] } },
     { backend: 'qemu', status: 'unsupported' },
@@ -133,4 +133,16 @@ test('a failed link check or failed host row blocks framed link coverage', () =>
 });
 test('host rows without link checks leave framed link coverage unsupported', () => {
   assert.equal(framedLinkCoverage([{ backend: 'host', status: 'passed', result: { checks: [] } }]).status, 'unsupported');
+});
+test('framed link coverage requires judged device output', () => {
+  // Arrange
+  const rows = [{ backend: 'host', status: 'passed', result: { checks: [{ id: 'serial_link', status: 'passed' }] } }];
+  // Act
+  const coverage = framedLinkCoverage(rows);
+  // Assert
+  assert.deepEqual(coverage, { status: 'unsupported', category: 'device_output_not_exercised' });
+});
+test('a failed device output check fails framed link coverage', () => {
+  const rows = [{ backend: 'host', status: 'passed', result: { checks: [{ id: 'serial_link', status: 'passed' }, { id: 'serial_output', status: 'failed' }] } }];
+  assert.equal(framedLinkCoverage(rows).status, 'failed');
 });
