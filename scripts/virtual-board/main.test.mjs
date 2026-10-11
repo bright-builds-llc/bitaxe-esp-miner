@@ -146,8 +146,9 @@ test('a failed device output check fails framed link coverage', () => {
   const rows = [{ backend: 'host', status: 'passed', result: { checks: [{ id: 'serial_link', status: 'passed' }, { id: 'serial_output', status: 'failed' }] } }];
   assert.equal(framedLinkCoverage(rows).status, 'failed');
 });
-test('Gate controller, page and lease coverage are required qualification rows', () => {
+test('Gate controller, page, lease and close-rejection coverage are required qualification rows', () => {
   assert.ok(REQUIRED_COVERAGE.includes('gate-controller-serial'));
   assert.ok(REQUIRED_COVERAGE.includes('gate-page-http-seams'));
   assert.ok(REQUIRED_COVERAGE.includes('gate-lease-flows'));
+  assert.ok(REQUIRED_COVERAGE.includes('gate-close-rejection-release'));
 });

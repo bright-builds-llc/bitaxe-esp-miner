@@ -212,13 +212,6 @@ pub(crate) fn run_close_rejection(seed: u64) -> Result<ScenarioResult, Simulatio
                 },
                 detail: "restoration_separate_from_transport_release".into(),
             },
-            ProfileCheck {
-                id: "physical_host_owner_release".into(),
-                status: CheckStatus::Unsupported,
-                // Leases cross the Gate page, supervisor and controller, but no
-                // virtual flow yet rejects a restore under one.
-                detail: "rejected_lease_restore_not_integrated".into(),
-            },
         ],
         expected_outcome: "close_rejected_then_released".into(),
         actual_outcome: "close_rejected_then_released".into(),

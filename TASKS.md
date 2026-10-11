@@ -742,10 +742,9 @@ production native audits, reference/redaction/standards/Markdown/diff checks.
 Final verification receipts and public summary accompany the committed milestone.
 Completion review: not complete; do not archive. Explicit remaining blockers are
 missing actual margin/call-closure proof, strict live fixture/header/nonce vector,
-real allocation interception, the close-rejection owner release (a restore
-rejected under a lease) through the Gate page, supervisor and controller (the
-Gate/page/HTTP/framed-I/O integration and lease flows are complete in increments
-1-5 below), consolidated production lifecycle/ownership profiles, full
+real allocation interception (the Gate/page/HTTP/framed-I/O integration, lease
+flows and the close-rejection owner release are complete in increments 1-6
+below), consolidated production lifecycle/ownership profiles, full
 qualified host/target corpus and mandatory matching-report rollout. The
 corrected-target panic is resolved in emulation (campaign004). Missing
 calibration remains an explicit fidelity non-claim. Accepted-share stays active,
@@ -1061,6 +1060,56 @@ modeled, its watchdog is reported absent and it dispatches no work;
 and close-rejection still blocks qualification; the browser is shimmed in Bun; Bun
 comes from the host PATH; port 48765 and the owner's Gate tab were never used.
 Qualification stays false.
+
+Framed-link integration, increment 6 | 2026-10-11 | Owner-approved scope
+
+Objective: the close-rejection owner release, through the Gate. Owner decisions:
+cover both close rejections, and move the physical claim from the in-process
+close-rejection scenario (which keeps its independent-restoration check) to a
+required coverage row set from the Gate tests. Under a lease, (a) the device
+rejects the close-time restore (its cooling proof fails once): the Gate still
+closes its port and releases ownership, records the failure through the page
+and supervisor, and the device restores itself once the link drops; (b) the
+native port close is rejected: the Gate correctly retains its port ownership,
+the device restores independently, and ownership is released when the page
+unloads.
+
+- [x] Device: `serve-serial --fault=reject-restore` fails the first restoration
+  of a started lease at the cooling-proof step; outcome counts rejected
+  restorations; tests over a scripted port.
+- [x] Gate controller and page cases for both rejections, with lock, ownership,
+  supervisor-record and device-restoration assertions. The harness port now
+  models a serial line: reader cancel and writer close reach the device only
+  through the native port close, which the earlier cases still pass under.
+- [x] Coverage row `gate-close-rejection-release`; drop the unsupported
+  `physical_host_owner_release` scenario check; docs and non-claims; affected
+  and full checks; commit and push.
+
+Authorization: as increment 5 (repository source, tests, documentation, build,
+host processes and a loopback supervisor, commit and push only).
+
+Verification: ordered Cargo fmt/Clippy (`-D warnings`)/build/tests, including 20
+real-time device tests (two new: a rejected restore is answered, and the device
+restores without the host afterwards); all 330 Bazel tests (`just test`) with
+`//scripts:virtual_board_gate_serial_test` (eight cases) and
+`//scripts:virtual_board_gate_page_test` (ten cases); both Gate tests three runs
+each at eight parallel jobs, all passing; `just build`, `just package`, `just
+virtual-emulator build` (compile and guest frame audit only: 992/4,208 bytes,
+unchanged); redaction, reference, parity and Bright Builds checks.
+
+Completion review: the close-rejection owner release crosses the Gate. When the
+device rejects the close-time restore under a lease, the controller and the page
+still close the port and release ownership and the lock, the page records
+`close_failed` through the supervisor, and the device restores itself after the
+link is gone (one rejected and one completed restoration, no pending lease). When
+the native port close is rejected, the Gate keeps ownership and its lock, the
+page records `close_failed` with ownership retained, and the device, restored by
+the close-time restore, ends cleanly once the page unloads. The physical claim is
+the required `gate-close-rejection-release` coverage row; the in-process scenario
+keeps its independent-restoration check. Non-claims: both rejections are
+injected (one cooling-proof failure, a harness port refusal), page unload is
+modeled by ending the device's input, and the increment 5 non-claims stand.
+Qualification stays false for the remaining parent blockers.
 
 ## Future
 

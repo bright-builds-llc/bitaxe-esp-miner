@@ -123,17 +123,34 @@ Hello, renews by extending the gate's lease deadline, reports Gate-shaped
 time while the owner prepares and shuts down, as the firmware link and writer
 threads do. `gate-lease-flows` passes only when both Gate tests pass.
 
+Both close rejections run under a lease, through the controller and the page.
+When the device rejects the close-time restore (`serve-serial
+--fault=reject-restore` fails the first restoration's cooling proof once, after
+power is removed), the Gate still closes its port and releases ownership, the
+page records `close_failed` through the supervisor, and the device, keeping the
+lease, restores itself once the link is gone. When the platform rejects the
+native port close (the harness port refuses it and leaves the line open), the
+Gate's port owner correctly keeps its ownership and lock, the page records
+`close_failed` with ownership retained, and the device, already restored by the
+close-time restore and closed by the session Close, ends cleanly; ownership is
+released when the page unloads. The harness port models a serial line: cancelling
+the reader or closing the writer reaches the device only through the native port
+close. `gate-close-rejection-release` passes only when both Gate tests pass; the
+in-process close-rejection scenario keeps its independent-restoration check and no
+longer carries the physical claim.
+
 Non-claims: the lease supervisor is test-only and has no campaign lineage,
 preflight, pool input, cooling or budget review, so the production campaign and
 iterative supervisors' preflight is not exercised; owner stack headroom in the
 device's evidence is modeled, not measured, its watchdog is reported absent and
-no work is dispatched; `physical_host_owner_release` (close-rejection) stays
-unsupported because no virtual flow yet rejects a restore under a lease; the
+no work is dispatched; the restore rejection is one injected cooling-proof
+failure and the port-close rejection a harness refusal, not observed device or
+platform faults, and page unload is modeled by ending the device's input; the
 browser is shimmed, not Chromium; Bun comes from the host PATH; port 48765 and the
 owner's Gate tab are never used.
 
 Current unsupported coverage includes encrypted fixture/share/ACK integration,
-the close-rejection owner release, capability-specific interception of real allocation
+capability-specific interception of real allocation
 paths, retained V2 status serialization, and several composed timing/recovery/
 process-ownership scenarios. The active task records exact target execution
 failures and remaining blockers. Models and simulator passes cannot establish

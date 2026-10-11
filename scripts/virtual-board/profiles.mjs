@@ -10,7 +10,8 @@ export const SCENARIOS = Object.freeze([
   'fixture-completion-failure', 'live-writer',
 ]);
 export const REQUIRED_COVERAGE = Object.freeze([
-  'encrypted-fixture-share-ack', 'framed-serial-link', 'gate-controller-serial', 'gate-page-http-seams', 'gate-lease-flows', 'bounded-real-allocation-paths',
+  'encrypted-fixture-share-ack', 'framed-serial-link', 'gate-controller-serial', 'gate-page-http-seams', 'gate-lease-flows', 'gate-close-rejection-release',
+  'bounded-real-allocation-paths',
   'all-step-cancellation', 'descendant-listener-release', 'model-conformance-mutations',
   'target-panic-core-decode', 'target-reset-persistence', 'target-resolved-memory-routing',
   'host-target-semantic-agreement',

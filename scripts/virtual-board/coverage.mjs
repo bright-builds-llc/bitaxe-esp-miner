@@ -22,8 +22,11 @@ export async function componentCoverage(repo, root, targetManifest, coverage) {
     await runPrivate('bazel', ['test', '//scripts:virtual_board_gate_page_test'], root, 'gate-page-http-seams', { cwd: repo, timeoutMs: 300000 });
     set('gate-page-http-seams', 'passed', 'served_gate_page_and_supervisor_drove_virtual_device');
   } catch { set('gate-page-http-seams', 'failed', 'gate_page_suite_failed'); leases = false; }
-  // Both suites also run signed leases (Start, Renew, Stop, Close with a lease) under a throwaway authority.
+  // Both suites also run signed leases (Start, Renew, Stop, Close with a lease) under a throwaway authority,
+  // and both close rejections under a lease: a rejected restore and a rejected native port close.
   set('gate-lease-flows', leases ? 'passed' : 'failed', leases ? 'throwaway_authority_leases_crossed_gate_page_supervisor_and_controller' : 'gate_lease_suite_failed');
+  set('gate-close-rejection-release', leases ? 'passed' : 'failed',
+    leases ? 'gate_owner_release_and_independent_device_restoration_after_close_rejections' : 'gate_close_rejection_suite_failed');
   if (!targetManifest) return;
   for (const [id, commands] of [['target-reset-persistence', ['status', 'allocation', 'restart']], ['target-panic-core-decode', ['status', 'panic']]]) {
     const path = join(root, id); await mkdir(path, { mode: 0o700 });
