@@ -1192,8 +1192,13 @@ accessory.
       owner's adapter model; write connection guidance for the board and the
       macOS host. Done 2026-10-11 under the owner's wiring-guidance
       authorization: J6 per the `ultra-205` schematic, in
-      `docs/hardware/bap-uart-connection.md`. Pending: the adapter model and
-      its 3.3 V logic setting.
+      `docs/hardware/bap-uart-connection.md`. Pinout cross-checked against the
+      `ultra-205` PCB layout's pad nets. Owner's adapter: a 5-pin CP2102-type
+      USB-to-TTL board (3V3, TXD, RXD, GND, +5V; native 3.3 V logic). A first
+      direct plug-in put its +5V on J6 pin 1 and 3V3 on pin 5 while the board was
+      powered and the adapter was not connected to the Mac; the owner was asked
+      to remove it, and the guide now requires GND/RXD/TXD only. The owner's meter read about 5 V
+      on pin 1 and about 3.3 V on pin 3 (idle-high TX), as expected.
 - [ ] Add a repo-owned host BAP client for request, subscribe, unsubscribe and
       set, with privacy rules for the Wi-Fi `ssid` and `password` parameters.
       Plan: a `tools/bap-client` crate reusing `bitaxe_core::bap` framing; a pure

@@ -19,10 +19,19 @@ header at the top edge of the board's back side. Pin 1 is the **square** pad.
 | 5 | GPIO41 (MTDI) | Not used |
 | 6 | GPIO42 (MTMS) | Not used |
 
-Provenance: `esp32.kicad_sch` on `bitaxeorg/bitaxeUltra` branch `ultra-205`
-(file commit `034a8a8533193f9c71abb8504178f13483c0947b`; J6 is
-`Connector_Generic:Conn_01x06`, footprint `PinHeader_1x06_P2.54mm_Vertical`; pins 3-6
-wire directly to ESP32-S3-WROOM-1 pins 32-35). The pinned reference firmware
+Provenance, from two independent sources in `bitaxeorg/bitaxeUltra` branch
+`ultra-205` (branch head `842b42676ef54ceba5bc92dcc2b0ff66b02e0fb5`):
+
+- schematic `esp32.kicad_sch` (file commit
+  `034a8a8533193f9c71abb8504178f13483c0947b`): J6 is `Connector_Generic:Conn_01x06`;
+  pin 1 is on the `5V` power symbol, pin 2 on `GND`, and pins 3-6 wire directly to
+  ESP32-S3-WROOM-1 pins 32-35;
+- layout `bitaxeUltra.kicad_pcb` (blob `4e8dcdef5ee1b43cecca401c872112667c790a6d`):
+  J6 pad 1 is the rectangular pad on net `/5V`, pad 2 is on `GND`, and pads 3, 4, 5
+  and 6 share their nets only with module U12 pads 32 (`MTCK/GPIO39`), 33
+  (`MTDO/GPIO40`), 34 (`MTDI/GPIO41`) and 35 (`MTMS/GPIO42`).
+
+The pinned reference firmware
 (`reference/esp-miner/main/Kconfig.projbuild`, `main/bap/bap_uart.c`) and this
 repository's firmware (`firmware/bitaxe/src/bap_adapter.rs`) both run BAP on UART2
 with TX on GPIO39 and RX on GPIO40 at 115200 baud, 8-N-1, no flow control.
@@ -40,6 +49,14 @@ with TX on GPIO39 and RX on GPIO40 at 115200 baud, 8-N-1, no flow control.
   Mac for the repository's usual control path. The adapter is a second USB device
   on the same Mac, so both share the Mac's ground.
 
+## What a meter shows on a powered, idle board
+
+Measured against pin 2 (GND): pin 1 reads about 5 V. Pin 3 reads about 3.3 V,
+because a UART transmit line idles high; that is the board's BAP TX at rest, not a
+supply. Pin 4, the board's receive input, may also read near 3.3 V through the
+UART's internal pull-up. Pins 5 and 6 are unused by the firmware, and what they
+read is not meaningful.
+
 ## Making the connection
 
 J6 ships without pins. Either solder a 1x6 2.54 mm male header into J6, or use
@@ -50,11 +67,32 @@ Use three female-to-female jumper wires from the header to the adapter: GND, and
 the two crossed data lines. Check each wire against the table, and confirm pin 1 by
 its square pad, before any power is applied.
 
+### Plug-in adapters: keep their power pins out of J6
+
+Common 5-pin CP2102 adapters have their pins in the order 3V3, TXD, RXD, GND, +5V.
+Plugged straight into J6 with +5V on the square pin 1, the data lines happen to
+land correctly (GND on 2, RXD on 3, TXD on 4), but two power pins land where they
+must not:
+
+- adapter **+5V** on J6 pin 1 ties the board's 5 V rail to the adapter's USB 5 V.
+  The adapter's LED lights from the board alone; plugged into a Mac as well, the
+  two supplies would be joined and could drive current into each other;
+- adapter **3V3** on J6 pin 5 holds GPIO41 at the adapter's 3.3 V output, which
+  would short if that pin were ever driven low.
+
+Use jumper wires for GND, RXD and TXD only. If the adapter must plug in directly,
+its +5V and 3V3 pins must not enter or touch J6: remove them from the header, or
+cover them, rather than relying on a bend. Make every change with the board
+unpowered, and plug the adapter into the Mac only after the board is wired and
+powered.
+
 ## macOS host
 
 - Before plugging the adapter in, list serial devices: `ls /dev/cu.*`.
-- Plug the adapter in and list again; the new `/dev/cu.usbserial-*` (FTDI or
-  CP210x) or `/dev/cu.wchusbserial-*` (CH340) node is the adapter.
+- Plug the adapter in and list again; the new node is the adapter:
+  `/dev/cu.usbserial-*` (FTDI, or CP210x with Apple's built-in driver),
+  `/dev/cu.SLAB_USBtoUART` (CP210x with Silicon Labs' driver) or
+  `/dev/cu.wchusbserial-*` (CH340).
 - The board's own USB node stays separate. Do not confuse the two: the repository's
   detector and flash tools own the board's USB node, and the BAP client owns only
   the adapter's node.
