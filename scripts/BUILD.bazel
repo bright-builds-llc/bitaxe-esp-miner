@@ -1227,6 +1227,19 @@ js_binary(
     visibility = ["//visibility:public"],
 )
 
+js_binary(
+    name = "audit_bap_stack",
+    entry_point = "audit-bap-stack.mjs",
+    data = ["bap-stack-audit.mjs", "control-stack-audit.mjs", "link-stack-audit.mjs", ":virtual_emulator_sources"],
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "bap_stack_audit_test",
+    entry_point = "bap-stack-audit.test.mjs",
+    data = ["bap-stack-audit.mjs", "control-stack-audit.mjs", "link-stack-audit.mjs", ":virtual_emulator_sources"],
+)
+
 js_test(
     name = "writer_stack_audit_test",
     entry_point = "writer-stack-audit.test.mjs",

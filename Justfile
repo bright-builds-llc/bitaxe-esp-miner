@@ -480,6 +480,9 @@ audit-link-stack elf output:
 audit-writer-stack elf output:
     bazel run //scripts:audit_writer_stack -- --elf "{{ elf }}" --output "{{ output }}"
 
+audit-bap-stack elf output:
+    bazel run //scripts:audit_bap_stack -- --elf "{{ elf }}" --output "{{ output }}"
+
 # Audit a built device ELF's Noise completion placement and stack paths; never opens a device.
 audit-device-noise-stack elf output:
     bazel run //scripts:audit_device_noise_stack -- --elf "{{ elf }}" --output "{{ output }}"

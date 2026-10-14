@@ -90,6 +90,8 @@ fn run_owner(mut driver: UartDriver<'static>) {
     }
 }
 
+// Kept out of line so the owner loop's frame does not carry every handler's locals.
+#[inline(never)]
 fn handle_frame(
     driver: &mut UartDriver<'static>,
     runtime: &mut BapRuntime,
@@ -124,6 +126,7 @@ fn handle_frame(
     }
 }
 
+#[inline(never)]
 fn handle_runtime_action(
     driver: &mut UartDriver<'static>,
     action: BapRuntimeAction,
@@ -149,11 +152,10 @@ fn handle_runtime_action(
             last_subscription_frames.retain(|(current, _)| *current != parameter);
         }
         BapRuntimeAction::PublishSubscription(parameter) => {
-            let Some(system_info) = system_info() else {
+            let Some(frames) = current_subscription_frames(parameter) else {
                 log::warn!("bap_subscription=unavailable category=runtime_snapshot");
                 return;
             };
-            let frames = subscription_frames(parameter, &system_info);
             let encoded: Vec<String> = frames
                 .iter()
                 .filter_map(|frame| frame.encode().ok())
@@ -188,14 +190,27 @@ fn connection_mode() -> BapConnectionMode {
     }
 }
 
-fn system_info() -> Option<SystemInfoWire> {
-    crate::runtime_snapshot::publish_projected_system_info(0, Ok::<_, core::convert::Infallible>)
-        .ok()
+/// The operator snapshot is projected inside its publication callback, so only the
+/// few values BAP needs reach this thread's frames, never the whole system-info wire:
+/// on the 16 KiB BAP stack that copy overflowed (`just audit-bap-stack`).
+#[inline(never)]
+fn current_subscription_frames(parameter: BapParameter) -> Option<Vec<BapFrame>> {
+    crate::runtime_snapshot::publish_projected_system_info(0, |info| {
+        Ok::<_, core::convert::Infallible>(subscription_frames(parameter, &info))
+    })
+    .ok()
 }
 
+#[inline(never)]
 fn bap_request_snapshot() -> Option<BapRequestSnapshot> {
-    let info = system_info()?;
-    Some(BapRequestSnapshot {
+    crate::runtime_snapshot::publish_projected_system_info(0, |info| {
+        Ok::<_, core::convert::Infallible>(request_snapshot(info))
+    })
+    .ok()
+}
+
+fn request_snapshot(info: SystemInfoWire) -> BapRequestSnapshot {
+    BapRequestSnapshot {
         device_model: info.board_version,
         asic_model: info.asic_model,
         pool_endpoint: info.stratum_url,
@@ -209,7 +224,7 @@ fn bap_request_snapshot() -> Option<BapRequestSnapshot> {
             .unwrap_or_default(),
         found_block: i32::try_from(info.block_found).unwrap_or(i32::MAX),
         show_new_block: info.show_new_block,
-    })
+    }
 }
 
 fn subscription_frames(parameter: BapParameter, info: &SystemInfoWire) -> Vec<BapFrame> {
