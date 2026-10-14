@@ -1,5 +1,6 @@
 use super::*;
 use crate::test_link::{frame, Scripted};
+use bitaxe_core::bap::{plan_command, BapConnectionMode, BapRequestSnapshot};
 
 fn healthy_board() -> Vec<(u64, String)> {
     vec![
@@ -13,7 +14,7 @@ fn healthy_board() -> Vec<(u64, String)> {
             13,
             frame(BapCommand::Response, "poolUser", "owner-address.worker"),
         ),
-        (600, frame(BapCommand::Response, "hashrate", "512.3")),
+        (600, frame(BapCommand::Response, "shares", "12/0")),
         (
             1_200,
             frame(BapCommand::Acknowledge, "hashrate", "subscribed"),
@@ -144,5 +145,43 @@ fn listening_is_bounded() {
         link.now <= (MAXIMUM_LISTEN_SECONDS * 1_000) + 3 * 3_000 + 2_000,
         "{}",
         link.now
+    );
+}
+
+/// The firmware's own planner, connected to Wi-Fi, with a synthetic snapshot.
+fn planned_responses(operation: &Operation) -> usize {
+    let snapshot = BapRequestSnapshot {
+        device_model: "205".into(),
+        asic_model: "BM1366".into(),
+        pool_endpoint: "pool.example.invalid".into(),
+        pool_port: 3333,
+        pool_user: "synthetic".into(),
+        shares_accepted: 12,
+        shares_rejected: 0,
+        block_height: 1,
+        found_block: 0,
+        show_new_block: false,
+    };
+    let frame = operation.frame().expect("frame");
+    plan_command(&frame, BapConnectionMode::Connected, Some(&snapshot))
+        .expect("plan")
+        .responses()
+        .len()
+}
+
+#[test]
+fn every_probe_request_is_one_the_firmware_answers() {
+    for step in Step::ALL {
+        if let Operation::Request(_) = step.operation() {
+            assert!(planned_responses(&step.operation()) > 0, "{}", step.label());
+        }
+    }
+}
+
+#[test]
+fn a_hashrate_request_is_not_answered_by_the_firmware() {
+    assert_eq!(
+        planned_responses(&Operation::Request(BapParameter::Hashrate)),
+        0
     );
 }

@@ -1363,6 +1363,20 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
     two-way link and that a request no longer restarts the board; the data
     steps stay blocked. A repeat of ordinal 003's signature selects
     `stop_repeated_boundary`.
+- Ordinal 004 result (2026-10-14): `stop_hardware_blocker`, the cause a probe
+  defect. Package bound to `ec480c55` (clean); detector admitted; the
+  state-preserving update completed and the board returned to its running
+  profile; after 120 s the detector re-admitted it. The probe's first step
+  passed: `REQ systemInfo` answered `deviceModel 205`, `asicModel BM1366` and
+  the redacted pool fields, with no startup banner, so a request no longer
+  restarts the board and the link works both ways. Its second step stopped:
+  `REQ hashrate`, signature `request_hashrate` / `no_bytes_received`. The
+  firmware, like the reference (`bap_handlers.c`), answers requests only for
+  `systemInfo`, `shares`, `block_height`, `found_block` and `show_new_block`;
+  `hashrate` is subscription-only, so the probe asked for an answer the
+  protocol never gives. Next: a probe fix whose request steps are checked
+  against the firmware's own BAP planner, then ordinal 005 with owner
+  go-ahead.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
       holds.
 
