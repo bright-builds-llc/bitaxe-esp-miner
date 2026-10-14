@@ -1328,6 +1328,41 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
   in access-point mode. Not yet confirmed on the device. No further BAP traffic
   until a diagnosed fix with a regression lands and a new contract ordinal is
   approved.
+- Diagnosis and fix (2026-10-14, commit `1d58f788`): `just audit-bap-stack`
+  measured the deepest resolved path from `run_owner` at 17,632 bytes on the
+  16 KiB thread (`blocked`, 3,296 bytes over the 14,336-byte budget): the
+  owner loop (3,808 bytes, handlers inlined) and `system_info` (1,536 bytes,
+  the whole `SystemInfoWire` by value) above the shared snapshot builder. BAP
+  now projects only its values inside the publication callback; the path is
+  13,152 bytes with 1,184 bytes of headroom. Regression: the audit and its
+  tests; on the previous build it reports `blocked`.
+- Ordinal 004 contract (owner-authorized 2026-10-14): install the fixed build,
+  then run the ordinal-002 probe unchanged.
+  1. `just package` at the exact clean `HEAD` that records this contract.
+  2. `mkdir -m 700 scratch/bap-probe-004`; detector with the board's named port
+     as in ordinal 002, saved to mode-0600 siblings.
+  3. State-preserving update: `just flash --board 205 --port <board node>
+     --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`, output
+     captured to mode-0600 siblings. No `--factory-reset`, no
+     `--wifi-credentials`: installed settings (Wi-Fi, pool) are kept. Shell
+     timeout at least 420 s.
+  4. Settle 120 s for boot and Wi-Fi; then rerun the detector into
+     `detector-after.stdout` (must again report `serial_jtag_runtime`).
+  5. The probe exactly as ordinal 002, with `--evidence-dir
+     .../scratch/bap-probe-004/attempt --detector-report
+     .../detector-after.stdout --ordinal 4`.
+  - Added effects: one state-preserving firmware update through the repo
+    flash tool and its own board-info gate, and the reboot it causes.
+    Prohibited additions: factory reset, credential files, monitor sessions,
+    Gate or Web Serial, any `SET` or `CMD` frame.
+  - Recovery: if the updated board does not boot or BAP stays silent, reflash
+    the previous source commit's package (`59f198f6`) with the same
+    state-preserving command; nothing else is restored.
+  - Outcomes: `complete` as in ordinal 002. If the board is still in
+    access-point mode, `device_rejected` with `ap_mode_no_requests` proves the
+    two-way link and that a request no longer restarts the board; the data
+    steps stay blocked. A repeat of ordinal 003's signature selects
+    `stop_repeated_boundary`.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
       holds.
 
