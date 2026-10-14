@@ -117,6 +117,12 @@ private file (mode 0600, owned by you, not a symlink), never on the command line
 Changing `frequency` or `asic_voltage` also needs `--allow-asic-setting`. An
 adapter that disappears is reported as an error, not as a quiet line.
 
+`probe` runs the task contract's read-only sequence (`systemInfo`, `hashrate`,
+then a short `hashrate` subscription) once. It needs a mode-0700 parent holding
+the detector's saved report as a mode-0600 sibling, creates the attempt directory
+itself, refuses one that already exists, stops at the first failed step and
+seals one category-only record read-only. Its exact use is in the task contract.
+
 ## Not yet authorized
 
 Opening the adapter, sending BAP frames, subscriptions or settings changes to the

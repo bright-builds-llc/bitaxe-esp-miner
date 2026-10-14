@@ -4,8 +4,12 @@
 //! (`bitaxe_core::bap`); the serial adapter is a thin shell around it. Sensitive
 //! values are never printed and never accepted on the command line.
 
+pub mod evidence;
 pub mod exchange;
 pub mod policy;
 pub mod port;
+pub mod probe;
 pub mod redaction;
 pub mod secret;
+#[cfg(test)]
+pub(crate) mod test_link;

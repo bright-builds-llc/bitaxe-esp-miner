@@ -12,6 +12,7 @@ rust_library(
     deps = [
         "//crates/bitaxe-core:bitaxe_core",
         "@crates//:libc",
+        "@crates//:serde_json",
     ],
 )
 

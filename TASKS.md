@@ -1214,6 +1214,65 @@ accessory.
       without an allowance before opening any port. Live use pending.
 - [ ] Write a complete hardware contract covering electrical safety, allowed
       settings, restoration of changed settings, evidence and stop conditions.
+      The read-only probe contract below covers the first observation; a
+      settings contract is still needed before any `set`.
+
+Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
+
+- Objective: observe that the board's BAP UART answers through the owner's
+  CP2102 adapter: `systemInfo`, `hashrate`, and a short `hashrate`
+  subscription. Observation only: BAP does not identify the installed firmware,
+  so this run promotes no parity row; promotion needs a later contract that
+  binds the installed image.
+- Owner-attested preconditions: adapter GND, RXD and TXD on J6 pins 2, 3 and 4
+  by jumper wires, nothing on J6 pins 1, 5 or 6, the adapter's +5V and 3V3
+  unconnected; the board powered as usual (barrel and USB-C) and running its
+  installed firmware; the adapter plugged into the Mac only after that.
+- Exact commands, run once, from the repository root, under `umask 077`:
+  1. `mkdir -m 700 scratch/bap-probe-001`, then assert
+     `scratch/bap-probe-001/attempt` does not exist.
+  2. Detector admission: `just detect-ultra205 > scratch/bap-probe-001/detector.stdout
+     2> scratch/bap-probe-001/detector.stderr`. It must report exactly one port
+     and `usb_profile: serial_jtag_runtime`; it is passive for a running board.
+     `--retain-rom` is prohibited.
+  3. Identify the adapter node as the one new non-`usbmodem` `/dev/cu.*` node.
+  4. `just bap --port <adapter> probe --evidence-dir
+     $PWD/scratch/bap-probe-001/attempt --detector-report
+     $PWD/scratch/bap-probe-001/detector.stdout --ordinal 1 --listen-seconds 10
+     > scratch/bap-probe-001/probe.stdout 2> scratch/bap-probe-001/probe.stderr`.
+- Allowed effects: the passive detector on the board's USB node; opening the
+  adapter node; the BAP frames `REQ systemInfo`, `REQ hashrate`, `SUB hashrate`
+  (1,000 ms interval, listening 10 s) and `UNSUB hashrate`.
+- Prohibited effects: any `SET` or `CMD` frame; any other subscription or
+  request (including `wifi`); flash, monitor, Gate or Web Serial use of the
+  board's USB node; ROM entry, reset or power cycling; any other pin, pad or
+  signal; credentials; network discovery.
+- Safety: 3.3 V logic adapter, three wires, no supply pins; nothing changes a
+  device setting or ASIC state.
+- Recovery and cleanup: the probe always sends `UNSUB`; if it is not
+  acknowledged, the device ends the subscription itself after 300 s
+  (`BAP_SUBSCRIPTION_TIMEOUT_MS`). Unplug the adapter from the Mac after the
+  run. No device state needs restoring.
+- Evidence and privacy: the protected parent is gitignored, mode 0700; the
+  detector report (port path and physical identity digest: protected
+  operational) and the probe's stdout and stderr are mode-0600 siblings, never
+  committed. The probe creates the attempt child, writes one record with
+  categories, telemetry and redacted values only (no paths, pool or Wi-Fi
+  values), and seals it read-only. Only a category summary goes in this task.
+- Closed outcomes: `complete` when `systemInfo` answers with `deviceModel` and
+  `asicModel`, `hashrate` answers, and the subscription is acknowledged, delivers
+  at least one update and is unsubscribed. Any detector refusal, adapter
+  failure or failed step selects `stop_hardware_blocker` with the boundary
+  signature (step, category, whether bytes arrived, whether lines were
+  malformed), keeping the earliest failure. Any next step needing a setting,
+  another pin or firmware change selects `stop_authority_boundary`.
+- Retry bounds: no unchanged retry. A fresh ordinal needs a verified
+  repository fix with a regression, or the one authorized manual remediation:
+  the owner rechecks and reseats the three jumpers against the guide, allowed
+  only after `no_bytes_received` or `no_parseable_frames`; the next ordinal's
+  signature must differ, and a repeat selects `stop_repeated_boundary`.
+- Authorization: the detector is covered by standing USB authorization; BAP
+  traffic in step 4 needs the owner's go-ahead for this ordinal.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
       holds.
 

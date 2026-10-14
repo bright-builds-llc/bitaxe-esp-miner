@@ -119,6 +119,8 @@ pub struct Report {
     pub outcome: Outcome,
     pub frames: Vec<BapFrame>,
     pub malformed_lines: u32,
+    /// Raw bytes the link delivered; zero means nothing arrived at all.
+    pub bytes_received: usize,
 }
 
 /// Runs one operation to its outcome.
@@ -128,6 +130,7 @@ pub fn run(operation: &Operation, link: &mut impl Link, timing: Timing) -> io::R
         lines: Lines::default(),
         frames: Vec::new(),
         malformed_lines: 0,
+        bytes_received: 0,
     };
     let outcome = match operation {
         Operation::Request(_) => {
@@ -165,6 +168,7 @@ pub fn run(operation: &Operation, link: &mut impl Link, timing: Timing) -> io::R
         outcome,
         frames: session.frames,
         malformed_lines: session.malformed_lines,
+        bytes_received: session.bytes_received,
     })
 }
 
@@ -173,6 +177,7 @@ struct Session<'a, L: Link> {
     lines: Lines,
     frames: Vec<BapFrame>,
     malformed_lines: u32,
+    bytes_received: usize,
 }
 
 impl<L: Link> Session<'_, L> {
@@ -187,6 +192,7 @@ impl<L: Link> Session<'_, L> {
     /// The next inbound frames within `wait_ms`, recorded as they arrive.
     fn next(&mut self, wait_ms: u64) -> io::Result<Vec<BapFrame>> {
         let bytes = self.link.receive(wait_ms)?;
+        self.bytes_received = self.bytes_received.saturating_add(bytes.len());
         let mut frames = Vec::new();
         for line in self.lines.push(&bytes) {
             match line.and_then(|line| BapFrame::parse(&line).ok()) {
