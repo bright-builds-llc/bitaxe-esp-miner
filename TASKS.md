@@ -1377,6 +1377,25 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
   protocol never gives. Next: a probe fix whose request steps are checked
   against the firmware's own BAP planner, then ordinal 005 with owner
   go-ahead.
+- Probe fix (commit `f3e6e20a`): the second step now requests `shares`; a
+  regression checks every probe request against the firmware's own BAP
+  planner (`plan_command`). The firmware since also gained the HTTP task stack
+  fix (`0e512edf`), so ordinal 005 installs the current build.
+- Ordinal 005 contract (owner-authorized 2026-10-14): ordinal 004's five steps
+  unchanged except: `just package` at the exact clean `HEAD` that records this
+  contract; parent `scratch/bap-probe-005`; `--ordinal 5`.
+  - Allowed BAP frames: `REQ systemInfo`, `REQ shares`, `SUB hashrate`
+    (1,000 ms interval, listening 10 s), `UNSUB hashrate`. Other effects,
+    prohibitions and safety as in ordinal 004.
+  - Recovery: if the updated board does not boot or BAP stays silent,
+    state-preservingly reflash ordinal 004's package source (`ec480c55`).
+  - Outcomes: `complete` when `systemInfo` answers with `deviceModel` and
+    `asicModel`, `shares` answers, and the subscription is acknowledged,
+    delivers at least one `hashrate` update and is unsubscribed. Any failed
+    step selects `stop_hardware_blocker` with its signature. A repeat of
+    ordinal 004's signature selects `stop_repeated_boundary`. Even `complete`
+    promotes no parity row, because BAP does not identify the installed
+    firmware.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
       holds.
 
