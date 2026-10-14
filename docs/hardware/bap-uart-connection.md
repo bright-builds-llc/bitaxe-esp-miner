@@ -82,9 +82,23 @@ must not:
 
 Use jumper wires for GND, RXD and TXD only. If the adapter must plug in directly,
 its +5V and 3V3 pins must not enter or touch J6: remove them from the header, or
-cover them, rather than relying on a bend. Make every change with the board
-unpowered, and plug the adapter into the Mac only after the board is wired and
-powered.
+cover them, rather than relying on a bend.
+
+### Power-on order
+
+An adapter without USB power is fed by the board through its RXD wire: the
+board's idle-high TX line leaks through the adapter's input protection into its
+supply, enough to light its LED. That loads the ESP32's TX pin and is not a state
+to leave connected. So:
+
+1. Plug the adapter into the Mac first; its LED lights from USB and the Mac lists
+   it (for a CP2102, Silicon Labs `0x10c4:0xea60`, as `/dev/cu.usbserial-*`).
+2. With the board powered as usual, connect the jumpers to the adapter: GND
+   first, then RXD, then TXD.
+3. To finish, disconnect the jumpers before unplugging the adapter from the Mac.
+
+If the adapter's LED goes dark when plugged in and the Mac does not list it, the
+USB port or dongle is not powering it; try another port.
 
 ## macOS host
 

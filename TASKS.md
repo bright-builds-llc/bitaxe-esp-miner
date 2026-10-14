@@ -1227,7 +1227,12 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
 - Owner-attested preconditions: adapter GND, RXD and TXD on J6 pins 2, 3 and 4
   by jumper wires, nothing on J6 pins 1, 5 or 6, the adapter's +5V and 3V3
   unconnected; the board powered as usual (barrel and USB-C) and running its
-  installed firmware; the adapter plugged into the Mac only after that.
+  installed firmware. Amended 2026-10-14 before any attempt: the adapter is
+  plugged into the Mac first and the jumpers connected to it last (GND, RXD,
+  TXD), because an unpowered adapter is back-powered from the board's TX line.
+  The original parent `scratch/bap-probe-001` pre-existed with unknown
+  contents and was renamed, untouched, to `scratch/bap-probe-001-stray` with
+  the owner's approval; the first port tried did not power the adapter.
 - Exact commands, run once, from the repository root, under `umask 077`:
   1. `mkdir -m 700 scratch/bap-probe-001`, then assert
      `scratch/bap-probe-001/attempt` does not exist.
@@ -1273,6 +1278,30 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
   signature must differ, and a repeat selects `stop_repeated_boundary`.
 - Authorization: the detector is covered by standing USB authorization; BAP
   traffic in step 4 needs the owner's go-ahead for this ordinal.
+- Ordinal 001 result (2026-10-14): `stop_impossible_contract`. Owner go-ahead
+  given; the adapter enumerated (CP2102, via a USB-A to USB-C dongle). Step 1
+  created the parent; step 2's detector, run without `--port`, refused
+  `ambiguous_serial_ports` because the adapter is itself a serial port, so the
+  amended order (adapter first) contradicts an unnamed-port detector step.
+  Signature: step `detector`, category `ambiguous_serial_ports`. No attempt
+  child was created and no BAP frame was sent.
+- Ordinal 002 (owner-approved amendment): identical, in a fresh parent
+  `scratch/bap-probe-002`, with step 2 naming the board's port:
+  `just detect-ultra205 --port <the only /dev/cu.usbmodem* node>`, which must
+  still report `usb_profile: serial_jtag_runtime`.
+- Ordinal 002 result (2026-10-14): `stop_hardware_blocker`. Detector admitted
+  one port, `serial_jtag_runtime`, ROM not entered; one adapter node (CP2102).
+  The probe ran once and stopped at its first step. Signature: step
+  `request_system_info`, category `timed_out`, bytes received, a malformed
+  line. The board sent 58 bytes: one partial line and `CMD mode ap_mode`, the
+  firmware's access-point announcement, but no answer to `REQ systemInfo`,
+  which in access-point mode should be `ERR ap_mode_no_requests`. Reading:
+  board-to-adapter (J6 pin 3) works; adapter-to-board (J6 pin 4) is not proven;
+  and the board is not joined to Wi-Fi, so data requests would be refused
+  even over a working link. Record sealed read-only under
+  `scratch/bap-probe-002/attempt`; no setting was sent. The contract's manual
+  remediation does not cover `timed_out`, so a next ordinal needs an amended
+  contract.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
       holds.
 
