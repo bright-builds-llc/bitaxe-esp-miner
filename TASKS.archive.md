@@ -28874,3 +28874,42 @@ Residual risks:
 - The lessons ledger is still over budget unless more rules move into
   AGENTS.md (owner decision).
 - Launch-hold timeouts on this host keep `just test` from running clean.
+
+### task-http-server-stack-audit | 2026-10-14 | Audit the HTTP server task stack
+
+Objective: the BAP owner overflowed its 16 KiB stack building the operator
+snapshot (fixed in `1d58f788`); the HTTP server task builds the same snapshot on
+`HTTP_SERVER_TASK_STACK_BYTES` (16 KiB) with no stack audit. Measure the
+deepest resolved path of every registered handler plus the ESP-IDF dispatch
+frames above it, add an audit in the style of `bap-stack-audit`, and fix any
+path over budget.
+
+- [x] Audit module, CLI, tests and `just audit-http-stack`; measure the built
+  ELF.
+- [x] Fix any handler over budget; re-measure; affected and full checks;
+  commit and push.
+
+Authorization: repository source, tests, documentation, build, commit and push
+only. No hardware.
+
+Verification: the first measurement was `blocked`: the deepest resolved path,
+432 dispatch bytes plus 256 for thread entry, reached 15,360 bytes against a
+14,336-byte budget (16 KiB minus a 2,048-byte margin).
+That path was `/api/system/asic`. `collect_api_snapshot` returned the whole
+`ApiSnapshot` onto the handler's frame (8,576 bytes) before projecting it.
+The fix is `publish_projected_asic_settings`. It projects `SystemAsicWire`
+while the snapshot is still borrowed inside the publication, as the BAP fix
+does, and replaces and removes `collect_api_snapshot`. A rebuild then gave
+`selected_path_with_headroom`: deepest 12,880, headroom 1,456, across all 20
+handlers. The deepest path is now `/api/system/info` through
+`publish_projected_system_info`. The BAP audit is unchanged (headroom 1,184).
+Also run: `http_stack_audit_test`, ordered Cargo checks, firmware
+`cargo fmt --check` and `just build`, `just test`, and the Bright Builds checks.
+
+Completion review: the HTTP server task now has a stack audit, and all its
+handlers fit the 16 KiB budget with the same margin as the BAP owner.
+Residual risks:
+- Like the BAP audit, this is a lower bound. 226 indirect targets are
+  unresolved, and panic/abort logging edges are excluded.
+- `/api/system/asic` has not been requested on hardware since the fix.
+- There is no CI gate yet: the audit runs on demand against a built ELF.

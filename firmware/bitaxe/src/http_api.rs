@@ -7,18 +7,18 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use bitaxe_api::{
-    asic_settings_from_snapshot, block_found_dismiss_plan, decide_v12_settings_body,
-    execute_settings_persistence_plan, identify_plan, log_download_headers, normalize_peer_ipv4,
-    origin_gate_from_header, pause_mining_plan, phase07_route_report, plan_http_access,
-    plan_settings_patch_body, plan_settings_patch_body_size, plan_theme_post, plan_update_request,
-    plan_websocket_upgrade, restart_plan, resume_mining_plan, theme_settings_from_snapshot,
-    unknown_api_route_response, unsupported_update_response, CommandEffect, CommandPlan,
-    HttpAccessDecision, IdentifyModeEffect, OperatorSnapshotPublishError, OriginGate,
-    PeerIpv4Normalization, PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision,
-    SettingsPatchFailureReason, SettingsPatchPublicError, SettingsPersistenceEffect,
-    SettingsPersistenceFailure, SettingsPersistencePlan, SettingsPublicResponse, ThemePostResponse,
-    UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind, V12SettingsChange,
-    V12SettingsDecision, V12SettingsExclusionReason, WebSocketRouteKind, WebSocketUpgradeDecision,
+    block_found_dismiss_plan, decide_v12_settings_body, execute_settings_persistence_plan,
+    identify_plan, log_download_headers, normalize_peer_ipv4, origin_gate_from_header,
+    pause_mining_plan, phase07_route_report, plan_http_access, plan_settings_patch_body,
+    plan_settings_patch_body_size, plan_theme_post, plan_update_request, plan_websocket_upgrade,
+    restart_plan, resume_mining_plan, theme_settings_from_snapshot, unknown_api_route_response,
+    unsupported_update_response, CommandEffect, CommandPlan, HttpAccessDecision,
+    IdentifyModeEffect, OperatorSnapshotPublishError, OriginGate, PeerIpv4Normalization,
+    PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
+    SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistenceFailure,
+    SettingsPersistencePlan, SettingsPublicResponse, ThemePostResponse, UpdateRequestDecision,
+    UpdateRequestInput, UpdateRouteKind, V12SettingsChange, V12SettingsDecision,
+    V12SettingsExclusionReason, WebSocketRouteKind, WebSocketUpgradeDecision,
     LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
@@ -32,8 +32,8 @@ use crate::filesystem::FilesystemStatus;
 use crate::ota_update::{FirmwareOtaApplyResult, FirmwareOtaStatus};
 use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command,
-    apply_mining_operator_intent_command, block_found_notification_state, collect_api_snapshot,
-    command_status_wire, identify_mode, projected_scoreboard, projected_statistics,
+    apply_mining_operator_intent_command, block_found_notification_state, command_status_wire,
+    identify_mode, projected_scoreboard, projected_statistics, publish_projected_asic_settings,
     publish_projected_live_telemetry_payload, publish_projected_live_telemetry_payload_profiled,
     publish_projected_system_info, record_restart_command,
 };

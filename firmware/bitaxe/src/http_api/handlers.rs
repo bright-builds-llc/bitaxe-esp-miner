@@ -66,8 +66,8 @@ pub(super) fn handle_asic_settings<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        let snapshot = collect_api_snapshot();
-        send_json(request, &asic_settings_from_snapshot(&snapshot))
+        publish_projected_asic_settings(|asic_settings| send_json(request, &asic_settings))
+            .map_err(|error| anyhow::anyhow!("operator snapshot publication failed: {error}"))
     })
 }
 

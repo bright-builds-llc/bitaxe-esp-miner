@@ -25,15 +25,15 @@ use crate::log_buffer::RetainedPairStorageError;
 use crate::operator_snapshot_publication::OperatorSnapshotPublisher;
 use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect,
-    apply_mining_operator_intent_effect, project_api_views, project_system_info,
-    scoreboard_response, statistics_response, ApiSnapshot, BlockFoundDismissEffect,
-    BlockFoundNotificationState, CommandStatusEffect, CommandStatusFacts, CommandStatusTracker,
-    CommandStatusTransition, CommandStatusWire, DisplayFrameKind, DisplayRenderOutcome,
-    IdentifyMode, IdentifyModeEffect, IdentifyModeState, MiningOperatorIntentEffect,
-    OperatorSnapshotIdentity, OperatorSnapshotLockHealth, OperatorSnapshotPublishError,
-    PlatformFact, PlatformIdentity, PlatformSnapshot, ProjectedApiViews, SafeTelemetrySnapshot,
-    ScoreboardEntryWire, StatisticsHistory, StatisticsSample, StatisticsWire,
-    SystemInfoSettingsSnapshot, SystemInfoWire,
+    apply_mining_operator_intent_effect, asic_settings_from_snapshot, project_api_views,
+    project_system_info, scoreboard_response, statistics_response, ApiSnapshot,
+    BlockFoundDismissEffect, BlockFoundNotificationState, CommandStatusEffect, CommandStatusFacts,
+    CommandStatusTracker, CommandStatusTransition, CommandStatusWire, DisplayFrameKind,
+    DisplayRenderOutcome, IdentifyMode, IdentifyModeEffect, IdentifyModeState,
+    MiningOperatorIntentEffect, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
+    OperatorSnapshotPublishError, PlatformFact, PlatformIdentity, PlatformSnapshot,
+    ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsHistory,
+    StatisticsSample, StatisticsWire, SystemAsicWire, SystemInfoSettingsSnapshot, SystemInfoWire,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
@@ -104,17 +104,17 @@ impl Default for CommandVisibleState {
     }
 }
 
-/// Collects current firmware facts and overlays them on the safe Ultra 205 API
-/// snapshot used by the pure contract mappers.
-pub fn collect_api_snapshot() -> ApiSnapshot {
-    match publish_operator_snapshot(
+/// Projects `/api/system/asic` while the snapshot is borrowed inside its publication,
+/// so a request handler never holds the whole `ApiSnapshot` on its 16 KiB task stack
+/// (`just audit-http-stack`).
+pub fn publish_projected_asic_settings<T, E>(
+    issue: impl FnOnce(SystemAsicWire) -> Result<T, E>,
+) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
+    publish_operator_snapshot(
         false,
-        |snapshot, _projection, _maybe_sample_marker| snapshot,
-        Ok::<ApiSnapshot, core::convert::Infallible>,
-    ) {
-        Ok(snapshot) => snapshot,
-        Err(error) => panic!("operator snapshot publication failed: {error:?}"),
-    }
+        |snapshot, _projection, _maybe_sample_marker| asic_settings_from_snapshot(&snapshot),
+        issue,
+    )
 }
 
 /// Collects only the platform facts needed to attest boot readiness.
