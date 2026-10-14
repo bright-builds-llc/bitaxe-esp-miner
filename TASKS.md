@@ -1302,6 +1302,32 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
   `scratch/bap-probe-002/attempt`; no setting was sent. The contract's manual
   remediation does not cover `timed_out`, so a next ordinal needs an amended
   contract.
+- Amendment for ordinal 003 (owner-approved 2026-10-14):
+  - Manual remediation now also covers `request_system_info` / `timed_out`
+    with bytes received: the owner reseats the adapter TXD jumper in J6 pin 4.
+    Applied: TXD reseated; the owner also found the jumper pins touching the
+    back of the display module and repositioned the display so nothing
+    touches, a possible short on the adapter-to-board line removed.
+  - A `device_rejected` step with `ap_mode_no_requests` proves the two-way
+    link (the board parsed the host's frame and answered) and is recorded as
+    such; the data steps then need the board joined to Wi-Fi, which is outside
+    this contract, so the outcome stays `stop_hardware_blocker`.
+  - Otherwise identical to ordinal 002, in a fresh parent
+    `scratch/bap-probe-003`, `--ordinal 3`. A signature equal to ordinal 002's
+    selects `stop_repeated_boundary`.
+- Ordinal 003 result (2026-10-14): `stop_repeated_boundary`. Admitted as
+  before; the probe's signature equals ordinal 002's exactly (58 bytes, one
+  malformed line, `CMD mode ap_mode`, no answer). Diagnosis: the malformed line
+  is 32 bytes, the exact length of the firmware's BAP startup banner
+  (`BAP UART Interface Initialized\r\n`, written once when the BAP owner
+  starts at boot), and the access-point announcement is sent immediately at
+  start and then every 5 s. Both arrived after the adapter was opened and the
+  request sent, in both runs, so the board most likely restarts shortly after
+  receiving a BAP request. Suspect: the `bap-owner` thread (16 KiB stack) builds
+  the full system-info snapshot for every request (`bap_request_snapshot`), even
+  in access-point mode. Not yet confirmed on the device. No further BAP traffic
+  until a diagnosed fix with a regression lands and a new contract ordinal is
+  approved.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
       holds.
 
