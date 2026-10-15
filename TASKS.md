@@ -1396,6 +1396,21 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
     ordinal 004's signature selects `stop_repeated_boundary`. Even `complete`
     promotes no parity row, because BAP does not identify the installed
     firmware.
+- Ordinal 005 result (2026-10-14): `complete`. Package bound to clean
+  `645b6953`; the detector admitted the board; the state-preserving update
+  completed and the board returned to its running profile; after 120 s the
+  detector re-admitted it. Three steps passed with no malformed lines:
+  - `REQ systemInfo` answered `deviceModel 205`, `asicModel BM1366` and the
+    redacted pool fields.
+  - `REQ shares` answered `0/0`.
+  - `SUB hashrate` was acknowledged, delivered `0.00` once, and
+    `UNSUB hashrate` was acknowledged.
+  One update in 10 s is expected: the firmware, like the reference
+  (`BAP_send_if_changed`), publishes only changed values. The zero shares and
+  hashrate show the board was not hashing during the run; that is outside
+  this read-only contract. The record is sealed under
+  `scratch/bap-probe-005/attempt`. No setting was sent and no parity row is
+  promoted, because BAP does not identify the installed firmware.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
       holds.
 
