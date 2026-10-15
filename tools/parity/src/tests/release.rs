@@ -260,6 +260,43 @@ fn str005_verifies_on_ultra205_only_through_its_stratum_v2_integration_review() 
 }
 
 #[test]
+fn bap_verifies_on_ultra205_only_through_its_identity_bound_probe() {
+    // Arrange
+    let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| BAP-002 | BAP protocol behavior | `reference/esp-miner/main/bap/bap_protocol.c` | `crates/bitaxe-core/src/bap.rs` | verified | unit,golden,hardware-smoke | A live Ultra 205 probe bound to one boot of exact package `ecc7f122`; see docs/parity/evidence/20261014-bap-uart-live-probe.md. |
+"#;
+    let rows = parse_checklist(checklist).expect("checklist should parse");
+
+    // Act
+    let errors = validate_rows(&rows);
+
+    // Assert
+    assert!(
+        errors.iter().all(|error| error.id != "BAP-002"),
+        "{errors:?}"
+    );
+}
+
+#[test]
+fn bap_cannot_verify_on_the_probe_summary_without_its_identity_binding() {
+    // Arrange
+    let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| BAP-002 | BAP protocol behavior | `reference/esp-miner/main/bap/bap_protocol.c` | `crates/bitaxe-core/src/bap.rs` | verified | hardware-smoke | Ultra 205 boot evidence reused; see 20261014-bap-uart-live-probe.md. |
+"#;
+    let rows = parse_checklist(checklist).expect("checklist should parse");
+
+    // Act
+    let errors = validate_rows(&rows);
+
+    // Assert
+    assert_validation_error_contains(&errors, "BAP-002", "Ultra 205 evidence");
+}
+
+#[test]
 fn str005_cannot_verify_on_reused_stratum_v1_evidence_even_beside_the_review() {
     // Arrange
     let checklist = r#"

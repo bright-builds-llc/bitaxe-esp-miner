@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261015T024309Z-BAP-002",
+  "predecessor_sha256": "2b409afc0b4970b110193d997401186c057ef7df8fac0af7b2e4bb18e48b4f56",
+  "result_sha256": "ecf4cffc8a8a24e022e8a25314954c6d629dbeffe341a61ba6c4fffa7913266a",
+  "row_id": "BAP-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261015T024309Z-BAP-002/PLAN.md",
+  "plan_sha256": "9a86461713eb0b6027c3cba20f24ba5ea25bd4a3dad7d491bc34aba627fa9820",
+  "result_path": "docs/parity/work-plans/20261015T024309Z-BAP-002/RESULT.md",
+  "result_document_sha256": "9867ce30d7239dcd17b735d0d088a300ab23f1ad89637c44e5e19fd0bbe507bc",
+  "before_rust_owned_target": "`crates/bitaxe-core/src/bap.rs`, `crates/bitaxe-core/src/bap/wire.rs`, `crates/bitaxe-core/src/bap/semantics.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/bap.rs`, `crates/bitaxe-core/src/bap/wire.rs`, `crates/bitaxe-core/src/bap/semantics.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden,hardware-smoke",
+  "after_evidence": "unit,golden,hardware-smoke",
+  "before_notes": "Bounded framing, sentence-body XOR checksum, canonical `$BAP,...*XX` CRLF encoding, SUB/UNSUB checksum compatibility, one-second duplicate suppression, request projection, subscription decisions, setting validation, and closed errors match the pinned reference in unit and synthetic golden tests (golden checksums recomputed from `BAP_calculate_checksum`); see docs/parity/work-plans/20260804T180000Z-BAP-002/RESULT.md. A live Ultra 205 probe bound to one boot of exact package `ecc7f122` round-tripped core frames through the firmware UART: host `REQ`/`SUB`/`UNSUB` admitted, every `RES`/`ACK` checksum-verified with zero malformed lines, `systemInfo` tokens in reference order, `shares` as accepted/rejected, `subscribed`/`unsubscribed` acknowledgements, and change-only `hashrate` updates; see docs/parity/work-plans/20261015T023347Z-BAP-002/RESULT.md and docs/parity/evidence/20261014-bap-uart-live-probe.md. The live host reuses `bitaxe_core::bap`, so this is a firmware-UART round trip, not interoperability with an independent accessory codec; value sources (including `deviceModel`) belong to BAP-001. Promotion is held: the reviewed evidence supports `verified`, but BAP rows remain deferred non-205 scope in the parity validator until the owner decides. Non-claims: an independent accessory implementation, live duplicate suppression, live error and AP-mode paths, setting validation on hardware and setting effects, Wi-Fi password subscription, the 300-second timeout, other boards.",
+  "after_notes": "Bounded framing, sentence-body XOR checksum, canonical `$BAP,...*XX` CRLF encoding, SUB/UNSUB checksum compatibility, one-second duplicate suppression, request projection, subscription decisions, setting validation, and closed errors match the pinned reference in unit and synthetic golden tests (golden checksums recomputed from `BAP_calculate_checksum`); see docs/parity/work-plans/20260804T180000Z-BAP-002/RESULT.md. A live Ultra 205 probe on the J6 accessory port, bound to one boot of exact package `ecc7f122`, round-tripped core frames through the firmware UART: host `REQ`/`SUB`/`UNSUB` admitted, every `RES`/`ACK` checksum-verified with zero malformed lines, `systemInfo` tokens in reference order, `shares` as accepted/rejected, `subscribed`/`unsubscribed` acknowledgements, and change-only `hashrate` updates; see docs/parity/work-plans/20261015T024309Z-BAP-002/RESULT.md and docs/parity/evidence/20261014-bap-uart-live-probe.md. The live host reuses `bitaxe_core::bap`, so this is a firmware-UART round trip, not interoperability with an independent accessory codec; value sources (including `deviceModel`) belong to BAP-001. Non-claims: an independent accessory implementation, live duplicate suppression, live error and AP-mode paths, setting validation on hardware and setting effects, Wi-Fi password subscription, the 300-second timeout, other boards."
+}

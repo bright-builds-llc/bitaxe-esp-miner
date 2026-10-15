@@ -4,11 +4,10 @@ Read-only BAP probe ordinal 006 under `task-parity-bap-live-accessory-verificati
 completed, and the run was bound to one boot of the exact installed package. An
 independent review agrees.
 
-The review supports promoting BAP-002 to `verified`. The parity validator,
-however, still treats every `BAP-*` row as deferred non-205 scope, so BAP-002
-records this evidence and stays `implemented` until the owner decides whether
-to lift that guard. BAP-001 stays `implemented` regardless, because the live
-`deviceModel` answer differs from the reference.
+BAP-002 is promoted to `verified`. The owner decided on 2026-10-14 to relax
+the parity validator's deferred-scope guard: a `BAP-*` row may cite Ultra 205
+evidence, but only this identity-bound probe. BAP-001 stays `implemented`,
+because the live `deviceModel` answer differs from the reference.
 
 | Item            | Value                                                                                                                      |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------- |

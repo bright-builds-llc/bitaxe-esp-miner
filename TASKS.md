@@ -1528,9 +1528,17 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
   - That guard predates the in-scope J6 port. Lifting it is an owner scope
     decision, which is pending.
   - Summary: `docs/parity/evidence/20261014-bap-uart-live-probe.md`.
+- Owner decision (2026-10-14): relax the guard and promote BAP-002.
+  - `validate_bap_ultra205_evidence` (`tools/parity/src/report/validation/phase26.rs`)
+    lets a `BAP-*` row cite Ultra 205 evidence only through the
+    identity-bound probe summary, with its one-boot binding stated. Reused
+    general Ultra 205 evidence is still rejected. Every other deferred-scope
+    rule is unchanged.
+  - Two regressions in `tools/parity/src/tests/release.rs` cover both cases.
+  - BAP-002 is `verified` (transition `20261015T024309Z-BAP-002`; parity is
+    93 of 96).
 - [ ] Run it, review independently and promote the BAP rows if the evidence
-      holds. Run and reviewed. BAP-002's promotion waits on the owner's
-      decision about the validator guard; BAP-001's waits on
+      holds. Run and reviewed. BAP-002 is promoted; BAP-001 waits on
       `task-parity-bap-value-sources`.
 
 Authorization: repository source, tests, documentation, build, commit and push

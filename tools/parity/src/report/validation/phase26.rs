@@ -4,6 +4,9 @@ pub(crate) fn validate_deferred_scope_verified_row(row: &ChecklistRow) -> Vec<Va
     if normalize(&row.id) == "str-005" {
         return validate_str005_ultra205_evidence(row);
     }
+    if normalize(&row.id).starts_with("bap-") {
+        return validate_bap_ultra205_evidence(row);
+    }
     if !is_deferred_or_non_205_scope(row) || !uses_ultra_205_evidence(row) {
         return Vec::new();
     }
@@ -130,5 +133,22 @@ fn validate_str005_ultra205_evidence(row: &ChecklistRow) -> Vec<ValidationError>
     vec![ValidationError {
         id: row.id.clone(),
         message: "STR-005 may cite Ultra 205 evidence only through its Stratum V2 integration review, not reused Stratum v1 evidence".to_owned(),
+    }]
+}
+
+/// Owner decision, 2026-10-14: the Ultra 205's J6 accessory port puts BAP in scope, so a BAP
+/// row may cite Ultra 205 evidence, but only the identity-bound live probe, which ties every
+/// frame to one boot of an exact package. Reused general Ultra 205 evidence stays rejected.
+fn validate_bap_ultra205_evidence(row: &ChecklistRow) -> Vec<ValidationError> {
+    let haystack = row_haystack(row);
+    if !uses_ultra_205_evidence(row)
+        || (haystack.contains("bap-uart-live-probe.md")
+            && haystack.contains("bound to one boot of exact package"))
+    {
+        return Vec::new();
+    }
+    vec![ValidationError {
+        id: row.id.clone(),
+        message: "BAP rows may cite Ultra 205 evidence only through the identity-bound BAP live probe, bound to one boot of an exact package".to_owned(),
     }]
 }
