@@ -1171,21 +1171,6 @@ named-phase allocation profile item stays open. Qualification stays false.
 
 ## Future
 
-### task-stratum-unanswered-submission | 2026-10-15 | Explain the share that was never answered in soak 003
-
-Origin: the soak 003 review. Share 6 was submitted about 60 s into work and got
-no accept or reject before the run ended: 28 submitted, 27 accepted, 0
-rejected. Soak 002 had every submission answered.
-
-- [ ] From the private journals, find how submissions are matched to pool
-      responses. Determine whether the pool never answered, or the response
-      was lost or misattributed (response id matching, reconnect, buffer).
-- [ ] If firmware lost or misattributed it, fix it with a regression. If the
-      pool dropped it, record the upstream-equivalent handling (upstream
-      counts neither accept nor reject).
-
-Verification: pending. Completion review: pending.
-
 ### task-soak-judge-mineonboot-field | 2026-10-15 | Make the soak judge's mineonboot check able to fail
 
 Origin: the soak 003 review. `scripts/fixed-usb-soak/judge.mjs:41` checks

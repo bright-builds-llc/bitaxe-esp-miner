@@ -29813,3 +29813,64 @@ non-claim about the all-time best is now satisfied by this evidence.
 
 Remaining non-claims: Stratum V2 nonces; the upstream `session/all-time`
 screen layout; JSON integer formatting.
+
+### task-stratum-unanswered-submission | 2026-10-15 | Explain the share that was never answered in soak 003
+
+Origin: the soak 003 review. Share 6 was submitted about 60 s into work and got
+no accept or reject before the run ended: 28 submitted, 27 accepted, 0
+rejected. Soak 002 had every submission answered.
+
+- [x] From the private journals, find how submissions are matched to pool
+      responses. Determine whether the pool never answered, or the response
+      was lost or misattributed (response id matching, reconnect, buffer).
+- [x] If firmware lost or misattributed it, fix it with a regression. If the
+      pool dropped it, record the upstream-equivalent handling (upstream
+      counts neither accept nor reject).
+
+Diagnosis (2026-10-15): the firmware dropped a real answer.
+- Share 6 was written at about 60.2 s into work. In the same sample window the
+  device's `stale_completion` count went from 0 to 1. Only a session-generation
+  advance can do that, and a reconnect is ruled out, so a `clean_jobs` notify
+  arrived.
+- The session cleared every pending submit on that generation advance
+  (`clear_pending_submits`) and also ignored any response whose submit belonged
+  to an older generation. The pool's answer, read after the notify, therefore
+  matched nothing and was dropped without a count or a log.
+- Accepted stayed exactly one behind for the remaining 547 s. Soak 002 lost
+  nothing only because no `clean_jobs` arrived while a submit was in flight.
+- Upstream (`stratum_api.c` `stamp_tx`, `stratum_v1_task.c`) keeps its 1,024-id
+  response table across `SYSTEM_clean_jobs_queue`, so it would have counted the
+  answer as accepted or as rejected with its reason.
+- The earlier rule ("stale generation ... cannot become accepted shares",
+  `docs/parity/evidence/str09-submit-response-classification/summary.md`) is
+  superseded here. That summary stays as history.
+
+Fix (`crates/bitaxe-stratum/src/v1/production_session/`):
+- Pending submits survive a clean-jobs generation.
+- Responses are matched by request id on the same connection, without a
+  generation gate. A reconnect still replaces the runtime, so an old
+  connection's answers stay uncounted.
+- The table is bounded at upstream's 1,024 ids, evicting the oldest.
+
+Regressions (`tests/share_counters.rs`):
+- an accept after a `clean_jobs` notify, in its own read and in the same read;
+- an accept before the notify in the same read;
+- a reject after the notify.
+
+The three notify-first cases fail on the old code. The existing reconnect test
+still proves old-connection answers are ignored.
+
+Verification: `bitaxe-stratum` 351/351, plus the full gate (below).
+
+Completion review: share accounting now matches upstream across new blocks.
+
+Residual risks:
+- No live run reproduces the exact overlap, because a `clean_jobs` notify
+  cannot be scheduled. The next soak with an overlap will show it
+  opportunistically.
+- Unknown-id and evicted responses are still dropped without a counter. A
+  redacted dropped-response counter would let soaks tell the cases apart, and
+  belongs with `task-telemetry-descriptive-extensions` or a soak-diagnostics
+  task.
+- STR-09's row text is unchanged: stale response paths on hardware were
+  already a non-claim.

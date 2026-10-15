@@ -145,7 +145,9 @@ impl ProductionMiningSession {
                 );
             }
             self.rebase_runtime_generation(pool);
-            self.clear_pending_submits(pool);
+            // Pending submits survive a clean-jobs generation: upstream keeps its
+            // response table across `SYSTEM_clean_jobs_queue` and still counts the
+            // pool's answer to a share submitted for the superseded job.
         }
         match maybe_event {
             Some(LiveRuntimeEvent::WorkQueued {
@@ -209,12 +211,8 @@ impl ProductionMiningSession {
                 let Some(pending) = maybe_pending else {
                     return Ok(());
                 };
-                let current_generation = self
-                    .maybe_v1_pool_runtime(pool)
-                    .map(|runtime| runtime.runtime.production_registry().generation());
-                if current_generation != Some(pending.intent.generation) {
-                    return Ok(());
-                }
+                // Matched by request id on this connection only: a reconnect replaces
+                // the runtime, so an old connection's answers never reach here.
                 let classification = classify_submit_response(
                     &pending.intent,
                     request_id,
@@ -499,6 +497,7 @@ impl ProductionMiningSession {
                     message,
                 } => {
                     if let Some(runtime) = self.maybe_v1_pool_runtime_mut(pool) {
+                        runtime.retain_submit_capacity();
                         runtime
                             .requests
                             .insert(request_id, PendingRequestKind::Submit);

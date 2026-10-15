@@ -117,20 +117,6 @@ impl ProductionMiningSession {
             })
     }
 
-    pub(in crate::v1::production_session) fn clear_pending_submits(
-        &mut self,
-        pool: ProductionPool,
-    ) {
-        let Some(runtime) = self.maybe_pool_runtime_mut(pool) else {
-            return;
-        };
-        if let Some(v1) = runtime.protocol.maybe_v1_mut() {
-            v1.submits.clear();
-            v1.requests
-                .retain(|_, kind| *kind != PendingRequestKind::Submit);
-        }
-    }
-
     pub(in crate::v1::production_session) fn maybe_v1_pool_runtime(
         &self,
         pool: ProductionPool,

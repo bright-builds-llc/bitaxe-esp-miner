@@ -13,6 +13,23 @@ pub(in crate::v1::production_session) struct V1Runtime {
     pub requests: HashMap<StratumRequestId, PendingRequestKind>,
     pub submits: HashMap<StratumRequestId, PendingSubmit>,
 }
+/// Upstream's response table holds 1,024 submit ids (`STRATUM_ID_TRACKING`).
+pub(in crate::v1::production_session) const MAX_PENDING_SUBMITS: usize = 1_024;
+
+impl V1Runtime {
+    /// Makes room for one more pending submit by forgetting the oldest. Pending
+    /// submits now outlive clean-jobs notifications, so the table needs a bound.
+    pub fn retain_submit_capacity(&mut self) {
+        while self.submits.len() >= MAX_PENDING_SUBMITS {
+            let Some(oldest) = self.submits.keys().copied().min_by_key(|id| id.raw()) else {
+                return;
+            };
+            self.submits.remove(&oldest);
+            self.requests.remove(&oldest);
+        }
+    }
+}
+
 pub(in crate::v1::production_session) struct V2Runtime {
     pub session: StandardSession,
     pub generation: PoolSessionGeneration,

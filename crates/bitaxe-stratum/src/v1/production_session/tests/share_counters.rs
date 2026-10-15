@@ -91,3 +91,72 @@ fn lifetime_rejected_count_changes_only_for_a_matched_submit_response() {
     assert_eq!(counters.accepted, 0);
     assert_eq!(counters.qualified_candidates, 1);
 }
+
+/// A clean-jobs notify for a new block: it supersedes the submitted share's job.
+const CLEAN_JOBS_NOTIFY: &str = concat!(
+    "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"next-job\",",
+    "\"1111111111111111111111111111111111111111111111111111111111111111\",",
+    "\"ffffffff\",\"ffffffff\",[],\"20000004\",\"1705ae3a\",\"647025b5\",true]}\n"
+);
+const ACCEPTED_4: &str = "{\"id\":4,\"result\":true,\"error\":null}\n";
+
+/// Submits share id 4, then feeds `reads` and returns (generation advanced,
+/// lifetime counters).
+fn answer_after_clean_jobs(reads: &[String]) -> (bool, ProductionShareCounters) {
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    establish_active(&mut adapter);
+    adapter.drive(ProductionSessionEvent::AsicResult {
+        observation: dispatched_observation(&adapter),
+        now_ms: 4,
+    });
+    let before = adapter.session.current_generation(ProductionPool::Primary);
+    for (offset, read) in reads.iter().enumerate() {
+        adapter.bytes(ProductionPool::Primary, read.as_bytes(), 5 + offset as u64);
+    }
+    let after = adapter.session.current_generation(ProductionPool::Primary);
+    (
+        before != after,
+        adapter.session.snapshot().lifetime_share_counters,
+    )
+}
+
+#[test]
+fn an_answer_after_a_clean_jobs_notify_in_its_own_read_is_counted() {
+    // Arrange / Act: soak 003 share 6, a new block between submit and answer.
+    let (advanced, counters) =
+        answer_after_clean_jobs(&[CLEAN_JOBS_NOTIFY.to_owned(), ACCEPTED_4.to_owned()]);
+    // Assert
+    assert!(advanced);
+    assert_eq!((counters.accepted, counters.rejected), (1, 0));
+}
+
+#[test]
+fn an_answer_after_a_clean_jobs_notify_in_the_same_read_is_counted() {
+    // Arrange / Act
+    let (advanced, counters) =
+        answer_after_clean_jobs(&[format!("{CLEAN_JOBS_NOTIFY}{ACCEPTED_4}")]);
+    // Assert
+    assert!(advanced);
+    assert_eq!((counters.accepted, counters.rejected), (1, 0));
+}
+
+#[test]
+fn an_answer_before_a_clean_jobs_notify_in_the_same_read_is_counted() {
+    // Arrange / Act
+    let (advanced, counters) =
+        answer_after_clean_jobs(&[format!("{ACCEPTED_4}{CLEAN_JOBS_NOTIFY}")]);
+    // Assert
+    assert!(advanced);
+    assert_eq!((counters.accepted, counters.rejected), (1, 0));
+}
+
+#[test]
+fn a_rejection_after_a_clean_jobs_notify_is_counted_as_rejected() {
+    // Arrange / Act: upstream counts a stale-share rejection with its reason.
+    let rejected = "{\"id\":4,\"result\":false,\"error\":[21,\"Job not found\",null]}\n";
+    let (advanced, counters) =
+        answer_after_clean_jobs(&[CLEAN_JOBS_NOTIFY.to_owned(), rejected.to_owned()]);
+    // Assert
+    assert!(advanced);
+    assert_eq!((counters.accepted, counters.rejected), (0, 1));
+}
