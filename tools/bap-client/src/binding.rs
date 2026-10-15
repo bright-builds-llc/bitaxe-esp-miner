@@ -50,6 +50,9 @@ pub struct BindingInputs<'a> {
     pub runtime_before: &'a RuntimeObservation,
     pub runtime_after: &'a RuntimeObservation,
     pub host_elapsed_ms: u64,
+    /// The sealed probe record was written after the first observer report and
+    /// before the second (file modification times).
+    pub probe_between_observations: bool,
 }
 
 /// The value of the only `label: value` line, or `None` when absent or repeated.
@@ -168,6 +171,17 @@ pub fn first_failure(inputs: &BindingInputs<'_>) -> Option<&'static str> {
             }),
             "uptime_not_continuous",
         ),
+        // A cold start resets the ordinal to 1 and its reason to power-on, so a power
+        // cycle just before the first read could otherwise pass: the boot must
+        // predate the first read by more than the tolerance.
+        (
+            after.uptime_ms > inputs.host_elapsed_ms.saturating_add(UPTIME_TOLERANCE_MS),
+            "boot_not_before_observation",
+        ),
+        (
+            inputs.probe_between_observations,
+            "probe_outside_observations",
+        ),
     ];
     checks
         .into_iter()
@@ -197,6 +211,7 @@ pub fn record(inputs: &BindingInputs<'_>) -> Value {
         "reset_reason": [before.reset_reason, after.reset_reason],
         "uptime_advance_ms": after.uptime_ms.checked_sub(before.uptime_ms),
         "host_elapsed_ms": inputs.host_elapsed_ms,
+        "probe_between_observations": inputs.probe_between_observations,
         "uptime_tolerance_ms": UPTIME_TOLERANCE_MS,
         "outcome": if maybe_failure.is_none() { "bound" } else { "unbound" },
         "failure": maybe_failure,

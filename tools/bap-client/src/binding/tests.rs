@@ -44,6 +44,17 @@ fn judge(
     after: &RuntimeObservation,
     host_elapsed_ms: u64,
 ) -> Option<&'static str> {
+    judge_with(probe, after_digest, before, after, host_elapsed_ms, true)
+}
+
+fn judge_with(
+    probe: &Value,
+    after_digest: &str,
+    before: &RuntimeObservation,
+    after: &RuntimeObservation,
+    host_elapsed_ms: u64,
+    probe_between_observations: bool,
+) -> Option<&'static str> {
     let package = package();
     let detector_before = detector("aa");
     let detector_after = detector(after_digest);
@@ -55,6 +66,7 @@ fn judge(
         runtime_before: before,
         runtime_after: after,
         host_elapsed_ms,
+        probe_between_observations,
     })
 }
 
@@ -191,9 +203,31 @@ fn the_record_carries_no_physical_identity() {
         runtime_before: &before,
         runtime_after: &after,
         host_elapsed_ms: 60_000,
+        probe_between_observations: true,
     };
     // Act
     let text = record(&inputs).to_string();
     // Assert
     assert!(text.contains("\"outcome\":\"bound\"") && !text.contains(&digest));
+}
+
+#[test]
+fn a_boot_that_began_just_before_the_first_read_is_refused() {
+    // Arrange: a power cycle 10 s before the first read restarts ordinal 1 and the
+    // uptime, which then advances exactly with host time.
+    let (before, after) = (runtime(1, 10_000), runtime(1, 70_000));
+    // Act
+    let maybe_failure = judge(&probe("complete"), "aa", &before, &after, 60_000);
+    // Assert
+    assert_eq!(maybe_failure, Some("boot_not_before_observation"));
+}
+
+#[test]
+fn a_probe_written_outside_the_observations_is_refused() {
+    // Arrange
+    let (before, after) = (runtime(3, 180_000), runtime(3, 240_000));
+    // Act
+    let maybe_failure = judge_with(&probe("complete"), "aa", &before, &after, 60_000, false);
+    // Assert
+    assert_eq!(maybe_failure, Some("probe_outside_observations"));
 }

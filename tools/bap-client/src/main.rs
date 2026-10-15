@@ -349,10 +349,15 @@ fn run_bind(paths: &BindPaths) -> Result<bool> {
         parse_runtime(&report(&paths.runtime_after).context("runtime_after_refused")?)
             .map_err(refused)?;
     let modified = |path: &Path| -> Result<SystemTime> { Ok(std::fs::metadata(path)?.modified()?) };
-    let host_elapsed_ms = modified(&paths.runtime_after)?
-        .duration_since(modified(&paths.runtime_before)?)
+    let (before_at, after_at) = (
+        modified(&paths.runtime_before)?,
+        modified(&paths.runtime_after)?,
+    );
+    let host_elapsed_ms = after_at
+        .duration_since(before_at)
         .map_err(|_| refused("observations_out_of_order"))?
         .as_millis();
+    let probe_at = modified(&paths.probe_dir.join(RECORD_FILE))?;
     let record = binding_record(&BindingInputs {
         package: &package,
         probe: &probe,
@@ -361,6 +366,7 @@ fn run_bind(paths: &BindPaths) -> Result<bool> {
         runtime_before: &runtime_before,
         runtime_after: &runtime_after,
         host_elapsed_ms: u64::try_from(host_elapsed_ms).unwrap_or(u64::MAX),
+        probe_between_observations: before_at < probe_at && probe_at < after_at,
     });
     root.seal(BINDING_FILE, &record)
         .context("evidence_seal_failed")?;
