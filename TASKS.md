@@ -1411,6 +1411,88 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
   this read-only contract. The record is sealed under
   `scratch/bap-probe-005/attempt`. No setting was sent and no parity row is
   promoted, because BAP does not identify the installed firmware.
+- Why the board was not hashing (2026-10-14, from source): by design. Saved
+  pool settings never start mining. Production readiness
+  (`crates/bitaxe-stratum/src/v1/recovery_policy.rs`) stays at
+  `campaign_lease_unavailable` until a signed Worker lease arrives through the
+  Gate. Live mining is the separate `task-ultra205-default-profile-soak-002`.
+- Identity binding (software, 2026-10-14): the board's USB console repeats
+  `usb_runtime_identity` (firmware commit and app ELF digest) and
+  `usb_reboot_discriminator` (reset-retained boot ordinal, reset reason,
+  uptime) in plain lines while no browser holds the port.
+  - `just diagnose-usb-reboot-loop` reads them receive-only and now also
+    prints `latest_uptime_ms`.
+  - `just bap bind` seals a `bap-identity-binding-v1` record. It is `bound`
+    only when: the probe is `complete` at the package's clean commit; the
+    detector shows the same physical device before and after; both observer
+    reads show `stable_boot` and exactly the package's commit and ELF digest;
+    the boot ordinal and reset reason are unchanged; and the uptime advanced
+    within 15 s of the host's elapsed time.
+  - A reset changes the ordinal, and a power cycle restarts the uptime, so
+    one boot of the exact package answered every BAP frame in between.
+  - The record holds only the public commit and digest, categories and
+    numbers: no path and no physical identity.
+- Ordinal 006 contract (owner-authorized 2026-10-14): identity-bound read-only
+  probe for promotion. Parent `P = scratch/bap-probe-006`; every command runs
+  once, from the repository root, under `umask 077`.
+  1. `just package` at the exact clean, pushed `HEAD` that records this
+     contract. The soak task below uses the same package.
+  2. `mkdir -m 700 P`; assert `P/attempt` and `P/binding` do not exist.
+     `just detect-ultra205 --port <the only /dev/cu.usbmodem* node>` into
+     `P/detector.stdout` (must report `serial_jtag_runtime`).
+  3. State-preserving install as in ordinal 004 (`just flash --board 205 --port
+     <board> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`),
+     output to mode-0600 siblings; shell timeout at least 420 s.
+  4. Settle 120 s. Detector into `P/detector-before.stdout`, then
+     `just diagnose-usb-reboot-loop --port <board> --timeout-seconds 30
+     --expected-source-commit <package commit> --expected-app-elf-sha256
+     <package app ELF digest>` into `P/runtime-before.stdout`.
+  5. `just bap --port <the one adapter node> probe --evidence-dir P/attempt
+     --detector-report P/detector-before.stdout --ordinal 6 --listen-seconds 10`.
+  6. Detector into `P/detector-after.stdout`; the same observer command into
+     `P/runtime-after.stdout`.
+  7. `just bap bind --evidence-dir P/binding --manifest <manifest> --probe-dir
+     P/attempt --detector-before P/detector-before.stdout --runtime-before
+     P/runtime-before.stdout --detector-after P/detector-after.stdout
+     --runtime-after P/runtime-after.stdout`.
+  - Allowed effects: as ordinal 005, plus receive-only reads of the board's
+    USB console (no write, no modem-control line). Allowed BAP frames:
+    `REQ systemInfo`, `REQ shares`, `SUB hashrate` (1,000 ms interval,
+    listening 10 s) and `UNSUB hashrate`.
+  - Prohibited: as ordinal 004, plus any browser, Gate or Web Serial use until
+    step 7 ends.
+  - Recovery: as ordinal 005 (state-preserving reflash of `ec480c55`).
+  - Outcomes: `complete` when the probe is `complete` and the binding is
+    `bound`. A failed probe step selects `stop_hardware_blocker` with its
+    signature. An `unbound` binding selects `stop_hardware_blocker` with the
+    binding's failure category. A repeat after a targeted fix selects
+    `stop_repeated_boundary`.
+  - Ordering: nothing is committed between this ordinal and the soak, so both
+    use one package. This ordinal's result is recorded after the soak.
+- Ordinal 007 contract (owner-authorized 2026-10-14): a read-only probe while
+  the board mines, during the soak's 600-second work window. It is an
+  observation of live values, not a promotion input: the Gate holds the USB
+  port, so there is no USB identity read.
+  - Same package. Parent `scratch/bap-probe-007`, created with `mkdir -m 700`.
+  - Detector into its `detector.stdout`, then `just bap --port <adapter> probe
+    --evidence-dir scratch/bap-probe-007/attempt --detector-report
+    scratch/bap-probe-007/detector.stdout --ordinal 7 --listen-seconds 30`.
+  - Run once, only after the Gate reports the work window started and at
+    least one accepted share has been observed, and only while no
+    revocation has been reported.
+  - Its failure never changes the soak's judgement. A soak failure prevents
+    starting it.
+  - Allowed frames: as ordinal 006.
+- Promotion (after ordinal 006 is `complete` and an independent review agrees):
+  update `BAP-001` and `BAP-002` only as far as the bound evidence covers.
+  - Covered: UART2 owner up, request dispatch and answers, and subscribe,
+    update and unsubscribe, against the Ultra 205.
+  - Explicit non-claims: settings and their effects; Wi-Fi password
+    subscription; the 300-second subscription timeout; AP-mode announcements
+    on bound firmware; other boards.
+  - Accessory electrical behavior is not proved either: the host is a CP2102
+    adapter on three wires.
+  - Committed evidence: a redacted summary only, after `just verify-redaction`.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
       holds.
 
@@ -1418,6 +1500,60 @@ Authorization: repository source, tests, documentation, build, commit and push
 for the software-only items. No connection guidance, adapter use, board power
 or UART traffic, detector, flash or settings change until the owner gives
 explicit direct-UART authorization for that step.
+Verification: pending. Completion review: pending.
+
+### task-ultra205-default-profile-soak-002 | 2026-10-14 | Mine through the Gate for one bounded soak
+
+Objective: the owner asked to see the board hash (2026-10-14). Run one
+600-active-second Ultra 205 soak at upstream defaults (485 MHz, 1200 mV, 100%
+fan) through the Gate, mining Stratum V1 against the owner's pool, with
+`just ultra205-soak` (`scripts/fixed-usb-soak/README.md`). The contract is the
+archived `task-ultra205-default-profile-soak-reverification` hardware contract,
+unchanged except as listed here. It verified soak attempt 001 at soak ledger
+ordinal 1.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task (`scripts/fixed-usb-soak/contract.mjs`).
+- [ ] Soak attempt 001 under this task (soak ledger ordinal 2), then an
+      independent review of `result.json`.
+
+Hardware contract (owner-authorized 2026-10-14):
+
+- Package: the one `just package` of BAP ordinal 006 (same clean, pushed
+  `HEAD`). The Gate is the pinned `bitaxe-turnstile-system` checkout at
+  `MODULE.bazel`'s pin (`d9023cb1`), built with `bun run build:browser`.
+- Install: skipped. The device already runs the exact package, proved by BAP
+  ordinal 006's identity observer reads. If ordinal 006 did not reach step 6
+  with an exact read, install with the archived contract's `just
+  flash-monitor` command instead.
+- Commands: the archived contract's steps 2–7. `P` is a new mode-0700 parent
+  `scratch/ultra205-soak-002` and `R = P/attempt-001`.
+  - Private inputs, never printed, recorded or committed: the existing
+    protected authority directory and the ignored `pool-credentials.json`
+    (`pool_config: local-owner-supplied`).
+  - `serve` runs detached under `nohup` with mode-0600 stdout and stderr in
+    `P`.
+  - The page sequence runs in the owner's dedicated Gate tab. Check
+    `document.visibilityState` before each step; while the tab is hidden,
+    hold in the idle safe state with no deadline.
+- Concurrent observation: BAP ordinal 007 (read-only, over the separate UART2
+  adapter) may run once during the work window. It never changes the soak's
+  judgement.
+- Allowed effects, prohibited effects, live stop limits (input 4.5–5.5 V, at
+  most 15 W, ASIC below 75 C, fresh nonzero fan, watchdog alive, 2.8 s
+  heartbeat), terminal criterion, evidence, recovery and retry bound: as the
+  archived contract. Parity promotion is prohibited.
+- Accepted outcomes: `complete` only when `result.json` is `passed` and an
+  independent review agrees. Otherwise `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary` or
+  `stop_impossible_contract`.
+- Afterwards `mineonboot` stays false, as designed. The board idles again
+  until another lease.
+
+Authorization: the contract above. No commit lands between BAP ordinal 006 and
+this soak, so preflight sees the packaged `HEAD`.
+
 Verification: pending. Completion review: pending.
 
 ## Future

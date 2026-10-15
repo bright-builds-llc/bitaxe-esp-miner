@@ -6,12 +6,13 @@ the owner's pool through the browser Gate. The decision behind it is
 [ADR-0033](../../docs/adr/0033-signed-hardware-profile-and-soak-allowance.md).
 
 The command adds no authority. It refuses to run unless
-`task-ultra205-default-profile-soak-reverification` is active and contains the
-exact line `Ultra 205 upstream-default soak hardware: enabled.` That task's
-contract still governs every effect, the evidence, recovery and the stop
-conditions. That task verified soak attempt 001 and is archived, so the command
-now refuses. A future soak needs a new active task with its own contract and
-the enabling line, with `SOAK_TASK` in `contract.mjs` pointed at it.
+`task-ultra205-default-profile-soak-002` is active and contains the exact line
+`Ultra 205 upstream-default soak hardware: enabled.` That task's contract still
+governs every effect, the evidence, recovery and the stop conditions. Its
+predecessor, `task-ultra205-default-profile-soak-reverification`, verified soak
+attempt 001 and is archived. After this task is archived the command refuses
+again; a later soak needs a new active task with its own contract and the
+enabling line, with `SOAK_TASK` in `contract.mjs` pointed at it.
 
 ## Sequence
 
