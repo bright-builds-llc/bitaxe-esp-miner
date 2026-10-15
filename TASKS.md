@@ -1559,6 +1559,41 @@ Hardware contract (owner-authorized 2026-10-14):
 Authorization: the contract above. No commit lands between BAP ordinal 006 and
 this soak, so preflight sees the packaged `HEAD`.
 
+Soak attempt 001 result (2026-10-14): `stop_hardware_blocker`. Package
+`ecc7f122`; Gate `d9023cb1`.
+- Preflight, Connect, the observer's idle proof (71 s, 36 HTTP samples, no
+  break), the cooling review, the soak ledger review (next ordinal 2),
+  signing and the signed window all passed.
+- `startWindow` was rejected with `session_failed` 27.7 s after signing, so
+  the 60-second possession limit was not the cause.
+- The device then reported its soak generation revoked for
+  `unsafe_observation`, with safe-stop complete at `fan_paused`, zero work
+  dispatched, zero active time and `mineonboot` still false.
+- The firmware's unsafe-sample revocation runs only in the active state. So
+  activation succeeded, and an unsafe or zero-fan safety sample revoked the
+  session at once.
+- As designed, soak ordinal 2 was charged and is never refunded: a read-only
+  ledger review after the attempt shows next ordinal 3. That review used a
+  reconnect, with no work.
+- Sealed `unverified` (`completion_missing`). The Gate tab was released to
+  `about:blank`.
+- The owner-finish helper's own detector refused `ambiguous_serial_ports`,
+  because the BAP adapter is a second port. The seal therefore used the
+  README's alternative: a detector naming the board's port, then
+  `just ultra205-soak finish`.
+
+Diagnostic amendment (before any further attempt): read the retained
+revocation detail before any reboot clears it.
+- Command: `just monitor --board 205 --port <board> --capture-timeout-seconds
+  30`, receive-only with no reset. Its output goes to mode-0600 files in
+  `scratch/ultra205-soak-002/diagnostic`.
+- Only the redacted `worker_revocation_detail` and `worker_admission` marker
+  lines are reviewed (trigger, fact, state, value, ages).
+- Allowed effects: none beyond the receive-only read. This short bound is
+  the task's explicit exception to the 360-second capture default.
+- A fix with a regression test must land before attempt 002. Attempt 002
+  needs a fresh package, preflight and soak ordinal 3.
+
 Verification: pending. Completion review: pending.
 
 ## Future
