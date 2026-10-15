@@ -1498,8 +1498,40 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
   - Accessory electrical behavior is not proved either: the host is a CP2102
     adapter on three wires.
   - Committed evidence: a redacted summary only, after `just verify-redaction`.
+- Ordinal 006 result (2026-10-14): `complete`. Package `ecc7f122`.
+  - The probe passed every step.
+  - The binding is `bound`: boot ordinal 4 and reset category `other` before
+    and after; the uptime advanced 44,015 ms against 44,082 ms of host time;
+    the same physical device throughout.
+- Ordinal 007 result (2026-10-14): `complete`, observation only.
+  - It ran during soak 002 attempt 002, on that attempt's package `a46f9568`,
+    not ordinal 006's: the soak installed a fresh package after the revocation
+    fix. The BAP code is identical between the two packages.
+  - `shares` answered `4/0`. A 30 s `hashrate` subscription delivered 17
+    change-only updates, from 385.60 to 550.64 GH/s.
+- Independent review (2026-10-14):
+  - The binding is sound for ordinal 006. The review asked for two hardening
+    checks, now in `bap bind`: the boot must predate the first read, and the
+    probe must fall between the two reads. The sealed evidence, re-judged under
+    those rules into `binding-v2`, is still `bound`. Ordinal 006's manifest was
+    rebuilt for a later package, so the re-judgement used the package identity
+    fields from the sealed binding record.
+  - The review supports `verified` for BAP-002, scoped as a firmware-UART round
+    trip: the host reuses `bitaxe_core::bap`.
+  - BAP-001 stays `implemented`. The live `deviceModel` is `205`, while the
+    reference sends the family name `Ultra`. Several subscription values also
+    differ from the reference code (`task-parity-bap-value-sources`).
+- Promotion: both rows were recorded through `parity transition-item` with
+  `hardware-smoke` evidence and stay `implemented`.
+  - Parity validation rejects any verified `BAP-*` row backed by Ultra 205
+    evidence, under the 2026-06-28 deferred-scope guard (`phase28.rs`).
+  - That guard predates the in-scope J6 port. Lifting it is an owner scope
+    decision, which is pending.
+  - Summary: `docs/parity/evidence/20261014-bap-uart-live-probe.md`.
 - [ ] Run it, review independently and promote the BAP rows if the evidence
-      holds.
+      holds. Run and reviewed. BAP-002's promotion waits on the owner's
+      decision about the validator guard; BAP-001's waits on
+      `task-parity-bap-value-sources`.
 
 Authorization: repository source, tests, documentation, build, commit and push
 for the software-only items. No connection guidance, adapter use, board power
@@ -1507,130 +1539,32 @@ or UART traffic, detector, flash or settings change until the owner gives
 explicit direct-UART authorization for that step.
 Verification: pending. Completion review: pending.
 
-### task-ultra205-default-profile-soak-002 | 2026-10-14 | Mine through the Gate for one bounded soak
+### task-parity-bap-value-sources | 2026-10-14 | Match BAP answer and subscription values to upstream
 
-Objective: the owner asked to see the board hash (2026-10-14). Run one
-600-active-second Ultra 205 soak at upstream defaults (485 MHz, 1200 mV, 100%
-fan) through the Gate, mining Stratum V1 against the owner's pool, with
-`just ultra205-soak` (`scripts/fixed-usb-soak/README.md`). The contract is the
-archived `task-ultra205-default-profile-soak-reverification` hardware contract,
-unchanged except as listed here. It verified soak attempt 001 at soak ledger
-ordinal 1.
+Origin: the independent review of BAP ordinal 006
+(`docs/parity/evidence/20261014-bap-uart-live-probe.md`). This task blocks
+`BAP-001` from reaching `verified`.
 
-Ultra 205 upstream-default soak hardware: enabled.
-
-- [x] Point `SOAK_TASK` at this task (`scripts/fixed-usb-soak/contract.mjs`).
-- [ ] Soak attempt 001 under this task (soak ledger ordinal 2), then an
-      independent review of `result.json`.
-
-Hardware contract (owner-authorized 2026-10-14):
-
-- Package: the one `just package` of BAP ordinal 006 (same clean, pushed
-  `HEAD`). The Gate is the pinned `bitaxe-turnstile-system` checkout at
-  `MODULE.bazel`'s pin (`d9023cb1`), built with `bun run build:browser`.
-- Install: skipped. The device already runs the exact package, proved by BAP
-  ordinal 006's identity observer reads. If ordinal 006 did not reach step 6
-  with an exact read, install with the archived contract's `just
-  flash-monitor` command instead.
-- Commands: the archived contract's steps 2–7. `P` is a new mode-0700 parent
-  `scratch/ultra205-soak-002` and `R = P/attempt-001`.
-  - Private inputs, never printed, recorded or committed: the existing
-    protected authority directory and the ignored `pool-credentials.json`
-    (`pool_config: local-owner-supplied`).
-  - `serve` runs detached under `nohup` with mode-0600 stdout and stderr in
-    `P`.
-  - The page sequence runs in the owner's dedicated Gate tab. Check
-    `document.visibilityState` before each step; while the tab is hidden,
-    hold in the idle safe state with no deadline.
-- Concurrent observation: BAP ordinal 007 (read-only, over the separate UART2
-  adapter) may run once during the work window. It never changes the soak's
-  judgement.
-- Allowed effects, prohibited effects, live stop limits (input 4.5–5.5 V, at
-  most 15 W, ASIC below 75 C, fresh nonzero fan, watchdog alive, 2.8 s
-  heartbeat), terminal criterion, evidence, recovery and retry bound: as the
-  archived contract. Parity promotion is prohibited.
-- Accepted outcomes: `complete` only when `result.json` is `passed` and an
-  independent review agrees. Otherwise `stop_repeated_boundary`,
-  `stop_hardware_blocker`, `stop_authority_boundary` or
-  `stop_impossible_contract`.
-- Afterwards `mineonboot` stays false, as designed. The board idles again
-  until another lease.
-
-Authorization: the contract above. No commit lands between BAP ordinal 006 and
-this soak, so preflight sees the packaged `HEAD`.
-
-Soak attempt 001 result (2026-10-14): `stop_hardware_blocker`. Package
-`ecc7f122`; Gate `d9023cb1`.
-- Preflight, Connect, the observer's idle proof (71 s, 36 HTTP samples, no
-  break), the cooling review, the soak ledger review (next ordinal 2),
-  signing and the signed window all passed.
-- `startWindow` was rejected with `session_failed` 27.7 s after signing, so
-  the 60-second possession limit was not the cause.
-- The device then reported its soak generation revoked for
-  `unsafe_observation`, with safe-stop complete at `fan_paused`, zero work
-  dispatched, zero active time and `mineonboot` still false.
-- The firmware's unsafe-sample revocation runs only in the active state. So
-  activation succeeded, and an unsafe or zero-fan safety sample revoked the
-  session at once.
-- As designed, soak ordinal 2 was charged and is never refunded: a read-only
-  ledger review after the attempt shows next ordinal 3. That review used a
-  reconnect, with no work.
-- Sealed `unverified` (`completion_missing`). The Gate tab was released to
-  `about:blank`.
-- The owner-finish helper's own detector refused `ambiguous_serial_ports`,
-  because the BAP adapter is a second port. The seal therefore used the
-  README's alternative: a detector naming the board's port, then
-  `just ultra205-soak finish`.
-
-Diagnostic amendment (before any further attempt): read the retained
-revocation detail before any reboot clears it.
-- Command: `just monitor --board 205 --port <board> --capture-timeout-seconds
-  30`, receive-only with no reset. Its output goes to mode-0600 files in
-  `scratch/ultra205-soak-002/diagnostic`.
-- Only the redacted `worker_revocation_detail` and `worker_admission` marker
-  lines are reviewed (trigger, fact, state, value, ages).
-- Allowed effects: none beyond the receive-only read. This short bound is
-  the task's explicit exception to the 360-second capture default.
-- A fix with a regression test must land before attempt 002. Attempt 002
-  needs a fresh package, preflight and soak ordinal 3.
-
-Diagnosis (2026-10-14, from the receive-only read):
-- The retained detail line read: `worker_revocation_detail generation=1
-  reason=unsafe_observation trigger=no_safe_sample fact=none
-  since_safe_ms=4294967294`. `worker_admission` showed `readiness=63` (every
-  readiness bit set) and `first_failure=preparation`.
-- `since_safe_ms` is 2^32 - 2: the last safety sample was stamped 2 ms *after*
-  the deadline check read its clock. `GenerationGate::check_deadline` compared
-  `now.wrapping_sub(last_safety_ms) > 1_000` unsigned, so that fresh sample
-  looked about 49.7 days old and revoked the just-activated session.
-- The heartbeat cutoff had the same unsigned comparison; the lease and budget
-  deadlines beside it were already signed.
-- The race depends on thread timing, which is why soak attempt 001 under the
-  previous task passed.
-
-Fix (`crates/bitaxe-runtime/src/revocation.rs`): one `elapsed_ms` helper treats
-a stamp newer than the caller's clock reading as zero elapsed. It is used for
-the heartbeat cutoff, the safety-sample silence check and the retained
-`since_safe_ms`. Two regressions reproduce the race, and both fail on the old
-code: a safety sample and a heartbeat each stamped after the check's clock
-reading.
-
-Attempt 002 contract (owner-authorized 2026-10-14, the verified-fix
-continuation). Same as attempt 001 except:
-- Package at the clean, pushed fix commit.
-- New parent `P = scratch/ultra205-soak-002-attempt-002`, with
-  `R = P/attempt-002`.
-- Install through the archived contract's state-preserving
-  `just flash-monitor ... --capture-timeout-seconds 360 --redact-evidence`, so
-  the exact package is verified running.
-- Soak ledger ordinal 3.
-- BAP ordinal 007 may run during the work window, as contracted.
-- Seal with a detector naming the board's port, then
-  `just ultra205-soak finish`, because the owner-finish helper's unnamed
-  detector refuses while the BAP adapter is attached.
-- If attempt 002 shows the same redacted boundary
-  (`trigger=no_safe_sample` with a wrapped `since_safe_ms`), the outcome is
-  `stop_repeated_boundary`.
+- [ ] `deviceModel`: answer the family name (upstream
+      `DEVICE_CONFIG.family.name`, `Ultra` for board 205), not the board
+      version (`firmware/bitaxe/src/bap_adapter.rs` `request_snapshot`). The
+      regression must use the real catalog family, because the
+      `bap_runtime.rs` fixture value `Ultra 205` hid the difference.
+- [ ] Subscription values (`bap_adapter.rs` `subscription_frames` against
+      `bap_subscription.c`): `fan_speed` percent vs RPM; `best_difficulty`
+      plain vs suffixed string; `voltage`/`current` V/A vs mV/mA; and the
+      `chipTemp`/`vrTemp`/`power` number formats. Fix each to match the
+      reference code, or record an owner-accepted divergence.
+- [ ] Probe value checks: `probe.rs` `judge` checks only presence, and
+      `exchange.rs` accepts any `RES` as data. Check the expected values and
+      parameters.
+- [ ] Investigate whether BAP traffic stalls the station endpoint while mining.
+      During soak 002 the largest HTTP gap (4.6 s) and WebSocket gap (3.6 s)
+      fell inside BAP ordinal 007. Check the BAP owner's snapshot publication
+      against HTTP's.
+- [ ] A new identity-bound probe on the fixed package (a fresh BAP ordinal
+      under its own contract, with owner go-ahead), then an independent review
+      and the BAP-001 transition.
 
 Verification: pending. Completion review: pending.
 

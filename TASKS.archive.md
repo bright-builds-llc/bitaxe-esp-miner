@@ -28913,3 +28913,171 @@ Residual risks:
   unresolved, and panic/abort logging edges are excluded.
 - `/api/system/asic` has not been requested on hardware since the fix.
 - There is no CI gate yet: the audit runs on demand against a built ELF.
+
+### task-ultra205-default-profile-soak-002 | 2026-10-14 | Mine through the Gate for one bounded soak
+
+Objective: the owner asked to see the board hash (2026-10-14). Run one
+600-active-second Ultra 205 soak at upstream defaults (485 MHz, 1200 mV, 100%
+fan) through the Gate, mining Stratum V1 against the owner's pool, with
+`just ultra205-soak` (`scripts/fixed-usb-soak/README.md`). The contract is the
+archived `task-ultra205-default-profile-soak-reverification` hardware contract,
+unchanged except as listed here. It verified soak attempt 001 at soak ledger
+ordinal 1.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task (`scripts/fixed-usb-soak/contract.mjs`).
+- [x] Soak attempt 001 under this task (soak ledger ordinal 2), then an
+      independent review of `result.json`. Attempt 001 stopped at a firmware
+      revocation-clock bug; attempt 002 passed after the fix.
+
+Hardware contract (owner-authorized 2026-10-14):
+
+- Package: the one `just package` of BAP ordinal 006 (same clean, pushed
+  `HEAD`). The Gate is the pinned `bitaxe-turnstile-system` checkout at
+  `MODULE.bazel`'s pin (`d9023cb1`), built with `bun run build:browser`.
+- Install: skipped. The device already runs the exact package, proved by BAP
+  ordinal 006's identity observer reads. If ordinal 006 did not reach step 6
+  with an exact read, install with the archived contract's `just
+  flash-monitor` command instead.
+- Commands: the archived contract's steps 2–7. `P` is a new mode-0700 parent
+  `scratch/ultra205-soak-002` and `R = P/attempt-001`.
+  - Private inputs, never printed, recorded or committed: the existing
+    protected authority directory and the ignored `pool-credentials.json`
+    (`pool_config: local-owner-supplied`).
+  - `serve` runs detached under `nohup` with mode-0600 stdout and stderr in
+    `P`.
+  - The page sequence runs in the owner's dedicated Gate tab. Check
+    `document.visibilityState` before each step; while the tab is hidden,
+    hold in the idle safe state with no deadline.
+- Concurrent observation: BAP ordinal 007 (read-only, over the separate UART2
+  adapter) may run once during the work window. It never changes the soak's
+  judgement.
+- Allowed effects, prohibited effects, live stop limits (input 4.5–5.5 V, at
+  most 15 W, ASIC below 75 C, fresh nonzero fan, watchdog alive, 2.8 s
+  heartbeat), terminal criterion, evidence, recovery and retry bound: as the
+  archived contract. Parity promotion is prohibited.
+- Accepted outcomes: `complete` only when `result.json` is `passed` and an
+  independent review agrees. Otherwise `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary` or
+  `stop_impossible_contract`.
+- Afterwards `mineonboot` stays false, as designed. The board idles again
+  until another lease.
+
+Authorization: the contract above. No commit lands between BAP ordinal 006 and
+this soak, so preflight sees the packaged `HEAD`.
+
+Soak attempt 001 result (2026-10-14): `stop_hardware_blocker`. Package
+`ecc7f122`; Gate `d9023cb1`.
+- Preflight, Connect, the observer's idle proof (71 s, 36 HTTP samples, no
+  break), the cooling review, the soak ledger review (next ordinal 2),
+  signing and the signed window all passed.
+- `startWindow` was rejected with `session_failed` 27.7 s after signing, so
+  the 60-second possession limit was not the cause.
+- The device then reported its soak generation revoked for
+  `unsafe_observation`, with safe-stop complete at `fan_paused`, zero work
+  dispatched, zero active time and `mineonboot` still false.
+- The firmware's unsafe-sample revocation runs only in the active state. So
+  activation succeeded, and an unsafe or zero-fan safety sample revoked the
+  session at once.
+- As designed, soak ordinal 2 was charged and is never refunded: a read-only
+  ledger review after the attempt shows next ordinal 3. That review used a
+  reconnect, with no work.
+- Sealed `unverified` (`completion_missing`). The Gate tab was released to
+  `about:blank`.
+- The owner-finish helper's own detector refused `ambiguous_serial_ports`,
+  because the BAP adapter is a second port. The seal therefore used the
+  README's alternative: a detector naming the board's port, then
+  `just ultra205-soak finish`.
+
+Diagnostic amendment (before any further attempt): read the retained
+revocation detail before any reboot clears it.
+- Command: `just monitor --board 205 --port <board> --capture-timeout-seconds
+  30`, receive-only with no reset. Its output goes to mode-0600 files in
+  `scratch/ultra205-soak-002/diagnostic`.
+- Only the redacted `worker_revocation_detail` and `worker_admission` marker
+  lines are reviewed (trigger, fact, state, value, ages).
+- Allowed effects: none beyond the receive-only read. This short bound is
+  the task's explicit exception to the 360-second capture default.
+- A fix with a regression test must land before attempt 002. Attempt 002
+  needs a fresh package, preflight and soak ordinal 3.
+
+Diagnosis (2026-10-14, from the receive-only read):
+- The retained detail line read: `worker_revocation_detail generation=1
+  reason=unsafe_observation trigger=no_safe_sample fact=none
+  since_safe_ms=4294967294`. `worker_admission` showed `readiness=63` (every
+  readiness bit set) and `first_failure=preparation`.
+- `since_safe_ms` is 2^32 - 2: the last safety sample was stamped 2 ms *after*
+  the deadline check read its clock. `GenerationGate::check_deadline` compared
+  `now.wrapping_sub(last_safety_ms) > 1_000` unsigned, so that fresh sample
+  looked about 49.7 days old and revoked the just-activated session.
+- The heartbeat cutoff had the same unsigned comparison; the lease and budget
+  deadlines beside it were already signed.
+- The race depends on thread timing, which is why soak attempt 001 under the
+  previous task passed.
+
+Fix (`crates/bitaxe-runtime/src/revocation.rs`): one `elapsed_ms` helper treats
+a stamp newer than the caller's clock reading as zero elapsed. It is used for
+the heartbeat cutoff, the safety-sample silence check and the retained
+`since_safe_ms`. Two regressions reproduce the race, and both fail on the old
+code: a safety sample and a heartbeat each stamped after the check's clock
+reading.
+
+Attempt 002 contract (owner-authorized 2026-10-14, the verified-fix
+continuation). Same as attempt 001 except:
+- Package at the clean, pushed fix commit.
+- New parent `P = scratch/ultra205-soak-002-attempt-002`, with
+  `R = P/attempt-002`.
+- Install through the archived contract's state-preserving
+  `just flash-monitor ... --capture-timeout-seconds 360 --redact-evidence`, so
+  the exact package is verified running.
+- Soak ledger ordinal 3.
+- BAP ordinal 007 may run during the work window, as contracted.
+- Seal with a detector naming the board's port, then
+  `just ultra205-soak finish`, because the owner-finish helper's unnamed
+  detector refuses while the BAP adapter is attached.
+- If attempt 002 shows the same redacted boundary
+  (`trigger=no_safe_sample` with a wrapped `since_safe_ms`), the outcome is
+  `stop_repeated_boundary`.
+
+Soak attempt 002 result (2026-10-14): `complete`. Redacted summary:
+`docs/parity/evidence/20261014-ultra205-default-profile-soak-002.md`.
+- Package `a46f9568`, installed by state-preserving `flash-monitor`
+  (`observed_exact_package`, `monitor_qualified: true`); Gate `d9023cb1`.
+- `result.json`: `passed`, no failures.
+  - 607,680 active ms, ended by the budget (`lease_or_budget_expired`).
+  - Soak ordinal 3, charged once (next 4); 28 of 36 renewals used.
+  - 22 accepted and 0 rejected shares.
+  - 20/20 windows credited, with zero reconnects. Maximum gaps: 3,551 ms
+    WebSocket, 4,632 ms HTTP.
+  - Safe-stop reached `fan_paused`.
+  - `mineonboot=false`, and pool settings retained.
+- Work-gate samples stayed within 5.24–5.29 V, 11.02–12.40 W, 35–54 C and
+  7,267–7,346 RPM, with the watchdog alive.
+- The attempt-001 boundary (`no_safe_sample` with a wrapped `since_safe_ms`)
+  did not recur.
+- The independent review agrees `complete`; it recomputed every criterion from
+  the raw samples.
+- Sealed with a named-port detector and `just ultra205-soak finish`; the Gate
+  tab was released to `about:blank`.
+
+Verification: soak attempt 002 passed and the independent review agrees.
+- The fix `a46f9568` passed the full gate: fmt, clippy, build and tests,
+  `just build`, `just test` (334/334), the Bright Builds checks and
+  `just verify-redaction`.
+- The regressions fail on the old code.
+
+Completion review: the board mined for 600 active seconds at upstream defaults.
+Attempt 001 also found and fixed a real firmware race that could revoke any
+lease at activation, or spuriously trip the heartbeat cutoff.
+
+Residual risks:
+- The race is timing-dependent, so one passing soak shows it no longer fires
+  there, not that every interleaving is covered; the unit regressions cover the
+  logic.
+- The largest HTTP and WebSocket gaps fell during the read-only BAP probe,
+  which suggests BAP traffic stalls the station endpoint under mining load
+  (follow-up in `task-parity-bap-value-sources`).
+- The owner-finish helper's detector names no port and refuses while a second
+  serial adapter is attached.
+- Soak ordinal 2 was charged and never refunded, by design.
