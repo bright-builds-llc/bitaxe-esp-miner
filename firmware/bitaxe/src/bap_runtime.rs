@@ -1,8 +1,8 @@
 //! Pure scheduling and admission core for the firmware BAP owner.
 
 use bitaxe_core::bap::{
-    plan_command, BapAdmission, BapConnectionMode, BapEffect, BapFrame, BapFrameError, BapIngress,
-    BapParameter, BapPlanError, BapRequestSnapshot, BapRestartPolicy, BapSettingIntent,
+    plan_command, BapAdmission, BapCommand, BapConnectionMode, BapEffect, BapFrame, BapFrameError,
+    BapIngress, BapParameter, BapPlanError, BapRequestSnapshot, BapRestartPolicy, BapSettingIntent,
     BAP_MAX_MESSAGE_LEN,
 };
 
@@ -68,17 +68,23 @@ impl BapRuntime {
         }
     }
 
+    /// Admits one inbound frame. `snapshot` runs only for an accepted request, the
+    /// one command that answers from runtime values: each call takes the global
+    /// operator-snapshot publication lock that HTTP and WebSocket also hold.
     pub fn admit(
         &mut self,
         input: &[u8],
         now_ms: u64,
-        maybe_snapshot: Option<&BapRequestSnapshot>,
+        snapshot: impl FnOnce() -> Option<BapRequestSnapshot>,
     ) -> Result<BapDispatch, BapRuntimeError> {
         let admission = self.ingress.admit(input, now_ms)?;
         let BapAdmission::Accepted(frame) = admission else {
             return Ok(BapDispatch::no_response());
         };
-        let plan = plan_command(&frame, self.mode, maybe_snapshot)?;
+        let maybe_snapshot = (frame.command() == BapCommand::Request)
+            .then(snapshot)
+            .flatten();
+        let plan = plan_command(&frame, self.mode, maybe_snapshot.as_ref())?;
         let mut dispatch = BapDispatch {
             responses: plan.responses().to_vec(),
             maybe_setting: None,
@@ -250,11 +256,11 @@ impl BapFrameAccumulator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitaxe_core::bap::{BapCommand, BAP_SUBSCRIPTION_TIMEOUT_MS};
+    use bitaxe_core::bap::BAP_SUBSCRIPTION_TIMEOUT_MS;
 
     fn snapshot() -> BapRequestSnapshot {
         BapRequestSnapshot {
-            device_model: "Ultra 205".to_owned(),
+            device_model: "Ultra".to_owned(),
             asic_model: "BM1366".to_owned(),
             pool_endpoint: "private.invalid".to_owned(),
             pool_port: 3333,
@@ -265,6 +271,38 @@ mod tests {
             found_block: 0,
             show_new_block: false,
         }
+    }
+
+    #[test]
+    fn only_a_request_reads_the_published_snapshot() {
+        // Arrange
+        let mut runtime = BapRuntime::default();
+        runtime.set_mode(BapConnectionMode::Connected, 100);
+        let mut reads = 0;
+
+        // Act
+        runtime
+            .admit(b"$BAP,SUB,hashrate,1000*00\r\n", 100, || {
+                reads += 1;
+                Some(snapshot())
+            })
+            .expect("subscription plans");
+        runtime
+            .admit(b"$BAP,UNSUB,hashrate\r\n", 2_000, || {
+                reads += 1;
+                Some(snapshot())
+            })
+            .expect("unsubscribe plans");
+        let answered = runtime
+            .admit(b"$BAP,REQ,shares*0B\r\n", 4_000, || {
+                reads += 1;
+                Some(snapshot())
+            })
+            .expect("request plans");
+
+        // Assert
+        assert_eq!(reads, 1);
+        assert_eq!(answered.responses.len(), 1);
     }
 
     #[test]
@@ -294,14 +332,14 @@ mod tests {
 
         // Act
         let subscribed = runtime
-            .admit(b"$BAP,SUB,hashrate,1000*00\r\n", 100, Some(&snapshot()))
+            .admit(b"$BAP,SUB,hashrate,1000*00\r\n", 100, || Some(snapshot()))
             .expect("compatible subscription plans");
         let before = runtime.poll(1_099);
         let due = runtime.poll(1_100);
         let coalesced = runtime.poll(5_100);
         let timeout = runtime.poll(100 + u64::from(BAP_SUBSCRIPTION_TIMEOUT_MS));
         let unsubscribed = runtime
-            .admit(b"$BAP,UNSUB,hashrate\r\n", 400_000, Some(&snapshot()))
+            .admit(b"$BAP,UNSUB,hashrate\r\n", 400_000, || Some(snapshot()))
             .expect("compatible unsubscribe plans");
 
         // Assert
@@ -347,7 +385,7 @@ mod tests {
 
         // Act
         let dispatch = runtime
-            .admit(frame.as_bytes(), 0, Some(&snapshot()))
+            .admit(frame.as_bytes(), 0, || Some(snapshot()))
             .expect("setting plans");
 
         // Assert

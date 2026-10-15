@@ -98,8 +98,7 @@ fn handle_frame(
     input: &[u8],
     now_ms: u64,
 ) {
-    let maybe_snapshot = bap_request_snapshot();
-    let dispatch = match runtime.admit(input, now_ms, maybe_snapshot.as_ref()) {
+    let dispatch = match runtime.admit(input, now_ms, bap_request_snapshot) {
         Ok(dispatch) => dispatch,
         Err(error) => {
             log::warn!("bap_ingress=rejected category={error:?}");
@@ -210,54 +209,11 @@ fn bap_request_snapshot() -> Option<BapRequestSnapshot> {
 }
 
 fn request_snapshot(info: SystemInfoWire) -> BapRequestSnapshot {
-    BapRequestSnapshot {
-        device_model: info.board_version,
-        asic_model: info.asic_model,
-        pool_endpoint: info.stratum_url,
-        pool_port: info.stratum_port,
-        pool_user: info.stratum_user,
-        shares_accepted: info.shares_accepted,
-        shares_rejected: info.shares_rejected,
-        block_height: info
-            .maybe_block_height
-            .and_then(|height| i32::try_from(height).ok())
-            .unwrap_or_default(),
-        found_block: i32::try_from(info.block_found).unwrap_or(i32::MAX),
-        show_new_block: info.show_new_block,
-    }
+    bitaxe_api::bap_request_snapshot(info)
 }
 
 fn subscription_frames(parameter: BapParameter, info: &SystemInfoWire) -> Vec<BapFrame> {
-    let values: Vec<(&str, String)> = match parameter {
-        BapParameter::Hashrate => vec![("hashrate", format!("{:.2}", info.hash_rate))],
-        BapParameter::Temperature => vec![
-            ("chipTemp", info.temp.to_string()),
-            ("vrTemp", info.vr_temp.to_string()),
-        ],
-        BapParameter::Power => vec![("power", info.power.to_string())],
-        BapParameter::Voltage => vec![("voltage", (info.voltage_millivolts / 1_000.0).to_string())],
-        BapParameter::Current => vec![("current", (info.current_milliamps / 1_000.0).to_string())],
-        BapParameter::Shares => vec![(
-            "shares",
-            format!("{}/{}", info.shares_accepted, info.shares_rejected),
-        )],
-        BapParameter::FanSpeed => vec![("fan_speed", info.fan_speed.to_string())],
-        BapParameter::BestDifficulty => {
-            vec![("best_difficulty", info.best_diff.to_string())]
-        }
-        BapParameter::BlockHeight => vec![(
-            "block_height",
-            info.maybe_block_height.unwrap_or_default().to_string(),
-        )],
-        BapParameter::Wifi => vec![
-            ("wifi_ssid", info.ssid.clone()),
-            ("wifi_rssi", info.wifi_rssi.to_string()),
-            ("wifi_ip", info.ipv4.clone()),
-        ],
-        BapParameter::FoundBlock => vec![("found_block", info.block_found.to_string())],
-        _ => Vec::new(),
-    };
-    values
+    bitaxe_api::bap_subscription_values(parameter, info)
         .into_iter()
         .filter_map(|(token, value)| {
             BapFrame::new_token(BapCommand::Response, token, Some(value)).ok()

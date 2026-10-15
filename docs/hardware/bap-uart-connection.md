@@ -139,6 +139,18 @@ the detector's saved report as a mode-0600 sibling, creates the attempt director
 itself, refuses one that already exists, stops at the first failed step and
 seals one category-only record read-only. Its exact use is in the task contract.
 
+A step passes only when its answers carry exactly its own tokens, in the
+reference formats:
+- `deviceModel` is the Ultra 205's family name, `Ultra`, and `asicModel` is
+  `BM1366`;
+- `shares` is `accepted/rejected`;
+- `hashrate` has two decimals.
+
+Anything else fails the step as `unexpected_parameter` or `value_mismatch`.
+
+The firmware's `wifi` subscription never sends the stored Wi-Fi password. This
+is an owner-accepted divergence: the reference sends it in plain text.
+
 BAP cannot say which firmware answered, so `bind` ties a sealed probe to the
 installed image. It opens no port and takes no `--port`. Its inputs are the
 package manifest, the sealed probe, and four mode-0600 reports saved beside it:

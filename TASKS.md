@@ -1553,23 +1553,51 @@ Origin: the independent review of BAP ordinal 006
 (`docs/parity/evidence/20261014-bap-uart-live-probe.md`). This task blocks
 `BAP-001` from reaching `verified`.
 
-- [ ] `deviceModel`: answer the family name (upstream
+- [x] `deviceModel`: answer the family name (upstream
       `DEVICE_CONFIG.family.name`, `Ultra` for board 205), not the board
       version (`firmware/bitaxe/src/bap_adapter.rs` `request_snapshot`). The
       regression must use the real catalog family, because the
-      `bap_runtime.rs` fixture value `Ultra 205` hid the difference.
-- [ ] Subscription values (`bap_adapter.rs` `subscription_frames` against
+      `bap_runtime.rs` fixture value `Ultra 205` hid the difference. Done:
+      `bitaxe_api::bap_values` looks the family up in `board_catalog()`.
+      The fixture is now `Ultra`.
+- [x] Subscription values (`bap_adapter.rs` `subscription_frames` against
       `bap_subscription.c`): `fan_speed` percent vs RPM; `best_difficulty`
       plain vs suffixed string; `voltage`/`current` V/A vs mV/mA; and the
       `chipTemp`/`vrTemp`/`power` number formats. Fix each to match the
-      reference code, or record an owner-accepted divergence.
-- [ ] Probe value checks: `probe.rs` `judge` checks only presence, and
+      reference code, or record an owner-accepted divergence. Done: the pure
+      `bap_subscription_values` follows the reference code. Temperatures use
+      `%f` (six decimals); power uses `%.2f`; voltage and current are in mV
+      and mA with `%.2f`; `fan_speed` is RPM; `best_difficulty` uses a port of
+      `suffixString`. The firmware adapter delegates to it. Owner decision
+      (2026-10-14): keep omitting the plain-text `wifi_password` frame, as an
+      accepted divergence (regression
+      `the_wifi_subscription_never_sends_the_password`).
+- [x] Probe value checks: `probe.rs` `judge` checks only presence, and
       `exchange.rs` accepts any `RES` as data. Check the expected values and
-      parameters.
-- [ ] Investigate whether BAP traffic stalls the station endpoint while mining.
+      parameters. Done: a passing step may carry only its own tokens
+      (`unexpected_parameter`). `deviceModel` must be `Ultra` and `asicModel`
+      `BM1366`; `shares` must be `n/n` and `hashrate` must have two decimals
+      (`value_mismatch`). Ordinal 006's `205` would now fail.
+- [x] Investigate whether BAP traffic stalls the station endpoint while mining.
       During soak 002 the largest HTTP gap (4.6 s) and WebSocket gap (3.6 s)
       fell inside BAP ordinal 007. Check the BAP owner's snapshot publication
-      against HTTP's.
+      against HTTP's. Done; findings from code reading and private timestamps:
+  - Not the host: `bazel run` and the detector ran 21:14:28–30, while the gap
+    ran 21:14:49.2–53.8, about 18 s into the 30 s subscription.
+  - BAP alone cannot produce a 4 s stall. Its publications do no I/O under the
+    global operator-snapshot lock and take milliseconds. Its thread has the
+    same priority as httpd and blocks in `uart_read_bytes`.
+  - More likely, one httpd or network stall hit both streams. HTTP handlers
+    and the WebSocket connect path write their sockets *inside* the
+    publication lock (httpd send timeout 5 s). Meanwhile WebSocket cadence
+    frames are only queued for httpd to send. That is
+    `task-operator-snapshot-io-outside-lock`.
+  - Hardening done here, with no protocol change: BAP now reads the published
+    snapshot only for an accepted `REQ` (`BapRuntime::admit` takes a provider).
+    Before this, `SUB` and `UNSUB` frames each took the lock. Regression:
+    `only_a_request_reads_the_published_snapshot`.
+  - Not changed: upstream accepts any interval above 0, so a minimum
+    subscription interval would break parity.
 - [ ] A new identity-bound probe on the fixed package (a fresh BAP ordinal
       under its own contract, with owner go-ahead), then an independent review
       and the BAP-001 transition.
@@ -1577,6 +1605,30 @@ Origin: the independent review of BAP ordinal 006
 Verification: pending. Completion review: pending.
 
 ## Future
+
+### task-operator-snapshot-io-outside-lock | 2026-10-14 | Keep socket writes out of the operator-snapshot publication lock
+
+Origin: `task-parity-bap-value-sources` investigation of the soak 002 gap.
+`OperatorSnapshotPublisher::publish` (`firmware/bitaxe/src/operator_snapshot_publication.rs`)
+holds one global sequence mutex through `issue`. The HTTP handlers
+(`send_json`) and the WebSocket connect path (`httpd_ws_send_frame`) write
+their sockets inside `issue`, with up to 5 s per send. One slow client can
+therefore block every other publication: WebSocket cadence, other HTTP
+requests and BAP.
+
+- [ ] Serialize inside the publication and write after it returns, for HTTP
+      responses and the WebSocket connect frame. Cadence frames may keep
+      queueing under the lock to preserve their order.
+- [ ] Host regression: a publisher blocked in a fake socket write after
+      release must not delay a second publication (the write-step mirror of
+      `second_completion_waits_until_first_issue_returns`).
+- [ ] Source-ownership audit: no socket write inside `publish_projected_*`
+      closures.
+- [ ] Hardware evidence under its own contract: an A/B soak window, with the
+      cadence recorder's `PublicationOrderWait` stage, to see whether the
+      multi-second paired gaps go away.
+
+Verification: pending. Completion review: pending.
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 

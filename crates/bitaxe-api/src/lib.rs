@@ -6,6 +6,7 @@
 //! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
 
 pub mod asic;
+pub mod bap_values;
 pub mod boot_identity;
 pub mod build_identity;
 pub mod command_status;
@@ -44,6 +45,7 @@ pub mod wire;
 pub mod www_update;
 
 pub use asic::asic_settings_from_snapshot;
+pub use bap_values::{bap_request_snapshot, bap_subscription_values, board_family, suffix_string};
 pub use build_identity::{
     BuildChannel, BuildIdentity, BuildIdentityError, BuildProvenance, BUILD_LABEL_MAX_BYTES,
     BUILD_PROVENANCE_SCHEMA_VERSION, FULL_COMMIT_BYTES, SHORT_COMMIT_BYTES,

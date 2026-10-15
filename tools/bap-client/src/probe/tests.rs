@@ -19,7 +19,7 @@ fn healthy_board() -> Vec<(u64, String)> {
             1_200,
             frame(BapCommand::Acknowledge, "hashrate", "subscribed"),
         ),
-        (2_200, frame(BapCommand::Response, "hashrate", "513.0")),
+        (2_200, frame(BapCommand::Response, "hashrate", "513.00")),
         (
             4_300,
             frame(BapCommand::Acknowledge, "hashrate", "unsubscribed"),
@@ -184,4 +184,52 @@ fn a_hashrate_request_is_not_answered_by_the_firmware() {
         planned_responses(&Operation::Request(BapParameter::Hashrate)),
         0
     );
+}
+
+fn first_signature(arrivals: &[(u64, String)]) -> serde_json::Value {
+    let mut link = scripted(arrivals);
+    probe(&mut link, 2)
+        .expect("probe")
+        .maybe_signature
+        .expect("a failed step")
+}
+
+#[test]
+fn a_board_version_device_model_is_a_value_mismatch() {
+    // Arrange: ordinal 006's answer, before the reference family name was used.
+    let mut arrivals = healthy_board();
+    arrivals[0] = (10, frame(BapCommand::Response, "deviceModel", "205"));
+    // Act
+    let signature = first_signature(&arrivals);
+    // Assert
+    assert_eq!(
+        (signature["step"].as_str(), signature["category"].as_str()),
+        (Some("request_system_info"), Some("value_mismatch"))
+    );
+}
+
+#[test]
+fn an_answer_for_another_parameter_is_refused() {
+    // Arrange
+    let mut arrivals = healthy_board();
+    arrivals[4] = (600, frame(BapCommand::Response, "hashrate", "513.00"));
+    arrivals.insert(5, (601, frame(BapCommand::Response, "shares", "12/0")));
+    // Act
+    let signature = first_signature(&arrivals);
+    // Assert
+    assert_eq!(
+        (signature["step"].as_str(), signature["category"].as_str()),
+        (Some("request_shares"), Some("unexpected_parameter"))
+    );
+}
+
+#[test]
+fn a_hashrate_without_two_decimals_is_a_value_mismatch() {
+    // Arrange
+    let mut arrivals = healthy_board();
+    arrivals[6] = (2_200, frame(BapCommand::Response, "hashrate", "513"));
+    // Act
+    let signature = first_signature(&arrivals);
+    // Assert
+    assert_eq!(signature["category"].as_str(), Some("value_mismatch"));
 }

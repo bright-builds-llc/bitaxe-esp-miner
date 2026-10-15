@@ -18,6 +18,11 @@ pub const MAXIMUM_LISTEN_SECONDS: u64 = 30;
 const ANSWER_MS: u64 = 3_000;
 const QUIET_MS: u64 = 500;
 const SUBSCRIPTION_INTERVAL_MS: u32 = 1_000;
+/// The board the probe contract names: an Ultra 205, whose upstream family is
+/// `Ultra` and whose ASIC is a BM1366.
+const DEVICE_MODEL: &str = "Ultra";
+const ASIC_MODEL: &str = "BM1366";
+const SYSTEM_INFO_TOKENS: [&str; 5] = ["deviceModel", "asicModel", "pool", "poolPort", "poolUser"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Step {
@@ -35,6 +40,16 @@ impl Step {
             Self::SystemInfo => "request_system_info",
             Self::Shares => "request_shares",
             Self::HashrateSubscription => "subscribe_hashrate",
+        }
+    }
+
+    /// The only answer and acknowledgement tokens this step may receive.
+    #[must_use]
+    pub const fn expected_tokens(self) -> &'static [&'static str] {
+        match self {
+            Self::SystemInfo => &SYSTEM_INFO_TOKENS,
+            Self::Shares => &["shares"],
+            Self::HashrateSubscription => &["hashrate"],
         }
     }
 
@@ -60,7 +75,7 @@ pub fn judge(step: Step, report: &Report) -> &'static str {
             .iter()
             .any(|frame| frame.command() == command && frame.parameter_token() == token)
     };
-    match &report.outcome {
+    let category = match &report.outcome {
         _ if report.bytes_received == 0 => "no_bytes_received",
         _ if report.frames.is_empty() => "no_parseable_frames",
         Outcome::Rejected(_) => "device_rejected",
@@ -83,7 +98,60 @@ pub fn judge(step: Step, report: &Report) -> &'static str {
         }
         Outcome::Confirmed if step == Step::HashrateSubscription => "no_subscription_update",
         _ => "unexpected_outcome",
+    };
+    if category != "passed" {
+        return category;
     }
+    judge_values(step, report)
+}
+
+/// A passing step's frames must carry only its own tokens, in the reference formats.
+fn judge_values(step: Step, report: &Report) -> &'static str {
+    let answers = report.frames.iter().filter(|frame| {
+        matches!(
+            frame.command(),
+            BapCommand::Response | BapCommand::Acknowledge
+        )
+    });
+    let mut values = Vec::new();
+    for frame in answers {
+        if !step.expected_tokens().contains(&frame.parameter_token()) {
+            return "unexpected_parameter";
+        }
+        if frame.command() == BapCommand::Response {
+            values.push((frame.parameter_token(), frame.value().unwrap_or_default()));
+        }
+    }
+    let valid = values.iter().all(|(token, value)| match *token {
+        "deviceModel" => *value == DEVICE_MODEL,
+        "asicModel" => *value == ASIC_MODEL,
+        "shares" => is_share_counts(value),
+        "hashrate" => is_two_decimal_number(value),
+        _ => true,
+    });
+    if valid {
+        "passed"
+    } else {
+        "value_mismatch"
+    }
+}
+
+/// `accepted/rejected`, as the reference's `%llu/%llu`.
+fn is_share_counts(value: &str) -> bool {
+    value
+        .split_once('/')
+        .is_some_and(|(accepted, rejected)| is_digits(accepted) && is_digits(rejected))
+}
+
+/// A non-negative number with exactly two decimals, as the reference's `%.2f`.
+fn is_two_decimal_number(value: &str) -> bool {
+    value.split_once('.').is_some_and(|(whole, fraction)| {
+        is_digits(whole) && fraction.len() == 2 && is_digits(fraction)
+    })
+}
+
+fn is_digits(text: &str) -> bool {
+    !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 /// The probe's record: every step run, its frames with sensitive values redacted,
