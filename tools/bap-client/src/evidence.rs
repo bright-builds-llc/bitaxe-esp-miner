@@ -10,6 +10,7 @@ use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsE
 use std::path::{Path, PathBuf};
 
 pub const RECORD_FILE: &str = "probe.json";
+pub const BINDING_FILE: &str = "binding.json";
 
 fn refuse(category: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::PermissionDenied, category)
@@ -53,9 +54,9 @@ impl AttemptRoot {
         })
     }
 
-    /// Writes the one record (mode 0600), then seals file and child read-only.
-    pub fn seal(self, record: &Value) -> io::Result<()> {
-        let path = self.child.join(RECORD_FILE);
+    /// Writes the one record (mode 0600) as `file`, then seals file and child read-only.
+    pub fn seal(self, file: &str, record: &Value) -> io::Result<()> {
+        let path = self.child.join(file);
         let mut file = OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -68,18 +69,42 @@ impl AttemptRoot {
     }
 }
 
+/// Reads a saved report that must be a mode-0600 file beside the attempt child.
+pub fn read_private_sibling(report: &Path, child: &Path) -> io::Result<String> {
+    if report.parent() != child.parent() {
+        return Err(refuse("report_not_sibling"));
+    }
+    let metadata = fs::symlink_metadata(report)?;
+    if !metadata.file_type().is_file() || !private(&metadata, 0o600) {
+        return Err(refuse("report_not_private"));
+    }
+    fs::read_to_string(report)
+}
+
+/// Reads the record of a sealed probe attempt beside the attempt child: the probe
+/// child must still be read-only (0500) and its record 0400.
+pub fn read_sealed_probe(probe_child: &Path, child: &Path) -> io::Result<String> {
+    if probe_child.parent() != child.parent() {
+        return Err(refuse("probe_not_sibling"));
+    }
+    let directory = fs::symlink_metadata(probe_child)?;
+    let record_path = probe_child.join(RECORD_FILE);
+    let record = fs::symlink_metadata(&record_path)?;
+    if !directory.file_type().is_dir()
+        || !private(&directory, 0o500)
+        || !record.file_type().is_file()
+        || !private(&record, 0o400)
+    {
+        return Err(refuse("probe_not_sealed"));
+    }
+    fs::read_to_string(record_path)
+}
+
 /// Admits the run from the detector's saved report: a mode-0600 sibling of the
 /// attempt child, naming exactly one port, with the board running its firmware over
 /// native USB Serial/JTAG. Only the profile category is kept.
 pub fn admit_detector(report: &Path, child: &Path) -> io::Result<&'static str> {
-    if report.parent() != child.parent() {
-        return Err(refuse("detector_report_not_sibling"));
-    }
-    let metadata = fs::symlink_metadata(report)?;
-    if !metadata.file_type().is_file() || !private(&metadata, 0o600) {
-        return Err(refuse("detector_report_not_private"));
-    }
-    let text = fs::read_to_string(report)?;
+    let text = read_private_sibling(report, child)?;
     let value = |label: &str| {
         let prefix = format!("{label}: ");
         let matches: Vec<&str> = text

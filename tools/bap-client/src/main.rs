@@ -5,7 +5,12 @@
 //! answered operation.
 
 use anyhow::{anyhow, Context, Result};
-use bap_client::evidence::{admit_detector, AttemptRoot};
+use bap_client::binding::{
+    parse_detector, parse_package, parse_runtime, record as binding_record, BindingInputs,
+};
+use bap_client::evidence::{
+    admit_detector, read_private_sibling, read_sealed_probe, AttemptRoot, BINDING_FILE, RECORD_FILE,
+};
 use bap_client::exchange::{run, Operation, Outcome, Report, Timing};
 use bap_client::policy::{admit_setting, parameter, value_source, ValueSource};
 use bap_client::port::{admit_adapter_path, AdapterLink};
@@ -17,13 +22,15 @@ use serde_json::{json, Value};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command as Process;
+use std::time::SystemTime;
 
 #[derive(Parser)]
 #[command(about = "Talk to a Bitaxe Accessory Port through a USB-to-UART adapter")]
 struct Cli {
-    /// The adapter's macOS callout node, such as /dev/cu.usbserial-1410.
+    /// The adapter's macOS callout node, such as /dev/cu.usbserial-1410. Every
+    /// command except `bind` needs it.
     #[arg(long)]
-    port: String,
+    port: Option<String>,
     #[command(subcommand)]
     command: Command,
 }
@@ -55,6 +62,28 @@ enum Command {
         ordinal: u32,
         #[arg(long, default_value_t = 10)]
         listen_seconds: u64,
+    },
+    /// Bind a sealed probe to the firmware image the board was running; opens no port.
+    Bind {
+        /// The binding child to create inside the probe's mode-0700 parent.
+        #[arg(long)]
+        evidence_dir: PathBuf,
+        /// The installed package manifest.
+        #[arg(long)]
+        manifest: PathBuf,
+        /// The sealed probe attempt child, a sibling of the binding child.
+        #[arg(long)]
+        probe_dir: PathBuf,
+        /// Saved mode-0600 sibling reports: detector and USB observer, before and
+        /// after the probe.
+        #[arg(long)]
+        detector_before: PathBuf,
+        #[arg(long)]
+        runtime_before: PathBuf,
+        #[arg(long)]
+        detector_after: PathBuf,
+        #[arg(long)]
+        runtime_after: PathBuf,
     },
     /// Change a setting on the device.
     Set {
@@ -90,7 +119,28 @@ fn main() {
 }
 
 fn execute(cli: Cli) -> Result<bool> {
-    admit_adapter_path(&cli.port).map_err(|refusal| anyhow!("port_refused:{refusal:?}"))?;
+    if let Command::Bind {
+        evidence_dir,
+        manifest,
+        probe_dir,
+        detector_before,
+        runtime_before,
+        detector_after,
+        runtime_after,
+    } = cli.command
+    {
+        return run_bind(&BindPaths {
+            child: evidence_dir,
+            manifest,
+            probe_dir,
+            detector_before,
+            runtime_before,
+            detector_after,
+            runtime_after,
+        });
+    }
+    let port = cli.port.ok_or_else(|| anyhow!("port_required"))?;
+    admit_adapter_path(&port).map_err(|refusal| anyhow!("port_refused:{refusal:?}"))?;
     if let Command::Probe {
         evidence_dir,
         detector_report,
@@ -99,7 +149,7 @@ fn execute(cli: Cli) -> Result<bool> {
     } = cli.command
     {
         return run_probe(
-            &cli.port,
+            &port,
             &evidence_dir,
             &detector_report,
             ordinal,
@@ -107,7 +157,7 @@ fn execute(cli: Cli) -> Result<bool> {
         );
     }
     let (operation, listen_ms) = operation(cli.command)?;
-    let mut link = AdapterLink::open(&cli.port).context("adapter_open_failed")?;
+    let mut link = AdapterLink::open(&port).context("adapter_open_failed")?;
     let timing = Timing {
         answer_ms: ANSWER_MS,
         quiet_ms: QUIET_MS,
@@ -138,7 +188,9 @@ fn operation(command: Command) -> Result<(Operation, u64)> {
             listen_seconds.saturating_mul(1_000),
         ),
         Command::Unsubscribe { parameter } => (Operation::Unsubscribe(known(&parameter)?), 0),
-        Command::Probe { .. } => unreachable!("the probe runs before operations are built"),
+        Command::Probe { .. } | Command::Bind { .. } => {
+            unreachable!("probe and bind run before operations are built")
+        }
         Command::Set {
             parameter,
             value,
@@ -228,7 +280,8 @@ fn run_probe(
         "hardware_qualified": false,
         "promotion": "none",
     });
-    root.seal(&record).context("evidence_seal_failed")?;
+    root.seal(RECORD_FILE, &record)
+        .context("evidence_seal_failed")?;
     writeln!(
         std::io::stdout().lock(),
         "{}",
@@ -256,4 +309,65 @@ fn source_identity() -> Value {
         "clean": git(&workspace, &["status", "--porcelain"]).map(|status| status.is_empty()),
         "reference_commit": git(&workspace.join("reference/esp-miner"), &["rev-parse", "HEAD"]),
     })
+}
+
+struct BindPaths {
+    child: PathBuf,
+    manifest: PathBuf,
+    probe_dir: PathBuf,
+    detector_before: PathBuf,
+    runtime_before: PathBuf,
+    detector_after: PathBuf,
+    runtime_after: PathBuf,
+}
+
+/// Reads the private reports, judges the binding and seals one record beside the
+/// probe. The host's elapsed time is the gap between the two observer reports'
+/// modification times, each written when its bounded capture ended.
+fn run_bind(paths: &BindPaths) -> Result<bool> {
+    let root = AttemptRoot::create(&paths.child).context("evidence_root_refused")?;
+    let report = |path: &Path| read_private_sibling(path, &paths.child);
+    let refused = |category: &'static str| anyhow!("binding_input_refused:{category}");
+    let manifest: Value =
+        serde_json::from_slice(&std::fs::read(&paths.manifest).context("manifest_unreadable")?)
+            .context("manifest_malformed")?;
+    let probe: Value = serde_json::from_str(
+        &read_sealed_probe(&paths.probe_dir, &paths.child).context("probe_refused")?,
+    )
+    .context("probe_malformed")?;
+    let package = parse_package(&manifest).map_err(refused)?;
+    let detector_before =
+        parse_detector(&report(&paths.detector_before).context("detector_before_refused")?)
+            .map_err(refused)?;
+    let detector_after =
+        parse_detector(&report(&paths.detector_after).context("detector_after_refused")?)
+            .map_err(refused)?;
+    let runtime_before =
+        parse_runtime(&report(&paths.runtime_before).context("runtime_before_refused")?)
+            .map_err(refused)?;
+    let runtime_after =
+        parse_runtime(&report(&paths.runtime_after).context("runtime_after_refused")?)
+            .map_err(refused)?;
+    let modified = |path: &Path| -> Result<SystemTime> { Ok(std::fs::metadata(path)?.modified()?) };
+    let host_elapsed_ms = modified(&paths.runtime_after)?
+        .duration_since(modified(&paths.runtime_before)?)
+        .map_err(|_| refused("observations_out_of_order"))?
+        .as_millis();
+    let record = binding_record(&BindingInputs {
+        package: &package,
+        probe: &probe,
+        detector_before: &detector_before,
+        detector_after: &detector_after,
+        runtime_before: &runtime_before,
+        runtime_after: &runtime_after,
+        host_elapsed_ms: u64::try_from(host_elapsed_ms).unwrap_or(u64::MAX),
+    });
+    root.seal(BINDING_FILE, &record)
+        .context("evidence_seal_failed")?;
+    writeln!(
+        std::io::stdout().lock(),
+        "{}",
+        json!({"outcome": record["outcome"], "failure": record["failure"]})
+    )?;
+    Ok(record["outcome"] == json!("bound"))
 }

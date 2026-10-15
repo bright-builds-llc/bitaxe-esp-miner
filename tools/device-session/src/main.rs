@@ -326,6 +326,7 @@ fn run_observe_usb_reboot_loop(args: ObserveUsbRebootLoopArgs) -> Result<Termina
         "latest_reset_reason: {}",
         observation.latest_reset_reason().label()
     );
+    println!("latest_uptime_ms: {}", observation.latest_uptime_ms());
     match observation.latest_rust_panic() {
         Some(marker) => {
             println!("rust_panic_receipt: present");

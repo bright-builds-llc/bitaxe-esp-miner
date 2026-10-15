@@ -139,6 +139,22 @@ the detector's saved report as a mode-0600 sibling, creates the attempt director
 itself, refuses one that already exists, stops at the first failed step and
 seals one category-only record read-only. Its exact use is in the task contract.
 
+BAP cannot say which firmware answered, so `bind` ties a sealed probe to the
+installed image. It opens no port and takes no `--port`. Its inputs are the
+package manifest, the sealed probe, and four mode-0600 reports saved beside it:
+the detector and `just diagnose-usb-reboot-loop` before the probe, and both
+again after it. The observer reads the board's USB console receive-only. The
+record is `bound` only when all of these hold:
+
+- the same physical device both times;
+- the exact package commit and ELF digest both times;
+- an unchanged boot ordinal and reset reason;
+- a device uptime that advanced with host time (within 15 s).
+
+That is one continuing boot of that image across every BAP frame. The record
+keeps the public commit and digest, categories and numbers, and never a path or
+physical identity.
+
 ## Not yet authorized
 
 Opening the adapter, sending BAP frames, subscriptions or settings changes to the

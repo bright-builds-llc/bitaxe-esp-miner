@@ -43,6 +43,7 @@ pub struct UsbRebootLoopObservation {
     reconnect_count: u16,
     latest_boot_ordinal: u64,
     latest_reset_reason: ResetReasonCategory,
+    latest_uptime_ms: u64,
     latest_rust_panic: Option<RustPanicMarker>,
     latest_allocation_failure: Option<AllocationFailureMarker>,
     maybe_allocation_context: Option<AllocationFailureContextMarker>,
@@ -110,6 +111,13 @@ impl UsbRebootLoopObservation {
     #[must_use]
     pub const fn latest_reset_reason(&self) -> ResetReasonCategory {
         self.latest_reset_reason
+    }
+
+    /// Returns the latest marker's device uptime, so two observations can show one
+    /// boot continuing between them.
+    #[must_use]
+    pub const fn latest_uptime_ms(&self) -> u64 {
+        self.latest_uptime_ms
     }
 
     /// Returns the previous boot's Rust panic receipt when present.
@@ -210,6 +218,7 @@ fn classify_capture(bytes: &[u8], open_count: u16) -> Result<UsbRebootLoopObserv
         reconnect_count: open_count.saturating_sub(1),
         latest_boot_ordinal: latest.boot_ordinal(),
         latest_reset_reason: latest.reset_reason(),
+        latest_uptime_ms: latest.uptime_ms(),
         latest_rust_panic,
         latest_allocation_failure,
         maybe_allocation_context,
@@ -272,6 +281,20 @@ mod tests {
         let observation = classify_capture(input.as_bytes(), 1).expect("valid observed boot");
         // Assert
         assert_eq!(observation.category().label(), "stable_boot");
+    }
+
+    #[test]
+    fn latest_uptime_comes_from_the_last_marker() {
+        // Arrange
+        let input = format!(
+            "{}\n{}\n",
+            marker(2, ResetReasonCategory::Panic, 500),
+            marker(2, ResetReasonCategory::Panic, 2500)
+        );
+        // Act
+        let observation = classify_capture(input.as_bytes(), 1).expect("valid observed boot");
+        // Assert
+        assert_eq!(observation.latest_uptime_ms(), 2500);
     }
 
     #[test]

@@ -72,7 +72,8 @@ fn sealing_leaves_one_read_only_record() {
     let child = dir.path().join("attempt-001");
     let root = AttemptRoot::create(&child).expect("root");
     // Act
-    root.seal(&json!({"outcome": "complete"})).expect("seal");
+    root.seal(RECORD_FILE, &json!({"outcome": "complete"}))
+        .expect("seal");
     // Assert
     let record = child.join(RECORD_FILE);
     assert_eq!(
@@ -125,10 +126,38 @@ fn a_readable_or_misplaced_detector_report_is_refused() {
     // Assert
     assert_eq!(
         readable.expect_err("refused").to_string(),
-        "detector_report_not_private"
+        "report_not_private"
     );
     assert_eq!(
         misplaced.expect_err("refused").to_string(),
-        "detector_report_not_sibling"
+        "report_not_sibling"
     );
+}
+
+#[test]
+fn a_sealed_probe_is_readable_by_its_sibling_binding() {
+    // Arrange
+    let dir = parent(0o700);
+    let probe_child = dir.path().join("attempt");
+    AttemptRoot::create(&probe_child)
+        .expect("root")
+        .seal(RECORD_FILE, &json!({"outcome": "complete"}))
+        .expect("seal");
+    // Act
+    let text = read_sealed_probe(&probe_child, &dir.path().join("binding"));
+    // Assert
+    assert!(text.expect("sealed").contains("complete"));
+    fs::set_permissions(&probe_child, fs::Permissions::from_mode(0o700)).expect("cleanup");
+}
+
+#[test]
+fn an_unsealed_probe_is_refused() {
+    // Arrange
+    let dir = parent(0o700);
+    let probe_child = dir.path().join("attempt");
+    AttemptRoot::create(&probe_child).expect("root");
+    // Act
+    let result = read_sealed_probe(&probe_child, &dir.path().join("binding"));
+    // Assert
+    assert!(result.is_err());
 }
