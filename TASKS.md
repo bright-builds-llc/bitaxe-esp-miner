@@ -1637,10 +1637,73 @@ Origin: the independent review of BAP ordinal 006
     signature.
 
   BAP-001 promotion follows only after an independent review.
+- Ordinal 008 result (2026-10-14): `complete`. Package `d2941b5e`.
+  - The probe passed all 11 steps under the value checks, and the binding is
+    `bound` (boot ordinal 7; the uptime advanced 79,130 ms against 79,179 ms
+    of host time).
+  - Every observed value matches the reference for an idle board: `Ultra`,
+    `BM1366`, six-decimal temperatures, mV and mA, RPM, and change-only
+    updates at most once per second.
+  - Summary: `docs/parity/evidence/20261015-bap-uart-live-probe.md`.
+- Independent review of 008: do not promote yet. The binding and every value
+  hold, but the code still diverged in ways this run did not exercise. All are
+  now fixed with regressions:
+  - D1: change detection was per parameter. A `chipTemp` change resent the
+    constant `vrTemp`. Fix: `BapLastValues` compares each token on its own,
+    like `BAP_send_if_changed`.
+  - D2: `REQ found_block` answered `found_block`; the reference answers
+    `block_found`. BAP-002's verified claim ("request projection ... match the
+    pinned reference") was wrong for this one answer until this fix. The parity
+    tool forbids automatic transitions out of `verified`, so the row text is
+    unchanged; the claim holds again with the fix and its regression
+    (`a_found_block_request_answers_the_reference_block_found_token`). Ordinal
+    009 checks it live.
+  - D3: subscriptions froze in AP mode. They now keep publishing and timing
+    out beside the AP announcements.
+  - D4: an empty value dropped the frame. Outgoing frames now omit the value
+    field, as `BAP_send_message` does.
+  - D5: intervals now parse like C `atoi`.
+  - Kept as is: values containing `,` or `*` are still refused. The reference
+    sends them raw, which would break the frame.
+  - Outside BAP: best difficulty is session-only, while the reference restores
+    it from NVS. That is now `task-parity-best-difficulty-persistence`.
+  - The probe now also requests `block_height`, `found_block` (expecting
+    `block_found`) and `show_new_block`: 14 steps.
+- Ordinal 009 contract (pending owner go-ahead): ordinal 008's steps on the
+  fixed package, unchanged except:
+  - package at the clean, pushed `HEAD` that records this contract;
+  - parent `scratch/bap-probe-009`;
+  - `--ordinal 9 --listen-seconds 5`;
+  - the three added requests: `REQ block_height`, `REQ found_block` and
+    `REQ show_new_block`.
+
+  Other allowed and prohibited effects are as in ordinal 008. Outcomes are as
+  in 008. A `complete` run plus an independent review is the BAP-001 promotion
+  input.
 
 Verification: pending. Completion review: pending.
 
 ## Future
+
+### task-parity-best-difficulty-persistence | 2026-10-15 | Persist the all-time best difficulty like upstream
+
+Origin: the BAP ordinal 008 review. After soak 002 accepted 22 shares, the
+next boot reported `best_difficulty` `0`. Upstream restores
+`best_nonce_diff` from NVS key `bestdiff` at boot (`system.c:50,129`) and
+persists each new best (`system.c:361-369`). In this firmware `best_diff` is
+session-only (`crates/bitaxe-api/src/mining.rs`), and `bestdiff` exists only in
+the NVS schema. The value feeds `/api/system/info` `bestDiff` and the BAP
+`best_difficulty` subscription.
+
+- [ ] Find the parity rows that own `bestDiff`/`bestSessionDiff`, and confirm
+      the upstream semantics: the all-time value is restored and persisted,
+      and the session value starts at 0.
+- [ ] Restore and persist the all-time best through the settings or NVS owner,
+      with host regressions; keep `bestSessionDiff` session-only.
+- [ ] Hardware evidence under its own contract (a value that survives a
+      reboot after accepted shares).
+
+Verification: pending. Completion review: pending.
 
 ### task-operator-snapshot-io-outside-lock | 2026-10-14 | Keep socket writes out of the operator-snapshot publication lock
 

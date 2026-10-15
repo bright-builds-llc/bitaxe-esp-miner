@@ -122,19 +122,24 @@ impl BapRuntime {
         Ok(dispatch)
     }
 
+    /// The reference runs its subscription task in every mode, so existing
+    /// subscriptions keep publishing and timing out after a Wi-Fi loss, beside
+    /// the access-point announcements.
     pub fn poll(&mut self, now_ms: u64) -> Vec<BapRuntimeAction> {
-        if self.mode == BapConnectionMode::AccessPoint {
-            if now_ms < self.next_ap_announcement_ms {
-                return Vec::new();
-            }
+        let mut actions = Vec::new();
+        if self.mode == BapConnectionMode::AccessPoint && now_ms >= self.next_ap_announcement_ms {
             self.next_ap_announcement_ms = coalesced_deadline(
                 self.next_ap_announcement_ms,
                 BAP_AP_ANNOUNCEMENT_INTERVAL_MS,
                 now_ms,
             );
-            return vec![BapRuntimeAction::AnnounceAccessPoint];
+            actions.push(BapRuntimeAction::AnnounceAccessPoint);
         }
+        actions.extend(self.poll_subscriptions(now_ms));
+        actions
+    }
 
+    fn poll_subscriptions(&mut self, now_ms: u64) -> Vec<BapRuntimeAction> {
         if now_ms < self.next_subscription_tick_ms {
             return Vec::new();
         }
@@ -197,6 +202,48 @@ fn coalesced_deadline(deadline_ms: u64, interval_ms: u64, now_ms: u64) -> u64 {
     let elapsed = now_ms.saturating_sub(deadline_ms);
     let slots = elapsed / interval_ms;
     deadline_ms.saturating_add(interval_ms.saturating_mul(slots.saturating_add(1)))
+}
+
+/// The last value sent for each update token, like the reference's `last_values`:
+/// `BAP_send_if_changed` compares and resends each token on its own, so a
+/// `chipTemp` change never resends an unchanged `vrTemp`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BapLastValues {
+    sent: Vec<(BapParameter, String, Option<String>)>,
+}
+
+impl BapLastValues {
+    /// Keeps only the frames whose value changed since this token was last sent,
+    /// and records them as sent.
+    pub fn changed(&mut self, parameter: BapParameter, frames: Vec<BapFrame>) -> Vec<BapFrame> {
+        frames
+            .into_iter()
+            .filter(|frame| {
+                let token = frame.parameter_token();
+                let value = frame.value().map(str::to_owned);
+                let slot = self
+                    .sent
+                    .iter_mut()
+                    .find(|(owner, sent, _)| *owner == parameter && sent == token);
+                match slot {
+                    Some((_, _, last)) if *last == value => false,
+                    Some((_, _, last)) => {
+                        *last = value;
+                        true
+                    }
+                    None => {
+                        self.sent.push((parameter, token.to_owned(), value));
+                        true
+                    }
+                }
+            })
+            .collect()
+    }
+
+    /// Forgets a parameter's values, as each SUB and timeout does in the reference.
+    pub fn reset(&mut self, parameter: BapParameter) {
+        self.sent.retain(|(owner, _, _)| *owner != parameter);
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -416,6 +463,85 @@ mod tests {
             )]
         );
         assert!(runtime.poll(window + 2_000).is_empty());
+    }
+
+    fn temperature(chip: &str, vr: &str) -> Vec<BapFrame> {
+        [("chipTemp", chip), ("vrTemp", vr)]
+            .into_iter()
+            .map(|(token, value)| {
+                BapFrame::new_token(BapCommand::Response, token, Some(value.to_owned()))
+                    .expect("update frame")
+            })
+            .collect()
+    }
+
+    fn tokens(frames: &[BapFrame]) -> Vec<&str> {
+        frames.iter().map(BapFrame::parameter_token).collect()
+    }
+
+    #[test]
+    fn only_the_changed_token_of_a_multi_token_update_is_resent() {
+        // Arrange
+        let mut last = BapLastValues::default();
+        let first = last.changed(
+            BapParameter::Temperature,
+            temperature("53.000000", "0.000000"),
+        );
+
+        // Act: `chipTemp` changes while `vrTemp` stays 0, as on the Ultra 205.
+        let second = last.changed(
+            BapParameter::Temperature,
+            temperature("54.000000", "0.000000"),
+        );
+        let unchanged = last.changed(
+            BapParameter::Temperature,
+            temperature("54.000000", "0.000000"),
+        );
+
+        // Assert
+        assert_eq!(tokens(&first), vec!["chipTemp", "vrTemp"]);
+        assert_eq!(tokens(&second), vec!["chipTemp"]);
+        assert!(unchanged.is_empty());
+    }
+
+    #[test]
+    fn a_reset_resends_every_token_even_when_unchanged() {
+        // Arrange
+        let mut last = BapLastValues::default();
+        last.changed(
+            BapParameter::Temperature,
+            temperature("53.000000", "0.000000"),
+        );
+
+        // Act
+        last.reset(BapParameter::Temperature);
+        let resent = last.changed(
+            BapParameter::Temperature,
+            temperature("53.000000", "0.000000"),
+        );
+
+        // Assert
+        assert_eq!(tokens(&resent), vec!["chipTemp", "vrTemp"]);
+    }
+
+    #[test]
+    fn subscriptions_keep_publishing_after_a_wifi_loss() {
+        // Arrange
+        let (mut runtime, _) = subscribed_runtime(b"$BAP,SUB,hashrate,1000*00\r\n", 0);
+        assert_eq!(publishes(&runtime.poll(1_000)), 1);
+
+        // Act
+        runtime.set_mode(BapConnectionMode::AccessPoint, 1_500);
+        let lost = runtime.poll(2_000);
+
+        // Assert: the reference announces access-point mode and keeps the subscription.
+        assert_eq!(
+            lost,
+            vec![
+                BapRuntimeAction::AnnounceAccessPoint,
+                BapRuntimeAction::PublishSubscription(BapParameter::Hashrate),
+            ]
+        );
     }
 
     #[test]

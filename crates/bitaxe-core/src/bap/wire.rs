@@ -169,12 +169,15 @@ impl BapFrame {
     }
 
     /// Constructs a canonical outgoing frame with a response-only extension
-    /// token such as `deviceModel`, `chipTemp`, or `mode`.
+    /// token such as `deviceModel`, `chipTemp`, or `mode`. An empty value is
+    /// omitted, as the reference `BAP_send_message` sends no value field when
+    /// `strlen(value) == 0`.
     pub fn new_token(
         command: BapCommand,
         parameter_token: &str,
         maybe_value: Option<String>,
     ) -> Result<Self, BapFrameError> {
+        let maybe_value = maybe_value.filter(|value| !value.is_empty());
         validate_field(parameter_token)?;
         if let Some(value) = maybe_value.as_deref() {
             validate_field(value)?;

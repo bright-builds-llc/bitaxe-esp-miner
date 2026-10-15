@@ -250,11 +250,11 @@ fn plan_request(
             BapParameter::BlockHeight,
             snapshot.block_height.to_string(),
         )?),
-        BapParameter::FoundBlock => responses.push(frame_with_value(
-            BapCommand::Response,
-            BapParameter::FoundBlock,
-            snapshot.found_block.to_string(),
-        )?),
+        // The reference answers this request with `block_found`, though its
+        // subscription update uses `found_block` (`bap_handlers.c`).
+        BapParameter::FoundBlock => {
+            responses.push(response("block_found", &snapshot.found_block.to_string())?);
+        }
         BapParameter::ShowNewBlock => responses.push(frame_with_value(
             BapCommand::Response,
             BapParameter::ShowNewBlock,
@@ -281,8 +281,9 @@ fn plan_subscribe(frame: &BapFrame, mode: BapConnectionMode) -> Result<BapPlan, 
     };
     let interval_ms = frame
         .value()
-        .and_then(|value| value.parse::<u32>().ok())
+        .map(reference_atoi)
         .filter(|interval| *interval > 0)
+        .and_then(|interval| u32::try_from(interval).ok())
         .unwrap_or(BAP_DEFAULT_SUBSCRIPTION_INTERVAL_MS);
     let response = frame_with_value(BapCommand::Acknowledge, parameter, "subscribed".to_owned())?;
     Ok(BapPlan::with_effect(
@@ -293,6 +294,26 @@ fn plan_subscribe(frame: &BapFrame, mode: BapConnectionMode) -> Result<BapPlan, 
         },
         vec![response],
     ))
+}
+
+/// C `atoi` as the reference uses it for intervals: leading whitespace, an
+/// optional sign, then digits up to the first non-digit; `0` when none. Values
+/// beyond `int` are clamped where C would be undefined.
+fn reference_atoi(text: &str) -> i64 {
+    let trimmed = text.trim_start_matches([' ', '\t', '\n', '\r', '\x0b', '\x0c']);
+    let (negative, digits) = match trimmed.as_bytes().first() {
+        Some(b'-') => (true, &trimmed[1..]),
+        Some(b'+') => (false, &trimmed[1..]),
+        _ => (false, trimmed),
+    };
+    let magnitude = digits
+        .bytes()
+        .take_while(u8::is_ascii_digit)
+        .fold(0_i64, |total, digit| {
+            (total * 10 + i64::from(digit - b'0')).min(i64::from(i32::MAX) + 1)
+        });
+    let value = if negative { -magnitude } else { magnitude };
+    value.clamp(i64::from(i32::MIN), i64::from(i32::MAX))
 }
 
 fn plan_unsubscribe(frame: &BapFrame) -> Result<BapPlan, BapPlanError> {

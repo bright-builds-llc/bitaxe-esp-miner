@@ -16,7 +16,7 @@ use esp_idf_svc::hal::{
     units::Hertz,
 };
 
-use crate::bap_runtime::{BapFrameAccumulator, BapRuntime, BapRuntimeAction};
+use crate::bap_runtime::{BapFrameAccumulator, BapLastValues, BapRuntime, BapRuntimeAction};
 
 pub const BAP_UART_BAUD: u32 = 115_200;
 pub const BAP_UART_TX_PIN: i32 = 39;
@@ -66,7 +66,7 @@ fn run_owner(mut driver: UartDriver<'static>) {
     let started = Instant::now();
     let mut runtime = BapRuntime::default();
     let mut accumulator = BapFrameAccumulator::default();
-    let mut last_subscription_frames: Vec<(BapParameter, Vec<String>)> = Vec::new();
+    let mut last_values = BapLastValues::default();
     let mut buffer = [0_u8; 128];
 
     loop {
@@ -78,7 +78,7 @@ fn run_owner(mut driver: UartDriver<'static>) {
                     // A (re)subscription resends its next values even when unchanged.
                     if let Some(parameter) = handle_frame(&mut driver, &mut runtime, &frame, now_ms)
                     {
-                        last_subscription_frames.retain(|(current, _)| *current != parameter);
+                        last_values.reset(parameter);
                     }
                 }
             }
@@ -89,7 +89,7 @@ fn run_owner(mut driver: UartDriver<'static>) {
             }
         }
         for action in runtime.poll(elapsed_ms(started)) {
-            handle_runtime_action(&mut driver, action, &mut last_subscription_frames);
+            handle_runtime_action(&mut driver, action, &mut last_values);
         }
     }
 }
@@ -135,7 +135,7 @@ fn handle_frame(
 fn handle_runtime_action(
     driver: &mut UartDriver<'static>,
     action: BapRuntimeAction,
-    last_subscription_frames: &mut Vec<(BapParameter, Vec<String>)>,
+    last_values: &mut BapLastValues,
 ) {
     match action {
         BapRuntimeAction::AnnounceAccessPoint => {
@@ -154,33 +154,14 @@ fn handle_runtime_action(
             if let Ok(frame) = frame {
                 write_frame(driver, &frame);
             }
-            last_subscription_frames.retain(|(current, _)| *current != parameter);
+            last_values.reset(parameter);
         }
         BapRuntimeAction::PublishSubscription(parameter) => {
             let Some(frames) = current_subscription_frames(parameter) else {
                 log::warn!("bap_subscription=unavailable category=runtime_snapshot");
                 return;
             };
-            let encoded: Vec<String> = frames
-                .iter()
-                .filter_map(|frame| frame.encode().ok())
-                .collect();
-            let unchanged = last_subscription_frames
-                .iter()
-                .find(|(current, _)| *current == parameter)
-                .is_some_and(|(_, previous)| previous == &encoded);
-            if unchanged {
-                return;
-            }
-            if let Some((_, previous)) = last_subscription_frames
-                .iter_mut()
-                .find(|(current, _)| *current == parameter)
-            {
-                *previous = encoded;
-            } else {
-                last_subscription_frames.push((parameter, encoded));
-            }
-            for frame in frames {
+            for frame in last_values.changed(parameter, frames) {
                 write_frame(driver, &frame);
             }
         }

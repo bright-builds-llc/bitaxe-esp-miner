@@ -1,7 +1,8 @@
 //! The read-only BAP probe: a fixed sequence that changes no setting, judged step by
 //! step, stopping at the first failure so the earliest typed failure is the one kept.
 //!
-//! Steps: request `systemInfo` and `shares`, then subscribe to each numeric
+//! Steps: request `systemInfo`, `shares`, `block_height`, `found_block` and
+//! `show_new_block`, then subscribe to each numeric
 //! parameter (`hashrate`, `temperature`, `power`, `voltage`, `current`,
 //! `fan_speed`, `best_difficulty`, `block_height`, `found_block`), listen, and
 //! unsubscribe. Requests answer only `systemInfo`, `shares`, `block_height`,
@@ -30,16 +31,21 @@ const SYSTEM_INFO_TOKENS: [&str; 5] = ["deviceModel", "asicModel", "pool", "pool
 pub enum Step {
     SystemInfo,
     Shares,
+    /// Another answered request: `block_height`, `found_block` or `show_new_block`.
+    Request(BapParameter),
     /// Subscribe, listen, then unsubscribe.
     Subscription(BapParameter),
 }
 
 impl Step {
-    /// Every read-only step: both answered requests, then each numeric subscription.
+    /// Every read-only step: each answered request, then each numeric subscription.
     /// `wifi` is left out because it carries the network name and address.
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 14] = [
         Self::SystemInfo,
         Self::Shares,
+        Self::Request(BapParameter::BlockHeight),
+        Self::Request(BapParameter::FoundBlock),
+        Self::Request(BapParameter::ShowNewBlock),
         Self::Subscription(BapParameter::Hashrate),
         Self::Subscription(BapParameter::Temperature),
         Self::Subscription(BapParameter::Power),
@@ -56,6 +62,10 @@ impl Step {
         match self {
             Self::SystemInfo => "request_system_info",
             Self::Shares => "request_shares",
+            Self::Request(BapParameter::BlockHeight) => "request_block_height",
+            Self::Request(BapParameter::FoundBlock) => "request_found_block",
+            Self::Request(BapParameter::ShowNewBlock) => "request_show_new_block",
+            Self::Request(_) => "request_other",
             Self::Subscription(BapParameter::Hashrate) => "subscribe_hashrate",
             Self::Subscription(BapParameter::Temperature) => "subscribe_temperature",
             Self::Subscription(BapParameter::Power) => "subscribe_power",
@@ -76,6 +86,11 @@ impl Step {
         match self {
             Self::SystemInfo => &SYSTEM_INFO_TOKENS,
             Self::Shares => &["shares"],
+            Self::Request(BapParameter::BlockHeight) => &["block_height"],
+            // The reference answers this request with `block_found`, not `found_block`.
+            Self::Request(BapParameter::FoundBlock) => &["block_found"],
+            Self::Request(BapParameter::ShowNewBlock) => &["show_new_block"],
+            Self::Request(_) => &[],
             Self::Subscription(BapParameter::Temperature) => &["chipTemp", "vrTemp"],
             Self::Subscription(BapParameter::Hashrate) => &["hashrate"],
             Self::Subscription(BapParameter::Power) => &["power"],
@@ -105,6 +120,7 @@ impl Step {
         match self {
             Self::SystemInfo => Operation::Request(BapParameter::SystemInfo),
             Self::Shares => Operation::Request(BapParameter::Shares),
+            Self::Request(parameter) => Operation::Request(parameter),
             Self::Subscription(parameter) => Operation::Subscribe {
                 parameter,
                 maybe_interval_ms: Some(SUBSCRIPTION_INTERVAL_MS),
@@ -135,7 +151,13 @@ pub fn judge(step: Step, report: &Report) -> &'static str {
                 "system_info_incomplete"
             }
         }
-        Outcome::Answered if step == Step::Shares && has(BapCommand::Response, "shares") => {
+        Outcome::Answered
+            if matches!(step, Step::Shares | Step::Request(_))
+                && step
+                    .update_tokens()
+                    .iter()
+                    .any(|token| has(BapCommand::Response, token)) =>
+        {
             "passed"
         }
         Outcome::Confirmed
@@ -182,7 +204,8 @@ fn judge_values(step: Step, report: &Report) -> &'static str {
         // `%f`; a temperature may be negative.
         "chipTemp" | "vrTemp" => is_decimal(value.strip_prefix('-').unwrap_or(value), 6),
         // `%d`
-        "fan_speed" | "block_height" | "found_block" => is_digits(value),
+        "fan_speed" | "block_height" | "found_block" | "block_found" => is_digits(value),
+        "show_new_block" => *value == "0" || *value == "1",
         "best_difficulty" => is_suffixed_difficulty(value),
         _ => true,
     });

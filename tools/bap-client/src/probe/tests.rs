@@ -337,8 +337,30 @@ fn the_full_probe_covers_every_numeric_subscription_but_not_wifi() {
     // Arrange / Act
     let labels: Vec<&str> = Step::ALL.iter().map(|step| step.label()).collect();
     // Assert
-    assert_eq!(labels.len(), 11);
+    assert_eq!(labels.len(), 14);
     assert!(labels
         .iter()
         .all(|label| !label.contains("wifi") && *label != "subscribe_other"));
+}
+
+#[test]
+fn a_found_block_request_expects_the_reference_block_found_token() {
+    // Arrange
+    let answer = |token: &str| {
+        let text = frame(BapCommand::Response, token, "0");
+        Report {
+            outcome: Outcome::Answered,
+            frames: vec![bitaxe_core::bap::BapFrame::parse(text.as_bytes()).expect("frame")],
+            malformed_lines: 0,
+            bytes_received: text.len(),
+        }
+    };
+    let step = Step::Request(BapParameter::FoundBlock);
+    // Act
+    let categories = (
+        judge(step, &answer("block_found")),
+        judge(step, &answer("found_block")),
+    );
+    // Assert
+    assert_eq!(categories, ("passed", "unexpected_outcome"));
 }
