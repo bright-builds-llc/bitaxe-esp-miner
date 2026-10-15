@@ -1231,7 +1231,81 @@ the NVS schema. The value feeds `/api/system/info` `bestDiff` and the BAP
 
 Verification: pending. Completion review: pending.
 
+### task-ultra205-default-profile-soak-003 | 2026-10-15 | Mine one soak to prove the persisted best difficulty
+
+Objective: hardware evidence for `task-parity-best-difficulty-persistence`.
+Mining raises the all-time and session best nonce difficulty; after a reboot,
+the all-time best is restored from NVS `bestdiff`. The owner authorized this
+soak and its evidence run on 2026-10-15.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task. Soak samples now also record `bestDiff`
+      and `bestSessionDiff` (`tools/http-transport/src/soak/sample.rs`), as
+      metadata outside the judged criteria.
+- [ ] Soak attempt 001 (soak ledger ordinal 4), with an independent review.
+- [ ] Persistence evidence: BAP ordinal 010 after the soak (below).
+
+Hardware contract (owner-authorized 2026-10-15). It is the archived
+`task-ultra205-default-profile-soak-002` contract, unchanged except:
+- Package: `just package` at the clean, pushed `HEAD` that records this
+  contract. Install it with that contract's state-preserving `just
+  flash-monitor ... --capture-timeout-seconds 360 --redact-evidence`, because
+  the firmware changed.
+- New parent `P = scratch/ultra205-soak-003`, with `R = P/attempt-001`; soak
+  ledger ordinal 4.
+- No BAP traffic during the work window.
+- Seal with a detector naming the board's port, then `just ultra205-soak
+  finish`.
+- Retry bound, outcomes and recovery: as the archived contract. Parity
+  promotion is prohibited in this task.
+- Additional evidence, read from the private journal: the soak observer's
+  `bestDiff` and `bestSessionDiff` must be greater than 0 by the end of the
+  work window, and must never decrease within the boot.
+
+BAP ordinal 010 contract (owner-authorized 2026-10-15). The persistence proof
+runs after the soak is sealed. It uses BAP ordinal 009's identity-bound
+procedure (`scratch/bap-run-009.sh` steps) on the same package, with parent
+`scratch/bap-probe-010` and `--ordinal 10 --listen-seconds 5`.
+- Its state-preserving reinstall of the same package is the reboot. NVS is
+  kept.
+- Expected: the probe is `complete` and the binding is `bound`.
+- The `best_difficulty` update must equal `suffixString` of the soak's final
+  `bestDiff`, and must be non-zero: the restored all-time best.
+- After the reboot, `bestSessionDiff` = 0 is unit-tested only. Reading HTTP
+  would need a new Gate session.
+- Allowed frames, prohibited effects and outcomes are as in ordinal 009.
+
+Verification: pending. Completion review: pending.
+
 ## Future
+
+### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
+
+Owner request (2026-10-15). Start only after the parity work is complete.
+
+Several upstream names are ambiguous or overloaded:
+- `bestDiff` (all-time, persisted) versus `bestSessionDiff` (this boot);
+- `best_difficulty` on BAP (all-time only);
+- `found_block` (subscription) versus `block_found` (request answer);
+- `fan_speed` (RPM on BAP subscriptions, but percent in settings);
+- unit-less `voltage`, `current` and `power`.
+
+Design them as extensions alongside, never instead of, the upstream fields, so
+upstream clients keep working.
+
+- [ ] Inventory the ambiguous or overloaded fields across `/api/system/info`,
+      the WebSocket telemetry, BAP and the screen, with their units and scopes
+      (lifetime, boot, session, connection).
+- [ ] Propose additional, explicitly named fields, for example:
+      `bestNonceDifficultyAllTime`, `bestNonceDifficultyBoot`,
+      `fanSpeedRpm`, `fanDutyPercent`, `inputVoltageMillivolts`. Split values
+      that upstream conflates (per pool connection versus per boot). Record the
+      design in an ADR.
+- [ ] Keep every upstream field byte-compatible, and document the extensions
+      as accepted project behaviour, not parity.
+
+Verification: pending. Completion review: pending.
 
 ### task-parity-bap-settings-effects | 2026-10-15 | Apply BAP settings and close the remaining BAP gaps
 

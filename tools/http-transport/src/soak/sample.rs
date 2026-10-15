@@ -1,6 +1,6 @@
 //! Metadata-only soak samples: identity, mining state, safety, sequences and counters.
 //! Pool endpoints, users and other operator values never enter a sample (evidence policy).
-use bitaxe_api::{ObservationStateWire, SystemInfoWire};
+use bitaxe_api::{reference_u64, ObservationStateWire, SystemInfoWire};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
@@ -27,6 +27,9 @@ pub struct SoakSample {
     pub maybe_checkpoint_sequence: Option<u64>,
     pub shares_accepted: u64,
     pub shares_rejected: u64,
+    /// The all-time and session best nonce difficulty (`bestDiff`, `bestSessionDiff`).
+    pub best_diff: u64,
+    pub best_session_diff: u64,
     pub revision: u64,
     /// HTTP only: whether the configured pool settings still equal the first HTTP sample's.
     pub maybe_pool_matches_initial: Option<bool>,
@@ -49,6 +52,8 @@ impl SoakSample {
             maybe_checkpoint_sequence: wire.runtime_health.maybe_checkpoint_sequence,
             shares_accepted: wire.shares_accepted,
             shares_rejected: wire.shares_rejected,
+            best_diff: reference_u64(wire.best_diff),
+            best_session_diff: reference_u64(wire.best_session_diff),
             revision: wire.operator_snapshot_revision.get(),
             maybe_pool_matches_initial,
         }

@@ -29,6 +29,8 @@ fn sample(active_ms: i64, sequence: u64) -> SoakSample {
         maybe_checkpoint_sequence: Some(sequence),
         shares_accepted: sequence / 100,
         shares_rejected: 0,
+        best_diff: sequence,
+        best_session_diff: sequence,
         revision: sequence,
         maybe_pool_matches_initial: None,
     }
@@ -420,4 +422,19 @@ fn mining_never_observed_stopped_within_safe_stop_fails_the_terminal_check() {
     let judgement = judge(&lines, &clock(), &expected());
     // Assert
     assert!(judgement.failures.contains(&"terminal_http_unconfirmed"));
+}
+
+#[test]
+fn a_sample_records_the_all_time_and_session_best_difficulty() {
+    // Arrange
+    let mut snapshot = bitaxe_api::ApiSnapshot::safe_ultra_205();
+    snapshot.best_difficulty = bitaxe_api::BestDifficultyState {
+        all_time: 123_456,
+        session: 789,
+    };
+    let wire = bitaxe_api::system_info_from_snapshot(&snapshot);
+    // Act
+    let sample = SoakSample::from_wire(&wire, None);
+    // Assert
+    assert_eq!((sample.best_diff, sample.best_session_diff), (123_456, 789));
 }
