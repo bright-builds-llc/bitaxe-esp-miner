@@ -1169,116 +1169,35 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-### task-parity-best-difficulty-persistence | 2026-10-15 | Persist the all-time best difficulty like upstream
-
-Origin: the BAP ordinal 008 review. After soak 002 accepted 22 shares, the
-next boot reported `best_difficulty` `0`. Upstream restores
-`best_nonce_diff` from NVS key `bestdiff` at boot (`system.c:50,129`) and
-persists each new best (`system.c:361-369`). In this firmware `best_diff` is
-session-only (`crates/bitaxe-api/src/mining.rs`), and `bestdiff` exists only in
-the NVS schema. The value feeds `/api/system/info` `bestDiff` and the BAP
-`best_difficulty` subscription.
-
-- [x] Find the parity rows that own `bestDiff`/`bestSessionDiff`, and confirm
-      the upstream semantics: the all-time value is restored and persisted,
-      and the session value starts at 0.
-- [x] Restore and persist the all-time best through the settings or NVS owner,
-      with host regressions; keep `bestSessionDiff` session-only.
-- Findings (2026-10-15):
-  - Upstream counts every nonce on a valid job, met or not (`asic_result_task.c` ->
-    `SYSTEM_notify_found_nonce`), compared after a `(uint64_t)` cast.
-  - The all-time best is restored from NVS `bestdiff` (u64, no REST name, no
-    default) and written on each new record, without throttling; a failed
-    write is only logged. The session best starts at 0 each boot.
-  - `/api/system/info` exposes both as numbers. BAP `best_difficulty` and the
-    screen's second value use the all-time string.
-  - This firmware's `bestDiff` was not a nonce difficulty at all: it was the
-    pool difficulty at each accepted share, reset on every pool connection.
-    `bestSessionDiff` was a copy of it.
-  - Rows involved: API-002 (fields), CFG-004 (key), UI-002 (screen), and
-    BAP-001 (non-claim).
-- Implementation (software):
-  - `bitaxe_api::BestDifficultyState` (`restored`, `observe`) and
-    `reference_u64`, with unit tests.
-  - `ApiSnapshot.best_difficulty` feeds `bestDiff` (all-time) and
-    `bestSessionDiff` (session). The pool-difficulty derivation in
-    `mining.rs` is removed.
-  - The firmware keeps the state per boot in the command-visible state. The
-    mining owner records every `RecordScoreboard` candidate's nonce difficulty
-    before the scoreboard.
-  - `best_difficulty_adapter` restores `bestdiff` before the production owner
-    starts and persists each new record (`set_u64` commits, then a read-back
-    check). Like the scoreboard owner, it takes no settings lock.
-  - The screen's single best now shows the session nonce best.
-  - Regressions:
-    - the state's unit tests;
-    - the projection test, now on nonce bests;
-    - BAP `best_difficulty` showing the all-time value;
-    - a below-pool-target nonce still feeding the best;
-    - `best_difficulty_source_ownership_tests`.
-- Decisions and non-claims:
-  - Persistence is best-effort with memory first, as upstream does; unlike the
-    scoreboard, there is no confirm-before-publish.
-  - The wire stays `f64`, so serde prints `0.0` where upstream cJSON prints
-    `0`. The JSON type is the same.
-  - Stratum V2 nonces carry no nonce difficulty, so they do not count.
-  - Upstream's screen shows `Best: session/all-time`; changing UI-002's
-    layout is left as a follow-up.
-  - Gate leases raise `bestdiff`, as mining does upstream. It is outside the
-    worker preservation fingerprint.
-- [ ] Hardware evidence under its own contract (a value that survives a
-      reboot after accepted shares).
-
-Verification: pending. Completion review: pending.
-
-### task-ultra205-default-profile-soak-003 | 2026-10-15 | Mine one soak to prove the persisted best difficulty
-
-Objective: hardware evidence for `task-parity-best-difficulty-persistence`.
-Mining raises the all-time and session best nonce difficulty; after a reboot,
-the all-time best is restored from NVS `bestdiff`. The owner authorized this
-soak and its evidence run on 2026-10-15.
-
-Ultra 205 upstream-default soak hardware: enabled.
-
-- [x] Point `SOAK_TASK` at this task. Soak samples now also record `bestDiff`
-      and `bestSessionDiff` (`tools/http-transport/src/soak/sample.rs`), as
-      metadata outside the judged criteria.
-- [ ] Soak attempt 001 (soak ledger ordinal 4), with an independent review.
-- [ ] Persistence evidence: BAP ordinal 010 after the soak (below).
-
-Hardware contract (owner-authorized 2026-10-15). It is the archived
-`task-ultra205-default-profile-soak-002` contract, unchanged except:
-- Package: `just package` at the clean, pushed `HEAD` that records this
-  contract. Install it with that contract's state-preserving `just
-  flash-monitor ... --capture-timeout-seconds 360 --redact-evidence`, because
-  the firmware changed.
-- New parent `P = scratch/ultra205-soak-003`, with `R = P/attempt-001`; soak
-  ledger ordinal 4.
-- No BAP traffic during the work window.
-- Seal with a detector naming the board's port, then `just ultra205-soak
-  finish`.
-- Retry bound, outcomes and recovery: as the archived contract. Parity
-  promotion is prohibited in this task.
-- Additional evidence, read from the private journal: the soak observer's
-  `bestDiff` and `bestSessionDiff` must be greater than 0 by the end of the
-  work window, and must never decrease within the boot.
-
-BAP ordinal 010 contract (owner-authorized 2026-10-15). The persistence proof
-runs after the soak is sealed. It uses BAP ordinal 009's identity-bound
-procedure (`scratch/bap-run-009.sh` steps) on the same package, with parent
-`scratch/bap-probe-010` and `--ordinal 10 --listen-seconds 5`.
-- Its state-preserving reinstall of the same package is the reboot. NVS is
-  kept.
-- Expected: the probe is `complete` and the binding is `bound`.
-- The `best_difficulty` update must equal `suffixString` of the soak's final
-  `bestDiff`, and must be non-zero: the restored all-time best.
-- After the reboot, `bestSessionDiff` = 0 is unit-tested only. Reading HTTP
-  would need a new Gate session.
-- Allowed frames, prohibited effects and outcomes are as in ordinal 009.
-
-Verification: pending. Completion review: pending.
-
 ## Future
+
+### task-stratum-unanswered-submission | 2026-10-15 | Explain the share that was never answered in soak 003
+
+Origin: the soak 003 review. Share 6 was submitted about 60 s into work and got
+no accept or reject before the run ended: 28 submitted, 27 accepted, 0
+rejected. Soak 002 had every submission answered.
+
+- [ ] From the private journals, find how submissions are matched to pool
+      responses. Determine whether the pool never answered, or the response
+      was lost or misattributed (response id matching, reconnect, buffer).
+- [ ] If firmware lost or misattributed it, fix it with a regression. If the
+      pool dropped it, record the upstream-equivalent handling (upstream
+      counts neither accept nor reject).
+
+Verification: pending. Completion review: pending.
+
+### task-soak-judge-mineonboot-field | 2026-10-15 | Make the soak judge's mineonboot check able to fail
+
+Origin: the soak 003 review. `scripts/fixed-usb-soak/judge.mjs:41` checks
+`last.mine_on_boot`, a field the Gate samples never carry, so the check always
+passes. `mineonboot=false` is proven today only by the released final state.
+
+- [ ] Judge `mineonboot` from a sample source that carries it, such as the
+      qualification report's `mine_on_boot` or the released state, and fail
+      closed when it is absent. Add a regression in which a missing or true
+      value fails.
+
+Verification: pending. Completion review: pending.
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 
@@ -1345,6 +1264,9 @@ their sockets inside `issue`, with up to 5 s per send. One slow client can
 therefore block every other publication: WebSocket cadence, other HTTP
 requests and BAP.
 
+- Evidence (2026-10-15): soak 003 had an about 5 s HTTP stall, with paired
+  WebSocket gaps, while no BAP traffic was running. The stall is not
+  BAP-specific.
 - [ ] Serialize inside the publication and write after it returns, for HTTP
       responses and the WebSocket connect frame. Cadence frames may keep
       queueing under the lock to preserve their order.
