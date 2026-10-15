@@ -29081,3 +29081,583 @@ Residual risks:
 - The owner-finish helper's detector names no port and refuses while a second
   serial adapter is attached.
 - Soak ordinal 2 was charged and never refunded, by design.
+
+### task-parity-bap-live-accessory-verification | 2026-10-06 | Verify BAP over a USB-to-UART adapter
+
+Status: Active. The owner activated this task on 2026-10-11. The owner has
+USB-to-UART adapters for development (recorded in `AGENTS.md` under Direct UART
+And Pin-Manipulation Authorization). Activation is not direct-UART authorization:
+connection guidance, adapter use and hardware use each still require fresh
+explicit owner authorization. Software-only work (reading the pinned reference,
+the host BAP client, the hardware contract draft) may proceed now.
+
+Reference facts (pinned `reference/esp-miner`): BAP uses UART2 at 115200 8-N-1
+with TX on GPIO39 and RX on GPIO40 (`main/Kconfig.projbuild` defaults,
+`main/bap/bap_uart.c`); ESP32-S3 GPIOs are 3.3 V logic. The Ultra 205 connector
+and its pinout are not in the pinned reference and need the board documentation.
+
+Scope: promote `BAP-001` and `BAP-002` from `implemented` with live evidence
+for the Ultra 205 accessory port, using a host-side adapter in place of an
+accessory.
+
+- [x] With the owner, identify the Ultra 205 BAP connector, its pinout and
+      logic level from the pinned reference and board documentation, and the
+      owner's adapter model; write connection guidance for the board and the
+      macOS host. Done 2026-10-11 under the owner's wiring-guidance
+      authorization: J6 per the `ultra-205` schematic, in
+      `docs/hardware/bap-uart-connection.md`. Pinout cross-checked against the
+      `ultra-205` PCB layout's pad nets. Owner's adapter: a 5-pin CP2102-type
+      USB-to-TTL board (3V3, TXD, RXD, GND, +5V; native 3.3 V logic). A first
+      direct plug-in put its +5V on J6 pin 1 and 3V3 on pin 5 while the board was
+      powered and the adapter was not connected to the Mac; the owner was asked
+      to remove it, and the guide now requires GND/RXD/TXD only. The owner's meter read about 5 V
+      on pin 1 and about 3.3 V on pin 3 (idle-high TX), as expected.
+- [x] Add a repo-owned host BAP client for request, subscribe, unsubscribe and
+      set, with privacy rules for the Wi-Fi `ssid` and `password` parameters.
+      Plan: a `tools/bap-client` crate reusing `bitaxe_core::bap` framing; a pure
+      exchange core (frame building, response matching, timeouts, redaction)
+      tested over fake transports and a pseudo-terminal; a macOS raw 115200 8-N-1
+      adapter that opens only an explicit `/dev/cu.*` adapter node; `ssid` and
+      `password` values accepted only from a mode-0600 file, never argv, and
+      never printed; category-only output; a `just bap` command. No hardware
+      use until the contract is authorized. Implemented 2026-10-11 (software
+      only): 25 tests over a scripted link and a pseudo-terminal, including a
+      hang-up reported as an error; the CLI refuses the board's USB node,
+      credentials on the command line, unconfirmed settings and ASIC settings
+      without an allowance before opening any port. Live use pending.
+- [x] Write a complete hardware contract covering electrical safety, allowed
+      settings, restoration of changed settings, evidence and stop conditions.
+      The read-only probe contract below covers the first observation; a
+      settings contract is still needed before any `set`. The read-only
+      contracts (ordinals 001–009) are complete. The settings contract moves to
+      `task-parity-bap-settings-effects`, because the firmware does not apply
+      BAP settings yet.
+
+Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
+
+- Objective: observe that the board's BAP UART answers through the owner's
+  CP2102 adapter: `systemInfo`, `hashrate`, and a short `hashrate`
+  subscription. Observation only: BAP does not identify the installed firmware,
+  so this run promotes no parity row; promotion needs a later contract that
+  binds the installed image.
+- Owner-attested preconditions: adapter GND, RXD and TXD on J6 pins 2, 3 and 4
+  by jumper wires, nothing on J6 pins 1, 5 or 6, the adapter's +5V and 3V3
+  unconnected; the board powered as usual (barrel and USB-C) and running its
+  installed firmware. Amended 2026-10-14 before any attempt: the adapter is
+  plugged into the Mac first and the jumpers connected to it last (GND, RXD,
+  TXD), because an unpowered adapter is back-powered from the board's TX line.
+  The original parent `scratch/bap-probe-001` pre-existed with unknown
+  contents and was renamed, untouched, to `scratch/bap-probe-001-stray` with
+  the owner's approval; the first port tried did not power the adapter.
+- Exact commands, run once, from the repository root, under `umask 077`:
+  1. `mkdir -m 700 scratch/bap-probe-001`, then assert
+     `scratch/bap-probe-001/attempt` does not exist.
+  2. Detector admission: `just detect-ultra205 > scratch/bap-probe-001/detector.stdout
+     2> scratch/bap-probe-001/detector.stderr`. It must report exactly one port
+     and `usb_profile: serial_jtag_runtime`; it is passive for a running board.
+     `--retain-rom` is prohibited.
+  3. Identify the adapter node as the one new non-`usbmodem` `/dev/cu.*` node.
+  4. `just bap --port <adapter> probe --evidence-dir
+     $PWD/scratch/bap-probe-001/attempt --detector-report
+     $PWD/scratch/bap-probe-001/detector.stdout --ordinal 1 --listen-seconds 10
+     > scratch/bap-probe-001/probe.stdout 2> scratch/bap-probe-001/probe.stderr`.
+- Allowed effects: the passive detector on the board's USB node; opening the
+  adapter node; the BAP frames `REQ systemInfo`, `REQ hashrate`, `SUB hashrate`
+  (1,000 ms interval, listening 10 s) and `UNSUB hashrate`.
+- Prohibited effects: any `SET` or `CMD` frame; any other subscription or
+  request (including `wifi`); flash, monitor, Gate or Web Serial use of the
+  board's USB node; ROM entry, reset or power cycling; any other pin, pad or
+  signal; credentials; network discovery.
+- Safety: 3.3 V logic adapter, three wires, no supply pins; nothing changes a
+  device setting or ASIC state.
+- Recovery and cleanup: the probe always sends `UNSUB`; if it is not
+  acknowledged, the device ends the subscription itself after 300 s
+  (`BAP_SUBSCRIPTION_TIMEOUT_MS`). Unplug the adapter from the Mac after the
+  run. No device state needs restoring.
+- Evidence and privacy: the protected parent is gitignored, mode 0700; the
+  detector report (port path and physical identity digest: protected
+  operational) and the probe's stdout and stderr are mode-0600 siblings, never
+  committed. The probe creates the attempt child, writes one record with
+  categories, telemetry and redacted values only (no paths, pool or Wi-Fi
+  values), and seals it read-only. Only a category summary goes in this task.
+- Closed outcomes: `complete` when `systemInfo` answers with `deviceModel` and
+  `asicModel`, `hashrate` answers, and the subscription is acknowledged, delivers
+  at least one update and is unsubscribed. Any detector refusal, adapter
+  failure or failed step selects `stop_hardware_blocker` with the boundary
+  signature (step, category, whether bytes arrived, whether lines were
+  malformed), keeping the earliest failure. Any next step needing a setting,
+  another pin or firmware change selects `stop_authority_boundary`.
+- Retry bounds: no unchanged retry. A fresh ordinal needs a verified
+  repository fix with a regression, or the one authorized manual remediation:
+  the owner rechecks and reseats the three jumpers against the guide, allowed
+  only after `no_bytes_received` or `no_parseable_frames`; the next ordinal's
+  signature must differ, and a repeat selects `stop_repeated_boundary`.
+- Authorization: the detector is covered by standing USB authorization; BAP
+  traffic in step 4 needs the owner's go-ahead for this ordinal.
+- Ordinal 001 result (2026-10-14): `stop_impossible_contract`. Owner go-ahead
+  given; the adapter enumerated (CP2102, via a USB-A to USB-C dongle). Step 1
+  created the parent; step 2's detector, run without `--port`, refused
+  `ambiguous_serial_ports` because the adapter is itself a serial port, so the
+  amended order (adapter first) contradicts an unnamed-port detector step.
+  Signature: step `detector`, category `ambiguous_serial_ports`. No attempt
+  child was created and no BAP frame was sent.
+- Ordinal 002 (owner-approved amendment): identical, in a fresh parent
+  `scratch/bap-probe-002`, with step 2 naming the board's port:
+  `just detect-ultra205 --port <the only /dev/cu.usbmodem* node>`, which must
+  still report `usb_profile: serial_jtag_runtime`.
+- Ordinal 002 result (2026-10-14): `stop_hardware_blocker`. Detector admitted
+  one port, `serial_jtag_runtime`, ROM not entered; one adapter node (CP2102).
+  The probe ran once and stopped at its first step. Signature: step
+  `request_system_info`, category `timed_out`, bytes received, a malformed
+  line. The board sent 58 bytes: one partial line and `CMD mode ap_mode`, the
+  firmware's access-point announcement, but no answer to `REQ systemInfo`,
+  which in access-point mode should be `ERR ap_mode_no_requests`. Reading:
+  board-to-adapter (J6 pin 3) works; adapter-to-board (J6 pin 4) is not proven;
+  and the board is not joined to Wi-Fi, so data requests would be refused
+  even over a working link. Record sealed read-only under
+  `scratch/bap-probe-002/attempt`; no setting was sent. The contract's manual
+  remediation does not cover `timed_out`, so a next ordinal needs an amended
+  contract.
+- Amendment for ordinal 003 (owner-approved 2026-10-14):
+  - Manual remediation now also covers `request_system_info` / `timed_out`
+    with bytes received: the owner reseats the adapter TXD jumper in J6 pin 4.
+    Applied: TXD reseated; the owner also found the jumper pins touching the
+    back of the display module and repositioned the display so nothing
+    touches, a possible short on the adapter-to-board line removed.
+  - A `device_rejected` step with `ap_mode_no_requests` proves the two-way
+    link (the board parsed the host's frame and answered) and is recorded as
+    such; the data steps then need the board joined to Wi-Fi, which is outside
+    this contract, so the outcome stays `stop_hardware_blocker`.
+  - Otherwise identical to ordinal 002, in a fresh parent
+    `scratch/bap-probe-003`, `--ordinal 3`. A signature equal to ordinal 002's
+    selects `stop_repeated_boundary`.
+- Ordinal 003 result (2026-10-14): `stop_repeated_boundary`. Admitted as
+  before; the probe's signature equals ordinal 002's exactly (58 bytes, one
+  malformed line, `CMD mode ap_mode`, no answer). Diagnosis: the malformed line
+  is 32 bytes, the exact length of the firmware's BAP startup banner
+  (`BAP UART Interface Initialized\r\n`, written once when the BAP owner
+  starts at boot), and the access-point announcement is sent immediately at
+  start and then every 5 s. Both arrived after the adapter was opened and the
+  request sent, in both runs, so the board most likely restarts shortly after
+  receiving a BAP request. Suspect: the `bap-owner` thread (16 KiB stack) builds
+  the full system-info snapshot for every request (`bap_request_snapshot`), even
+  in access-point mode. Not yet confirmed on the device. No further BAP traffic
+  until a diagnosed fix with a regression lands and a new contract ordinal is
+  approved.
+- Diagnosis and fix (2026-10-14, commit `1d58f788`): `just audit-bap-stack`
+  measured the deepest resolved path from `run_owner` at 17,632 bytes on the
+  16 KiB thread (`blocked`, 3,296 bytes over the 14,336-byte budget): the
+  owner loop (3,808 bytes, handlers inlined) and `system_info` (1,536 bytes,
+  the whole `SystemInfoWire` by value) above the shared snapshot builder. BAP
+  now projects only its values inside the publication callback; the path is
+  13,152 bytes with 1,184 bytes of headroom. Regression: the audit and its
+  tests; on the previous build it reports `blocked`.
+- Ordinal 004 contract (owner-authorized 2026-10-14): install the fixed build,
+  then run the ordinal-002 probe unchanged.
+  1. `just package` at the exact clean `HEAD` that records this contract.
+  2. `mkdir -m 700 scratch/bap-probe-004`; detector with the board's named port
+     as in ordinal 002, saved to mode-0600 siblings.
+  3. State-preserving update: `just flash --board 205 --port <board node>
+     --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`, output
+     captured to mode-0600 siblings. No `--factory-reset`, no
+     `--wifi-credentials`: installed settings (Wi-Fi, pool) are kept. Shell
+     timeout at least 420 s.
+  4. Settle 120 s for boot and Wi-Fi; then rerun the detector into
+     `detector-after.stdout` (must again report `serial_jtag_runtime`).
+  5. The probe exactly as ordinal 002, with `--evidence-dir
+     .../scratch/bap-probe-004/attempt --detector-report
+     .../detector-after.stdout --ordinal 4`.
+  - Added effects: one state-preserving firmware update through the repo
+    flash tool and its own board-info gate, and the reboot it causes.
+    Prohibited additions: factory reset, credential files, monitor sessions,
+    Gate or Web Serial, any `SET` or `CMD` frame.
+  - Recovery: if the updated board does not boot or BAP stays silent, reflash
+    the previous source commit's package (`59f198f6`) with the same
+    state-preserving command; nothing else is restored.
+  - Outcomes: `complete` as in ordinal 002. If the board is still in
+    access-point mode, `device_rejected` with `ap_mode_no_requests` proves the
+    two-way link and that a request no longer restarts the board; the data
+    steps stay blocked. A repeat of ordinal 003's signature selects
+    `stop_repeated_boundary`.
+- Ordinal 004 result (2026-10-14): `stop_hardware_blocker`, the cause a probe
+  defect. Package bound to `ec480c55` (clean); detector admitted; the
+  state-preserving update completed and the board returned to its running
+  profile; after 120 s the detector re-admitted it. The probe's first step
+  passed: `REQ systemInfo` answered `deviceModel 205`, `asicModel BM1366` and
+  the redacted pool fields, with no startup banner, so a request no longer
+  restarts the board and the link works both ways. Its second step stopped:
+  `REQ hashrate`, signature `request_hashrate` / `no_bytes_received`. The
+  firmware, like the reference (`bap_handlers.c`), answers requests only for
+  `systemInfo`, `shares`, `block_height`, `found_block` and `show_new_block`;
+  `hashrate` is subscription-only, so the probe asked for an answer the
+  protocol never gives. Next: a probe fix whose request steps are checked
+  against the firmware's own BAP planner, then ordinal 005 with owner
+  go-ahead.
+- Probe fix (commit `f3e6e20a`): the second step now requests `shares`; a
+  regression checks every probe request against the firmware's own BAP
+  planner (`plan_command`). The firmware since also gained the HTTP task stack
+  fix (`0e512edf`), so ordinal 005 installs the current build.
+- Ordinal 005 contract (owner-authorized 2026-10-14): ordinal 004's five steps
+  unchanged except: `just package` at the exact clean `HEAD` that records this
+  contract; parent `scratch/bap-probe-005`; `--ordinal 5`.
+  - Allowed BAP frames: `REQ systemInfo`, `REQ shares`, `SUB hashrate`
+    (1,000 ms interval, listening 10 s), `UNSUB hashrate`. Other effects,
+    prohibitions and safety as in ordinal 004.
+  - Recovery: if the updated board does not boot or BAP stays silent,
+    state-preservingly reflash ordinal 004's package source (`ec480c55`).
+  - Outcomes: `complete` when `systemInfo` answers with `deviceModel` and
+    `asicModel`, `shares` answers, and the subscription is acknowledged,
+    delivers at least one `hashrate` update and is unsubscribed. Any failed
+    step selects `stop_hardware_blocker` with its signature. A repeat of
+    ordinal 004's signature selects `stop_repeated_boundary`. Even `complete`
+    promotes no parity row, because BAP does not identify the installed
+    firmware.
+- Ordinal 005 result (2026-10-14): `complete`. Package bound to clean
+  `645b6953`; the detector admitted the board; the state-preserving update
+  completed and the board returned to its running profile; after 120 s the
+  detector re-admitted it. Three steps passed with no malformed lines:
+  - `REQ systemInfo` answered `deviceModel 205`, `asicModel BM1366` and the
+    redacted pool fields.
+  - `REQ shares` answered `0/0`.
+  - `SUB hashrate` was acknowledged, delivered `0.00` once, and
+    `UNSUB hashrate` was acknowledged.
+  One update in 10 s is expected: the firmware, like the reference
+  (`BAP_send_if_changed`), publishes only changed values. The zero shares and
+  hashrate show the board was not hashing during the run; that is outside
+  this read-only contract. The record is sealed under
+  `scratch/bap-probe-005/attempt`. No setting was sent and no parity row is
+  promoted, because BAP does not identify the installed firmware.
+- Why the board was not hashing (2026-10-14, from source): by design. Saved
+  pool settings never start mining. Production readiness
+  (`crates/bitaxe-stratum/src/v1/recovery_policy.rs`) stays at
+  `campaign_lease_unavailable` until a signed Worker lease arrives through the
+  Gate. Live mining is the separate `task-ultra205-default-profile-soak-002`.
+- Identity binding (software, 2026-10-14): the board's USB console repeats
+  `usb_runtime_identity` (firmware commit and app ELF digest) and
+  `usb_reboot_discriminator` (reset-retained boot ordinal, reset reason,
+  uptime) in plain lines while no browser holds the port.
+  - `just diagnose-usb-reboot-loop` reads them receive-only and now also
+    prints `latest_uptime_ms`.
+  - `just bap bind` seals a `bap-identity-binding-v1` record. It is `bound`
+    only when: the probe is `complete` at the package's clean commit; the
+    detector shows the same physical device before and after; both observer
+    reads show `stable_boot` and exactly the package's commit and ELF digest;
+    the boot ordinal and reset reason are unchanged; and the uptime advanced
+    within 15 s of the host's elapsed time.
+  - A reset changes the ordinal, and a power cycle restarts the uptime, so
+    one boot of the exact package answered every BAP frame in between.
+  - The record holds only the public commit and digest, categories and
+    numbers: no path and no physical identity.
+- Ordinal 006 contract (owner-authorized 2026-10-14): identity-bound read-only
+  probe for promotion. Parent `P = scratch/bap-probe-006`; every command runs
+  once, from the repository root, under `umask 077`.
+  1. `just package` at the exact clean, pushed `HEAD` that records this
+     contract. The soak task below uses the same package.
+  2. `mkdir -m 700 P`; assert `P/attempt` and `P/binding` do not exist.
+     `just detect-ultra205 --port <the only /dev/cu.usbmodem* node>` into
+     `P/detector.stdout` (must report `serial_jtag_runtime`).
+  3. State-preserving install as in ordinal 004 (`just flash --board 205 --port
+     <board> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`),
+     output to mode-0600 siblings; shell timeout at least 420 s.
+  4. Settle 120 s. Detector into `P/detector-before.stdout`, then
+     `just diagnose-usb-reboot-loop --port <board> --timeout-seconds 30
+     --expected-source-commit <package commit> --expected-app-elf-sha256
+     <package app ELF digest>` into `P/runtime-before.stdout`.
+  5. `just bap --port <the one adapter node> probe --evidence-dir P/attempt
+     --detector-report P/detector-before.stdout --ordinal 6 --listen-seconds 10`.
+  6. Detector into `P/detector-after.stdout`; the same observer command into
+     `P/runtime-after.stdout`.
+  7. `just bap bind --evidence-dir P/binding --manifest <manifest> --probe-dir
+     P/attempt --detector-before P/detector-before.stdout --runtime-before
+     P/runtime-before.stdout --detector-after P/detector-after.stdout
+     --runtime-after P/runtime-after.stdout`.
+  - Allowed effects: as ordinal 005, plus receive-only reads of the board's
+    USB console (no write, no modem-control line). Allowed BAP frames:
+    `REQ systemInfo`, `REQ shares`, `SUB hashrate` (1,000 ms interval,
+    listening 10 s) and `UNSUB hashrate`.
+  - Prohibited: as ordinal 004, plus any browser, Gate or Web Serial use until
+    step 7 ends.
+  - Recovery: as ordinal 005 (state-preserving reflash of `ec480c55`).
+  - Outcomes: `complete` when the probe is `complete` and the binding is
+    `bound`. A failed probe step selects `stop_hardware_blocker` with its
+    signature. An `unbound` binding selects `stop_hardware_blocker` with the
+    binding's failure category. A repeat after a targeted fix selects
+    `stop_repeated_boundary`.
+  - Ordering: nothing is committed between this ordinal and the soak, so both
+    use one package. This ordinal's result is recorded after the soak.
+  - Pre-run fix (2026-10-14): a dry `bind` against the real manifest found
+    that cleanliness lives at `build_identity.source_dirty`, so every
+    binding would have been `package_not_clean`. Fixed with a regression
+    test before any hardware use. The package is built at the fix commit,
+    which still records this contract.
+- Ordinal 007 contract (owner-authorized 2026-10-14): a read-only probe while
+  the board mines, during the soak's 600-second work window. It is an
+  observation of live values, not a promotion input: the Gate holds the USB
+  port, so there is no USB identity read.
+  - Same package. Parent `scratch/bap-probe-007`, created with `mkdir -m 700`.
+  - Detector into its `detector.stdout`, then `just bap --port <adapter> probe
+    --evidence-dir scratch/bap-probe-007/attempt --detector-report
+    scratch/bap-probe-007/detector.stdout --ordinal 7 --listen-seconds 30`.
+  - Run once, only after the Gate reports the work window started and at
+    least one accepted share has been observed, and only while no
+    revocation has been reported.
+  - Its failure never changes the soak's judgement. A soak failure prevents
+    starting it.
+  - Allowed frames: as ordinal 006.
+- Promotion (after ordinal 006 is `complete` and an independent review agrees):
+  update `BAP-001` and `BAP-002` only as far as the bound evidence covers.
+  - Covered: UART2 owner up, request dispatch and answers, and subscribe,
+    update and unsubscribe, against the Ultra 205.
+  - Explicit non-claims: settings and their effects; Wi-Fi password
+    subscription; the 300-second subscription timeout; AP-mode announcements
+    on bound firmware; other boards.
+  - Accessory electrical behavior is not proved either: the host is a CP2102
+    adapter on three wires.
+  - Committed evidence: a redacted summary only, after `just verify-redaction`.
+- Ordinal 006 result (2026-10-14): `complete`. Package `ecc7f122`.
+  - The probe passed every step.
+  - The binding is `bound`: boot ordinal 4 and reset category `other` before
+    and after; the uptime advanced 44,015 ms against 44,082 ms of host time;
+    the same physical device throughout.
+- Ordinal 007 result (2026-10-14): `complete`, observation only.
+  - It ran during soak 002 attempt 002, on that attempt's package `a46f9568`,
+    not ordinal 006's: the soak installed a fresh package after the revocation
+    fix. The BAP code is identical between the two packages.
+  - `shares` answered `4/0`. A 30 s `hashrate` subscription delivered 17
+    change-only updates, from 385.60 to 550.64 GH/s.
+- Independent review (2026-10-14):
+  - The binding is sound for ordinal 006. The review asked for two hardening
+    checks, now in `bap bind`: the boot must predate the first read, and the
+    probe must fall between the two reads. The sealed evidence, re-judged under
+    those rules into `binding-v2`, is still `bound`. Ordinal 006's manifest was
+    rebuilt for a later package, so the re-judgement used the package identity
+    fields from the sealed binding record.
+  - The review supports `verified` for BAP-002, scoped as a firmware-UART round
+    trip: the host reuses `bitaxe_core::bap`.
+  - BAP-001 stays `implemented`. The live `deviceModel` is `205`, while the
+    reference sends the family name `Ultra`. Several subscription values also
+    differ from the reference code (`task-parity-bap-value-sources`).
+- Promotion: both rows were recorded through `parity transition-item` with
+  `hardware-smoke` evidence and stay `implemented`.
+  - Parity validation rejects any verified `BAP-*` row backed by Ultra 205
+    evidence, under the 2026-06-28 deferred-scope guard (`phase28.rs`).
+  - That guard predates the in-scope J6 port. Lifting it is an owner scope
+    decision, which is pending.
+  - Summary: `docs/parity/evidence/20261014-bap-uart-live-probe.md`.
+- Owner decision (2026-10-14): relax the guard and promote BAP-002.
+  - `validate_bap_ultra205_evidence` (`tools/parity/src/report/validation/phase26.rs`)
+    lets a `BAP-*` row cite Ultra 205 evidence only through the
+    identity-bound probe summary, with its one-boot binding stated. Reused
+    general Ultra 205 evidence is still rejected. Every other deferred-scope
+    rule is unchanged.
+  - Two regressions in `tools/parity/src/tests/release.rs` cover both cases.
+  - BAP-002 is `verified` (transition `20261015T024309Z-BAP-002`; parity is
+    93 of 96).
+- [x] Run it, review independently and promote the BAP rows if the evidence
+      holds. BAP-002 is `verified` (ordinal 006). BAP-001 is `verified`
+      (ordinal 009, via `task-parity-bap-value-sources`).
+
+Authorization: repository source, tests, documentation, build, commit and push
+for the software-only items. No connection guidance, adapter use, board power
+or UART traffic, detector, flash or settings change until the owner gives
+explicit direct-UART authorization for that step.
+
+Verification: ordinals 006 and 009 are `complete` and identity-bound; both had
+independent reviews; parity transitions `20261015T024309Z-BAP-002` and
+`20261015T043356Z-BAP-001` were made; `just parity` reports no validation
+errors.
+
+Completion review: the owner's CP2102 adapter on J6 now drives repo-owned
+read-only BAP probes, and both BAP rows are `verified`. Along the way the work
+fixed:
+- a BAP owner stack overflow;
+- the HTTP task stack overflow on `/api/system/asic`;
+- a revocation-clock race in mining start;
+- BAP value, cadence and token divergences.
+
+Residual risks:
+- BAP settings are not applied: the firmware answers `set_failed`
+  (`task-parity-bap-settings-effects`).
+- The live evidence was taken with the board idle, not mining.
+- The host client reuses the firmware's own BAP codec.
+
+### task-parity-bap-value-sources | 2026-10-14 | Match BAP answer and subscription values to upstream
+
+Origin: the independent review of BAP ordinal 006
+(`docs/parity/evidence/20261014-bap-uart-live-probe.md`). This task blocks
+`BAP-001` from reaching `verified`.
+
+- [x] `deviceModel`: answer the family name (upstream
+      `DEVICE_CONFIG.family.name`, `Ultra` for board 205), not the board
+      version (`firmware/bitaxe/src/bap_adapter.rs` `request_snapshot`). The
+      regression must use the real catalog family, because the
+      `bap_runtime.rs` fixture value `Ultra 205` hid the difference. Done:
+      `bitaxe_api::bap_values` looks the family up in `board_catalog()`.
+      The fixture is now `Ultra`.
+- [x] Subscription values (`bap_adapter.rs` `subscription_frames` against
+      `bap_subscription.c`): `fan_speed` percent vs RPM; `best_difficulty`
+      plain vs suffixed string; `voltage`/`current` V/A vs mV/mA; and the
+      `chipTemp`/`vrTemp`/`power` number formats. Fix each to match the
+      reference code, or record an owner-accepted divergence. Done: the pure
+      `bap_subscription_values` follows the reference code. Temperatures use
+      `%f` (six decimals); power uses `%.2f`; voltage and current are in mV
+      and mA with `%.2f`; `fan_speed` is RPM; `best_difficulty` uses a port of
+      `suffixString`. The firmware adapter delegates to it. Owner decision
+      (2026-10-14): keep omitting the plain-text `wifi_password` frame, as an
+      accepted divergence (regression
+      `the_wifi_subscription_never_sends_the_password`).
+- [x] Probe value checks: `probe.rs` `judge` checks only presence, and
+      `exchange.rs` accepts any `RES` as data. Check the expected values and
+      parameters. Done: a passing step may carry only its own tokens
+      (`unexpected_parameter`). `deviceModel` must be `Ultra` and `asicModel`
+      `BM1366`; `shares` must be `n/n` and `hashrate` must have two decimals
+      (`value_mismatch`). Ordinal 006's `205` would now fail.
+- [x] Investigate whether BAP traffic stalls the station endpoint while mining.
+      During soak 002 the largest HTTP gap (4.6 s) and WebSocket gap (3.6 s)
+      fell inside BAP ordinal 007. Check the BAP owner's snapshot publication
+      against HTTP's. Done; findings from code reading and private timestamps:
+  - Not the host: `bazel run` and the detector ran 21:14:28–30, while the gap
+    ran 21:14:49.2–53.8, about 18 s into the 30 s subscription.
+  - BAP alone cannot produce a 4 s stall. Its publications do no I/O under the
+    global operator-snapshot lock and take milliseconds. Its thread has the
+    same priority as httpd and blocks in `uart_read_bytes`.
+  - More likely, one httpd or network stall hit both streams. HTTP handlers
+    and the WebSocket connect path write their sockets *inside* the
+    publication lock (httpd send timeout 5 s). Meanwhile WebSocket cadence
+    frames are only queued for httpd to send. That is
+    `task-operator-snapshot-io-outside-lock`.
+  - Hardening done here, with no protocol change: BAP now reads the published
+    snapshot only for an accepted `REQ` (`BapRuntime::admit` takes a provider).
+    Before this, `SUB` and `UNSUB` frames each took the lock. Regression:
+    `only_a_request_reads_the_published_snapshot`.
+  - Not changed: upstream accepts any interval above 0, so a minimum
+    subscription interval would break parity.
+- [x] A new identity-bound probe on the fixed package (a fresh BAP ordinal
+      under its own contract, with owner go-ahead), then an independent review
+      and the BAP-001 transition. Done with ordinal 009.
+- Subscription cadence parity (2026-10-14, found while preparing ordinal 008):
+  the reference subscription task wakes every 1,000 ms (`vTaskDelay`) and starts
+  each new subscription with `last_response = 0`. Our runtime differed in three
+  ways, all now fixed in `firmware/bitaxe/src/bap_runtime.rs`, with tests:
+  - The first update waited one whole interval (3 s by default). It now goes
+    out on the next 1 s tick.
+  - A sub-second interval published that often. Updates are now evaluated on
+    the 1 s tick only, so at most one per second, as in the reference.
+  - The last-sent values were never reset on `SUB`, so a re-subscription to an
+    unchanged value went silent. Each `SUB` now clears them, which the adapter
+    sees through `BapDispatch::maybe_subscribed`.
+  - The 300 s timeout is now strict (`>`), as in the reference.
+- Probe extension: `probe` now also subscribes to `temperature`, `power`,
+  `voltage`, `current`, `fan_speed`, `best_difficulty`, `block_height` and
+  `found_block`, checking each update's reference format. It still leaves out
+  `wifi`. The record schema is `bap-readonly-probe-v2`.
+- Ordinal 008 contract (owner-authorized 2026-10-14): the ordinal 006 steps,
+  identity-bound, unchanged except:
+  - package at the clean, pushed `HEAD` that records this contract;
+  - parent `scratch/bap-probe-008`;
+  - `--ordinal 8 --listen-seconds 5`.
+
+  Allowed BAP frames: `REQ systemInfo` and `REQ shares`, plus `SUB` (1,000 ms)
+  and `UNSUB` for each of `hashrate`, `temperature`, `power`, `voltage`,
+  `current`, `fan_speed`, `best_difficulty`, `block_height` and `found_block`,
+  listening 5 s each.
+
+  Prohibited, as ordinal 006: any `SET` or `CMD` frame, and any other request or
+  subscription (including `wifi`).
+
+  Outcomes:
+  - `complete`: the probe is `complete` and the binding is `bound`.
+  - Otherwise `stop_hardware_blocker`, with the earliest failed step's
+    signature.
+
+  BAP-001 promotion follows only after an independent review.
+- Ordinal 008 result (2026-10-14): `complete`. Package `d2941b5e`.
+  - The probe passed all 11 steps under the value checks, and the binding is
+    `bound` (boot ordinal 7; the uptime advanced 79,130 ms against 79,179 ms
+    of host time).
+  - Every observed value matches the reference for an idle board: `Ultra`,
+    `BM1366`, six-decimal temperatures, mV and mA, RPM, and change-only
+    updates at most once per second.
+  - Summary: `docs/parity/evidence/20261015-bap-uart-live-probe.md`.
+- Independent review of 008: do not promote yet. The binding and every value
+  hold, but the code still diverged in ways this run did not exercise. All are
+  now fixed with regressions:
+  - D1: change detection was per parameter. A `chipTemp` change resent the
+    constant `vrTemp`. Fix: `BapLastValues` compares each token on its own,
+    like `BAP_send_if_changed`.
+  - D2: `REQ found_block` answered `found_block`; the reference answers
+    `block_found`. BAP-002's verified claim ("request projection ... match the
+    pinned reference") was wrong for this one answer until this fix. The parity
+    tool forbids automatic transitions out of `verified`, so the row text is
+    unchanged; the claim holds again with the fix and its regression
+    (`a_found_block_request_answers_the_reference_block_found_token`). Ordinal
+    009 checks it live.
+  - D3: subscriptions froze in AP mode. They now keep publishing and timing
+    out beside the AP announcements.
+  - D4: an empty value dropped the frame. Outgoing frames now omit the value
+    field, as `BAP_send_message` does.
+  - D5: intervals now parse like C `atoi`.
+  - Kept as is: values containing `,` or `*` are still refused. The reference
+    sends them raw, which would break the frame.
+  - Outside BAP: best difficulty is session-only, while the reference restores
+    it from NVS. That is now `task-parity-best-difficulty-persistence`.
+  - The probe now also requests `block_height`, `found_block` (expecting
+    `block_found`) and `show_new_block`: 14 steps.
+- Ordinal 009 contract (owner go-ahead 2026-10-15): ordinal 008's steps on the
+  fixed package, unchanged except:
+  - package at the clean, pushed `HEAD` that records this contract;
+  - parent `scratch/bap-probe-009`;
+  - `--ordinal 9 --listen-seconds 5`;
+  - the three added requests: `REQ block_height`, `REQ found_block` and
+    `REQ show_new_block`.
+
+  Other allowed and prohibited effects are as in ordinal 008. Outcomes are as
+  in 008. A `complete` run plus an independent review is the BAP-001 promotion
+  input.
+- Ordinal 009 result (2026-10-15): `complete`. Package `47c0fa1f`.
+  - The probe passed all 14 steps, including `REQ found_block` answered as
+    `block_found`.
+  - The binding is `bound`: the uptime advanced 80,580 ms against 80,773 ms
+    of host time.
+  - The boot ordinal is 1 with reset reason `other`. The likely cause is that
+    the RTC record moved with the new build's link layout, which made the old
+    record invalid. Within one image the record is stable, and the uptime
+    continuity rules out a reset.
+  - The independent review supports `verified` for BAP-001, with explicit
+    non-claims.
+  - Summary: `docs/parity/evidence/20261015-009-bap-uart-live-probe.md`.
+  - Transition: `20261015T043356Z-BAP-001`. BAP-001 is `verified`; parity is
+    94 of 96.
+- Remaining review findings, recorded rather than fixed after the bound run:
+  - BAP settings are answered `set_failed`, and the setting parsers are
+    stricter than `atoi`/`atof`.
+  - The publish order of several due subscriptions differs from the reference.
+  - `wifi_rssi` may not be `-128` when disconnected.
+  - The boot-ordinal transition kind is not reported.
+
+  All are now `task-parity-bap-settings-effects`. The misleading reset comment
+  is corrected.
+
+Verification: ordinals 008 and 009 are `complete` and identity-bound; both
+reviews are recorded; full gates passed at `d2941b5e` and `47c0fa1f`;
+`just parity` reports no validation errors after the transition.
+
+Completion review: BAP answers and subscriptions now match upstream ESP-Miner's
+code, not its README:
+- family name, units and formats;
+- per-token change detection;
+- the one-second tick;
+- the reset on every `SUB`;
+- the `block_found` answer;
+- subscriptions continuing in AP mode;
+- empty values and `atoi` intervals.
+
+The probe checks values and tokens. BAP no longer takes the snapshot lock for
+`SUB` or `UNSUB`.
+
+Residual risks:
+- The live runs were taken with the board idle.
+- The HTTP socket-write-under-lock issue is open
+  (`task-operator-snapshot-io-outside-lock`).
+- The best difficulty is session-only
+  (`task-parity-best-difficulty-persistence`).

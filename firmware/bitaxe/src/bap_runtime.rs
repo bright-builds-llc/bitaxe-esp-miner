@@ -240,7 +240,8 @@ impl BapLastValues {
             .collect()
     }
 
-    /// Forgets a parameter's values, as each SUB and timeout does in the reference.
+    /// Forgets a parameter's values, as each SUB does in the reference. Clearing them
+    /// on timeout as well is equivalent: only a new SUB can publish that parameter again.
     pub fn reset(&mut self, parameter: BapParameter) {
         self.sent.retain(|(owner, _, _)| *owner != parameter);
     }
