@@ -157,11 +157,23 @@ fn a_missing_runtime_identity_is_malformed_input_not_a_match() {
 #[test]
 fn a_dirty_package_never_binds() {
     // Arrange
-    let manifest = json!({"source_dirty": true, "source_commit": COMMIT, "app_elf_sha256": ELF});
+    let manifest = json!({"source_commit": COMMIT, "app_elf_sha256": ELF,
+        "build_identity": {"source_dirty": true}});
     // Act
     let result = parse_package(&manifest);
     // Assert
     assert_eq!(result, Err("package_not_clean"));
+}
+
+#[test]
+fn a_clean_package_manifest_names_its_image() {
+    // Arrange: the package manifest's shape, with cleanliness under build_identity.
+    let manifest = json!({"source_commit": COMMIT, "app_elf_sha256": ELF,
+        "build_identity": {"source_dirty": false}});
+    // Act
+    let result = parse_package(&manifest);
+    // Assert
+    assert_eq!(result, Ok(package()));
 }
 
 #[test]

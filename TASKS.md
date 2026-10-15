@@ -1469,6 +1469,11 @@ Hardware contract: read-only BAP probe | 2026-10-14 | ordinal 001
     `stop_repeated_boundary`.
   - Ordering: nothing is committed between this ordinal and the soak, so both
     use one package. This ordinal's result is recorded after the soak.
+  - Pre-run fix (2026-10-14): a dry `bind` against the real manifest found
+    that cleanliness lives at `build_identity.source_dirty`, so every
+    binding would have been `package_not_clean`. Fixed with a regression
+    test before any hardware use. The package is built at the fix commit,
+    which still records this contract.
 - Ordinal 007 contract (owner-authorized 2026-10-14): a read-only probe while
   the board mines, during the soak's 600-second work window. It is an
   observation of live values, not a promotion input: the Gate holds the USB

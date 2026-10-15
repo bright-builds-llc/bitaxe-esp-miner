@@ -78,7 +78,7 @@ fn number(text: &str, label: &str, category: &'static str) -> Result<u64, &'stat
 
 /// Parses the package manifest; a dirty source never binds.
 pub fn parse_package(manifest: &Value) -> Result<Package, &'static str> {
-    if manifest["source_dirty"] != json!(false) {
+    if manifest["build_identity"]["source_dirty"] != json!(false) {
         return Err("package_not_clean");
     }
     let text = |key: &str| {
