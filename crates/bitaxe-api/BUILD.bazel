@@ -126,6 +126,7 @@ rust_library(
         "src/asic.rs",
         "src/bap_values.rs",
         "src/bap_values/tests.rs",
+        "src/best_difficulty.rs",
         "src/boot_identity.rs",
         "src/build_identity.rs",
         "src/commands.rs",

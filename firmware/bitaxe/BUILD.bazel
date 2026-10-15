@@ -1048,6 +1048,21 @@ rust_test(
 )
 
 rust_test(
+    name = "best_difficulty_source_ownership_tests",
+    srcs = [
+        "src/best_difficulty_adapter.rs",
+        "src/best_difficulty_source_ownership_test.rs",
+        "src/production_mining_session.rs",
+        "src/production_mining_session/best_difficulty.rs",
+        "src/settings_adapter/preservation/model.rs",
+        "src/startup.rs",
+    ],
+    crate_name = "best_difficulty_source_ownership_tests",
+    crate_root = "src/best_difficulty_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "scoreboard_source_ownership_tests",
     srcs = [
         "src/production_mining_session.rs",

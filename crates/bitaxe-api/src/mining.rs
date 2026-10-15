@@ -54,10 +54,6 @@ pub struct MiningStateWire {
     pub shares_rejected: u64,
     #[serde(rename = "sharesRejectedReasons")]
     pub shares_rejected_reasons: Vec<SharesRejectedReasonWire>,
-    #[serde(rename = "bestDiff")]
-    pub best_diff: f64,
-    #[serde(rename = "bestSessionDiff")]
-    pub best_session_diff: f64,
     #[serde(rename = "poolDifficulty")]
     pub pool_difficulty: f64,
     #[serde(rename = "isUsingFallbackStratum")]
@@ -84,12 +80,6 @@ pub struct MiningStateWire {
 #[must_use]
 pub fn mining_state_from_runtime(state: &MiningRuntimeState) -> MiningStateWire {
     let hashrate = &state.hashrate_inputs;
-    let best_diff = state
-        .counters
-        .maybe_best_difficulty
-        .map(|difficulty| difficulty.raw())
-        .unwrap_or(0.0);
-
     MiningStateWire {
         hash_rate: hashrate.current_ghs,
         hash_rate_1m: hashrate.one_minute_ghs,
@@ -110,8 +100,6 @@ pub fn mining_state_from_runtime(state: &MiningRuntimeState) -> MiningStateWire 
         shares_accepted: state.counters.accepted,
         shares_rejected: state.counters.rejected,
         shares_rejected_reasons: rejected_reasons(&state.counters.rejected_reasons),
-        best_diff,
-        best_session_diff: best_diff,
         pool_difficulty: state
             .maybe_pool_difficulty
             .map(|difficulty| difficulty.difficulty)

@@ -1169,6 +1169,68 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
+### task-parity-best-difficulty-persistence | 2026-10-15 | Persist the all-time best difficulty like upstream
+
+Origin: the BAP ordinal 008 review. After soak 002 accepted 22 shares, the
+next boot reported `best_difficulty` `0`. Upstream restores
+`best_nonce_diff` from NVS key `bestdiff` at boot (`system.c:50,129`) and
+persists each new best (`system.c:361-369`). In this firmware `best_diff` is
+session-only (`crates/bitaxe-api/src/mining.rs`), and `bestdiff` exists only in
+the NVS schema. The value feeds `/api/system/info` `bestDiff` and the BAP
+`best_difficulty` subscription.
+
+- [x] Find the parity rows that own `bestDiff`/`bestSessionDiff`, and confirm
+      the upstream semantics: the all-time value is restored and persisted,
+      and the session value starts at 0.
+- [x] Restore and persist the all-time best through the settings or NVS owner,
+      with host regressions; keep `bestSessionDiff` session-only.
+- Findings (2026-10-15):
+  - Upstream counts every nonce on a valid job, met or not (`asic_result_task.c` ->
+    `SYSTEM_notify_found_nonce`), compared after a `(uint64_t)` cast.
+  - The all-time best is restored from NVS `bestdiff` (u64, no REST name, no
+    default) and written on each new record, without throttling; a failed
+    write is only logged. The session best starts at 0 each boot.
+  - `/api/system/info` exposes both as numbers. BAP `best_difficulty` and the
+    screen's second value use the all-time string.
+  - This firmware's `bestDiff` was not a nonce difficulty at all: it was the
+    pool difficulty at each accepted share, reset on every pool connection.
+    `bestSessionDiff` was a copy of it.
+  - Rows involved: API-002 (fields), CFG-004 (key), UI-002 (screen), and
+    BAP-001 (non-claim).
+- Implementation (software):
+  - `bitaxe_api::BestDifficultyState` (`restored`, `observe`) and
+    `reference_u64`, with unit tests.
+  - `ApiSnapshot.best_difficulty` feeds `bestDiff` (all-time) and
+    `bestSessionDiff` (session). The pool-difficulty derivation in
+    `mining.rs` is removed.
+  - The firmware keeps the state per boot in the command-visible state. The
+    mining owner records every `RecordScoreboard` candidate's nonce difficulty
+    before the scoreboard.
+  - `best_difficulty_adapter` restores `bestdiff` before the production owner
+    starts and persists each new record (`set_u64` commits, then a read-back
+    check). Like the scoreboard owner, it takes no settings lock.
+  - The screen's single best now shows the session nonce best.
+  - Regressions:
+    - the state's unit tests;
+    - the projection test, now on nonce bests;
+    - BAP `best_difficulty` showing the all-time value;
+    - a below-pool-target nonce still feeding the best;
+    - `best_difficulty_source_ownership_tests`.
+- Decisions and non-claims:
+  - Persistence is best-effort with memory first, as upstream does; unlike the
+    scoreboard, there is no confirm-before-publish.
+  - The wire stays `f64`, so serde prints `0.0` where upstream cJSON prints
+    `0`. The JSON type is the same.
+  - Stratum V2 nonces carry no nonce difficulty, so they do not count.
+  - Upstream's screen shows `Best: session/all-time`; changing UI-002's
+    layout is left as a follow-up.
+  - Gate leases raise `bestdiff`, as mining does upstream. It is outside the
+    worker preservation fingerprint.
+- [ ] Hardware evidence under its own contract (a value that survives a
+      reboot after accepted shares).
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-parity-bap-settings-effects | 2026-10-15 | Apply BAP settings and close the remaining BAP gaps
@@ -1196,26 +1258,6 @@ explicit non-claims.
       `task-parity-bap-live-accessory-verification`): electrical safety,
       allowed settings, restoration of changed settings, evidence and stop
       conditions. Each setting needs the owner's go-ahead.
-
-Verification: pending. Completion review: pending.
-
-### task-parity-best-difficulty-persistence | 2026-10-15 | Persist the all-time best difficulty like upstream
-
-Origin: the BAP ordinal 008 review. After soak 002 accepted 22 shares, the
-next boot reported `best_difficulty` `0`. Upstream restores
-`best_nonce_diff` from NVS key `bestdiff` at boot (`system.c:50,129`) and
-persists each new best (`system.c:361-369`). In this firmware `best_diff` is
-session-only (`crates/bitaxe-api/src/mining.rs`), and `bestdiff` exists only in
-the NVS schema. The value feeds `/api/system/info` `bestDiff` and the BAP
-`best_difficulty` subscription.
-
-- [ ] Find the parity rows that own `bestDiff`/`bestSessionDiff`, and confirm
-      the upstream semantics: the all-time value is restored and persisted,
-      and the session value starts at 0.
-- [ ] Restore and persist the all-time best through the settings or NVS owner,
-      with host regressions; keep `bestSessionDiff` session-only.
-- [ ] Hardware evidence under its own contract (a value that survives a
-      reboot after accepted shares).
 
 Verification: pending. Completion review: pending.
 

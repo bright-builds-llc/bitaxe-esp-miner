@@ -8,6 +8,7 @@
 use bitaxe_config::catalog::board_catalog;
 use bitaxe_core::bap::{BapParameter, BapRequestSnapshot};
 
+use crate::best_difficulty::reference_u64;
 use crate::wire::SystemInfoWire;
 
 /// The reference `systemInfo` answer: `deviceModel` is the board family
@@ -64,7 +65,7 @@ pub fn bap_subscription_values(
         BapParameter::FanSpeed => vec![("fan_speed", info.fan_rpm.to_string())],
         BapParameter::BestDifficulty => vec![(
             "best_difficulty",
-            suffix_string(saturating_u64(info.best_diff)),
+            suffix_string(reference_u64(info.best_diff)),
         )],
         BapParameter::BlockHeight => vec![(
             "block_height",
@@ -77,17 +78,6 @@ pub fn bap_subscription_values(
         ],
         BapParameter::FoundBlock => vec![("found_block", info.block_found.to_string())],
         _ => Vec::new(),
-    }
-}
-
-/// The reference `(uint64_t)` cast of a difficulty: truncated, and clamped where C
-/// would be undefined.
-fn saturating_u64(value: f64) -> u64 {
-    if value.is_nan() || value <= 0.0 {
-        0
-    } else {
-        // `as` saturates at `u64::MAX`, the clamp C leaves undefined.
-        value as u64
     }
 }
 

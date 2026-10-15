@@ -24,11 +24,8 @@ pub(super) fn collect(now_ms: u64) -> ScreenCommandProjection {
             identify_active: state.identify.mode_at(now_ms) == IdentifyMode::Active,
             fallback_active: state.mining.fallback_active,
             hashrate_ghs: state.mining.hashrate_inputs.current_ghs,
-            maybe_best_difficulty: state
-                .mining
-                .counters
-                .maybe_best_difficulty
-                .map(|difficulty| difficulty.raw()),
+            // The reference screen redraws on the session nonce best.
+            maybe_best_difficulty: Some(state.best_difficulty.session as f64),
             shares_accepted: state.mining.counters.accepted,
             shares_rejected: state.mining.counters.rejected,
             work_received: state.work_received,

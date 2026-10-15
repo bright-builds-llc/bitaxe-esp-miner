@@ -125,3 +125,18 @@ fn the_wifi_subscription_never_sends_the_password() {
     // Assert: owner-accepted divergence from the reference `wifi_password` frame.
     assert_eq!(tokens, vec!["wifi_ssid", "wifi_rssi", "wifi_ip"]);
 }
+
+#[test]
+fn best_difficulty_publishes_the_all_time_nonce_best() {
+    // Arrange: upstream `best_diff_string` is the all-time best, not the session's.
+    let mut snapshot = ApiSnapshot::safe_ultra_205();
+    snapshot.best_difficulty = crate::BestDifficultyState {
+        all_time: 1_234_567,
+        session: 999,
+    };
+    let info = system_info_from_snapshot(&snapshot);
+    // Act
+    let rendered = values(BapParameter::BestDifficulty, &info);
+    // Assert
+    assert_eq!(rendered, vec![("best_difficulty", "1.23M".to_owned())]);
+}

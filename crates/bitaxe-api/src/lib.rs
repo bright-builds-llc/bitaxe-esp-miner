@@ -7,6 +7,7 @@
 
 pub mod asic;
 pub mod bap_values;
+pub mod best_difficulty;
 pub mod boot_identity;
 pub mod build_identity;
 pub mod command_status;
@@ -46,6 +47,7 @@ pub mod www_update;
 
 pub use asic::asic_settings_from_snapshot;
 pub use bap_values::{bap_request_snapshot, bap_subscription_values, board_family, suffix_string};
+pub use best_difficulty::{reference_u64, BestDifficultyState};
 pub use build_identity::{
     BuildChannel, BuildIdentity, BuildIdentityError, BuildProvenance, BUILD_LABEL_MAX_BYTES,
     BUILD_PROVENANCE_SCHEMA_VERSION, FULL_COMMIT_BYTES, SHORT_COMMIT_BYTES,

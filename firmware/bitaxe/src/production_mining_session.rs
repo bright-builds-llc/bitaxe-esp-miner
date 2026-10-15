@@ -1,6 +1,7 @@
 //! Thin ESP owner and qualified live-I/O adapter for the Production Mining Session.
 pub(crate) mod admission_diagnostics;
 mod asic_worker;
+mod best_difficulty;
 mod bwg;
 mod campaign_status;
 pub(crate) mod cooling;
@@ -471,6 +472,7 @@ impl OrdinaryEspProductionSessionAdapter {
                         candidate.matches_expected_asic_filter(),
                     );
                 }
+                best_difficulty::record(candidate.difficulty());
                 scoreboard::record(candidate)
             }
             ProductionSessionEffect::RecordBlockFound => {

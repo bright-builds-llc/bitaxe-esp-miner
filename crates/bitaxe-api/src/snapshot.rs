@@ -14,8 +14,8 @@ use bitaxe_safety::observation::{Observation, UnavailableReason};
 use bitaxe_stratum::v1::state::MiningRuntimeState;
 
 use crate::{
-    BlockFoundNotificationState, ObservationReasonWire, ObservationStateWire, ObservationTruthWire,
-    OperatorSnapshotIdentity, PlatformIdentity, SystemInfoBlockSnapshot,
+    BestDifficultyState, BlockFoundNotificationState, ObservationReasonWire, ObservationStateWire,
+    ObservationTruthWire, OperatorSnapshotIdentity, PlatformIdentity, SystemInfoBlockSnapshot,
     SystemInfoSettingsSnapshot, TelemetryObservations,
 };
 
@@ -35,6 +35,8 @@ pub struct ApiSnapshot {
     pub catalog: BoardCatalogEntry,
     pub mining: MiningRuntimeState,
     pub block_found: BlockFoundNotificationState,
+    /// All-time (restored from NVS) and session best nonce difficulty.
+    pub best_difficulty: BestDifficultyState,
     /// Conditional block template facts; absent until a positive block height exists.
     pub maybe_block: Option<Box<SystemInfoBlockSnapshot>>,
     pub asic: AsicSnapshot,
@@ -61,6 +63,7 @@ impl ApiSnapshot {
                 block_found: 0,
                 show_new_block: false,
             },
+            best_difficulty: BestDifficultyState::restored(0),
             maybe_block: None,
             asic: AsicSnapshot::chip_detect_only(),
             platform: PlatformSnapshot::safe_ultra_205(),

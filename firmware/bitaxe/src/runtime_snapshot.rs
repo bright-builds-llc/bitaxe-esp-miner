@@ -10,7 +10,8 @@ pub use command_surface::{
     apply_block_found_dismiss_command, apply_identify_mode_command,
     apply_mining_operator_intent_command, block_found_notification_state,
     cancel_identify_if_active_at, command_status_wire, identify_mode, record_display_availability,
-    record_display_render, record_found_block, record_restart_command, ButtonIdentifyCancellation,
+    record_display_render, record_found_block, record_nonce_difficulty, record_restart_command,
+    restore_best_difficulty, ButtonIdentifyCancellation,
 };
 use settings_projection::{
     apply_settings_snapshot, apply_wifi_snapshot, collect_settings_projection,
@@ -27,9 +28,9 @@ use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect,
     apply_mining_operator_intent_effect, asic_settings_from_snapshot, project_api_views,
     project_system_info, scoreboard_response, statistics_response, ApiSnapshot,
-    BlockFoundDismissEffect, BlockFoundNotificationState, CommandStatusEffect, CommandStatusFacts,
-    CommandStatusTracker, CommandStatusTransition, CommandStatusWire, DisplayFrameKind,
-    DisplayRenderOutcome, IdentifyMode, IdentifyModeEffect, IdentifyModeState,
+    BestDifficultyState, BlockFoundDismissEffect, BlockFoundNotificationState, CommandStatusEffect,
+    CommandStatusFacts, CommandStatusTracker, CommandStatusTransition, CommandStatusWire,
+    DisplayFrameKind, DisplayRenderOutcome, IdentifyMode, IdentifyModeEffect, IdentifyModeState,
     MiningOperatorIntentEffect, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
     OperatorSnapshotPublishError, PlatformFact, PlatformIdentity, PlatformSnapshot,
     ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsHistory,
@@ -52,6 +53,7 @@ struct OperatorSnapshotCandidate {
     projection: RuntimeTelemetryProjection,
     maybe_sample_marker: Option<RuntimeProjectionSampleMarker>,
     block_found: BlockFoundNotificationState,
+    best_difficulty: BestDifficultyState,
     platform_identity: PlatformIdentity,
     platform: PlatformSnapshot,
     runtime_health: bitaxe_core::runtime_health::RuntimeHealthSnapshot,
@@ -83,6 +85,7 @@ struct CommandVisibleState {
     runtime_projection: RuntimeTelemetryProjection,
     identify: IdentifyModeState,
     block_found: BlockFoundNotificationState,
+    best_difficulty: BestDifficultyState,
     work_received: u64,
     command_status: CommandStatusTracker,
 }
@@ -98,6 +101,7 @@ impl Default for CommandVisibleState {
                 block_found: 0,
                 show_new_block: false,
             },
+            best_difficulty: BestDifficultyState::restored(0),
             work_received: 0,
             command_status: CommandStatusTracker::default(),
         }
@@ -139,6 +143,7 @@ fn complete_api_snapshot(candidate: OperatorSnapshotCandidate) -> ApiSnapshot {
     let mut snapshot = ApiSnapshot::safe_ultra_205();
     snapshot.mining = candidate.projection.state().clone();
     snapshot.block_found = candidate.block_found;
+    snapshot.best_difficulty = candidate.best_difficulty;
     snapshot.platform_identity = candidate.platform_identity;
     snapshot.platform = candidate.platform;
     snapshot.runtime_health = candidate.runtime_health;
@@ -434,7 +439,7 @@ fn publish_operator_snapshot_profiled<Publication, T, E>(
 }
 
 fn collect_operator_snapshot_candidate(drain_sample_marker: bool) -> OperatorSnapshotCandidate {
-    let (projection, maybe_sample_marker, block_found) =
+    let (projection, maybe_sample_marker, block_found, best_difficulty) =
         runtime_projection_for_api_views(drain_sample_marker);
     let platform_identity = crate::platform_identity::collect();
     let platform =
@@ -448,6 +453,7 @@ fn collect_operator_snapshot_candidate(drain_sample_marker: bool) -> OperatorSna
         projection,
         maybe_sample_marker,
         block_found,
+        best_difficulty,
         platform_identity,
         platform,
         runtime_health,
@@ -462,7 +468,7 @@ fn collect_operator_snapshot_candidate_profiled(
     timing: &LiveStageProfiler,
 ) -> OperatorSnapshotCandidate {
     let maybe_started = timing.maybe_start_stage();
-    let (projection, maybe_sample_marker, block_found) =
+    let (projection, maybe_sample_marker, block_found, best_difficulty) =
         runtime_projection_for_api_views(drain_sample_marker);
     timing.finish_stage(LiveStage::VisibleState, maybe_started);
     let maybe_started = timing.maybe_start_stage();
@@ -483,6 +489,7 @@ fn collect_operator_snapshot_candidate_profiled(
         projection,
         maybe_sample_marker,
         block_found,
+        best_difficulty,
         platform_identity,
         platform,
         runtime_health,
@@ -498,6 +505,7 @@ fn runtime_projection_for_api_views(
     RuntimeTelemetryProjection,
     Option<RuntimeProjectionSampleMarker>,
     BlockFoundNotificationState,
+    BestDifficultyState,
 ) {
     mutate_command_visible_state_with_result(
         (
@@ -507,6 +515,7 @@ fn runtime_projection_for_api_views(
                 block_found: 0,
                 show_new_block: false,
             },
+            BestDifficultyState::restored(0),
         ),
         |state| {
             let maybe_sample_marker = if drain_sample_marker {
@@ -518,6 +527,7 @@ fn runtime_projection_for_api_views(
                 state.runtime_projection.clone(),
                 maybe_sample_marker,
                 state.block_found,
+                state.best_difficulty,
             )
         },
     )

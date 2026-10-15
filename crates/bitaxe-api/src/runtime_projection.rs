@@ -77,7 +77,11 @@ mod tests {
     fn projection_system_info_preserves_axeos_fields() {
         // Arrange
         let projection = active_projection_with_share_counters();
-        let base = ApiSnapshot::safe_ultra_205();
+        let mut base = ApiSnapshot::safe_ultra_205();
+        base.best_difficulty = crate::BestDifficultyState {
+            all_time: 9_000,
+            session: 300,
+        };
 
         // Act
         let views = project_api_views(base, &projection, None, 10_000, 12.5);
@@ -88,7 +92,8 @@ mod tests {
         assert_eq!(wire.hash_rate, 2_500.0);
         assert_eq!(wire.shares_accepted, 1);
         assert_eq!(wire.shares_rejected, 1);
-        assert_eq!(wire.best_diff, 128.0);
+        // The nonce bests, not the accepted share's pool difficulty (128).
+        assert_eq!((wire.best_diff, wire.best_session_diff), (9_000.0, 300.0));
         assert_eq!(wire.pool_difficulty, 4_096.0);
         assert_eq!(wire.pool_connection_info, "active");
         assert_eq!(wire.is_using_fallback_stratum, 1);

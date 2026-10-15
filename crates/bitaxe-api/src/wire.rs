@@ -394,8 +394,9 @@ impl SystemInfoWire {
             shares_accepted: mining_state.shares_accepted,
             shares_rejected: mining_state.shares_rejected,
             shares_rejected_reasons: mining_state.shares_rejected_reasons,
-            best_diff: mining_state.best_diff,
-            best_session_diff: mining_state.best_session_diff,
+            // The nonce bests, not the pool difficulty of accepted shares.
+            best_diff: snapshot.best_difficulty.all_time as f64,
+            best_session_diff: snapshot.best_difficulty.session as f64,
             pool_difficulty: mining_state.pool_difficulty,
             pool_connection_info: mining_state.pool_connection_info,
             response_time: mining_state.response_time,

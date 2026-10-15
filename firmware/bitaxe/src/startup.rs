@@ -6,10 +6,10 @@ use esp_idf_svc::hal::{modem::Modem, peripherals::Peripherals};
 use esp_idf_svc::sys;
 
 use crate::{
-    asic_adapter, bap_adapter, boot_evidence, boot_validation, display_adapter,
-    fan_controller_runtime, filesystem, http_api, input_adapter, operator_sensor_runtime,
-    production_mining_session, runtime_snapshot, runtime_uptime, safety_adapter,
-    scoreboard_adapter, self_test_runtime, settings_adapter, statistics_runtime,
+    asic_adapter, bap_adapter, best_difficulty_adapter, boot_evidence, boot_validation,
+    display_adapter, fan_controller_runtime, filesystem, http_api, input_adapter,
+    operator_sensor_runtime, production_mining_session, runtime_snapshot, runtime_uptime,
+    safety_adapter, scoreboard_adapter, self_test_runtime, settings_adapter, statistics_runtime,
     stratum_v2_tcp_payload_diagnostic, wifi_adapter, BOOT_LOG_LINE, RUST_TARGET,
     SAFE_STATE_LOG_LINE,
 };
@@ -162,6 +162,9 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     }
     if let Err(error) = scoreboard_adapter::initialize() {
         log::warn!("scoreboard=unavailable category={}", error.category());
+    }
+    if let Err(error) = best_difficulty_adapter::initialize() {
+        log::warn!("best_difficulty=unavailable category={}", error.category());
     }
     runtime_snapshot::apply_boot_mining_preference(settings_adapter::start_mining_on_boot());
     let maybe_thermal_fault_stimulus = match settings_adapter::load_thermal_fault_stimulus() {

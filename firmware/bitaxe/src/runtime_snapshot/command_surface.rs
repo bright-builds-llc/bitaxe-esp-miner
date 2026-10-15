@@ -91,6 +91,22 @@ pub fn apply_block_found_dismiss_command(effect: BlockFoundDismissEffect) {
     retain_command_status_transition(transition);
 }
 
+/// Seeds this boot's best-difficulty state from the persisted all-time best.
+pub fn restore_best_difficulty(persisted_all_time: u64) {
+    mutate_command_visible_state(|state| {
+        state.best_difficulty = BestDifficultyState::restored(persisted_all_time);
+    });
+}
+
+/// Observes one valid-job nonce difficulty; returns a new all-time best to persist.
+pub fn record_nonce_difficulty(difficulty: f64) -> Option<u64> {
+    mutate_command_visible_state_with_result(None, |state| {
+        let (next, maybe_persist) = state.best_difficulty.observe(difficulty);
+        state.best_difficulty = next;
+        maybe_persist
+    })
+}
+
 /// Records one production-qualified network-target nonce.
 pub fn record_found_block() {
     mutate_command_visible_state(|state| {

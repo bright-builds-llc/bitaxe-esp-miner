@@ -91,3 +91,42 @@ fn stale_generation_nonce_emits_no_scoreboard_effect() {
         .iter()
         .any(|effect| matches!(effect, ProductionSessionEffect::RecordScoreboard { .. })));
 }
+
+#[test]
+fn a_nonce_below_the_pool_target_still_emits_its_scoreboard_difficulty() {
+    // Arrange: a pool difficulty no nonce can meet. Upstream counts every valid-job
+    // nonce toward the best difficulty (`asic_result_task.c`), submitted or not.
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    adapter.drive(wake(ready(), 0));
+    adapter.connect(ProductionPool::Primary, 1);
+    authorize_pool(&mut adapter, ProductionPool::Primary, 2);
+    let notification = concat!(
+        "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[1e30]}\n",
+        "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"job\",",
+        "\"0000000000000000000000000000000000000000000000000000000000000000\",",
+        "\"ffffffff\",\"ffffffff\",[],\"20000004\",\"1705ae3a\",",
+        "\"647025b5\",true]}\n"
+    );
+    adapter.bytes(ProductionPool::Primary, notification, 3);
+    adapter.drive(wake(ready(), 4));
+    let observation = dispatched_observation(&adapter);
+
+    // Act
+    adapter.drive(ProductionSessionEvent::AsicResult {
+        observation,
+        now_ms: 5,
+    });
+
+    // Assert
+    let scoreboard_count = adapter
+        .effects
+        .iter()
+        .filter(|effect| matches!(effect, ProductionSessionEffect::RecordScoreboard { .. }))
+        .count();
+    let submit_count = adapter
+        .writes
+        .iter()
+        .filter(|(_, line)| line.contains("mining.submit"))
+        .count();
+    assert_eq!((scoreboard_count, submit_count), (1, 0));
+}
