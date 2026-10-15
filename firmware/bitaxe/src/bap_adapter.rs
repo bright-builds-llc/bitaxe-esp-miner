@@ -75,7 +75,11 @@ fn run_owner(mut driver: UartDriver<'static>) {
         match driver.read(&mut buffer, ticks(BAP_READ_TIMEOUT_MS)) {
             Ok(read) if read > 0 => {
                 for frame in accumulator.push(&buffer[..read]) {
-                    handle_frame(&mut driver, &mut runtime, &frame, now_ms);
+                    // A (re)subscription resends its next values even when unchanged.
+                    if let Some(parameter) = handle_frame(&mut driver, &mut runtime, &frame, now_ms)
+                    {
+                        last_subscription_frames.retain(|(current, _)| *current != parameter);
+                    }
                 }
             }
             Ok(_) => {}
@@ -92,17 +96,18 @@ fn run_owner(mut driver: UartDriver<'static>) {
 
 // Kept out of line so the owner loop's frame does not carry every handler's locals.
 #[inline(never)]
+/// Answers one frame; returns the parameter a `SUB` (re)subscribed.
 fn handle_frame(
     driver: &mut UartDriver<'static>,
     runtime: &mut BapRuntime,
     input: &[u8],
     now_ms: u64,
-) {
+) -> Option<BapParameter> {
     let dispatch = match runtime.admit(input, now_ms, bap_request_snapshot) {
         Ok(dispatch) => dispatch,
         Err(error) => {
             log::warn!("bap_ingress=rejected category={error:?}");
-            return;
+            return None;
         }
     };
     if let Some((setting, _restart)) = dispatch.maybe_setting {
@@ -118,11 +123,12 @@ fn handle_frame(
         if let Ok(error) = maybe_error {
             write_frame(driver, &error);
         }
-        return;
+        return None;
     }
     for response in dispatch.responses {
         write_frame(driver, &response);
     }
+    dispatch.maybe_subscribed
 }
 
 #[inline(never)]

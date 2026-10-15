@@ -2,6 +2,13 @@ use super::*;
 use crate::test_link::{frame, Scripted};
 use bitaxe_core::bap::{plan_command, BapConnectionMode, BapRequestSnapshot};
 
+/// The first three steps, which the scripted boards below answer.
+const CORE_STEPS: [Step; 3] = [
+    Step::SystemInfo,
+    Step::Shares,
+    Step::Subscription(BapParameter::Hashrate),
+];
+
 fn healthy_board() -> Vec<(u64, String)> {
     vec![
         (10, frame(BapCommand::Response, "deviceModel", "Ultra")),
@@ -40,7 +47,7 @@ fn a_healthy_board_completes_the_probe() {
     // Arrange
     let mut link = scripted(&healthy_board());
     // Act
-    let record = probe(&mut link, 2).expect("probe");
+    let record = probe_steps(&mut link, 2, &CORE_STEPS).expect("probe");
     // Assert
     assert_eq!(record.outcome, "complete");
     assert_eq!(record.steps.len(), 3);
@@ -52,7 +59,7 @@ fn the_probe_sends_no_setting() {
     // Arrange
     let mut link = scripted(&healthy_board());
     // Act
-    probe(&mut link, 2).expect("probe");
+    probe_steps(&mut link, 2, &CORE_STEPS).expect("probe");
     // Assert
     let commands: Vec<_> = link.sent.iter().map(|frame| frame.command()).collect();
     assert_eq!(
@@ -71,7 +78,7 @@ fn pool_identity_never_reaches_the_record() {
     // Arrange
     let mut link = scripted(&healthy_board());
     // Act
-    let record = probe(&mut link, 2).expect("probe");
+    let record = probe_steps(&mut link, 2, &CORE_STEPS).expect("probe");
     // Assert
     let text = serde_json::to_string(&record.steps).expect("json");
     assert!(!text.contains("pool.example.invalid"));
@@ -84,7 +91,7 @@ fn a_silent_line_stops_at_the_first_step_with_no_bytes() {
     // Arrange
     let mut link = scripted(&[]);
     // Act
-    let record = probe(&mut link, 2).expect("probe");
+    let record = probe_steps(&mut link, 2, &CORE_STEPS).expect("probe");
     // Assert
     assert_eq!(record.outcome, "stop_hardware_blocker");
     assert_eq!(record.steps.len(), 1);
@@ -98,7 +105,7 @@ fn garbled_bytes_are_distinguished_from_silence() {
     // Arrange
     let mut link = scripted(&[(10, "\u{fffd}\u{fffd}~~\r\n".to_owned())]);
     // Act
-    let record = probe(&mut link, 2).expect("probe");
+    let record = probe_steps(&mut link, 2, &CORE_STEPS).expect("probe");
     // Assert
     let signature = record.maybe_signature.expect("signature");
     assert_eq!(signature["category"], "no_parseable_frames");
@@ -113,7 +120,7 @@ fn a_device_rejection_keeps_its_error_code() {
         frame(BapCommand::Error, "systemInfo", "ap_mode_no_requests"),
     )]);
     // Act
-    let record = probe(&mut link, 2).expect("probe");
+    let record = probe_steps(&mut link, 2, &CORE_STEPS).expect("probe");
     // Assert
     let signature = record.maybe_signature.expect("signature");
     assert_eq!(signature["category"], "device_rejected");
@@ -127,7 +134,7 @@ fn a_subscription_without_updates_is_not_a_pass() {
     arrivals.retain(|(_, text)| !text.contains("513.0"));
     let mut link = scripted(&arrivals);
     // Act
-    let record = probe(&mut link, 2).expect("probe");
+    let record = probe_steps(&mut link, 2, &CORE_STEPS).expect("probe");
     // Assert
     let signature = record.maybe_signature.expect("signature");
     assert_eq!(signature["step"], "subscribe_hashrate");
@@ -139,7 +146,7 @@ fn listening_is_bounded() {
     // Arrange
     let mut link = scripted(&healthy_board());
     // Act
-    probe(&mut link, 3_600).expect("probe");
+    probe_steps(&mut link, 3_600, &CORE_STEPS).expect("probe");
     // Assert: the subscription listened no longer than the bound plus its answers.
     assert!(
         link.now <= (MAXIMUM_LISTEN_SECONDS * 1_000) + 3 * 3_000 + 2_000,
@@ -188,7 +195,7 @@ fn a_hashrate_request_is_not_answered_by_the_firmware() {
 
 fn first_signature(arrivals: &[(u64, String)]) -> serde_json::Value {
     let mut link = scripted(arrivals);
-    probe(&mut link, 2)
+    probe_steps(&mut link, 2, &CORE_STEPS)
         .expect("probe")
         .maybe_signature
         .expect("a failed step")
@@ -232,4 +239,106 @@ fn a_hashrate_without_two_decimals_is_a_value_mismatch() {
     let signature = first_signature(&arrivals);
     // Assert
     assert_eq!(signature["category"].as_str(), Some("value_mismatch"));
+}
+
+fn subscription_report(parameter: BapParameter, updates: &[(&str, &str)]) -> Report {
+    let token = parameter.token();
+    let mut frames = vec![frame(BapCommand::Acknowledge, token, "subscribed")];
+    frames.extend(
+        updates
+            .iter()
+            .map(|(update, value)| frame(BapCommand::Response, update, value)),
+    );
+    frames.push(frame(BapCommand::Acknowledge, token, "unsubscribed"));
+    let bytes_received = frames.iter().map(String::len).sum();
+    Report {
+        outcome: Outcome::Confirmed,
+        frames: frames
+            .iter()
+            .map(|text| bitaxe_core::bap::BapFrame::parse(text.as_bytes()).expect("frame"))
+            .collect(),
+        malformed_lines: 0,
+        bytes_received,
+    }
+}
+
+#[test]
+fn every_numeric_subscription_accepts_its_reference_format() {
+    // Arrange: one update per subscription, formatted as `bap_subscription.c` does.
+    let cases = [
+        (
+            BapParameter::Temperature,
+            vec![("chipTemp", "53.250000"), ("vrTemp", "47.500000")],
+        ),
+        (BapParameter::Power, vec![("power", "11.70")]),
+        (BapParameter::Voltage, vec![("voltage", "5266.25")]),
+        (BapParameter::Current, vec![("current", "2221.50")]),
+        (BapParameter::FanSpeed, vec![("fan_speed", "7307")]),
+        (
+            BapParameter::BestDifficulty,
+            vec![("best_difficulty", "1.23M")],
+        ),
+        (BapParameter::BlockHeight, vec![("block_height", "868123")]),
+        (BapParameter::FoundBlock, vec![("found_block", "0")]),
+    ];
+    // Act
+    let categories: Vec<&str> = cases
+        .iter()
+        .map(|(parameter, updates)| {
+            judge(
+                Step::Subscription(*parameter),
+                &subscription_report(*parameter, updates),
+            )
+        })
+        .collect();
+    // Assert
+    assert!(
+        categories.iter().all(|category| *category == "passed"),
+        "{categories:?}"
+    );
+}
+
+#[test]
+fn the_old_firmware_formats_are_value_mismatches() {
+    // Arrange: the values before task-parity-bap-value-sources.
+    let cases = [
+        (
+            BapParameter::Temperature,
+            vec![("chipTemp", "53.25"), ("vrTemp", "47.5")],
+        ),
+        (BapParameter::Power, vec![("power", "11.7")]),
+        (BapParameter::Voltage, vec![("voltage", "5.26625")]),
+        (
+            BapParameter::BestDifficulty,
+            vec![("best_difficulty", "1234567.9")],
+        ),
+    ];
+    // Act
+    let categories: Vec<&str> = cases
+        .iter()
+        .map(|(parameter, updates)| {
+            judge(
+                Step::Subscription(*parameter),
+                &subscription_report(*parameter, updates),
+            )
+        })
+        .collect();
+    // Assert
+    assert!(
+        categories
+            .iter()
+            .all(|category| *category == "value_mismatch"),
+        "{categories:?}"
+    );
+}
+
+#[test]
+fn the_full_probe_covers_every_numeric_subscription_but_not_wifi() {
+    // Arrange / Act
+    let labels: Vec<&str> = Step::ALL.iter().map(|step| step.label()).collect();
+    // Assert
+    assert_eq!(labels.len(), 11);
+    assert!(labels
+        .iter()
+        .all(|label| !label.contains("wifi") && *label != "subscribe_other"));
 }

@@ -1,10 +1,12 @@
 //! The read-only BAP probe: a fixed sequence that changes no setting, judged step by
 //! step, stopping at the first failure so the earliest typed failure is the one kept.
 //!
-//! Steps: request `systemInfo`, request `shares`, then subscribe to `hashrate`,
-//! listen, and unsubscribe. Requests answer only `systemInfo`, `shares`,
-//! `block_height`, `found_block` and `show_new_block`; `hashrate` is
-//! subscription-only, as in the reference firmware. Each step's outcome reduces to a closed category; any
+//! Steps: request `systemInfo` and `shares`, then subscribe to each numeric
+//! parameter (`hashrate`, `temperature`, `power`, `voltage`, `current`,
+//! `fan_speed`, `best_difficulty`, `block_height`, `found_block`), listen, and
+//! unsubscribe. Requests answer only `systemInfo`, `shares`, `block_height`,
+//! `found_block` and `show_new_block`; `hashrate` is subscription-only, as in the
+//! reference firmware. Each step's outcome reduces to a closed category; any
 //! failed step selects `stop_hardware_blocker` with a redacted boundary signature.
 
 use crate::exchange::{run, Link, Operation, Outcome, Report, Timing};
@@ -28,29 +30,74 @@ const SYSTEM_INFO_TOKENS: [&str; 5] = ["deviceModel", "asicModel", "pool", "pool
 pub enum Step {
     SystemInfo,
     Shares,
-    HashrateSubscription,
+    /// Subscribe, listen, then unsubscribe.
+    Subscription(BapParameter),
 }
 
 impl Step {
-    pub const ALL: [Self; 3] = [Self::SystemInfo, Self::Shares, Self::HashrateSubscription];
+    /// Every read-only step: both answered requests, then each numeric subscription.
+    /// `wifi` is left out because it carries the network name and address.
+    pub const ALL: [Self; 11] = [
+        Self::SystemInfo,
+        Self::Shares,
+        Self::Subscription(BapParameter::Hashrate),
+        Self::Subscription(BapParameter::Temperature),
+        Self::Subscription(BapParameter::Power),
+        Self::Subscription(BapParameter::Voltage),
+        Self::Subscription(BapParameter::Current),
+        Self::Subscription(BapParameter::FanSpeed),
+        Self::Subscription(BapParameter::BestDifficulty),
+        Self::Subscription(BapParameter::BlockHeight),
+        Self::Subscription(BapParameter::FoundBlock),
+    ];
 
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
             Self::SystemInfo => "request_system_info",
             Self::Shares => "request_shares",
-            Self::HashrateSubscription => "subscribe_hashrate",
+            Self::Subscription(BapParameter::Hashrate) => "subscribe_hashrate",
+            Self::Subscription(BapParameter::Temperature) => "subscribe_temperature",
+            Self::Subscription(BapParameter::Power) => "subscribe_power",
+            Self::Subscription(BapParameter::Voltage) => "subscribe_voltage",
+            Self::Subscription(BapParameter::Current) => "subscribe_current",
+            Self::Subscription(BapParameter::FanSpeed) => "subscribe_fan_speed",
+            Self::Subscription(BapParameter::BestDifficulty) => "subscribe_best_difficulty",
+            Self::Subscription(BapParameter::BlockHeight) => "subscribe_block_height",
+            Self::Subscription(BapParameter::FoundBlock) => "subscribe_found_block",
+            Self::Subscription(_) => "subscribe_other",
         }
     }
 
-    /// The only answer and acknowledgement tokens this step may receive.
+    /// The `RES` tokens this step's answer or update carries, as in the reference
+    /// `bap_handlers.c` and `bap_subscription.c`.
     #[must_use]
-    pub const fn expected_tokens(self) -> &'static [&'static str] {
+    pub const fn update_tokens(self) -> &'static [&'static str] {
         match self {
             Self::SystemInfo => &SYSTEM_INFO_TOKENS,
             Self::Shares => &["shares"],
-            Self::HashrateSubscription => &["hashrate"],
+            Self::Subscription(BapParameter::Temperature) => &["chipTemp", "vrTemp"],
+            Self::Subscription(BapParameter::Hashrate) => &["hashrate"],
+            Self::Subscription(BapParameter::Power) => &["power"],
+            Self::Subscription(BapParameter::Voltage) => &["voltage"],
+            Self::Subscription(BapParameter::Current) => &["current"],
+            Self::Subscription(BapParameter::FanSpeed) => &["fan_speed"],
+            Self::Subscription(BapParameter::BestDifficulty) => &["best_difficulty"],
+            Self::Subscription(BapParameter::BlockHeight) => &["block_height"],
+            Self::Subscription(BapParameter::FoundBlock) => &["found_block"],
+            Self::Subscription(_) => &[],
         }
+    }
+
+    /// Whether `token` may arrive in this step: one of its answer or update
+    /// tokens, or a subscription's own acknowledgement token.
+    #[must_use]
+    pub fn expects(self, token: &str) -> bool {
+        let acknowledged = match self {
+            Self::Subscription(parameter) => parameter.token() == token,
+            _ => false,
+        };
+        acknowledged || self.update_tokens().contains(&token)
     }
 
     #[must_use]
@@ -58,8 +105,8 @@ impl Step {
         match self {
             Self::SystemInfo => Operation::Request(BapParameter::SystemInfo),
             Self::Shares => Operation::Request(BapParameter::Shares),
-            Self::HashrateSubscription => Operation::Subscribe {
-                parameter: BapParameter::Hashrate,
+            Self::Subscription(parameter) => Operation::Subscribe {
+                parameter,
                 maybe_interval_ms: Some(SUBSCRIPTION_INTERVAL_MS),
             },
         }
@@ -92,11 +139,15 @@ pub fn judge(step: Step, report: &Report) -> &'static str {
             "passed"
         }
         Outcome::Confirmed
-            if step == Step::HashrateSubscription && has(BapCommand::Response, "hashrate") =>
+            if matches!(step, Step::Subscription(_))
+                && step
+                    .update_tokens()
+                    .iter()
+                    .any(|token| has(BapCommand::Response, token)) =>
         {
             "passed"
         }
-        Outcome::Confirmed if step == Step::HashrateSubscription => "no_subscription_update",
+        Outcome::Confirmed if matches!(step, Step::Subscription(_)) => "no_subscription_update",
         _ => "unexpected_outcome",
     };
     if category != "passed" {
@@ -115,7 +166,7 @@ fn judge_values(step: Step, report: &Report) -> &'static str {
     });
     let mut values = Vec::new();
     for frame in answers {
-        if !step.expected_tokens().contains(&frame.parameter_token()) {
+        if !step.expects(frame.parameter_token()) {
             return "unexpected_parameter";
         }
         if frame.command() == BapCommand::Response {
@@ -126,7 +177,13 @@ fn judge_values(step: Step, report: &Report) -> &'static str {
         "deviceModel" => *value == DEVICE_MODEL,
         "asicModel" => *value == ASIC_MODEL,
         "shares" => is_share_counts(value),
-        "hashrate" => is_two_decimal_number(value),
+        // `%.2f`
+        "hashrate" | "power" | "voltage" | "current" => is_decimal(value, 2),
+        // `%f`; a temperature may be negative.
+        "chipTemp" | "vrTemp" => is_decimal(value.strip_prefix('-').unwrap_or(value), 6),
+        // `%d`
+        "fan_speed" | "block_height" | "found_block" => is_digits(value),
+        "best_difficulty" => is_suffixed_difficulty(value),
         _ => true,
     });
     if valid {
@@ -143,11 +200,22 @@ fn is_share_counts(value: &str) -> bool {
         .is_some_and(|(accepted, rejected)| is_digits(accepted) && is_digits(rejected))
 }
 
-/// A non-negative number with exactly two decimals, as the reference's `%.2f`.
-fn is_two_decimal_number(value: &str) -> bool {
+/// A non-negative number with exactly `places` decimals, as the reference's `%.Nf`.
+fn is_decimal(value: &str, places: usize) -> bool {
     value.split_once('.').is_some_and(|(whole, fraction)| {
-        is_digits(whole) && fraction.len() == 2 && is_digits(fraction)
+        is_digits(whole) && fraction.len() == places && is_digits(fraction)
     })
+}
+
+/// The reference `suffixString(value, ..., 0)`: a bare integer below 1,000, else
+/// two decimals and one SI suffix.
+fn is_suffixed_difficulty(value: &str) -> bool {
+    if is_digits(value) {
+        return true;
+    }
+    value
+        .strip_suffix(['k', 'M', 'G', 'T', 'P', 'E'])
+        .is_some_and(|number| is_decimal(number, 2))
 }
 
 fn is_digits(text: &str) -> bool {
@@ -162,15 +230,24 @@ pub struct ProbeRecord {
     pub maybe_signature: Option<Value>,
 }
 
-/// Runs the read-only sequence, stopping at the first step that does not pass.
+/// Runs every read-only step, stopping at the first that does not pass.
 pub fn probe(link: &mut impl Link, listen_seconds: u64) -> io::Result<ProbeRecord> {
+    probe_steps(link, listen_seconds, &Step::ALL)
+}
+
+/// Runs `steps` in order, stopping at the first that does not pass.
+pub fn probe_steps(
+    link: &mut impl Link,
+    listen_seconds: u64,
+    sequence: &[Step],
+) -> io::Result<ProbeRecord> {
     let timing = Timing {
         answer_ms: ANSWER_MS,
         quiet_ms: QUIET_MS,
         listen_ms: listen_seconds.min(MAXIMUM_LISTEN_SECONDS) * 1_000,
     };
     let mut steps = Vec::new();
-    for step in Step::ALL {
+    for &step in sequence {
         let report = run(&step.operation(), link, timing)?;
         let category = judge(step, &report);
         steps.push(step_record(step, category, &report));

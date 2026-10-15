@@ -1601,6 +1601,42 @@ Origin: the independent review of BAP ordinal 006
 - [ ] A new identity-bound probe on the fixed package (a fresh BAP ordinal
       under its own contract, with owner go-ahead), then an independent review
       and the BAP-001 transition.
+- Subscription cadence parity (2026-10-14, found while preparing ordinal 008):
+  the reference subscription task wakes every 1,000 ms (`vTaskDelay`) and starts
+  each new subscription with `last_response = 0`. Our runtime differed in three
+  ways, all now fixed in `firmware/bitaxe/src/bap_runtime.rs`, with tests:
+  - The first update waited one whole interval (3 s by default). It now goes
+    out on the next 1 s tick.
+  - A sub-second interval published that often. Updates are now evaluated on
+    the 1 s tick only, so at most one per second, as in the reference.
+  - The last-sent values were never reset on `SUB`, so a re-subscription to an
+    unchanged value went silent. Each `SUB` now clears them, which the adapter
+    sees through `BapDispatch::maybe_subscribed`.
+  - The 300 s timeout is now strict (`>`), as in the reference.
+- Probe extension: `probe` now also subscribes to `temperature`, `power`,
+  `voltage`, `current`, `fan_speed`, `best_difficulty`, `block_height` and
+  `found_block`, checking each update's reference format. It still leaves out
+  `wifi`. The record schema is `bap-readonly-probe-v2`.
+- Ordinal 008 contract (owner-authorized 2026-10-14): the ordinal 006 steps,
+  identity-bound, unchanged except:
+  - package at the clean, pushed `HEAD` that records this contract;
+  - parent `scratch/bap-probe-008`;
+  - `--ordinal 8 --listen-seconds 5`.
+
+  Allowed BAP frames: `REQ systemInfo` and `REQ shares`, plus `SUB` (1,000 ms)
+  and `UNSUB` for each of `hashrate`, `temperature`, `power`, `voltage`,
+  `current`, `fan_speed`, `best_difficulty`, `block_height` and `found_block`,
+  listening 5 s each.
+
+  Prohibited, as ordinal 006: any `SET` or `CMD` frame, and any other request or
+  subscription (including `wifi`).
+
+  Outcomes:
+  - `complete`: the probe is `complete` and the binding is `bound`.
+  - Otherwise `stop_hardware_blocker`, with the earliest failed step's
+    signature.
+
+  BAP-001 promotion follows only after an independent review.
 
 Verification: pending. Completion review: pending.
 

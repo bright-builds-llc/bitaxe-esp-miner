@@ -131,8 +131,11 @@ private file (mode 0600, owned by you, not a symlink), never on the command line
 Changing `frequency` or `asic_voltage` also needs `--allow-asic-setting`. An
 adapter that disappears is reported as an error, not as a quiet line.
 
-`probe` runs the task contract's read-only sequence (`systemInfo`, `shares`,
-then a short `hashrate` subscription) once. A request is answered only for
+`probe` runs the task contract's read-only sequence once: requests for
+`systemInfo` and `shares`, then a short subscription to each numeric parameter
+(`hashrate`, `temperature`, `power`, `voltage`, `current`, `fan_speed`,
+`best_difficulty`, `block_height`, `found_block`). It leaves out `wifi`, which
+carries the network name and address. A request is answered only for
 `systemInfo`, `shares`, `block_height`, `found_block` and `show_new_block`;
 `hashrate` arrives only through a subscription. It needs a mode-0700 parent holding
 the detector's saved report as a mode-0600 sibling, creates the attempt directory
@@ -144,7 +147,11 @@ reference formats:
 - `deviceModel` is the Ultra 205's family name, `Ultra`, and `asicModel` is
   `BM1366`;
 - `shares` is `accepted/rejected`;
-- `hashrate` has two decimals.
+- `hashrate`, `power`, `voltage` (mV) and `current` (mA) have two decimals;
+- `chipTemp` and `vrTemp` have six decimals;
+- `fan_speed` (RPM), `block_height` and `found_block` are integers;
+- `best_difficulty` is a bare integer below 1,000, otherwise two decimals and
+  an SI suffix (`1.23M`).
 
 Anything else fails the step as `unexpected_parameter` or `value_mismatch`.
 

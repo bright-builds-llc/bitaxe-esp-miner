@@ -266,7 +266,7 @@ fn run_probe(
         ),
     };
     let record = json!({
-        "schema": "bap-readonly-probe-v1",
+        "schema": "bap-readonly-probe-v2",
         "task": "task-parity-bap-live-accessory-verification",
         "ordinal": ordinal,
         "board": "205",

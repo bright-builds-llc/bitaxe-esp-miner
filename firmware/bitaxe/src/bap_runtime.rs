@@ -7,6 +7,9 @@ use bitaxe_core::bap::{
 };
 
 pub const BAP_AP_ANNOUNCEMENT_INTERVAL_MS: u64 = 5_000;
+/// The reference subscription task wakes once a second (`vTaskDelay(1000)`), so no
+/// subscription publishes more often than this, whatever interval it asked for.
+pub const BAP_SUBSCRIPTION_TICK_MS: u64 = 1_000;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BapRuntimeAction {
@@ -19,6 +22,9 @@ pub enum BapRuntimeAction {
 pub struct BapDispatch {
     pub responses: Vec<BapFrame>,
     pub maybe_setting: Option<(BapSettingIntent, BapRestartPolicy)>,
+    /// A (re)subscription: the reference clears this parameter's last-sent values,
+    /// so its next update is sent even when unchanged.
+    pub maybe_subscribed: Option<BapParameter>,
 }
 
 impl BapDispatch {
@@ -26,6 +32,7 @@ impl BapDispatch {
         Self {
             responses: Vec::new(),
             maybe_setting: None,
+            maybe_subscribed: None,
         }
     }
 }
@@ -34,8 +41,10 @@ impl BapDispatch {
 struct Subscription {
     parameter: BapParameter,
     interval_ms: u64,
-    next_due_ms: u64,
-    expires_at_ms: u64,
+    subscribed_at_ms: u64,
+    /// `None` until the first update, like the reference's `last_response = 0`.
+    maybe_last_response_ms: Option<u64>,
+    timeout_ms: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -44,6 +53,7 @@ pub struct BapRuntime {
     mode: BapConnectionMode,
     subscriptions: Vec<Subscription>,
     next_ap_announcement_ms: u64,
+    next_subscription_tick_ms: u64,
 }
 
 impl Default for BapRuntime {
@@ -53,6 +63,7 @@ impl Default for BapRuntime {
             mode: BapConnectionMode::AccessPoint,
             subscriptions: Vec::new(),
             next_ap_announcement_ms: 0,
+            next_subscription_tick_ms: 0,
         }
     }
 }
@@ -88,6 +99,7 @@ impl BapRuntime {
         let mut dispatch = BapDispatch {
             responses: plan.responses().to_vec(),
             maybe_setting: None,
+            maybe_subscribed: None,
         };
         let Some(effect) = plan.effect() else {
             return Ok(dispatch);
@@ -97,7 +109,10 @@ impl BapRuntime {
                 parameter,
                 interval_ms,
                 timeout_ms,
-            } => self.subscribe(*parameter, *interval_ms, *timeout_ms, now_ms),
+            } => {
+                self.subscribe(*parameter, *interval_ms, *timeout_ms, now_ms);
+                dispatch.maybe_subscribed = Some(*parameter);
+            }
             BapEffect::Unsubscribe { parameter } => self.unsubscribe(*parameter),
             BapEffect::ApplySetting { setting, restart } => {
                 dispatch.responses.clear();
@@ -120,20 +135,27 @@ impl BapRuntime {
             return vec![BapRuntimeAction::AnnounceAccessPoint];
         }
 
+        if now_ms < self.next_subscription_tick_ms {
+            return Vec::new();
+        }
+        self.next_subscription_tick_ms = now_ms.saturating_add(BAP_SUBSCRIPTION_TICK_MS);
         let mut actions = Vec::new();
         self.subscriptions.retain_mut(|subscription| {
-            if now_ms >= subscription.expires_at_ms {
+            // The reference times out strictly after the window since the last SUB.
+            if now_ms.saturating_sub(subscription.subscribed_at_ms) > subscription.timeout_ms {
                 actions.push(BapRuntimeAction::SubscriptionTimedOut(
                     subscription.parameter,
                 ));
                 return false;
             }
-            if now_ms >= subscription.next_due_ms {
+            let due = subscription
+                .maybe_last_response_ms
+                .is_none_or(|last| now_ms.saturating_sub(last) >= subscription.interval_ms);
+            if due {
+                subscription.maybe_last_response_ms = Some(now_ms);
                 actions.push(BapRuntimeAction::PublishSubscription(
                     subscription.parameter,
                 ));
-                subscription.next_due_ms =
-                    coalesced_deadline(subscription.next_due_ms, subscription.interval_ms, now_ms);
             }
             true
         });
@@ -147,12 +169,12 @@ impl BapRuntime {
         timeout_ms: u32,
         now_ms: u64,
     ) {
-        let interval_ms = u64::from(interval_ms);
         let subscription = Subscription {
             parameter,
-            interval_ms,
-            next_due_ms: now_ms.saturating_add(interval_ms),
-            expires_at_ms: now_ms.saturating_add(u64::from(timeout_ms)),
+            interval_ms: u64::from(interval_ms),
+            subscribed_at_ms: now_ms,
+            maybe_last_response_ms: None,
+            timeout_ms: u64::from(timeout_ms),
         };
         if let Some(existing) = self
             .subscriptions
@@ -324,47 +346,93 @@ mod tests {
         assert_eq!(recovered, vec![b"$BAP,REQ,shares*54\n".to_vec()]);
     }
 
-    #[test]
-    fn runtime_owns_subscription_renewal_cadence_timeout_and_unsubscribe() {
-        // Arrange
+    fn publishes(actions: &[BapRuntimeAction]) -> usize {
+        actions
+            .iter()
+            .filter(|action| matches!(action, BapRuntimeAction::PublishSubscription(_)))
+            .count()
+    }
+
+    fn subscribed_runtime(frame: &[u8], now_ms: u64) -> (BapRuntime, BapDispatch) {
         let mut runtime = BapRuntime::default();
-        runtime.set_mode(BapConnectionMode::Connected, 100);
+        runtime.set_mode(BapConnectionMode::Connected, 0);
+        assert!(runtime.poll(0).is_empty());
+        let dispatch = runtime
+            .admit(frame, now_ms, || Some(snapshot()))
+            .expect("subscription plans");
+        (runtime, dispatch)
+    }
+
+    #[test]
+    fn the_first_update_waits_only_for_the_next_one_second_tick() {
+        // Arrange: reference `last_response = 0`, so the default 3,000 ms interval
+        // does not delay the first update.
+        let (mut runtime, subscribed) = subscribed_runtime(b"$BAP,SUB,hashrate*00\r\n", 200);
 
         // Act
-        let subscribed = runtime
-            .admit(b"$BAP,SUB,hashrate,1000*00\r\n", 100, || Some(snapshot()))
-            .expect("compatible subscription plans");
-        let before = runtime.poll(1_099);
-        let due = runtime.poll(1_100);
-        let coalesced = runtime.poll(5_100);
-        let timeout = runtime.poll(100 + u64::from(BAP_SUBSCRIPTION_TIMEOUT_MS));
-        let unsubscribed = runtime
-            .admit(b"$BAP,UNSUB,hashrate\r\n", 400_000, || Some(snapshot()))
-            .expect("compatible unsubscribe plans");
+        let before_tick = runtime.poll(999);
+        let first_tick = runtime.poll(1_000);
+        let inside_interval = runtime.poll(2_000);
+        let after_interval = runtime.poll(4_000);
 
         // Assert
-        assert_eq!(subscribed.responses.len(), 1);
-        assert!(before.is_empty());
+        assert_eq!(subscribed.maybe_subscribed, Some(BapParameter::Hashrate));
         assert_eq!(
-            due,
-            vec![BapRuntimeAction::PublishSubscription(
-                BapParameter::Hashrate
-            )]
+            [&before_tick, &first_tick, &inside_interval, &after_interval].map(|a| publishes(a)),
+            [0, 1, 0, 1]
         );
+    }
+
+    #[test]
+    fn a_sub_second_interval_still_publishes_at_most_once_per_tick() {
+        // Arrange
+        let (mut runtime, _) = subscribed_runtime(b"$BAP,SUB,hashrate,100*00\r\n", 0);
+
+        // Act: the owner polls every 100 ms for 3 s.
+        let total: usize = (1..=30)
+            .map(|step| publishes(&runtime.poll(step * 100)))
+            .sum();
+
+        // Assert: one update on each of the ticks at 1 s, 2 s and 3 s.
+        assert_eq!(total, 3);
+    }
+
+    #[test]
+    fn a_subscription_times_out_strictly_after_its_window_since_the_last_sub() {
+        // Arrange
+        let (mut runtime, _) = subscribed_runtime(b"$BAP,SUB,hashrate,1000*00\r\n", 0);
+        let window = u64::from(BAP_SUBSCRIPTION_TIMEOUT_MS);
+
+        // Act: the tick exactly at the window still publishes; the next one times out.
+        let at_window = runtime.poll(window);
+        let after_window = runtime.poll(window + 1_000);
+
+        // Assert
+        assert_eq!(publishes(&at_window), 1);
         assert_eq!(
-            coalesced,
-            vec![BapRuntimeAction::PublishSubscription(
-                BapParameter::Hashrate
-            )]
-        );
-        assert_eq!(
-            timeout,
+            after_window,
             vec![BapRuntimeAction::SubscriptionTimedOut(
                 BapParameter::Hashrate
             )]
         );
+        assert!(runtime.poll(window + 2_000).is_empty());
+    }
+
+    #[test]
+    fn unsubscribe_ends_updates() {
+        // Arrange
+        let (mut runtime, _) = subscribed_runtime(b"$BAP,SUB,hashrate,1000*00\r\n", 0);
+        assert_eq!(publishes(&runtime.poll(1_000)), 1);
+
+        // Act
+        let unsubscribed = runtime
+            .admit(b"$BAP,UNSUB,hashrate\r\n", 1_500, || Some(snapshot()))
+            .expect("unsubscribe plans");
+
+        // Assert
         assert_eq!(unsubscribed.responses.len(), 1);
-        assert!(runtime.poll(500_000).is_empty());
+        assert_eq!(unsubscribed.maybe_subscribed, None);
+        assert!(runtime.poll(2_000).is_empty());
     }
 
     #[test]
