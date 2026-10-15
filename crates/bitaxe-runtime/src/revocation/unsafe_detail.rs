@@ -234,7 +234,7 @@ impl GenerationGate {
             return;
         }
         let since_safe_ms =
-            (now_ms as u32).wrapping_sub(self.last_safety_ms.load(Ordering::Acquire));
+            super::elapsed_ms(now_ms as u32, self.last_safety_ms.load(Ordering::Acquire));
         self.unsafe_detail.record(UnsafeObservationDetail {
             generation: generation.raw(),
             trigger,

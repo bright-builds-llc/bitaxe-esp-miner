@@ -1594,6 +1594,44 @@ revocation detail before any reboot clears it.
 - A fix with a regression test must land before attempt 002. Attempt 002
   needs a fresh package, preflight and soak ordinal 3.
 
+Diagnosis (2026-10-14, from the receive-only read):
+- The retained detail line read: `worker_revocation_detail generation=1
+  reason=unsafe_observation trigger=no_safe_sample fact=none
+  since_safe_ms=4294967294`. `worker_admission` showed `readiness=63` (every
+  readiness bit set) and `first_failure=preparation`.
+- `since_safe_ms` is 2^32 - 2: the last safety sample was stamped 2 ms *after*
+  the deadline check read its clock. `GenerationGate::check_deadline` compared
+  `now.wrapping_sub(last_safety_ms) > 1_000` unsigned, so that fresh sample
+  looked about 49.7 days old and revoked the just-activated session.
+- The heartbeat cutoff had the same unsigned comparison; the lease and budget
+  deadlines beside it were already signed.
+- The race depends on thread timing, which is why soak attempt 001 under the
+  previous task passed.
+
+Fix (`crates/bitaxe-runtime/src/revocation.rs`): one `elapsed_ms` helper treats
+a stamp newer than the caller's clock reading as zero elapsed. It is used for
+the heartbeat cutoff, the safety-sample silence check and the retained
+`since_safe_ms`. Two regressions reproduce the race, and both fail on the old
+code: a safety sample and a heartbeat each stamped after the check's clock
+reading.
+
+Attempt 002 contract (owner-authorized 2026-10-14, the verified-fix
+continuation). Same as attempt 001 except:
+- Package at the clean, pushed fix commit.
+- New parent `P = scratch/ultra205-soak-002-attempt-002`, with
+  `R = P/attempt-002`.
+- Install through the archived contract's state-preserving
+  `just flash-monitor ... --capture-timeout-seconds 360 --redact-evidence`, so
+  the exact package is verified running.
+- Soak ledger ordinal 3.
+- BAP ordinal 007 may run during the work window, as contracted.
+- Seal with a detector naming the board's port, then
+  `just ultra205-soak finish`, because the owner-finish helper's unnamed
+  detector refuses while the BAP adapter is attached.
+- If attempt 002 shows the same redacted boundary
+  (`trigger=no_safe_sample` with a wrapped `since_safe_ms`), the outcome is
+  `stop_repeated_boundary`.
+
 Verification: pending. Completion review: pending.
 
 ## Future

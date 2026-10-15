@@ -27,6 +27,18 @@ const DIAGNOSTIC_REVOKED: u32 = 7;
 const FLAGS: u32 = 7;
 const GENERATION_SHIFT: u32 = 3;
 
+/// Milliseconds from `then` to `now` on the wrapping 32-bit clock. Another thread
+/// may stamp a heartbeat or safety sample after the caller read `now`; that stamp
+/// is fresh (zero elapsed), never about 49.7 days old.
+fn elapsed_ms(now: u32, then: u32) -> u32 {
+    let elapsed = now.wrapping_sub(then);
+    if elapsed as i32 >= 0 {
+        elapsed
+    } else {
+        0
+    }
+}
+
 #[path = "revocation/budget_observation.rs"]
 mod budget_observation;
 #[path = "revocation/diagnostic.rs"]
@@ -415,7 +427,7 @@ impl GenerationGate {
             return;
         }
         let now = now_ms as u32;
-        let reason = if now.wrapping_sub(self.heartbeat_ms.load(Ordering::Acquire))
+        let reason = if elapsed_ms(now, self.heartbeat_ms.load(Ordering::Acquire))
             >= HEARTBEAT_CUTOFF_MS
         {
             RevocationReason::HeartbeatTimeout
@@ -429,7 +441,7 @@ impl GenerationGate {
             RevocationReason::LeaseOrBudgetExpired
         } else if state & FLAGS == ACTIVE
             && self.fan_proof_generation.load(Ordering::Acquire) == state & !FLAGS
-            && now.wrapping_sub(self.last_safety_ms.load(Ordering::Acquire)) > 1_000
+            && elapsed_ms(now, self.last_safety_ms.load(Ordering::Acquire)) > 1_000
         {
             self.revoke_unsafe_at(
                 WorkerGeneration(state & !FLAGS),
@@ -604,6 +616,10 @@ impl GenerationGate {
 #[cfg(test)]
 #[path = "revocation/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "revocation/clock_race_tests.rs"]
+mod clock_race_tests;
 
 #[cfg(test)]
 #[path = "revocation/soak_tests.rs"]

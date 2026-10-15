@@ -69,6 +69,22 @@ fn a_missing_safe_sample_records_its_silence() {
 }
 
 #[test]
+fn a_safe_sample_stamped_after_the_checks_clock_reading_is_fresh() {
+    // Arrange: the 2026-10-14 soak race. A safety sample stamped 2 ms after the
+    // deadline check read its clock once looked about 49.7 days old.
+    let (gate, generation) = active_gate();
+    assert!(gate.heartbeat(generation, 1_000));
+    gate.note_fan_proof(generation, 1_202);
+    // Act
+    gate.check_deadline(1_200);
+    // Assert
+    assert_eq!(
+        (gate.maybe_revoked(), gate.maybe_unsafe_detail()),
+        (None, None)
+    );
+}
+
+#[test]
 fn a_later_unsafe_sample_cannot_replace_the_first_detail() {
     // Arrange
     let (gate, _generation) = active_gate();
