@@ -2,11 +2,14 @@
 
 ## Status
 
-Proposed on 2026-10-16. The owner approved the direction that day and asked
-for this draft. On acceptance it replaces decisions 1 and 2 of
-[ADR-0033](0033-signed-hardware-profile-and-soak-allowance.md) (the signed
-`hardwareProfile` and the rule that `upstream-default` needs a soak). ADR-0033's
+Accepted on 2026-10-16 by the owner. It replaces decisions 1 and 2 of
+[ADR-0033](0033-signed-hardware-profile-and-soak-allowance.md): the signed
+`hardwareProfile`, and the rule that `upstream-default` needs a soak. ADR-0033's
 soak allowance, ledger, pre-signed renewals and Controller 0.4 decisions stay.
+
+Until `task-lease-without-hardware-profile` lands, firmware and the Gate
+still run ADR-0033's signed presets. The implementation tasks below carry the
+change.
 
 ## Context
 

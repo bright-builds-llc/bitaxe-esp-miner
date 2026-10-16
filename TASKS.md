@@ -1199,8 +1199,6 @@ Divergences, recorded:
   `verified` → `verified` transitions, so the correction lives here.
 Verification: pending. Completion review: pending.
 
-## Future
-
 ### task-asic-actuation-catalog-profiles | 2026-10-16 | Actuate any catalog-valid frequency and voltage
 
 ADR-0037 step 1. Software only. Depends on nothing.
@@ -1218,7 +1216,41 @@ closed ramp plans and shutdown tails.
 - [ ] Keep the existing presets' exact behavior, with regressions.
 - [ ] Gate, stack audits.
 
+Started 2026-10-16 (ADR-0037 accepted that day).
+
+Findings:
+- The Ultra 205 validators accept only the catalog's listed values: 400, 425,
+  450, 475, 485, 500, 525, 550 and 575 MHz; 1100–1300 mV in 50 mV steps.
+  ADR-0037 decision 3 says ranges, and upstream offers those values as presets
+  plus custom values. Its PLL search handles any frequency.
+- Two closed enums can hold only the two presets: `Bm1366MiningProfile`
+  (400/485) and `Ultra205CoreVoltage` (1100/1200 mV). The adapter maps
+  anything else to `UnsupportedProfile`. The ramp, PLL, nonce-space and
+  DS4432U code math are already generic.
+- The shutdown tail is 1,550 + 250 × (ceil(4f/25) − 8) ms: 15,550 at 400 MHz,
+  19,050 at 485 MHz and 22,550 at 575 MHz.
+
+Plan:
+- **Validators:** `AsicFrequencyMhz`/`CoreVoltageMv::ultra_205_bm1366` accept
+  any whole MHz and mV within the catalog's lowest and highest options. The
+  option lists stay as presets.
+- **Profile types:** `Bm1366MiningProfile` becomes a validated frequency, with
+  `CONSERVATIVE` and `UPSTREAM_DEFAULT` constants. `Ultra205CoreVoltage`
+  becomes a validated millivolt value.
+- **Shutdown tail:** `pre_reset_bound_ms(profile)` derives it from the
+  shutdown plan, and `closed_pre_reset_tail_ms(f)` gives the closed form. A
+  test checks they agree for every whole MHz in range. Pin 15,550, 19,050 and
+  22,550.
+- **Admission:** replace the two-pair allow-list with a budget check. The
+  adapter admits a profile only if its tail fits inside the tail the admitted
+  budget reserves, or the Conservative tail when unbudgeted. That keeps
+  today's rule that 485 MHz needs a soak budget, and holds for any frequency.
+- **Unchanged here:** the lease still selects a preset. Soak budgets and the
+  signer change in `task-lease-without-hardware-profile`.
+
 Verification: pending. Completion review: pending.
+
+## Future
 
 ### task-fan-policy-from-device-config | 2026-10-16 | Let the fan follow device configuration while mining
 
@@ -1240,8 +1272,8 @@ Verification: pending. Completion review: pending.
 ADR-0037 step 3. Depends on `task-asic-actuation-catalog-profiles` and
 `task-fan-policy-from-device-config`. This is a cross-repository change.
 
-- [ ] Owner review and acceptance of ADR-0037. Mark ADR-0033 decisions 1–2
-      superseded.
+- [x] Owner review and acceptance of ADR-0037 (accepted 2026-10-16). ADR-0033
+      decisions 1–2 are marked superseded, in force until this task lands.
 - [ ] Gate (`bitaxe-turnstile-system`) and the host signer: stop parsing and
       signing `hardwareProfile`, and budget the catalog-maximum tail (ADR-0037
       decision 5). Update the pinned Gate commit.

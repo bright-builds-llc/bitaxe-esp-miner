@@ -3,6 +3,12 @@
 Accepted 2026-10-06 under `task-ultra205-default-profile-soak-reverification`,
 by the owner's decision of that date.
 
+Decisions 1 and 2 (the signed `hardwareProfile`, and `upstream-default` only
+with a soak) are superseded by
+[ADR-0037](0037-device-configuration-owns-the-hardware-profile.md), accepted
+2026-10-16. They stay in force until `task-lease-without-hardware-profile`
+lands. Decisions 3–6 stand.
+
 ## Context
 
 The upstream-default soak (485 MHz, 1200 mV, 100% fan, 600 active seconds,
