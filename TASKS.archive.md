@@ -30360,3 +30360,90 @@ still parse.
 
 Residual risk: none beyond the unchanged observer cadence. The first soak on
 this observer shows the fields live.
+
+### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
+
+- [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
+      115200/8-N-1 BAP interface.
+- [x] Route bounded ingress, requests, and subscriptions through the existing
+      pure BAP core with redaction-safe failure handling.
+- [x] Add focused lifecycle and source-ownership coverage, build/package the
+      firmware, run every gate, and transition only `BAP-001` to at most
+      `implemented` with `unit,workflow` evidence.
+
+Plan: `docs/parity/work-plans/20260821T020549Z-BAP-001/PLAN.md`
+
+Authorization: repository source, fixture, test, documentation, build, commit,
+and push work only. No detector, USB/device session, flash, monitor, accessory,
+external UART, physical pins/pads/headers, credentials, network discovery,
+mining, ASIC traffic, hardware setting mutation, voltage/frequency/fan/power
+effects, restart, fault injection, OTA, or recovery.
+
+Evidence and status boundary: `implemented` requires the complete firmware
+ownership and lifecycle surface, exact UART configuration, bounded protocol
+handoff, current tests, canonical firmware build/package, and every mandatory
+gate. `verified` additionally requires a separately authorized live accessory
+and detector-gated named-board hardware regression with cleanup and redaction;
+none are authorized or claimed here.
+
+Verification: Implementation commit
+`80f88df1799be63e3a71c291ad015f89c65cd8ae`; four focused lifecycle tests,
+two source-ownership/privacy tests, all twelve BAP core tests, the canonical
+six-file ESP32-S3 package, ordered Rust gates, Bright Builds, all 50 Bazel
+tests, parity/progress, redaction, reference cleanliness, sensitive-value,
+file-size, and diff checks passed. Evidence:
+`docs/parity/evidence/bap001-firmware-interface/summary.md`.
+
+Completion review: The software-only interface ownership and lifecycle scope
+is complete and supports `implemented` with `unit,workflow` evidence. This
+task remains active and unarchived because electrical UART behavior, a live
+accessory request/subscription session, Wi-Fi-password delivery, setting
+persistence/effects, detector-gated hardware evidence, cleanup, and redaction
+remain outstanding. Transition `20260821T031800Z-BAP-001` and deterministic
+progress synchronization accepted source/evidence commit
+`294b5cf0a998f53ccfe5a6537ad8cf39dfcd6fff`. No hardware or external effect
+occurred.
+
+Closure (2026-10-16): `BAP-001` was promoted to `verified` on the
+identity-bound J6 evidence of ordinal 009 (`91786bce`, work plan
+`20261015T043356Z-BAP-001`). The outstanding items above are now done or
+recorded in the row:
+- the live accessory session, electrical UART behavior, hardware evidence,
+  cleanup and redaction are done;
+- Wi-Fi password delivery is an owner-accepted divergence (2026-10-14);
+- setting persistence and effects move to `task-parity-bap-settings-effects`.
+This record is complete and archived.
+
+### task-parity-bap002-protocol | 2026-08-04 | Implement the pure BAP protocol core
+
+- [x] Add exact bounded BAP command/parameter framing, checksum, parsing, and
+      compatibility admission.
+- [x] Add duplicate suppression plus pure request, subscription, and setting
+      decisions without UART, persistence, restart, or hardware effects.
+- [x] Add synthetic golden regressions, run every mandatory gate, and transition
+      only `BAP-002` to `implemented`.
+
+Plan: `docs/parity/work-plans/20260804T180000Z-BAP-002/PLAN.md`
+
+Authorization: local pure software and build work only. No accessory, hardware
+attempt, credentials, external request, UART, pins, persistence, restart,
+mining, ASIC traffic, frequency/voltage/fan/power effect, OTA, or recovery.
+
+Verification: Twelve focused Cargo BAP tests and the `bitaxe-core` Bazel target
+pass, including synthetic golden frames, checksum compatibility, malformed
+input categories, exact request projections, AP errors, setting decisions, and
+diagnostic redaction. The ordered Rust sequence, Bright Builds, all 30 Bazel
+tests, parity/progress, redaction, reference cleanliness, sensitive-value
+review, file-size review, and diff checks also pass.
+
+Completion review: The pure protocol implementation is complete, and `BAP-002`
+is `implemented` with `unit,golden` evidence under transition
+`20260804T185000Z-BAP-002`. This task remains active and unarchived because
+`BAP-001` continues to own the firmware UART and task lifecycle, and live
+accessory interoperability remains below verified.
+
+Closure (2026-10-16): `BAP-002` was promoted to `verified` on the same
+identity-bound J6 evidence (`00515621`, work plan
+`20261015T024309Z-BAP-002`), and `BAP-001` is `verified` and archived. The
+setting parsers' strictness against the reference's `atoi`/`atof` moves to
+`task-parity-bap-settings-effects`. This record is complete and archived.
