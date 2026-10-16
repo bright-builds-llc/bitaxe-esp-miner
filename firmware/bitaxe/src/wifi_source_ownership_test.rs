@@ -4,6 +4,7 @@ const WIFI_ADAPTER_SOURCE: &str = include_str!("wifi_adapter.rs");
 const CAPTIVE_DNS_SOURCE: &str = include_str!("wifi_adapter/captive_dns.rs");
 const WIFI_SCAN_SOURCE: &str = include_str!("wifi_adapter/scan.rs");
 const WIFI_RECONNECT_SOURCE: &str = include_str!("wifi_adapter/reconnect.rs");
+const WIFI_LIVE_RSSI_SOURCE: &str = include_str!("wifi_adapter/live_rssi.rs");
 const HTTP_API_SOURCE: &str = include_str!("http_api.rs");
 const HTTP_HANDLERS_SOURCE: &str = include_str!("http_api/handlers.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
@@ -307,4 +308,79 @@ fn provisioning_modes_cannot_own_a_worker_and_station_fallback_keeps_its_worker(
     assert!(!WIFI_DRIVER_SOURCE.contains("maybe_reconnect"));
     assert!(WIFI_ADAPTER_SOURCE.contains("Some((&sysloop, prepared_reconnect))"));
     assert!(WIFI_ADAPTER_SOURCE.contains("reconnect::start(prepared_reconnect, &sysloop, None)"));
+}
+
+fn function_body<'a>(source: &'a str, signature: &str) -> &'a str {
+    let start = source.find(signature).expect("the function must exist");
+    let body = &source[start..];
+    &body[..body.find("\n}\n").expect("the function must end")]
+}
+
+#[test]
+fn the_live_rssi_read_runs_after_the_cell_lock_is_released() {
+    // Arrange
+    let body = function_body(
+        WIFI_ADAPTER_SOURCE,
+        "pub fn current_wifi_snapshot_with_live_rssi()",
+    );
+
+    // Act
+    let snapshot = body
+        .find("current_wifi_snapshot();")
+        .expect("the cell must be read through its own function");
+    let read = body
+        .find("live_rssi::station_rssi_dbm()")
+        .expect("the RSSI must be read live");
+
+    // Assert: the cell's guard is dropped when `current_wifi_snapshot` returns.
+    assert!(snapshot < read);
+    assert!(!body.contains(".lock()"));
+}
+
+#[test]
+fn the_live_rssi_read_waits_for_the_installed_wifi_owner() {
+    // Arrange
+    let body = function_body(
+        WIFI_ADAPTER_SOURCE,
+        "pub fn current_wifi_snapshot_with_live_rssi()",
+    );
+
+    // Act
+    let gate = body.find("WIFI_OWNER.get().is_some()");
+    let read = body.find("live_rssi::station_rssi_dbm()");
+
+    // Assert: the driver is never asked before `esp_wifi_init`.
+    assert!(matches!((gate, read), (Some(gate), Some(read)) if gate < read));
+}
+
+#[test]
+fn status_only_readers_never_call_the_driver() {
+    // Arrange / Act
+    let body = function_body(WIFI_ADAPTER_SOURCE, "pub fn current_wifi_snapshot()");
+
+    // Assert
+    assert!(!body.contains("live_rssi::"));
+    assert!(WIFI_LIVE_RSSI_SOURCE.contains("sys::esp_wifi_sta_get_ap_info(&mut record)"));
+}
+
+#[test]
+fn no_connect_time_rssi_is_stored() {
+    // Arrange
+    let publish = function_body(WIFI_ADAPTER_SOURCE, "fn publish_connected_wifi(");
+
+    // Act
+    let sources = [WIFI_ADAPTER_SOURCE, WIFI_RECONNECT_SOURCE];
+
+    // Assert
+    assert!(publish.contains("maybe_rssi_dbm: None"));
+    for source in sources {
+        assert!(!source.contains(".get_rssi()"));
+        // The live read is the only assignment.
+        assert_eq!(
+            source.matches("maybe_rssi_dbm =").count(),
+            source
+                .matches("maybe_rssi_dbm = live_rssi::station_rssi_dbm()")
+                .count()
+        );
+    }
 }

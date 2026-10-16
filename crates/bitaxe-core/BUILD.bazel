@@ -80,6 +80,7 @@ rust_library(
         "src/screen/frame.rs",
         "src/screen/tests.rs",
         "src/wifi_reconnect.rs",
+        "src/wifi_rssi.rs",
         "src/usb_diagnostics.rs",
         "src/usb_diagnostics/internal_heap.rs",
         "src/usb_diagnostics/storage_http.rs",

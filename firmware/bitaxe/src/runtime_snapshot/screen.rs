@@ -21,7 +21,8 @@ pub fn collect_screen_snapshot(now_ms: u64) -> ScreenSnapshot {
             telemetry.chip_temp_celsius,
         )
     };
-    let wifi = crate::wifi_adapter::current_wifi_snapshot();
+    let wifi = crate::wifi_adapter::current_wifi_snapshot_with_live_rssi();
+    let wifi_connected = wifi.wifi_status == "connected";
     let catalog = ultra_205_catalog_entry();
     let pool_host = screen_pool_host(command.fallback_active);
 
@@ -30,7 +31,7 @@ pub fn collect_screen_snapshot(now_ms: u64) -> ScreenSnapshot {
             .then(|| ["running".to_owned(), String::new(), String::new()]),
         overheat: command.overheat,
         identify_active: command.identify_active,
-        wifi_connected: wifi.wifi_status == "connected",
+        wifi_connected,
         ap_enabled: wifi.ap_enabled,
         ssid: wifi.ssid,
         ap_ssid: wifi.ap_ssid,
@@ -47,7 +48,10 @@ pub fn collect_screen_snapshot(now_ms: u64) -> ScreenSnapshot {
         // Pool difficulty is a share target, not Bitcoin network difficulty.
         // Keep this unavailable until the coinbase owner publishes that fact.
         maybe_network_difficulty: None,
-        maybe_rssi_dbm: wifi.maybe_rssi_dbm,
+        maybe_rssi_dbm: bitaxe_core::wifi_rssi::connected_rssi_dbm(
+            wifi_connected,
+            wifi.maybe_rssi_dbm,
+        ),
         uptime_seconds: now_ms / 1_000,
         shares_accepted: command.shares_accepted,
         shares_rejected: command.shares_rejected,

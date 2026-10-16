@@ -127,6 +127,30 @@ fn the_wifi_subscription_never_sends_the_password() {
 }
 
 #[test]
+fn the_wifi_subscription_reports_the_rssi_while_connected() {
+    // Arrange
+    let mut info = info();
+    info.wifi_status = "connected".to_owned();
+    info.wifi_rssi = -61;
+    // Act
+    let rendered = values(BapParameter::Wifi, &info);
+    // Assert
+    assert_eq!(rendered[1], ("wifi_rssi", "-61".to_owned()));
+}
+
+#[test]
+fn the_wifi_subscription_reports_minus_128_while_disconnected() {
+    // Arrange: system info keeps its -90 default; the reference BAP sends -128.
+    let mut info = info();
+    info.wifi_status = "disconnected_beacon_timeout".to_owned();
+    info.wifi_rssi = -90;
+    // Act
+    let rendered = values(BapParameter::Wifi, &info);
+    // Assert
+    assert_eq!(rendered[1], ("wifi_rssi", "-128".to_owned()));
+}
+
+#[test]
 fn best_difficulty_publishes_the_all_time_nonce_best() {
     // Arrange: upstream `best_diff_string` is the all-time best, not the session's.
     let mut snapshot = ApiSnapshot::safe_ultra_205();

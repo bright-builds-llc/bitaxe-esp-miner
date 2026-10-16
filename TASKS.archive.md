@@ -30167,3 +30167,88 @@ or ruled out as one.
 
 Residual risk: the stalls of soaks 002 and 003 remain unexplained. They now
 stand at 2 in 5 soaks. Time spent outside the send calls is not measured.
+
+### task-parity-wifi-rssi-live | 2026-10-15 | Read Wi-Fi RSSI live, like upstream
+
+Origin: the soak 005 review.
+
+The firmware reads RSSI once, when Wi-Fi connects
+(`firmware/bitaxe/src/wifi_adapter.rs` `publish_connected_wifi`), and keeps
+that value until the next reconnect. Upstream reads it live with
+`get_wifi_current_rssi` (`esp_wifi_sta_get_ap_info`) at four sites, each with
+its own fallback:
+
+| Upstream site                                  | When the read fails or the station is not connected |
+| ---------------------------------------------- | --------------------------------------------------- |
+| System info, every request (`system_api_json.c`) | `-90`                                             |
+| Statistics, every sample (`statistics_task.c`)   | `-90`                                             |
+| BAP `wifi` subscription (`bap_subscription.c`)   | `-128`; read only while `is_connected`            |
+| Screen, every refresh (`screen.c`)               | `-128`, shown as `RSSI: -- dBm`; read only while `is_connected` |
+
+Today, while disconnected, the firmware sends `-90` on BAP, where upstream
+sends `-128`. A live value also lets a soak see a Wi-Fi dip during a stall.
+
+Plan:
+- A new `current_wifi_snapshot_with_live_rssi` reads RSSI live through
+  `esp_wifi_sta_get_ap_info`, after the snapshot cell's lock is released, as
+  upstream does.
+  - It asks the driver only once the Wi-Fi owner is installed. BAP starts
+    before `esp_wifi_init`.
+  - Only system info, statistics and the screen call it. Status-only readers
+    (BAP connection mode, Stratum V2 readiness, diagnostics) keep the plain,
+    driver-free snapshot.
+  - The stored connect-time value goes away. System info and statistics keep
+    the existing `-90` default when the read fails.
+- A pure `bitaxe_core::wifi_rssi` projection gates the screen and BAP on the
+  connected status and gives BAP's `-128`, with unit tests.
+- Source guards check that:
+  - the live read runs after the lock is released and after the owner gate;
+  - status-only readers never call the driver;
+  - no connect-time copy remains.
+
+- [x] Pure projection and its tests; BAP and screen wired through it.
+- [x] Live read in the Wi-Fi adapter; stored connect-time RSSI removed; source
+      guards.
+- [x] Independent review. Fixed:
+  - the first version still held the cell's lock guard (shadowed by the clone,
+    not dropped) during the driver call;
+  - it read the driver for every status-only caller, at 10 Hz;
+  - it called the driver before Wi-Fi init.
+- [x] Gate: fmt, clippy, build, Cargo and `just test`, `just build`, the BAP and
+      HTTP stack audits, Bright Builds, redaction, parity.
+- [x] Parity: API-002, STAT-002, UI-002 and BAP-001 are `verified`, and the
+      parity tool forbids `verified` → `verified` transitions, so the
+      correction is recorded here and the rows are left as they are.
+- [ ] Hardware observation: the soak observer already samples `wifiRssi`. The
+      next scheduled soak should show it varying; no separate hardware run in
+      this task.
+
+Verification (2026-10-15):
+- `bitaxe_core::wifi_rssi` has five unit tests. The BAP `wifi` subscription
+  sends the live value while connected and `-128` while disconnected; the
+  system-info `-90` default is unchanged.
+- `wifi_source_ownership_tests` guards:
+  - the live read follows the lock release and the owner gate;
+  - status-only readers never call the driver;
+  - the only RSSI assignment is the live read.
+  `display_source_ownership_tests` confirms the screen uses the live snapshot.
+- The full gate passes:
+  - fmt, clippy, Cargo build and test;
+  - `just build`; the BAP stack audit (832 bytes of headroom) and the HTTP stack
+    audit (1,200 bytes), both unchanged;
+  - `just test` (337 tests);
+  - Bright Builds 0 findings; redaction and parity clean.
+- One full Cargo run hit a SIGINT in `bitaxe-device-session`, which this change
+  does not touch. Both that crate and the full suite pass on rerun.
+
+Completion review: system info, statistics, the screen and BAP now read RSSI
+live at each use, as the pinned reference does, with each surface's fallback
+(`-90`, or `-128`/`--` when not connected). The connect-time copy is gone.
+
+Residual risks:
+- Not yet observed on hardware. The soak observer samples `wifiRssi`, so the
+  next scheduled soak should show it varying.
+- While connected, if the driver read fails, BAP sends system info's `-90`
+  where the reference sends `-128`. That only happens between the AP being
+  lost and the disconnect event being published.
+- The profiled `LiveStage::Wifi` timing now includes the driver call.

@@ -1171,25 +1171,6 @@ named-phase allocation profile item stays open. Qualification stays false.
 
 ## Future
 
-### task-parity-wifi-rssi-live | 2026-10-15 | Read Wi-Fi RSSI live, like upstream
-
-Origin: the soak 005 review.
-- `wifiRssi` in `/api/system/info` (and in soak samples) is read only when
-  Wi-Fi connects (`firmware/bitaxe/src/wifi_adapter.rs`
-  `publish_connected_wifi`), so it stays constant until a reconnect.
-- Upstream reads it live on every system-info request
-  (`reference/esp-miner/main/http_server/system_api_json.c`, through
-  `get_wifi_current_rssi`), and sends `-128` when disconnected (BAP `wifi`).
-- A live value also lets a soak see a Wi-Fi dip during a stall
-  (`task-http-server-task-stall-diagnostics`).
-
-- [ ] Read RSSI when each snapshot is collected (or at a bounded cadence),
-      cheaply and off any lock, with a host-testable projection. Check the
-      disconnected value against upstream.
-- [ ] Find the parity rows that cover `wifiRSSI` and record the change there.
-
-Verification: pending. Completion review: pending.
-
 ### task-soak-sample-send-counters | 2026-10-15 | Record send counts and lifetime worst in soak samples
 
 Origin: the soak 005 review. Soak samples carry each send kind's recent worst

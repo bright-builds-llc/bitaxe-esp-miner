@@ -8,6 +8,7 @@ pub mod runtime_orchestration;
 pub mod screen;
 pub mod usb_diagnostics;
 pub mod wifi_reconnect;
+pub mod wifi_rssi;
 
 /// First Phase 1 board target for boot/log bring-up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

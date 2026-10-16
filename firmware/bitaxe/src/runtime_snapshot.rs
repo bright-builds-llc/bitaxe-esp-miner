@@ -448,7 +448,7 @@ fn collect_operator_snapshot_candidate(drain_sample_marker: bool) -> OperatorSna
     let observations = crate::safety_adapter::observation_snapshot();
     let safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
     let settings = collect_settings_projection();
-    let wifi = crate::wifi_adapter::current_wifi_snapshot();
+    let wifi = crate::wifi_adapter::current_wifi_snapshot_with_live_rssi();
     OperatorSnapshotCandidate {
         projection,
         maybe_sample_marker,
@@ -483,7 +483,7 @@ fn collect_operator_snapshot_candidate_profiled(
     timing.finish_stage(LiveStage::HealthSafety, maybe_started);
     let settings = collect_settings_projection_profiled(timing);
     let maybe_started = timing.maybe_start_stage();
-    let wifi = crate::wifi_adapter::current_wifi_snapshot();
+    let wifi = crate::wifi_adapter::current_wifi_snapshot_with_live_rssi();
     timing.finish_stage(LiveStage::Wifi, maybe_started);
     OperatorSnapshotCandidate {
         projection,

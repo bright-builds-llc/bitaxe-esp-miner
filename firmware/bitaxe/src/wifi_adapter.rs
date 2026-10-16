@@ -16,6 +16,7 @@ use crate::{boot_evidence, log_buffer, network_stack, settings_adapter};
 
 mod captive_dns;
 mod driver;
+mod live_rssi;
 use driver::apply_sta_hostname;
 pub(crate) use driver::{prepare_wifi, PreparedWifi};
 mod reconnect;
@@ -89,6 +90,7 @@ pub struct WifiRuntimeSnapshot {
     pub ipv6: String,
     pub mac_addr: String,
     pub ap_enabled: bool,
+    /// Read live by `current_wifi_snapshot_with_live_rssi`; never stored in the cell.
     pub maybe_rssi_dbm: Option<i16>,
 }
 
@@ -231,6 +233,17 @@ pub fn current_wifi_snapshot() -> WifiRuntimeSnapshot {
     };
 
     snapshot.clone()
+}
+
+/// The Wi-Fi snapshot with the station RSSI read live, as the reference does for
+/// system info, statistics and the screen. The driver is asked only once the Wi-Fi
+/// owner is installed, and only after the snapshot cell's lock is released.
+pub fn current_wifi_snapshot_with_live_rssi() -> WifiRuntimeSnapshot {
+    let mut snapshot = current_wifi_snapshot();
+    if WIFI_OWNER.get().is_some() {
+        snapshot.maybe_rssi_dbm = live_rssi::station_rssi_dbm();
+    }
+    snapshot
 }
 
 /// Toggles only the configuration AP mode retained by the sole Wi-Fi owner.
@@ -457,12 +470,6 @@ fn publish_connected_wifi(
             log::warn!("wifi_mac_status=unavailable error={error}");
             WifiRuntimeSnapshot::default().mac_addr
         });
-    let maybe_rssi_dbm = wifi
-        .wifi()
-        .get_rssi()
-        .ok()
-        .and_then(|rssi| i16::try_from(rssi).ok());
-
     publish_wifi_state(WifiRuntimeSnapshot {
         wifi_status: "connected".to_owned(),
         ssid: station_ssid.to_owned(),
@@ -471,7 +478,7 @@ fn publish_connected_wifi(
         ipv6: String::new(),
         mac_addr,
         ap_enabled: false,
-        maybe_rssi_dbm,
+        maybe_rssi_dbm: None,
     });
     log_runtime_line(&format!(
         "wifi_status=connected ipv4={ipv4} device_url=http://{ipv4}"

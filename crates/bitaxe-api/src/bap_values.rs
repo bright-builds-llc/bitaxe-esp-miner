@@ -7,6 +7,7 @@
 
 use bitaxe_config::catalog::board_catalog;
 use bitaxe_core::bap::{BapParameter, BapRequestSnapshot};
+use bitaxe_core::wifi_rssi;
 
 use crate::best_difficulty::reference_u64;
 use crate::wire::SystemInfoWire;
@@ -73,7 +74,11 @@ pub fn bap_subscription_values(
         )],
         BapParameter::Wifi => vec![
             ("wifi_ssid", info.ssid.clone()),
-            ("wifi_rssi", info.wifi_rssi.to_string()),
+            (
+                "wifi_rssi",
+                wifi_rssi::bap_rssi_dbm(info.wifi_status == "connected", info.wifi_rssi)
+                    .to_string(),
+            ),
             ("wifi_ip", info.ipv4.clone()),
         ],
         BapParameter::FoundBlock => vec![("found_block", info.block_found.to_string())],
