@@ -42,3 +42,12 @@ impl WorkPermit {
         self.maybe_generation
     }
 }
+
+/// Who may drive the fan controller's duty (`fan_controller.rs`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FanControllerOwner {
+    /// The campaign path, with no Gate lease.
+    Campaign,
+    /// One prepared Gate lease's generation.
+    Lease(WorkerGeneration),
+}

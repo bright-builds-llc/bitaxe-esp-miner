@@ -14,6 +14,7 @@ const EMC2101_SOURCE: &str = include_str!("safety_adapter/emc2101.rs");
 const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
 const PRODUCTION_ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
+const BWG_SOURCE: &str = include_str!("production_mining_session/bwg.rs");
 const PRODUCTION_SESSION_SOURCE: &str = concat!(include_str!("production_mining_session.rs"),include_str!("production_mining_session/inbox.rs"));
 const READINESS_SOURCE: &str = include_str!("production_mining_session/readiness.rs");
 const PRODUCTION_OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_loop.rs");
@@ -85,19 +86,39 @@ fn fan_controller_uses_the_pure_plan_and_typed_owner_queue_only() {
     assert!(FAN_CONTROLLER_PLAN_SOURCE.contains("FAN_CONTROLLER_CADENCE_MS"));
     assert!(FAN_CONTROLLER_PLAN_SOURCE.contains("hardware_control_not_qualified"));
     assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("request_safety_actuation"));
-    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("SafetyActuationCommand::SetFanDuty"));
-    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("fan_controller_actuation_qualified"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("SafetyActuationCommand::SetControllerFanDuty"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("fan_controller_owner()"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("state.controller.invalidate_applied_duty()"));
     assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("current_settings_snapshot"));
     assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("observation_snapshot"));
     assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("record_apply_failure"));
     assert!(!FAN_CONTROLLER_RUNTIME_SOURCE.contains("RuntimeI2cOwner"));
     assert!(!FAN_CONTROLLER_RUNTIME_SOURCE.contains("write_emc2101"));
     assert!(!FAN_CONTROLLER_RUNTIME_SOURCE.contains("Emc2101WriteRegister"));
-    assert!(PRODUCTION_SESSION_SOURCE.contains("FAN_CONTROLLER_ACTUATION_QUALIFIED"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("FAN_CONTROLLER_OWNER"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("MiningCampaignState::Active"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("production_handle_available"));
-    assert!(PRODUCTION_SESSION_SOURCE
-        .contains("FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release)"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("revocation::FanControllerOwner::Lease("));
+    assert!(SAFETY_ADAPTER_SOURCE.contains("permits_controller_fan("));
+    // Activation and cooling take the fan back from any earlier owner.
+    assert_eq!(BWG_SOURCE.matches("set_fan_controller_owner(None);").count(), 2);
+}
+
+#[test]
+fn a_lease_safe_stop_revokes_then_takes_the_fan_before_its_first_fan_command() {
+    // Arrange
+    let start = PRODUCTION_SESSION_SOURCE
+        .find("ProductionSessionEffect::SafeStopHardware")
+        .expect("safe-stop effect");
+    let effect = &PRODUCTION_SESSION_SOURCE[start..];
+
+    // Act
+    let revoke = effect.find("revocation::revoke_reason_at(").expect("revoke");
+    let clear = effect.find("set_fan_controller_owner(None);").expect("owner cleared");
+    let stop = effect.find(".safe_stop(purpose").expect("ordered safe-stop");
+
+    // Assert: a revoked lease's controller writes are refused before safe-stop's 100%.
+    assert!(revoke < clear && clear < stop);
 }
 
 #[test]

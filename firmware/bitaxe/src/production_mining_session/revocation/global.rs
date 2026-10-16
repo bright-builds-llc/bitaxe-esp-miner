@@ -1,5 +1,8 @@
 //! Boot-lifetime generation gate shared by the existing hardware owners.
-use super::{GenerationGate, RevocationReason, RevocationTiming, WorkPermit, WorkerGeneration};
+use super::{
+    FanControllerOwner, GenerationGate, RevocationReason, RevocationTiming, WorkPermit,
+    WorkerGeneration,
+};
 
 #[cfg_attr(target_os = "espidf", link_section = ".dram1.bitaxe_generation_gate")]
 static GATE: GenerationGate = GenerationGate::new();
@@ -89,6 +92,10 @@ pub(crate) fn admit_budget(generation: WorkerGeneration, active_limit_ms: u64) -
         && (active_limit_ms != bitaxe_runtime::revocation::SOAK_ACTIVE_LIMIT_MS
             || plan_is_bounded(Bm1366MiningProfile::UPSTREAM_DEFAULT))
         && GATE.admit_budget(generation, active_limit_ms)
+}
+/// Whether a fan-controller write of `duty_percent` may reach the fan now.
+pub(crate) fn permits_controller_fan(owner: FanControllerOwner, duty_percent: u8) -> bool {
+    GATE.permits_controller_fan(owner, duty_percent)
 }
 /// The pre-reset tail `generation`'s admitted budget reserves (ADR-0037).
 pub(crate) fn reserved_shutdown_tail_ms(generation: WorkerGeneration) -> u32 {

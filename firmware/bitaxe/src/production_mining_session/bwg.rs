@@ -298,7 +298,7 @@ impl OrdinaryEspProductionSessionAdapter {
                     return self.wake_event(None, now_ms, snapshot, false);
                 }
                 self.maybe_cooling_generation = None; // Ownership transfers to ordered mining cleanup.
-                FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
+                set_fan_controller_owner(None);
                 let session = OwnerSession {
                     generation,
                     worker_lease_id,
@@ -398,7 +398,7 @@ impl OrdinaryEspProductionSessionAdapter {
             return Err(Error::Rejected);
         }
         self.maybe_cooling_generation = Some(generation);
-        FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
+        set_fan_controller_owner(None);
         cooling::qualify(generation).map_err(Self::cooling_error)
     }
 

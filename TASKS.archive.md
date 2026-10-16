@@ -30553,3 +30553,134 @@ Residual risks:
   `task-lease-without-hardware-profile`.
 - The rollback ramp starts from the profile frequency, not from the frequency
   actually applied.
+
+### task-fan-policy-from-device-config | 2026-10-16 | Let the fan follow device configuration while mining
+
+ADR-0037 step 2. Software only.
+
+Under a lease the fan is pinned to the profile's 100%, and the NVS-driven fan
+controller runs only without a Gate session (`production_mining_session.rs`).
+
+- [x] While mining, drive the fan from `autofanspeed`, `manualFanSpeed`,
+      `minFanSpeed` and `temptarget`, as upstream does. Cooling proof and
+      safe-stop keep their own fan commands (ADR-0025).
+- [x] Keep the fresh, nonzero fan-reading revocation. Regressions for auto,
+      manual and safe-stop handover.
+
+Started 2026-10-16.
+
+Findings:
+- The fan controller already implements upstream's modes:
+  - overheat 100%, paused or no pool 30%;
+  - auto PID toward `temptarget` with `minFanSpeed` as floor;
+  - manual duty.
+
+  It runs every 100 ms (`fan_controller_runtime.rs`, `bitaxe-safety`
+  thermal), with defaults matching upstream: auto, 60 C, 25% floor.
+- Under a Gate lease it is held off in three places:
+  - its qualification requires no Gate session (`production_mining_session.rs`);
+  - the qualification is cleared at lease activation, cooling and safe-stop;
+  - the safety owner refuses any duty below 100% unless no lease is live
+    (`safety_adapter.rs`).
+- Preparation sets 100% and requires a fresh, nonzero RPM before voltage
+  (ADR-0025). Safe-stop sets 100%, waits for 45 C, then sets 30%.
+
+Plan:
+- **Ownership:** a fan-controller owner replaces the qualified flag. The
+  campaign path, as today, or one prepared Gate lease's generation, taken
+  when hardware preparation succeeds. It is cleared at activation, cooling
+  and safe-stop. Revocation ends the lease's authority, and safe-stop always
+  revokes before its first fan command.
+- **Writes:** the controller writes through a new lease-stamped command. The
+  safety owner applies it only while that generation is active, so a late
+  write after revocation is refused (`Refused`, not a hardware fault) and
+  safe-stop's 100% wins.
+  - Pool reconnects and failovers block work without ending the lease, so
+    they deliberately keep the controller in charge.
+- **Re-applying:** the controller forgets its last applied duty whenever its
+  owner changes, so it re-applies after preparation's 100%.
+- **Admission:** `profile_admissible` drops the fan-duty requirement.
+  Preparation keeps its 100% and live-RPM proof, and the zero-RPM revocation
+  stays for the whole window.
+- **Kept as recorded divergences, not changed here:**
+  - auto with no fresh temperature writes nothing (upstream writes its 70%
+    startup duty);
+  - manual mode also waits for a fresh temperature.
+
+  Under a lease, preparation's 100% stays in place until a fresh reading.
+- **Tests:** pure tests for ownership and permit decisions, and source guards
+  for the handover points.
+- **Unclaimed until hardware evidence:** any duty other than 100% under
+  mining load, auto settling, the 25% floor's thermal adequacy, and RPM
+  accuracy (THR-002/003 non-claims stand). Evidence must record the fan
+  configuration (ADR-0037 decision 7).
+
+Implementation (2026-10-16):
+- `bitaxe_runtime::revocation::FanControllerOwner` and
+  `GenerationGate::permits_controller_fan`.
+- `SafetyActuationCommand::SetControllerFanDuty` and a `Refused` reply.
+- The fan-controller owner lives in `production_mining_session.rs`. A
+  prepared lease takes it; activation, cooling and safe-stop clear it. Status
+  publishes never touch a lease's owner.
+- The controller resets its state (applied duty and PID) whenever the owner
+  changes.
+- `profile_admissible` drops the fan clause.
+
+Independent review (2026-10-16) found, and this change fixes:
+- **Blocker:** a host test no longer compiled. It now has a recording shim
+  and a regression that activation clears the owner.
+- **High:** the first version stamped a work permit, which pool reconnects
+  and failovers change. The fan would have frozen for the rest of the lease.
+  The owner is now the generation, with a regression.
+- **Medium-high:** status publishes with campaign status could clear a
+  lease's owner.
+- **Medium:** refusals were logged as hardware faults. The safety owner now
+  logs a `Refused` reply separately; callers still see a failed write.
+- **Low:**
+  - the PID integrator now resets on owner change;
+  - ordering guards for revoke, then clear, then safe-stop, and for the
+    activation and cooling clears;
+  - ADR-0033 pointer added.
+
+Divergences and limits, recorded:
+- **Fan off by setting:** a manual 0% or `minFanSpeed` 0 under a lease stops
+  the fan. The zero-RPM revocation then ends the lease, which fails safe; a
+  user setting can end a lease.
+- **No fresh temperature:** auto writes nothing (upstream's 70% startup is
+  not used), and manual waits for a fresh temperature. Preparation's 100%
+  stays in place until then.
+- **Paused or no pool under a lease:** the fan goes to 30%, as upstream, and
+  the ASIC is idle then.
+- **Campaign-path race (pre-existing):** a write checked before a clear can
+  land after it. The window is tiny, and the campaign's 100% follows seconds
+  later.
+- **THR-002 text:** the row still says the controller runs behind the active
+  campaign gate. The row is `verified` and frozen, so the correction lives
+  here.
+
+Verification (2026-10-16):
+- `bitaxe-runtime` tests:
+  - an active lease may set any duty;
+  - a revoked lease is refused;
+  - a pool reconnect keeps the lease in charge;
+  - another generation is refused;
+  - the campaign path may lower the fan only without a live lease;
+  - fan duty no longer decides admission.
+- Firmware host tests:
+  - activation clears the owner (`production_worker_admission_tests`);
+  - ordering guards: revoke, then clear, then safe-stop; activation and
+    cooling clear the owner; writes are owner-checked.
+- The full gate passes: fmt, clippy, build, tests, `just build`, BAP and HTTP
+  stack audits (704 and 1,136 bytes of headroom), `just test` (337 tests),
+  Bright Builds, redaction and parity. One `device-session` Bazel run failed
+  in an untouched crate and passed on rerun.
+
+Completion review: under a Gate lease the fan now follows the device's fan
+settings after preparation proves it at 100%, as upstream does. Safe-stop
+and cooling keep their own fan commands, and a revoked lease can no longer
+write.
+
+Residual risk: no hardware evidence yet for any duty other than 100% while
+mining, nor for auto settling. That is
+`task-device-config-profile-evidence-soaks`, and evidence must record the fan
+settings.

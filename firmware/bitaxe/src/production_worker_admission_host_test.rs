@@ -24,7 +24,13 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::Duration;
 
 static NOTIFICATIONS: OnceLock<SyncSender<OwnerInboxMessage>> = OnceLock::new();
-static FAN_CONTROLLER_ACTUATION_QUALIFIED: AtomicBool = AtomicBool::new(false);
+/// Records that a Start or cooling handover cleared the fan-controller owner.
+static FAN_CONTROLLER_OWNER_CLEARED: AtomicBool = AtomicBool::new(false);
+fn set_fan_controller_owner(maybe_owner: Option<revocation::FanControllerOwner>) {
+    if maybe_owner.is_none() {
+        FAN_CONTROLLER_OWNER_CLEARED.store(true, Ordering::Release);
+    }
+}
 static TEST_LOCK: Mutex<()> = Mutex::new(());
 
 enum OwnerInboxMessage {
@@ -600,3 +606,19 @@ mod v2_serial_runtime {
 }
 #[path = "production_worker_admission_host_test/soak_profile.rs"]
 mod soak_profile;
+
+#[test]
+fn an_activated_lease_takes_the_fan_from_any_earlier_owner() {
+    // Arrange
+    let mut scope = TestScope::new();
+    let mut adapter = blocked_adapter();
+    adapter.readiness = readiness();
+    let mut core = ProductionMiningSession::new();
+    FAN_CONTROLLER_OWNER_CLEARED.store(false, Ordering::Release);
+
+    // Act
+    let _ = start(&mut scope, &mut adapter, &mut core);
+
+    // Assert: activation clears the owner; the lease takes it only after preparation.
+    assert!(FAN_CONTROLLER_OWNER_CLEARED.load(Ordering::Acquire));
+}

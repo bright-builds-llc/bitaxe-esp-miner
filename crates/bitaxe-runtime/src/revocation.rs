@@ -43,6 +43,8 @@ fn elapsed_ms(now: u32, then: u32) -> u32 {
 mod budget_observation;
 #[path = "revocation/diagnostic.rs"]
 mod diagnostic;
+#[path = "revocation/fan_controller.rs"]
+mod fan_controller;
 #[path = "revocation/panic.rs"]
 mod panic;
 #[path = "revocation/reason.rs"]
@@ -56,7 +58,7 @@ mod types;
 #[path = "revocation/unsafe_detail.rs"]
 mod unsafe_detail;
 pub use bitaxe_api::SafetyVerdict;
-pub use types::{RevocationTiming, WorkPermit, WorkerGeneration};
+pub use types::{FanControllerOwner, RevocationTiming, WorkPermit, WorkerGeneration};
 pub use unsafe_detail::{UnsafeObservationDetail, UnsafeTrigger};
 
 /// `repr(C)` keeps `state` at offset 0: the native panic cutoff revokes by

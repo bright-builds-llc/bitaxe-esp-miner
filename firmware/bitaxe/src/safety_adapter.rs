@@ -84,6 +84,11 @@ impl TryFrom<u8> for FanDutyPercent {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SafetyActuationCommand {
     SetFanDuty(FanDutyPercent),
+    /// The fan controller's duty, applied only while its owner may still drive the fan.
+    SetControllerFanDuty {
+        duty: FanDutyPercent,
+        owner: crate::production_mining_session::revocation::FanControllerOwner,
+    },
     SetFanDutyAfterCoolingProof,
     RestoreCoolingBaseline {
         generation: crate::production_mining_session::revocation::WorkerGeneration,
@@ -126,7 +131,7 @@ impl PendingSafetyActuation {
     pub(crate) fn poll(&self) -> SafetyActuationPollOutcome {
         match self.reply_receiver.try_recv() {
             Ok(SafetyActuationReply::Applied) => SafetyActuationPollOutcome::Applied,
-            Ok(SafetyActuationReply::HardwareWriteFailed) => {
+            Ok(SafetyActuationReply::HardwareWriteFailed | SafetyActuationReply::Refused) => {
                 SafetyActuationPollOutcome::HardwareWriteFailed
             }
             Err(TryRecvError::Empty) => SafetyActuationPollOutcome::Pending,
@@ -142,6 +147,8 @@ impl PendingSafetyActuation {
 enum SafetyActuationReply {
     Applied,
     HardwareWriteFailed,
+    /// The command's authority no longer holds; nothing was written.
+    Refused,
 }
 
 type SafetyActuationEnvelope = ActuationEnvelope<SafetyActuationCommand, SafetyActuationReply>;
@@ -212,7 +219,7 @@ pub(crate) fn request_safety_actuation(
 
     match reply_receiver.recv_timeout(ACTUATION_REPLY_TIMEOUT) {
         Ok(SafetyActuationReply::Applied) => SafetyActuationRequestOutcome::Applied,
-        Ok(SafetyActuationReply::HardwareWriteFailed) => {
+        Ok(SafetyActuationReply::HardwareWriteFailed | SafetyActuationReply::Refused) => {
             SafetyActuationRequestOutcome::HardwareWriteFailed
         }
         Err(mpsc::RecvTimeoutError::Timeout) => SafetyActuationRequestOutcome::ReplyTimedOut,
@@ -274,8 +281,13 @@ pub(crate) fn service_next_safety_actuation_request(
     ) {
         crate::info_retained(&diagnostic.marker());
     }
-    if reply == SafetyActuationReply::HardwareWriteFailed {
-        log::warn!("safety_actuation=fault category=hardware_write_failed");
+    match reply {
+        SafetyActuationReply::HardwareWriteFailed => {
+            log::warn!("safety_actuation=fault category=hardware_write_failed");
+        }
+        // An authority refusal is expected after a handover, not a hardware fault.
+        SafetyActuationReply::Refused => log::debug!("safety_actuation=refused category=authority"),
+        SafetyActuationReply::Applied => {}
     }
     if reply_sender.send(reply).is_err() {
         log::warn!("safety_actuation=fault category=reply_receiver_unavailable");
@@ -314,6 +326,15 @@ fn apply_safety_actuation(
                 return SafetyActuationReply::HardwareWriteFailed;
             }
             emc2101::write_fan_duty_percent(&mut bus, percent.get())
+        }
+        SafetyActuationCommand::SetControllerFanDuty { duty, owner } => {
+            if !crate::production_mining_session::revocation::permits_controller_fan(
+                owner,
+                duty.get(),
+            ) {
+                return SafetyActuationReply::Refused;
+            }
+            emc2101::write_fan_duty_percent(&mut bus, duty.get())
         }
         SafetyActuationCommand::RestoreCoolingBaseline { generation } => {
             let now_ms = crate::runtime_uptime::millis();

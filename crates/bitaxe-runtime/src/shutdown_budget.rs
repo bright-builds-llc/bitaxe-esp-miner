@@ -44,14 +44,14 @@ pub fn pre_reset_bound_ms(profile: Bm1366MiningProfile) -> Option<u32> {
         .and_then(|actions| maximum_pre_reset_ms(&actions))
 }
 
-/// ADR-0037 hardware admission: the fan is at 100% (until the fan policy
-/// task), the frequency is a catalog-range BM1366 profile, and its ordered
-/// shutdown fits the tail the caller reserved.
+/// ADR-0037 hardware admission: the frequency is a catalog-range BM1366
+/// profile whose ordered shutdown fits the tail the caller reserved. The fan is
+/// not part of admission: preparation proves it at 100%, then the device's fan
+/// settings drive it (decision 6).
 #[must_use]
 pub fn profile_admissible(profile: MiningHardwareProfile, reserved_tail_ms: u32) -> bool {
-    profile.fan_duty().percent() == 100
-        && Bm1366MiningProfile::ultra_205(profile.frequency())
-            .is_ok_and(|asic| profile_fits_tail(asic, reserved_tail_ms))
+    Bm1366MiningProfile::ultra_205(profile.frequency())
+        .is_ok_and(|asic| profile_fits_tail(asic, reserved_tail_ms))
 }
 
 /// Whether `profile`'s ordered shutdown is bounded and fits `reserved_tail_ms`.
@@ -163,11 +163,11 @@ mod tests {
     }
 
     #[test]
-    fn a_fan_below_100_percent_is_not_admitted_yet() {
+    fn the_profile_fan_duty_does_not_decide_admission() {
         // Arrange / Act
         let admitted = profile_admissible(profile(400, 80), PRE_RESET_BOUND_MS);
         // Assert
-        assert!(!admitted);
+        assert!(admitted);
     }
 
     #[test]

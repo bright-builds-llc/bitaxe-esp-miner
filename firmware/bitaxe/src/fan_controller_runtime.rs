@@ -1,5 +1,6 @@
 //! Production shell for the qualified fan controller.
 
+use crate::production_mining_session::revocation::FanControllerOwner;
 use std::{thread, time::Duration};
 
 use anyhow::{Context, Result};
@@ -59,6 +60,9 @@ fn run() -> ! {
 struct RuntimeState {
     controller: FanControllerState,
     maybe_last_warning: Option<&'static str>,
+    /// Another owner may have set the fan (preparation or safe-stop at 100%), so a
+    /// new owner never trusts the previous owner's applied duty.
+    maybe_last_owner: Option<FanControllerOwner>,
 }
 
 impl RuntimeState {
@@ -76,12 +80,18 @@ impl RuntimeState {
 }
 
 fn service_iteration(state: &mut RuntimeState, now_ms: u64) {
+    let owner = crate::production_mining_session::fan_controller_owner();
+    if owner != state.maybe_last_owner {
+        // A fresh controller: no applied duty and no integrator from the last owner.
+        state.controller = FanControllerState::default();
+        state.maybe_last_owner = owner;
+    }
     let Some(settings) = current_settings() else {
         state.controller.invalidate_applied_duty();
         state.warn_once("settings_unavailable");
         return;
     };
-    let runtime = current_runtime_status();
+    let runtime = current_runtime_status(owner.is_some());
     let observation = current_thermal_observation();
     let plan = match state
         .controller
@@ -105,9 +115,15 @@ fn service_iteration(state: &mut RuntimeState, now_ms: u64) {
         state.warn_once("duty_out_of_range");
         return;
     };
-    match crate::safety_adapter::request_safety_actuation(SafetyActuationCommand::SetFanDuty(
-        validated_percent,
-    )) {
+    let Some(owner) = owner else {
+        return;
+    };
+    match crate::safety_adapter::request_safety_actuation(
+        SafetyActuationCommand::SetControllerFanDuty {
+            duty: validated_percent,
+            owner,
+        },
+    ) {
         SafetyActuationRequestOutcome::Applied => {
             state.controller.record_applied(percent);
             state.clear_warning();
@@ -150,11 +166,10 @@ fn loaded_u16(loaded: &bitaxe_config::PersistenceDecision, key: &str) -> Option<
     Some(*value)
 }
 
-fn current_runtime_status() -> FanRuntimeStatus {
+fn current_runtime_status(hardware_control_qualified: bool) -> FanRuntimeStatus {
     let mining = crate::runtime_snapshot::mining_runtime_state();
     FanRuntimeStatus {
-        hardware_control_qualified:
-            crate::production_mining_session::fan_controller_actuation_qualified(),
+        hardware_control_qualified,
         operator_paused: mining.operator_intent == MiningOperatorIntent::Paused,
         pools_unavailable: !matches!(
             mining.lifecycle,

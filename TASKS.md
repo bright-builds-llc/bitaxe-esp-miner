@@ -1201,21 +1201,6 @@ Verification: pending. Completion review: pending.
 
 ## Future
 
-### task-fan-policy-from-device-config | 2026-10-16 | Let the fan follow device configuration while mining
-
-ADR-0037 step 2. Software only.
-
-Under a lease the fan is pinned to the profile's 100%, and the NVS-driven fan
-controller runs only without a Gate session (`production_mining_session.rs`).
-
-- [ ] While mining, drive the fan from `autofanspeed`, `manualFanSpeed`,
-      `minFanSpeed` and `temptarget`, as upstream does. Cooling proof and
-      safe-stop keep their own fan commands (ADR-0025).
-- [ ] Keep the fresh, nonzero fan-reading revocation. Regressions for auto,
-      manual and safe-stop handover.
-
-Verification: pending. Completion review: pending.
-
 ### task-lease-without-hardware-profile | 2026-10-16 | Retire the signed hardware profile and accept ADR-0037
 
 ADR-0037 step 3. Depends on `task-asic-actuation-catalog-profiles` and

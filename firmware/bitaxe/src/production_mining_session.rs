@@ -47,16 +47,24 @@ pub(crate) use bwg::{
 };
 pub use notifications::notify;
 pub(crate) use qualification::status_evidence;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, TrySendError};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 const OWNER_STACK_BYTES: usize = 24 * 1024;
 const NOTIFICATION_CAPACITY: usize = 16;
 static NOTIFICATIONS: OnceLock<SyncSender<OwnerInboxMessage>> = OnceLock::new();
-static FAN_CONTROLLER_ACTUATION_QUALIFIED: AtomicBool = AtomicBool::new(false);
-pub(crate) fn fan_controller_actuation_qualified() -> bool {
-    FAN_CONTROLLER_ACTUATION_QUALIFIED.load(Ordering::Acquire)
+/// Who drives the fan controller: the campaign path, or one prepared Gate lease
+/// (ADR-0037 decision 6). Cleared before every safe-stop, cooling and activation.
+static FAN_CONTROLLER_OWNER: Mutex<Option<revocation::FanControllerOwner>> = Mutex::new(None);
+pub(crate) fn fan_controller_owner() -> Option<revocation::FanControllerOwner> {
+    *FAN_CONTROLLER_OWNER
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+pub(super) fn set_fan_controller_owner(maybe_owner: Option<revocation::FanControllerOwner>) {
+    *FAN_CONTROLLER_OWNER
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = maybe_owner;
 }
 enum OwnerInboxMessage {
     Wake(ProductionSessionWakeup),
@@ -202,9 +210,14 @@ impl OrdinaryEspProductionSessionAdapter {
                             == bitaxe_stratum::v1::production_session::MiningCampaignState::Active
                         && crate::safety_adapter::safety_actuation_available()
                         && crate::asic_adapter::production::production_handle_available();
-                    FAN_CONTROLLER_ACTUATION_QUALIFIED.store(qualified, Ordering::Release);
-                } else {
-                    FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
+                    // A Gate lease owns the fan from its preparation until its safe-stop.
+                    if self.maybe_bwg_session.is_none() {
+                        set_fan_controller_owner(
+                            qualified.then_some(revocation::FanControllerOwner::Campaign),
+                        );
+                    }
+                } else if self.maybe_bwg_session.is_none() {
+                    set_fan_controller_owner(None);
                 }
                 crate::runtime_snapshot::publish_production_session_snapshot(*snapshot);
                 None
@@ -238,7 +251,16 @@ impl OrdinaryEspProductionSessionAdapter {
                     |session| revocation::reserved_shutdown_tail_ms(session.generation),
                 );
                 match self.mining_actuation.prepare(profile, reserved_tail_ms) {
-                    Ok(()) if revocation::permits(self.maybe_bwg_session.as_ref().map(|session| session.generation)) => Some(ProductionSessionEvent::HardwarePrepared { lease_id, now_ms: crate::runtime_uptime::millis() }),
+                    Ok(()) if revocation::permits(self.maybe_bwg_session.as_ref().map(|session| session.generation)) => {
+                        // Preparation proved the fan at 100%; the lease's controller now
+                        // follows the device's fan settings until its permit ends.
+                        if let Some(session) = self.maybe_bwg_session.as_ref() {
+                            set_fan_controller_owner(Some(revocation::FanControllerOwner::Lease(
+                                session.generation,
+                            )));
+                        }
+                        Some(ProductionSessionEvent::HardwarePrepared { lease_id, now_ms: crate::runtime_uptime::millis() })
+                    }
                     Ok(()) => Some(ProductionSessionEvent::HardwarePreparationFailed { lease_id,
                         failure: bitaxe_stratum::v1::production_session::HardwarePreparationFailure::Rejected,
                         now_ms: crate::runtime_uptime::millis() }),
@@ -444,7 +466,7 @@ impl OrdinaryEspProductionSessionAdapter {
                         revocation::RevocationReason::ControlFailed,
                     );
                 }
-                FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
+                set_fan_controller_owner(None);
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_safe_stop_pending();
                 }
