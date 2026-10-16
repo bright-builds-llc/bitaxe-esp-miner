@@ -1146,9 +1146,122 @@ Settings findings (2026-10-16):
 - The BAP owner has 832 bytes of stack headroom, so it cannot run
   persistence itself.
 
+Plan (2026-10-16, after the owner's decisions):
+- Route each intent through the existing owners, as an HTTP settings PATCH
+  would:
+  - frequency, core voltage, fan speed (auto fan off plus manual speed) and
+    auto fan are persisted;
+  - Wi-Fi SSID and password are persisted, and the device restarts as
+    upstream does (owner decision 2026-10-16: allow, like upstream);
+  - `found_block` and `show_new_block` are command-visible RAM state.
+- Frequency and voltage stay display-only until ADR-0037's
+  `task-live-hardware-settings-owner` applies them live (owner direction
+  2026-10-16). Record that divergence until then.
+- Parse values the way the reference's `atoi`/`atof` and `uint16_t` casts do,
+  in the pure core, with tests.
+- Run persistence off the BAP owner's thread, which has 768 bytes of stack
+  headroom. A bounded worker with its own stack runs it, and the BAP thread
+  waits for the result before acknowledging, as upstream's handler does.
+
 Verification: pending. Completion review: pending.
 
 ## Future
+
+### task-asic-actuation-catalog-profiles | 2026-10-16 | Actuate any catalog-valid frequency and voltage
+
+ADR-0037 step 1. Software only. Depends on nothing.
+
+Today the actuation adapter (`firmware/bitaxe/src/mining_actuation_adapter.rs`)
+accepts only 400 MHz/1100 mV and 485 MHz/1200 mV, and only those two have
+closed ramp plans and shutdown tails.
+
+- [ ] Accept any Ultra 205 catalog-valid pair (400–575 MHz, 1100–1300 mV)
+      through a typed profile from device configuration.
+- [ ] Derive the preparation and shutdown ramp plans from the target
+      frequency. Add a closed function for the shutdown tail and the
+      catalog-maximum tail (ADR-0037 decision 5). Pin both with fixtures
+      against the two existing plans (15,550 ms and 19,050 ms).
+- [ ] Keep the existing presets' exact behavior, with regressions.
+- [ ] Gate, stack audits.
+
+Verification: pending. Completion review: pending.
+
+### task-fan-policy-from-device-config | 2026-10-16 | Let the fan follow device configuration while mining
+
+ADR-0037 step 2. Software only.
+
+Under a lease the fan is pinned to the profile's 100%, and the NVS-driven fan
+controller runs only without a Gate session (`production_mining_session.rs`).
+
+- [ ] While mining, drive the fan from `autofanspeed`, `manualFanSpeed`,
+      `minFanSpeed` and `temptarget`, as upstream does. Cooling proof and
+      safe-stop keep their own fan commands (ADR-0025).
+- [ ] Keep the fresh, nonzero fan-reading revocation. Regressions for auto,
+      manual and safe-stop handover.
+
+Verification: pending. Completion review: pending.
+
+### task-lease-without-hardware-profile | 2026-10-16 | Retire the signed hardware profile and accept ADR-0037
+
+ADR-0037 step 3. Depends on `task-asic-actuation-catalog-profiles` and
+`task-fan-policy-from-device-config`. This is a cross-repository change.
+
+- [ ] Owner review and acceptance of ADR-0037. Mark ADR-0033 decisions 1–2
+      superseded.
+- [ ] Gate (`bitaxe-turnstile-system`) and the host signer: stop parsing and
+      signing `hardwareProfile`, and budget the catalog-maximum tail (ADR-0037
+      decision 5). Update the pinned Gate commit.
+- [ ] Firmware lease parser: refuse grants that carry `hardwareProfile`. The
+      hardware profile comes from device configuration. Admission refuses an
+      out-of-range configuration with a typed reason.
+- [ ] Soak and qualification tooling sets the device configuration before a
+      run and records it in evidence. Update `scripts/fixed-usb-soak`.
+
+Verification: pending. Completion review: pending.
+
+### task-live-hardware-settings-owner | 2026-10-16 | Apply frequency and voltage changes while mining, like upstream
+
+ADR-0037 step 4. Depends on `task-lease-without-hardware-profile`.
+
+Upstream's `power_management_task` re-reads NVS frequency and voltage and
+applies changes live (`ASIC_set_frequency`, `VCORE_set_voltage`).
+
+- [ ] An owner re-applies saved frequency and voltage changes during an active
+      lease, in safe order: voltage up before frequency up, frequency down
+      before voltage down, frequency in ramp steps.
+      - An out-of-range change keeps the applied values and is reported.
+      - Every step stays inside the runtime safety predicate.
+- [ ] HTTP settings and BAP `frequency` and `asic_voltage` then take effect
+      live. Close the divergence recorded in
+      `task-parity-bap-settings-effects`.
+
+Verification: pending. Completion review: pending.
+
+### task-device-config-profile-evidence-soaks | 2026-10-16 | Soak the device-configured profiles on hardware
+
+ADR-0037 step 5. Depends on `task-live-hardware-settings-owner`. Hardware;
+each soak needs its own `TASKS.md` contract.
+
+- [ ] Soak at least:
+  - upstream default (485 MHz, 1200 mV) with the automatic fan;
+  - one live frequency change during a lease;
+  - the catalog-maximum shutdown tail.
+  Record the device configuration in evidence.
+- [ ] Update the PWR and ASIC parity rows whose non-claims name "arbitrary
+      profiles", within what the evidence shows.
+
+Verification: pending. Completion review: pending.
+
+### task-mining-baseline-after-lease | 2026-10-16 | Decide whether the Worker mines on its own after a lease
+
+Owner decision needed; not decided by ADR-0037. In the Gate's design the
+Worker returns to ordinary local mining (its Mining Baseline) after a lease.
+This firmware returns to a paused baseline and mines only under a lease.
+
+- [ ] Present the options and safety implications, including a heartbeat
+      replacement for local mining, and record the owner's decision in an ADR.
+
+Verification: pending. Completion review: pending.
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 
