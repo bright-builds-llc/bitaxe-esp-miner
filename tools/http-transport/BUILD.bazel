@@ -18,6 +18,7 @@ rust_library(
         "src/soak/observer.rs",
         "src/soak/sample.rs",
         "src/soak/tests.rs",
+        "src/soak/tests/sample_fields.rs",
         "src/tests.rs",
         "src/websocket.rs",
     ],

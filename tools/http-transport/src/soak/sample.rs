@@ -33,12 +33,20 @@ pub struct SoakSample {
     pub best_diff: u64,
     #[serde(default)]
     pub best_session_diff: u64,
-    /// HTTP server task sends: the worst duration in the last minute or two, and
-    /// failures since boot (`runtimeHealth.httpServerSends`).
+    /// HTTP server task sends (`runtimeHealth.httpServerSends`): sends, failures and
+    /// the worst duration since boot, and the worst in the last minute or two.
+    #[serde(default)]
+    pub http_response_sends: u64,
+    #[serde(default)]
+    pub http_response_worst_ms: u32,
     #[serde(default)]
     pub http_response_recent_worst_ms: u32,
     #[serde(default)]
     pub http_response_failures: u64,
+    #[serde(default)]
+    pub websocket_sends: u64,
+    #[serde(default)]
+    pub websocket_send_worst_ms: u32,
     #[serde(default)]
     pub websocket_send_recent_worst_ms: u32,
     #[serde(default)]
@@ -70,8 +78,12 @@ impl SoakSample {
             shares_rejected: wire.shares_rejected,
             best_diff: reference_u64(wire.best_diff),
             best_session_diff: reference_u64(wire.best_session_diff),
+            http_response_sends: sends.http_responses.sends,
+            http_response_worst_ms: sends.http_responses.worst_millis,
             http_response_recent_worst_ms: sends.http_responses.recent_worst_millis,
             http_response_failures: sends.http_responses.failures,
+            websocket_sends: sends.websocket_sends.sends,
+            websocket_send_worst_ms: sends.websocket_sends.worst_millis,
             websocket_send_recent_worst_ms: sends.websocket_sends.recent_worst_millis,
             websocket_send_failures: sends.websocket_sends.failures,
             wifi_rssi: wire.wifi_rssi,

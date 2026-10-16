@@ -1171,18 +1171,6 @@ named-phase allocation profile item stays open. Qualification stays false.
 
 ## Future
 
-### task-soak-sample-send-counters | 2026-10-15 | Record send counts and lifetime worst in soak samples
-
-Origin: the soak 005 review. Soak samples carry each send kind's recent worst
-and failures, but not `sends` or the lifetime `worstMillis`. A reviewer
-therefore cannot confirm the counters advance, or see a long send that has
-aged out of the one-to-two-minute window.
-
-- [ ] Add both fields per kind to `SoakSample` (defaulted, so older journals
-      still parse), with a regression.
-
-Verification: pending. Completion review: pending.
-
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 
 Owner request (2026-10-15). Start only after the parity work is complete.

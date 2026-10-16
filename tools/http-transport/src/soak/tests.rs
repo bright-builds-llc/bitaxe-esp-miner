@@ -31,8 +31,12 @@ fn sample(active_ms: i64, sequence: u64) -> SoakSample {
         shares_rejected: 0,
         best_diff: sequence,
         best_session_diff: sequence,
+        http_response_sends: 0,
+        http_response_worst_ms: 0,
         http_response_recent_worst_ms: 0,
         http_response_failures: 0,
+        websocket_sends: 0,
+        websocket_send_worst_ms: 0,
         websocket_send_recent_worst_ms: 0,
         websocket_send_failures: 0,
         wifi_rssi: -50,
@@ -444,54 +448,5 @@ fn a_sample_records_the_all_time_and_session_best_difficulty() {
     assert_eq!((sample.best_diff, sample.best_session_diff), (123_456, 789));
 }
 
-#[test]
-fn a_sample_records_the_server_task_send_durations_and_rssi() {
-    // Arrange
-    let mut wire =
-        bitaxe_api::system_info_from_snapshot(&bitaxe_api::ApiSnapshot::safe_ultra_205());
-    wire.runtime_health
-        .http_server_sends
-        .http_responses
-        .recent_worst_millis = 4_600;
-    wire.runtime_health
-        .http_server_sends
-        .websocket_sends
-        .failures = 2;
-    wire.wifi_rssi = -71;
-    // Act
-    let sample = SoakSample::from_wire(&wire, None);
-    // Assert
-    assert_eq!(
-        (
-            sample.http_response_recent_worst_ms,
-            sample.websocket_send_failures,
-            sample.wifi_rssi
-        ),
-        (4_600, 2, -71)
-    );
-}
-
-#[test]
-fn a_journal_sample_from_before_the_new_fields_still_parses() {
-    // Arrange: soak 002's sample shape, without the best-difficulty or send fields.
-    let mut value = serde_json::to_value(sample(0, 1)).expect("sample json");
-    let object = value.as_object_mut().expect("object");
-    for key in [
-        "bestDiff",
-        "bestSessionDiff",
-        "httpResponseRecentWorstMs",
-        "httpResponseFailures",
-        "websocketSendRecentWorstMs",
-        "websocketSendFailures",
-        "wifiRssi",
-    ] {
-        object.remove(key).expect("field present");
-    }
-    // Act
-    let parsed: SoakSample = serde_json::from_value(value).expect("older sample parses");
-    // Assert
-    assert_eq!(
-        (parsed.best_diff, parsed.http_response_recent_worst_ms),
-        (0, 0)
-    );
-}
+#[path = "tests/sample_fields.rs"]
+mod sample_fields;

@@ -30317,3 +30317,46 @@ RSSI follows the radio. This closes the hardware observation
 
 Residual risk: the stalls of soaks 002 and 003 remain unexplained. Now 2 in 6
 soaks.
+
+### task-soak-sample-send-counters | 2026-10-16 | Record send counts and lifetime worst in soak samples
+
+Origin: the soak 005 review. Soak samples carry each send kind's recent worst
+and failures, but not `sends` or the lifetime `worstMillis`. A reviewer
+therefore cannot confirm the counters advance, or see a long send that has
+aged out of the one-to-two-minute window.
+
+Plan:
+- Add `httpResponseSends`, `httpResponseWorstMs`, `websocketSends` and
+  `websocketSendWorstMs` to `SoakSample`, filled from
+  `runtimeHealth.httpServerSends`. They are `#[serde(default)]`, so journals
+  from soaks 002–006 still parse.
+- Move the send and RSSI sample tests out of `soak/tests.rs`, which is close
+  to the file-length limit, into `soak/tests/sample_fields.rs`, and extend
+  them. Software only; no hardware.
+
+- [x] Fields, projection and regressions.
+- [x] Gate: fmt, clippy, build, Cargo and `just test`, Bright Builds,
+      redaction, parity.
+
+Verification (2026-10-16):
+- `soak/tests/sample_fields.rs` has four tests, all passing:
+  - the counts and the lifetime worst are copied, alongside a recent worst that
+    has already aged out;
+  - the recent-worst, failure and RSSI fields are copied, as before;
+  - a soak 002-shaped sample without any of the new fields parses;
+  - a soak 005/006-shaped sample without the counts parses.
+- `bitaxe-http-transport` passes all 55 tests.
+- The full gate passes:
+  - fmt, clippy, Cargo build and test;
+  - `just build`; BAP stack audit 832 bytes and HTTP stack audit 1,200 bytes of
+    headroom, both unchanged;
+  - `just test` (337 tests);
+  - Bright Builds 0 findings; redaction and parity clean.
+
+Completion review: each soak sample now carries both send kinds' counts and
+their worst duration since boot. A reviewer can confirm the counters advance,
+and can see a long send that has aged out of the recent window. Older journals
+still parse.
+
+Residual risk: none beyond the unchanged observer cadence. The first soak on
+this observer shows the fields live.
