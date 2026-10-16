@@ -1215,6 +1215,43 @@ The stalls sat near the first clean-jobs refresh, which may be a confounder.
 
 Verification: pending. Completion review: pending.
 
+### task-ultra205-default-profile-soak-005 | 2026-10-15 | Soak with server-task send timing to read any stall
+
+Objective: the soak step of `task-http-server-task-stall-diagnostics`.
+Firmware that times every HTTP server task send (`52b54758`) mines one soak,
+and the observer records each sample's send durations, failures and Wi-Fi
+RSSI. If a paired HTTP and WebSocket stall happens, those values tell a slow
+server-task write from a network stall. The owner authorized this soak on
+2026-10-15.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task.
+- [ ] Soak attempt 001 (soak ledger ordinal 6), with an independent review.
+
+Hardware contract (owner-authorized 2026-10-15). It is the archived
+`task-ultra205-default-profile-soak-004` contract, unchanged except:
+- package at the clean, pushed `HEAD` that records this contract;
+- parent `P = scratch/ultra205-soak-005`, with `R = P/attempt-001`;
+- soak ledger ordinal 6;
+- no BAP traffic.
+
+Allowed effects, live limits, the seal path, retry bound and outcomes are as
+that contract. Parity promotion is prohibited.
+
+Diagnostic reading (observation, not a pass criterion):
+- For every HTTP gap above 3,000 ms or WebSocket gap above 2,000 ms, report:
+  - the `httpResponseRecentWorstMs` and `websocketSendRecentWorstMs` in the
+    samples around it;
+  - any change in send failures;
+  - `wifiRssi`;
+  - whether a clean-jobs refresh (`stale_completion`) was near.
+- Also report the run's worst send durations and failure counts overall.
+- A clean run, with no such gap, is recorded as no stall observed. The
+  diagnostic stays in place for later soaks.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
