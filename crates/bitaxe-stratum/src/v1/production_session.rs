@@ -24,7 +24,7 @@ pub use asic_diagnostics::{
     AsicPollCompletion, AsicPollState,
 };
 pub use campaign::{
-    HardwarePreparationFailure, MiningCampaignDuration, MiningCampaignLease,
+    DeviceProfileRefusal, HardwarePreparationFailure, MiningCampaignDuration, MiningCampaignLease,
     MiningCampaignLeaseError, MiningCampaignLeaseId, MiningCampaignMonotonicDeadline,
     MiningCampaignState, MiningCampaignStopCondition, MiningHardwareProfile,
     MiningHardwareProfilePreset, MiningHardwareState, MAX_MINING_CAMPAIGN_DURATION_MS,

@@ -244,13 +244,7 @@ impl OrdinaryEspProductionSessionAdapter {
                         .as_ref()
                         .map(|session| session.generation),
                 );
-                // A Gate lease reserves its budget's tail. The legacy campaign path has
-                // no Gate budget and reserves its preset profile's own tail.
-                let reserved_tail_ms = self.maybe_bwg_session.as_ref().map_or(
-                    shutdown_budget::closed_pre_reset_tail_ms(profile.frequency().mhz()),
-                    |session| revocation::reserved_shutdown_tail_ms(session.generation),
-                );
-                match self.mining_actuation.prepare(profile, reserved_tail_ms) {
+                match self.mining_actuation.prepare(profile) {
                     Ok(()) if revocation::permits(self.maybe_bwg_session.as_ref().map(|session| session.generation)) => {
                         // Preparation proved the fan at 100%; the lease's controller now
                         // follows the device's fan settings until its permit ends.

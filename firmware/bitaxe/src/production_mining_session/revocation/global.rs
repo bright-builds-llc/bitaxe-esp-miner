@@ -88,19 +88,16 @@ pub(crate) fn begin_reservation(generation: WorkerGeneration) -> bool {
 pub(crate) fn admit_budget(generation: WorkerGeneration, active_limit_ms: u64) -> bool {
     use super::super::shutdown_budget::plan_is_bounded;
     use bitaxe_asic::bm1366::mining_ready::Bm1366MiningProfile;
+    // Shutdown runs after the budget (ADR-0037); each admitted profile's plan is
+    // checked again at preparation.
     plan_is_bounded(Bm1366MiningProfile::CONSERVATIVE)
-        && (active_limit_ms != bitaxe_runtime::revocation::SOAK_ACTIVE_LIMIT_MS
-            || plan_is_bounded(Bm1366MiningProfile::UPSTREAM_DEFAULT))
         && GATE.admit_budget(generation, active_limit_ms)
 }
 /// Whether a fan-controller write of `duty_percent` may reach the fan now.
 pub(crate) fn permits_controller_fan(owner: FanControllerOwner, duty_percent: u8) -> bool {
     GATE.permits_controller_fan(owner, duty_percent)
 }
-/// The pre-reset tail `generation`'s admitted budget reserves (ADR-0037).
-pub(crate) fn reserved_shutdown_tail_ms(generation: WorkerGeneration) -> u32 {
-    GATE.reserved_shutdown_tail_ms(generation)
-}
+
 pub(crate) fn activate(generation: WorkerGeneration, now_ms: u64) -> bool {
     GATE.activate_at(generation, now_ms)
 }

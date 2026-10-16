@@ -5,6 +5,7 @@ import { CADENCE_PHASES, validateCadencePolicy } from "./cadence-contract.mjs";
 import { requireCadenceDiagnostics, requireCadencePhase, validateCadenceProbe } from "./cadence-evidence.mjs";
 import { digest, exactObject, fileDigest, protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 import { requireOwnerResources } from "./iterative-judge.mjs";
+import { SHUTDOWN_BOUND_MS } from "./judge.mjs";
 
 /** Re-read immutable phase inputs; no caller-authored pass flag replaces numeric checks. */
 export async function requireCadenceEvidence(root, context, records) {
@@ -157,7 +158,7 @@ export function judgeCadence(context, records, fault, evidence) {
   requireCondition(last.deviceRestorationConfirmed && last.deviceLeaseInactive && q.safe_stop_complete && q.attempt.complete &&
     q.safe_stop_stage === "fan_paused" && q.temperature_fresh && q.chip_temp_celsius <= 45 && q.fan_fresh && q.fan_rpm > 0 &&
     !q.mine_on_boot && q.active_ms >= 60000 && q.active_ms <= 180000 && q.active_ms <= q.generation_elapsed_ms &&
-    q.active_limit_ms === 180000 && q.shutdown_budget_ms === 15550, "cadence_qualified_stop");
+    q.active_limit_ms === 180000 && q.shutdown_budget_ms === SHUTDOWN_BOUND_MS, "cadence_qualified_stop");
   requireCondition(fault?.kind === "heartbeats_suppressed" && fault.generation === q.generation, "cadence_fault_missing");
   const cut = records.find(value => value.sequence === fault.after_sequence)?.state;
   requireCondition(cut?.running && cut.heartbeatSuppressed && cut.cadence?.suppressionRequested &&

@@ -9,7 +9,7 @@ function fixture(phase = "loss") {
     suggested_difficulty: 1000, firmware_commit: "a".repeat(40), gate_commit: "b".repeat(40), app_elf_sha256: "c".repeat(64),
     qualification_attempt: { ordinal: 5, purpose: "diagnostic", maximumActiveMilliseconds: 30000 } };
   const qualification = { schema: "worker-qualification-v1", generation: 7, active_ms: 1000, generation_elapsed_ms: 2000,
-    budget_reserved_ms: 240000, budget_complete: true, active_limit_ms: 30000, shutdown_budget_ms: 15550,
+    budget_reserved_ms: 240000, budget_complete: true, active_limit_ms: 30000, shutdown_budget_ms: 22550,
     work_gate_remaining_ms: 10000, submitted: 0, accepted: 0, rejected: 0, nonce_work_correlations: 0, work_dispatched: 1,
     last_valid_heartbeat_ms: 1000, gate_closed_ms: null, shutdown_started_ms: null, safe_stop_complete: false,
     safe_stop_stage: "not_started", revocation_reason: "none", voltage_volts: 5, power_watts: 10, chip_temp_celsius: 40,

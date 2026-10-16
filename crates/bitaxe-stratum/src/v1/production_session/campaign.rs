@@ -53,6 +53,31 @@ impl MiningHardwareProfile {
         })
     }
 
+    /// The profile the device's saved settings choose (ADR-0037). `None` means the
+    /// stored frequency is unreadable. Nothing is clamped or rounded: an unusable
+    /// setting refuses the lease. The fan duty is the 100% preparation proves; after
+    /// preparation the device's fan settings drive the fan.
+    pub fn from_device_settings(
+        maybe_frequency_mhz: Option<f32>,
+        maybe_core_voltage_mv: Option<u16>,
+    ) -> Result<Self, DeviceProfileRefusal> {
+        let frequency = maybe_frequency_mhz.ok_or(DeviceProfileRefusal::FrequencyUnreadable)?;
+        if !frequency.is_finite() || frequency.fract() != 0.0 {
+            return Err(DeviceProfileRefusal::FrequencyNotWhole);
+        }
+        let frequency = AsicFrequencyMhz::ultra_205_bm1366(frequency as i64)
+            .map_err(|_| DeviceProfileRefusal::FrequencyOutOfRange)?;
+        let core_voltage_mv =
+            maybe_core_voltage_mv.ok_or(DeviceProfileRefusal::VoltageUnreadable)?;
+        let core_voltage = CoreVoltageMv::ultra_205_bm1366(i64::from(core_voltage_mv))
+            .map_err(|_| DeviceProfileRefusal::VoltageOutOfRange)?;
+        Ok(Self {
+            frequency,
+            core_voltage,
+            fan_duty: MiningHardwareProfilePreset::Conservative.profile().fan_duty,
+        })
+    }
+
     #[must_use]
     pub const fn frequency(self) -> AsicFrequencyMhz {
         self.frequency
@@ -66,6 +91,30 @@ impl MiningHardwareProfile {
     #[must_use]
     pub const fn fan_duty(self) -> FanDutyPercent {
         self.fan_duty
+    }
+}
+
+/// Why the device's saved settings cannot be mined; the lease is refused before
+/// any budget is charged (ADR-0037).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeviceProfileRefusal {
+    FrequencyUnreadable,
+    FrequencyNotWhole,
+    FrequencyOutOfRange,
+    VoltageUnreadable,
+    VoltageOutOfRange,
+}
+
+impl DeviceProfileRefusal {
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::FrequencyUnreadable => "frequency_unreadable",
+            Self::FrequencyNotWhole => "frequency_not_whole",
+            Self::FrequencyOutOfRange => "frequency_out_of_range",
+            Self::VoltageUnreadable => "voltage_unreadable",
+            Self::VoltageOutOfRange => "voltage_out_of_range",
+        }
     }
 }
 
@@ -278,8 +327,8 @@ pub enum HardwarePreparationFailure {
 #[cfg(test)]
 mod tests {
     use super::{
-        MiningCampaignDuration, MiningCampaignLeaseError, MiningHardwareProfile,
-        MiningHardwareProfilePreset,
+        DeviceProfileRefusal, MiningCampaignDuration, MiningCampaignLeaseError,
+        MiningHardwareProfile, MiningHardwareProfilePreset,
     };
 
     #[test]
@@ -334,6 +383,46 @@ mod tests {
 
         // Assert
         assert!(profiles.iter().all(Result::is_err));
+    }
+
+    #[test]
+    fn the_device_defaults_are_a_minable_profile() {
+        // Arrange / Act
+        let profile = MiningHardwareProfile::from_device_settings(Some(485.0), Some(1_200));
+        // Assert
+        assert_eq!(
+            profile.map(|p| (p.frequency().mhz(), p.core_voltage().millivolts())),
+            Ok((485, 1_200))
+        );
+    }
+
+    #[test]
+    fn unusable_device_settings_are_refused_never_clamped() {
+        // Arrange
+        let settings = [
+            (None, Some(1_200)),
+            (Some(485.5), Some(1_200)),
+            (Some(f32::NAN), Some(1_200)),
+            (Some(600.0), Some(1_200)),
+            (Some(485.0), None),
+            (Some(485.0), Some(1_400)),
+        ];
+        // Act
+        let refusals = settings.map(|(frequency, voltage)| {
+            MiningHardwareProfile::from_device_settings(frequency, voltage).err()
+        });
+        // Assert
+        assert_eq!(
+            refusals,
+            [
+                Some(DeviceProfileRefusal::FrequencyUnreadable),
+                Some(DeviceProfileRefusal::FrequencyNotWhole),
+                Some(DeviceProfileRefusal::FrequencyNotWhole),
+                Some(DeviceProfileRefusal::FrequencyOutOfRange),
+                Some(DeviceProfileRefusal::VoltageUnreadable),
+                Some(DeviceProfileRefusal::VoltageOutOfRange),
+            ]
+        );
     }
 
     #[test]

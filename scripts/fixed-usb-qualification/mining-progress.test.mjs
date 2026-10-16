@@ -19,7 +19,7 @@ function qualification() {
     fan_fresh: true, watchdog_alive: true, mine_on_boot: false, voltage_volts: 5, power_watts: 9,
     chip_temp_celsius: 40, fan_rpm: 7000, gate_closed_ms: null, shutdown_started_ms: null,
     safe_stop_stage: "not_started", revocation_reason: "none", active_limit_ms: 30000,
-    shutdown_budget_ms: 15550, work_gate_remaining_ms: 10000 };
+    shutdown_budget_ms: 22550, work_gate_remaining_ms: 10000 };
 }
 test("below-target ASIC responses remain diagnostic and preserve zero qualified candidates", () => {
   // Arrange

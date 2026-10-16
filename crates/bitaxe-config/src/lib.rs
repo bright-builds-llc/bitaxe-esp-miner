@@ -4,6 +4,7 @@ pub mod catalog;
 pub mod confirmed_snapshot;
 pub mod defaults;
 pub mod display;
+pub mod mining_settings;
 pub mod nvs;
 pub mod persistence;
 pub mod settings;

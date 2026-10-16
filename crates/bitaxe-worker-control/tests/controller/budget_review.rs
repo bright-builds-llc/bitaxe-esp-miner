@@ -189,15 +189,15 @@ fn soak_ledger_review_is_fresh_possession_bound_and_readonly() {
         .expect("review");
     let value: serde_json::Value = serde_json::from_slice(reply.frame()).expect("json");
     // Assert
-    assert_eq!(value["result"]["schema"], "worker-soak-ledger-v1");
+    assert_eq!(value["result"]["schema"], "worker-soak-ledger-v2");
     assert!(worker.session().events.is_empty());
     assert!(worker
         .prepare_frame(soak_review().as_bytes(), 61001)
         .is_err());
 }
 #[test]
-fn an_upstream_default_start_without_a_soak_never_starts() {
-    // Arrange
+fn a_start_carrying_a_hardware_profile_never_starts() {
+    // Arrange: ADR-0037 retired the signed profile.
     let mut worker = admitted_worker();
     let mut frame: serde_json::Value = serde_json::from_str(&start_frame()).expect("frame");
     frame["payload"]["hardwareProfile"] = json!("upstream-default");

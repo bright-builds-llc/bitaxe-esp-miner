@@ -36,14 +36,22 @@ impl GenerationGate {
             maybe_gate_closed_ms: closed_for_generation.then_some(closed),
             maybe_shutdown_started_ms: shutdown_for_generation
                 .then(|| self.shutdown_started_ms.load(Ordering::Acquire)),
+            // Mining time against the budget (ADR-0037): the work gate closes at the
+            // budget and the shutdown runs after it, so a limited budget caps this.
+            // `generation_elapsed_ms` still includes the shutdown.
             active_ms: if started {
-                end_ms.wrapping_sub(self.first_dispatch_ms.load(Ordering::Acquire))
+                let elapsed = end_ms.wrapping_sub(self.first_dispatch_ms.load(Ordering::Acquire));
+                if active_limit == 0 {
+                    elapsed
+                } else {
+                    elapsed.min(active_limit)
+                }
             } else {
                 0
             },
             generation_elapsed_ms: end_ms.wrapping_sub(self.activated_ms.load(Ordering::Acquire)),
             active_limit_ms: (active_limit != 0).then_some(active_limit),
-            shutdown_budget_ms: super::shutdown_tail_ms(active_limit),
+            shutdown_budget_ms: super::SHUTDOWN_BOUND_MS,
             work_gate_remaining_ms: if active_limit == 0 || !started {
                 None
             } else if closed_for_generation {

@@ -45,8 +45,7 @@ pub use session::{
 
 mod soak;
 pub use soak::{
-    HardwareProfile, SoakAllowance, SoakLedger, SoakRejected, SOAK_MAXIMUM_ACTIVE_MS,
-    SOAK_WORK_GATE_MS,
+    SoakAllowance, SoakLedger, SoakRejected, SOAK_MAXIMUM_ACTIVE_MS, SOAK_WORK_GATE_MS,
 };
 
 mod qualification;

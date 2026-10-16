@@ -246,15 +246,29 @@ impl WorkerSession for ProductionWorkerSession {
             admission_diagnostics::fail(Failure::Admission);
             WorkerSessionError::Rejected
         })?;
+        // ADR-0037: the device's saved settings choose the profile; an unusable
+        // setting refuses the lease before any budget is charged.
+        let profile = crate::settings_adapter::device_profile::device_mining_profile().map_err(
+            |refusal| {
+                log::warn!(
+                    "worker_start=refused category=device_profile reason={}",
+                    refusal.label()
+                );
+                admission_diagnostics::fail(Failure::Admission);
+                WorkerSessionError::Rejected
+            },
+        )?;
         crate::worker_acceptance_budget::admit(generation, grant).map_err(|_| {
             admission_diagnostics::fail(Failure::Admission);
             WorkerSessionError::Rejected
         })?;
         crate::v2_serial_runtime::seed_share(generation, grant)?;
-        crate::production_mining_session::bwg_start(grant, deadlines, generation).map_err(|_| {
-            admission_diagnostics::fail(Failure::Admission);
-            WorkerSessionError::Rejected
-        })
+        crate::production_mining_session::bwg_start(grant, deadlines, generation, profile).map_err(
+            |_| {
+                admission_diagnostics::fail(Failure::Admission);
+                WorkerSessionError::Rejected
+            },
+        )
     }
 
     fn renew(

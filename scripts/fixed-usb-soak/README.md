@@ -1,9 +1,19 @@
-# Upstream-default soak
+# Ultra 205 soak
 
-`just ultra205-soak preflight|serve|finish` runs one 600-active-second Ultra 205
-soak at upstream defaults (485 MHz, 1200 mV, 100% fan), mining Stratum V1 against
-the owner's pool through the browser Gate. The decision behind it is
-[ADR-0033](../../docs/adr/0033-signed-hardware-profile-and-soak-allowance.md).
+`just ultra205-soak preflight|serve|finish` runs one Ultra 205 soak with 600
+seconds of mining, using Stratum V1 against the owner's pool through the browser
+Gate. The decisions behind it are
+[ADR-0033](../../docs/adr/0033-signed-hardware-profile-and-soak-allowance.md) and
+[ADR-0037](../../docs/adr/0037-device-configuration-owns-the-hardware-profile.md).
+
+- **Profile:** the lease carries no hardware profile. When the observer starts,
+  `serve` writes the soak's device settings (`SOAK_DEVICE_SETTINGS` in
+  `device-settings.mjs`: 485 MHz, 1200 mV, automatic fan) with an HTTP PATCH,
+  while the device is idle. It reads them back from `/api/system/info` and
+  records both in the private `device-settings.json`. A read-back that does
+  not match refuses the soak.
+- **Budget:** the soak budget (v2) is 600,000 ms of mining, charged in the v2
+  soak ledger. The ordered shutdown runs after it, bounded at 22,550 ms.
 
 The command adds no authority. It refuses to run unless
 `task-ultra205-default-profile-soak-006` is active and contains the exact line

@@ -39,11 +39,10 @@ const maximumRenewals = (value) => value.durationMilliseconds === 60000 && value
 
 export function parseGrant(value) {
   exact(value, ["protocolVersion", "leaseId", "challengeId", "authorization", "durationMilliseconds", "renewAfterMilliseconds", "stratum"],
-    ["acceptanceCampaign", "qualificationAttempt", "hardwareProfile", "soakAllowance"]);
+    ["acceptanceCampaign", "qualificationAttempt", "soakAllowance"]);
   exact(value.stratum, ["endpoint", "username", "password"], ["suggestedDifficulty"]);
   if (value.protocolVersion !== "bwg-worker-controller/0.4") throw new Error("protocol");
   if (value.acceptanceCampaign || value.qualificationAttempt || value.soakAllowance) throw new Error("restoration_grant_budgeted");
-  if ((value.hardwareProfile ?? "conservative") !== "conservative") throw new Error("restoration_grant_profile");
   if (maximumRenewals(value) === undefined) throw new Error("restoration_window");
   return value;
 }

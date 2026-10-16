@@ -93,7 +93,8 @@ test("successor renewal happens before short-window shutdown headroom without ex
     const value = await signWindow({ ...input, index });
     assert.equal(value.grant.acceptanceCampaign.maximumActiveMilliseconds, 30000);
     assert.equal(value.grant.renewAfterMilliseconds, 5000);
-    assert(5000 + 6000 < 30000 - 15550);
+    // A 30-second window is now 30 seconds of mining; shutdown runs after it.
+    assert(5000 + 6000 < 30000);
     assert(value.renewals.every((renewal) => renewal.renewAfterMilliseconds === 5000 && !Object.hasOwn(renewal, "acceptanceCampaign")));
   }
   await assert.rejects(signWindow({ ...input, index: 0 }), /successor_signing_window/u);
@@ -234,7 +235,7 @@ test("last heartbeat report records foreground prefix without promoting either f
   // Arrange
   const initial = { generation: 4, active_ms: 5000, generation_elapsed_ms: 6000, budget_reserved_ms: 240000,
     budget_complete: false, safe_stop_complete: false, mine_on_boot: false, gate_closed_ms: null, shutdown_started_ms: null,
-    safe_stop_stage: "not_started", active_limit_ms: 30000, shutdown_budget_ms: 15550, work_gate_remaining_ms: 9450,
+    safe_stop_stage: "not_started", active_limit_ms: 30000, shutdown_budget_ms: 22550, work_gate_remaining_ms: 9450,
     submitted: 3, accepted: 1, rejected: 0, work_dispatched: 5, nonce_work_correlations: 3, last_valid_heartbeat_ms: 6000,
     revocation_reason: "none", voltage_fresh: true, power_fresh: true, temperature_fresh: true, fan_fresh: true,
     voltage_volts: 5, power_watts: 10, chip_temp_celsius: 40, fan_rpm: 1500, watchdog_alive: true };

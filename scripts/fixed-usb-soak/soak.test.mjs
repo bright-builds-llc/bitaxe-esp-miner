@@ -44,22 +44,22 @@ test("a future soak task is not active", async () => {
 
 test("only an idle, consistent soak ledger yields the ordinal to sign", () => {
   // Arrange
-  const idle = { schema: "worker-soak-ledger-v1", next_ordinal: 2, total_charged_ms: SOAK_MAXIMUM_ACTIVE_MS, pending: false, last_completed_ordinal: 1 };
+  const idle = { schema: "worker-soak-ledger-v2", next_ordinal: 2, total_charged_ms: SOAK_MAXIMUM_ACTIVE_MS, pending: false, last_completed_ordinal: 1 };
   // Act / Assert
   assert.equal(requireIdleSoakLedger(idle), 2);
   throwsWith(() => requireIdleSoakLedger({ ...idle, pending: true, last_completed_ordinal: 0 }), "soak_ledger_not_idle");
-  throwsWith(() => requireIdleSoakLedger({ ...idle, total_charged_ms: 600000 }), "soak_ledger_not_idle");
+  throwsWith(() => requireIdleSoakLedger({ ...idle, total_charged_ms: 619050 }), "soak_ledger_not_idle");
 });
 
 test("a soak allowance carries the exact budget and a fresh id", () => {
   // Arrange / Act
   const [first, second] = [soakAllowance(1), soakAllowance(1)];
   // Assert
-  assert.equal(first.maximumActiveMilliseconds, 619050);
+  assert.equal(first.maximumActiveMilliseconds, 600000);
   assert.notEqual(first.id, second.id);
 });
 
-test("signing produces one upstream-default soak grant and 34 renewals at 60/20 s", async () => {
+test("signing produces one soak grant without a hardware profile and 34 renewals at 60/20 s", async () => {
   // Arrange
   const operations = [];
   const sign = async (operation, input) => { operations.push(operation); return { profile: "bwg-worker-lease-authorization-artifact/0.1", operation, authorization: `signed-${input.request.leaseId}` }; };
@@ -67,7 +67,7 @@ test("signing produces one upstream-default soak grant and 34 renewals at 60/20 
   const artifacts = await signSoak({ allowance: soakAllowance(3), challengeId: "challenge_x", binding: "B".repeat(43), stratum: { endpoint: "e", username: "u", password: "p" }, sign });
   // Assert
   assert.equal(artifacts.renewals.length, SOAK_RENEWALS);
-  assert.deepEqual([artifacts.grant.hardwareProfile, artifacts.grant.soakAllowance.ordinal, artifacts.grant.renewAfterMilliseconds], ["upstream-default", 3, 20000]);
+  assert.deepEqual(["hardwareProfile" in artifacts.grant, artifacts.grant.soakAllowance.ordinal, artifacts.grant.renewAfterMilliseconds], [false, 3, 20000]);
   assert.ok(artifacts.renewals.every((renewal) => renewal.leaseId === artifacts.grant.leaseId && renewal.durationMilliseconds === 60000));
   assert.equal(operations.filter((operation) => operation === "start").length, 1);
 });
@@ -141,8 +141,10 @@ function soakInput(overrides = {}) {
     { receivedAtUnixMs: 2, state: { running: false, renewalsConfirmed: 31, qualification: qualification({ revocation_reason: "lease_or_budget_expired",
       active_ms: 601000, safe_stop_complete: true, safe_stop_stage: "fan_paused", soak: { ...qualification().soak, complete: true, active_ms: 601000 } }) } },
   ];
-  return { context: {}, records, issuance: { ordinal: 1, ledger_before: { total_charged_ms: 0 } },
-    ledgerAfter: { schema: "worker-soak-ledger-v1", next_ordinal: 2, total_charged_ms: SOAK_MAXIMUM_ACTIVE_MS, pending: false, last_completed_ordinal: 1 },
+  const settings = { frequency: 485, coreVoltage: 1200, autofanspeed: 1 };
+  return { context: { device_settings: settings }, records, issuance: { ordinal: 1, ledger_before: { total_charged_ms: 0 } },
+    deviceSettings: { requested: settings, observed: { ...settings, temptarget: 60, minFanSpeed: 25 } },
+    ledgerAfter: { schema: "worker-soak-ledger-v2", next_ordinal: 2, total_charged_ms: SOAK_MAXIMUM_ACTIVE_MS, pending: false, last_completed_ordinal: 1 },
     finalState: {}, windowJudgement: { passed: true, failures: [] }, observerClean: true, ...overrides };
 }
 
@@ -151,10 +153,11 @@ test("the terminal judgement fails closed on each missing criterion", () => {
   const base = soakInput();
   const cases = {
     soak_not_ended_by_budget: soakInput({ records: [base.records[0]] }),
-    soak_ledger_not_charged_once: soakInput({ ledgerAfter: { ...base.ledgerAfter, total_charged_ms: 600000 } }),
+    soak_ledger_not_charged_once: soakInput({ ledgerAfter: { ...base.ledgerAfter, total_charged_ms: 619050 } }),
     window_websocket_gap_exceeded: soakInput({ windowJudgement: { passed: false, failures: ["websocket_gap_exceeded"] } }),
     window_judge_unavailable: soakInput({ windowJudgement: null }),
     observer_unclean: soakInput({ observerClean: false }),
+    device_settings_unrecorded: soakInput({ deviceSettings: null }),
   };
   // Act / Assert
   for (const [category, input] of Object.entries(cases)) {

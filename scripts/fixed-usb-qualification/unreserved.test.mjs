@@ -13,7 +13,7 @@ function state(context) {
     deviceRestorationConfirmed: true, deviceLeaseInactive: true, serialOwnershipReleased: true,
     preservation: { schema: "worker-preservation-continuity-v1", baseline_id: ID, device_identity_match: true, settings_match: true, authorization_high_water_match: true, mine_on_boot: false },
     qualification: { schema: "worker-qualification-v1", generation: 3, active_ms: 59069, generation_elapsed_ms: 61000, budget_reserved_ms: 240000,
-      budget_complete: true, active_limit_ms: 180000, shutdown_budget_ms: 15550, work_gate_remaining_ms: 0, submitted: 5, accepted: 5, rejected: 0,
+      budget_complete: true, active_limit_ms: 180000, shutdown_budget_ms: 22550, work_gate_remaining_ms: 0, submitted: 5, accepted: 5, rejected: 0,
       nonce_work_correlations: 5, work_dispatched: 26, last_valid_heartbeat_ms: 59000, gate_closed_ms: 59200, shutdown_started_ms: 59300,
       safe_stop_complete: true, safe_stop_stage: "fan_paused", revocation_reason: "restoration_requested", voltage_volts: 5, power_watts: 0,
       chip_temp_celsius: 30, fan_rpm: 1500, voltage_fresh: true, power_fresh: true, temperature_fresh: true, fan_fresh: true, watchdog_alive: true, mine_on_boot: false,

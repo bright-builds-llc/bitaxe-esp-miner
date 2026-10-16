@@ -123,7 +123,12 @@ fn actual_start_rejects_full_owner_queue_without_activation() {
         }))
         .expect("fill owner queue");
     // Act
-    let result = bwg::start(&grant(), deadlines, generation);
+    let result = bwg::start(
+        &grant(),
+        deadlines,
+        generation,
+        MiningHardwareProfilePreset::Conservative.profile(),
+    );
     // Assert
     assert_eq!(result, Err(bwg::Error::Unavailable));
     assert!(!revocation::permits(Some(generation)));
@@ -140,7 +145,12 @@ fn actual_start_rejects_revoked_generation_before_owner_queue() {
     let deadlines = deadlines();
     revocation::revoke_at(generation, 1_000);
     // Act
-    let result = bwg::start(&grant(), deadlines, generation);
+    let result = bwg::start(
+        &grant(),
+        deadlines,
+        generation,
+        MiningHardwareProfilePreset::Conservative.profile(),
+    );
     // Assert
     assert_eq!(result, Err(bwg::Error::Rejected));
 }
@@ -156,7 +166,12 @@ fn actual_start_rejects_unmappable_pool_before_owner_queue() {
     input["stratum"]["endpoint"] = json!("stratum+tcp://example.invalid/");
     let invalid: WorkerLeaseGrant = serde_json::from_value(input).expect("typed boundary input");
     // Act
-    let result = bwg::start(&invalid, deadlines, generation);
+    let result = bwg::start(
+        &invalid,
+        deadlines,
+        generation,
+        MiningHardwareProfilePreset::Conservative.profile(),
+    );
     // Assert
     assert_eq!(result, Err(bwg::Error::Rejected));
 }

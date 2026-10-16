@@ -8,7 +8,7 @@ import { exactObject, fileDigest, QualificationError, requireCondition, writeNew
 import { IDLE_MINIMUM_HTTP_SAMPLES, IDLE_PROOF_MS } from "./contract.mjs";
 
 const STOP_GRACE_MS = 10000;
-const PRIVATE_FIRST_OCTETS = (octets) => octets[0] === 10 || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) || (octets[0] === 192 && octets[1] === 168);
+export const PRIVATE_FIRST_OCTETS = (octets) => octets[0] === 10 || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) || (octets[0] === 192 && octets[1] === 168);
 const BROKEN_EVENTS = new Set(["closed", "failed", "connect_failed", "projection_invalid", "http_failed", "error"]);
 
 /** Complete journal lines only; the observer may be mid-write on the last one. */

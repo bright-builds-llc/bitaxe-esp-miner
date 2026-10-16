@@ -30684,3 +30684,141 @@ Residual risk: no hardware evidence yet for any duty other than 100% while
 mining, nor for auto settling. That is
 `task-device-config-profile-evidence-soaks`, and evidence must record the fan
 settings.
+
+### task-lease-without-hardware-profile | 2026-10-16 | Retire the signed hardware profile and accept ADR-0037
+
+ADR-0037 step 3. Depends on `task-asic-actuation-catalog-profiles` and
+`task-fan-policy-from-device-config`. This is a cross-repository change.
+
+- [x] Owner review and acceptance of ADR-0037 (accepted 2026-10-16). ADR-0033
+      decisions 1–2 are marked superseded, in force until this task lands.
+- [x] Gate (`bitaxe-turnstile-system`) and the host signer: stop parsing and
+      signing `hardwareProfile`. The soak budget becomes 600,000 ms of mining
+      (ADR-0037 decision 5, amended). The baseline deadline allows the
+      maximum tail plus cooling. Update the pinned Gate commit.
+- [x] Firmware lease parser: refuse grants that carry `hardwareProfile`. The
+      hardware profile comes from device configuration. Admission refuses an
+      out-of-range configuration with a typed reason.
+- [x] Soak and qualification tooling sets the device configuration before a
+      run and records it in evidence. Update `scripts/fixed-usb-soak`.
+
+Owner decisions (2026-10-16):
+- **Decouple shutdown from the budget:** the budget is mining time, and
+  shutdown is bounded separately. ADR-0037 decision 5 is amended, replacing
+  ADR-0033 decision 4 and ADR-0024's window note.
+- **Soak ledger:** a new soak ledger key with fresh ordinals; the old ledger
+  stays read-only as history.
+- **Bad settings:** refuse the lease, before any charge, for a fractional,
+  NaN or corrupt saved frequency, or an out-of-range frequency or voltage.
+- **Next soak:** 485 MHz / 1200 mV with the automatic fan. Tooling sets the
+  configuration with an HTTP PATCH while idle and records it in evidence.
+
+Plan:
+1. Firmware runtime and worker control:
+   - the work window equals the budget, and the soak is 600,000 ms;
+   - admission no longer fits a tail; a profile only needs a bounded plan
+     within the catalog range;
+   - remove `hardwareProfile` and `HardwareProfile`, so `deny_unknown_fields`
+     refuses old soak grants;
+   - add the new soak ledger key.
+2. Firmware:
+   - read the device profile (`asicfrequency_f`, `asicvoltage`) at Start,
+     before the budget is charged, refusing with a typed reason;
+   - replace `signed_profile`;
+   - update host tests.
+3. Gate repo:
+   - remove `hardwareProfile`;
+   - soak value 600,000, and the ledger and observation parsers;
+   - baseline and backstop deadlines include the maximum tail plus cooling;
+   - regenerate the vectors, run `bun run verify`, add a `.scratch` ticket,
+     then commit and push.
+4. Firmware tooling:
+   - copy the new vectors and bump the Gate pin;
+   - judges and fixtures: the 15,550 / 619,050 values and window timing;
+   - soak tooling sets and reads back the device configuration and records it
+     in evidence and samples.
+5. Gate, review, commit.
+
+Implementation (2026-10-16):
+- **Gate** `eacd8147`, pinned in `MODULE.bazel`; its ADR-0103 and ticket
+  record the change.
+  - Grants carrying `hardwareProfile` are refused.
+  - Soak allowance v2 at 600,000 ms, and soak ledger v2.
+  - Restoration timeouts are 3,000 + 22,550 + 120,000 + 6,450 = 152,000 ms.
+  - The soak backstop is 892,550 ms.
+  - Its vectors are copied to `gate-soak.json`.
+- **Runtime:**
+  - the work window is the budget;
+  - `SHUTDOWN_BOUND_MS` (22,550) is reported as `shutdown_budget_ms`;
+  - `active_ms` is mining time, capped at the budget, while
+    `generation_elapsed_ms` still covers the shutdown;
+  - `profile_admissible` means catalog range plus a bounded plan.
+- **Worker control:** `hardwareProfile` and `HardwareProfile` are removed.
+  Soak v2 allowances are 600,000 ms.
+- **Firmware:**
+  - `bitaxe_config::mining_settings` holds pure readers for `asicfrequency_f`
+    and `asicvoltage`. A corrupt or wrongly typed stored value is unreadable,
+    not the default.
+  - `MiningHardwareProfile::from_device_settings` returns a typed
+    `DeviceProfileRefusal`.
+  - Start reads the device profile before
+    `worker_acceptance_budget::admit`.
+  - The soak ledger is under `soak_ledger2` with schema
+    `worker-soak-ledger-v2`.
+- **Tooling:**
+  - qualification judges use `SHUTDOWN_BOUND_MS`;
+  - soak v2, with no profile in the grant;
+  - `scripts/fixed-usb-soak/device-settings.mjs` PATCHes 485 / 1200 / auto
+    fan to a private address at `/observer/start`, once per attempt, and
+    reads them back, including `temptarget` and `minFanSpeed`;
+  - the soak judge requires the recorded settings to match the contract;
+  - the cadence client waits up to 160 s for stop and close.
+
+Independent review (2026-10-16) found, and this change fixes:
+- **High:** `active_ms` ran on through the shutdown, past the budget, so every
+  budget-ended soak would have failed the Gate's parser and the judges. It is
+  now capped at the budget, with a regression.
+- **Medium:**
+  - an unused import;
+  - the settings PATCH could reach a public address, or be sent twice;
+  - the settings were not bound to the result;
+  - the profile reader had no tests.
+- **Low:** formatting, stale names and comments, the cadence client bounds,
+  the impossible fan refusal, and the unchecked GET.
+
+Residual risks:
+- The typed refusal is logged; the host sees a generic rejection.
+- Soak samples do not carry frequency and voltage per sample; the settings
+  are recorded once, at the start.
+- The historical STR-005 harnesses keep their 15,550 ms constants.
+- Hardware evidence comes with the next soak.
+
+Verification (2026-10-16):
+- **Gate:** `bun run verify` passes (1109 tests).
+- **Here:** the full gate passes:
+  - fmt, clippy, build and Cargo tests;
+  - `just build`; BAP and HTTP stack audits (704 and 1,104 bytes of
+    headroom);
+  - `just test` (338 tests);
+  - Bright Builds, redaction and parity.
+- **Tests include:**
+  - v1 allowances and grants carrying a profile are refused;
+  - the Gate-signed v2 vectors verify;
+  - a budget-ended soak reports `active_ms` = 600,000 while
+    `generation_elapsed_ms` covers the shutdown;
+  - device-settings refusals cover unreadable, fractional, NaN and
+    out-of-range values;
+  - the corrupt and legacy saved-setting readers;
+  - the soak settings PATCH and read-back, and the settings check in the
+    judge.
+
+Completion review: a Work Lease now authorizes mining time only. The device's
+saved settings choose the profile, and the firmware enforces the range and
+refuses bad settings before any charge. Shutdown is bounded on its own.
+
+Firmware and Gate change together, and mismatched peers fail closed:
+- an old Gate's soak grants carry a profile and v1;
+- new grants are refused by old firmware's soak rules.
+
+The next soak (a new task) runs at 485/1200 with the automatic fan, as
+`task-device-config-profile-evidence-soaks`.

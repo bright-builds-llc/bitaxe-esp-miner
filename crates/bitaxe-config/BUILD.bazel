@@ -36,6 +36,7 @@ rust_library(
         "src/display.rs",
         "src/golden_tests.rs",
         "src/lib.rs",
+        "src/mining_settings.rs",
         "src/nvs.rs",
         "src/nvs/loading.rs",
         "src/nvs/migration.rs",

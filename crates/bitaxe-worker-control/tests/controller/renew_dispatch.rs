@@ -206,8 +206,7 @@ fn renewal_after_the_lease_expired_cannot_reach_session_renew() {
 fn soak_started_worker() -> WorkerControl<FixtureVerifier, FakeSession> {
     let mut worker = admitted_worker();
     let mut grant: serde_json::Value = serde_json::from_str(&start_frame()).expect("grant fixture");
-    grant["payload"]["hardwareProfile"] = json!("upstream-default");
-    grant["payload"]["soakAllowance"] = json!({"schema":"worker-soak-allowance-v1","id":URL_SAFE_NO_PAD.encode([4;16]),"ordinal":1,"maximumActiveMilliseconds":619050});
+    grant["payload"]["soakAllowance"] = json!({"schema":"worker-soak-allowance-v2","id":URL_SAFE_NO_PAD.encode([4;16]),"ordinal":1,"maximumActiveMilliseconds":600000});
     let mut bytes = serde_json::to_vec(&grant).expect("grant frame");
     bytes.push(b'\n');
     worker

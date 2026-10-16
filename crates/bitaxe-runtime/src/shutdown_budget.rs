@@ -11,11 +11,11 @@ pub const POLL_ALLOWANCE_MS: u32 = 50;
 pub const OWNER_AND_GPIO_MARGIN_MS: u32 = 400;
 /// The Conservative (400 MHz) tail.
 pub const PRE_RESET_BOUND_MS: u32 = closed_pre_reset_tail_ms(400);
-/// The upstream-default (485 MHz) tail, which a soak reserves (ADR-0033).
+/// The upstream-default (485 MHz) tail.
 pub const UPSTREAM_PRE_RESET_BOUND_MS: u32 = closed_pre_reset_tail_ms(485);
 /// The highest Ultra 205 BM1366 catalog frequency (`bitaxe-config` catalog).
 pub const CATALOG_MAXIMUM_FREQUENCY_MHZ: u16 = 575;
-/// The tail of the catalog maximum, which ADR-0037 budgets will reserve.
+/// The tail of the catalog maximum: the shutdown bound outside every budget (ADR-0037).
 pub const CATALOG_MAXIMUM_PRE_RESET_TAIL_MS: u32 =
     closed_pre_reset_tail_ms(CATALOG_MAXIMUM_FREQUENCY_MHZ);
 const _: () = assert!(PRE_RESET_BOUND_MS == 15_550);
@@ -44,21 +44,14 @@ pub fn pre_reset_bound_ms(profile: Bm1366MiningProfile) -> Option<u32> {
         .and_then(|actions| maximum_pre_reset_ms(&actions))
 }
 
-/// ADR-0037 hardware admission: the frequency is a catalog-range BM1366
-/// profile whose ordered shutdown fits the tail the caller reserved. The fan is
-/// not part of admission: preparation proves it at 100%, then the device's fan
-/// settings drive it (decision 6).
+/// ADR-0037 hardware admission: the frequency is a catalog-range BM1366 profile
+/// whose ordered shutdown plan is bounded by its closed tail. The shutdown runs
+/// after the budget, so no budget has to reserve it (decision 5, amended). The
+/// fan is not part of admission: preparation proves it at 100%, then the
+/// device's fan settings drive it (decision 6).
 #[must_use]
-pub fn profile_admissible(profile: MiningHardwareProfile, reserved_tail_ms: u32) -> bool {
-    Bm1366MiningProfile::ultra_205(profile.frequency())
-        .is_ok_and(|asic| profile_fits_tail(asic, reserved_tail_ms))
-}
-
-/// Whether `profile`'s ordered shutdown is bounded and fits `reserved_tail_ms`.
-#[must_use]
-pub fn profile_fits_tail(profile: Bm1366MiningProfile, reserved_tail_ms: u32) -> bool {
-    plan_is_bounded(profile)
-        && closed_pre_reset_tail_ms(profile.frequency_mhz()) <= reserved_tail_ms
+pub fn profile_admissible(profile: MiningHardwareProfile) -> bool {
+    Bm1366MiningProfile::ultra_205(profile.frequency()).is_ok_and(plan_is_bounded)
 }
 
 /// Rejects a changed or unsupported shutdown plan before any hardware
@@ -133,39 +126,17 @@ mod tests {
     }
 
     #[test]
-    fn a_normal_budget_admits_exactly_400_mhz() {
-        // Arrange
-        let reserved = PRE_RESET_BOUND_MS;
-        // Act
-        let admitted = [400, 401].map(|mhz| profile_admissible(profile(mhz, 100), reserved));
+    fn every_catalog_frequency_is_admitted() {
+        // Arrange / Act
+        let admitted = [400, 485, 575].map(|mhz| profile_admissible(profile(mhz, 100)));
         // Assert
-        assert_eq!(admitted, [true, false]);
-    }
-
-    #[test]
-    fn a_soak_budget_admits_up_to_487_mhz() {
-        // Arrange: 487 MHz shares 485's 70-step ramp; 488 needs one more step.
-        let reserved = UPSTREAM_PRE_RESET_BOUND_MS;
-        // Act
-        let admitted = [485, 487, 488].map(|mhz| profile_admissible(profile(mhz, 100), reserved));
-        // Assert
-        assert_eq!(admitted, [true, true, false]);
-    }
-
-    #[test]
-    fn the_catalog_maximum_tail_admits_every_catalog_frequency() {
-        // Arrange
-        let reserved = CATALOG_MAXIMUM_PRE_RESET_TAIL_MS;
-        // Act
-        let admitted = [400, 575].map(|mhz| profile_admissible(profile(mhz, 100), reserved));
-        // Assert
-        assert_eq!(admitted, [true, true]);
+        assert_eq!(admitted, [true, true, true]);
     }
 
     #[test]
     fn the_profile_fan_duty_does_not_decide_admission() {
         // Arrange / Act
-        let admitted = profile_admissible(profile(400, 80), PRE_RESET_BOUND_MS);
+        let admitted = profile_admissible(profile(400, 80));
         // Assert
         assert!(admitted);
     }

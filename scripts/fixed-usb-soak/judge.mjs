@@ -1,5 +1,6 @@
 // Terminal soak judgement from Gate records, device ledgers, the released final state and the Rust window
 // judge. Every failure is a closed category; nothing here reads pool, endpoint or credential values.
+import { isDeepStrictEqual } from "node:util";
 import { requireReleasedState } from "../fixed-usb-qualification/iterative-preflight.mjs";
 import { SOAK_MAXIMUM_ACTIVE_MS, SOAK_RENEWALS, SOAK_WORK_GATE_MS } from "./contract.mjs";
 
@@ -52,14 +53,18 @@ function terminalFailures(records, ordinal) {
  * Judge one completed soak. `windowJudgement` is the parsed `soak-judge` output, or null when it could not
  * run. The result is `passed` only when every terminal, ledger, cleanup and window criterion holds.
  */
-export function judgeSoak({ context, records, issuance, ledgerAfter, finalState, windowJudgement, observerClean }) {
+export function judgeSoak({ context, records, issuance, ledgerAfter, finalState, windowJudgement, observerClean, deviceSettings }) {
   const failures = [];
   const check = (failed, category) => { if (failed) failures.push(category); };
+  // ADR-0037: the device settings are the profile; the soak must have recorded the ones it set.
+  check(!isDeepStrictEqual(deviceSettings?.requested, context.device_settings) ||
+    !Object.entries(context.device_settings ?? {}).every(([key, value]) => deviceSettings?.observed?.[key] === value),
+  "device_settings_unrecorded");
   let cleanupConfirmed = true;
   try { requireReleasedState(finalState, context); } catch { cleanupConfirmed = false; }
   check(!cleanupConfirmed, "cleanup_unconfirmed");
   const before = issuance.ledger_before;
-  check(!(ledgerAfter?.schema === "worker-soak-ledger-v1" && ledgerAfter.pending === false && ledgerAfter.next_ordinal === issuance.ordinal + 1 &&
+  check(!(ledgerAfter?.schema === "worker-soak-ledger-v2" && ledgerAfter.pending === false && ledgerAfter.next_ordinal === issuance.ordinal + 1 &&
     ledgerAfter.total_charged_ms === before.total_charged_ms + SOAK_MAXIMUM_ACTIVE_MS), "soak_ledger_not_charged_once");
   failures.push(...terminalFailures(records, issuance.ordinal));
   check(windowJudgement === null, "window_judge_unavailable");

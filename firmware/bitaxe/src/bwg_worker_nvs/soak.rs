@@ -1,7 +1,9 @@
 use super::BwgWorkerNvs;
 use bitaxe_worker_control::SoakLedger;
 /// Separate key so older firmware, which never reads it, keeps its own ledgers unchanged (ADR-0033).
-const KEY: &str = "soak_ledger";
+/// v2 (ADR-0037): soaks charge 600,000 ms of mining. The v1 `soak_ledger` key stays as
+/// read-only history and is never read.
+const KEY: &str = "soak_ledger2";
 impl BwgWorkerNvs {
     pub(crate) fn soak_ledger(&self) -> anyhow::Result<SoakLedger> {
         let Some(length) = self.nvs.blob_len(KEY)? else {

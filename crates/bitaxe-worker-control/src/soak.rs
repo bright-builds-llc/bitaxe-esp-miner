@@ -1,22 +1,14 @@
-//! Signed hardware profile and one-shot soak allowance with independent durable accounting
-//! (ADR-0033).
+//! One-shot soak allowance with independent durable accounting (ADR-0033). Since
+//! ADR-0037 the budget is mining time only and the hardware profile comes from the
+//! device's settings, so v2 allowances and ledgers replace v1.
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-const PROFILE: &str = "worker-soak-allowance-v1";
+const PROFILE: &str = "worker-soak-allowance-v2";
 const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
-/// Work stays admitted for 600,000 active ms; the budget adds the 19,050 ms upstream-default pre-reset shutdown tail.
+/// A soak mines for 600,000 active ms; its shutdown runs after, outside the budget.
 pub const SOAK_WORK_GATE_MS: u64 = 600_000;
-pub const SOAK_MAXIMUM_ACTIVE_MS: u64 = 619_050;
-
-/// Signed mining hardware profile. Absent on a grant means `Conservative`.
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum HardwareProfile {
-    #[default]
-    Conservative,
-    UpstreamDefault,
-}
+pub const SOAK_MAXIMUM_ACTIVE_MS: u64 = SOAK_WORK_GATE_MS;
 
 /// Field order is canonical because authorization hashing serializes directly.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

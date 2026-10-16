@@ -83,7 +83,7 @@ test("funded device observation rejects an unissued claim even when issuance fil
     budget_complete: true, safe_stop_complete: true, voltage_fresh: false, power_fresh: false, temperature_fresh: false, fan_fresh: false,
     watchdog_alive: true, mine_on_boot: false, voltage_volts: null, power_watts: null, chip_temp_celsius: null, fan_rpm: null,
     gate_closed_ms: null, shutdown_started_ms: null, safe_stop_stage: "not_started", revocation_reason: "none",
-    active_limit_ms: 180000, shutdown_budget_ms: 15550, work_gate_remaining_ms: 0,
+    active_limit_ms: 180000, shutdown_budget_ms: 22550, work_gate_remaining_ms: 0,
     attempt: { schema: "worker-qualification-observation-v1", ordinal: 16, purpose: "normal", maximum_active_ms: 180000, reserved_ms: 180000, complete: true, active_ms: 0 } };
   await f.writeRecords();
   // Act / Assert

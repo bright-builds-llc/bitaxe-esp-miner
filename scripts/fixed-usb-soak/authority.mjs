@@ -13,7 +13,7 @@ export async function signSoak({ allowance, challengeId, binding, stratum, sign 
       artifact.authorization.length > 0 && artifact.authorization.length <= 8192, "authorization_shape");
     return { ...request, authorization: artifact.authorization };
   };
-  const grant = await attach("start", { ...common, challengeId, stratum, hardwareProfile: "upstream-default", soakAllowance: allowance });
+  const grant = await attach("start", { ...common, challengeId, stratum, soakAllowance: allowance });
   const renewals = [];
   for (let index = 0; index < SOAK_RENEWALS; index += 1) renewals.push(await attach("renew", { ...common }));
   return { grant, renewals };

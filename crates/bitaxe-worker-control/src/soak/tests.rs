@@ -4,21 +4,21 @@ use serde_json::json;
 
 fn allowance(ordinal: u32) -> SoakAllowance {
     serde_json::from_value(json!({"id": URL_SAFE_NO_PAD.encode([7; 16]), "maximumActiveMilliseconds": SOAK_MAXIMUM_ACTIVE_MS,
-        "ordinal": ordinal, "schema": "worker-soak-allowance-v1"}))
+        "ordinal": ordinal, "schema": "worker-soak-allowance-v2"}))
     .expect("allowance")
 }
 
 #[test]
-fn a_soak_allowance_must_carry_exactly_the_work_gate_plus_shutdown_tail() {
-    // Arrange
+fn a_soak_allowance_must_carry_exactly_the_mining_window() {
+    // Arrange: the v1 budget also counted the 19,050 ms shutdown tail.
     let mut value = serde_json::to_value(allowance(1)).expect("value");
-    value["maximumActiveMilliseconds"] = json!(SOAK_WORK_GATE_MS);
+    value["maximumActiveMilliseconds"] = json!(619_050);
     // Act
-    let short: SoakAllowance = serde_json::from_value(value).expect("parsed");
+    let v1_budget: SoakAllowance = serde_json::from_value(value).expect("parsed");
     // Assert
     assert!(allowance(1).validate());
-    assert!(!short.validate());
-    assert_eq!(SOAK_MAXIMUM_ACTIVE_MS - SOAK_WORK_GATE_MS, 19_050);
+    assert!(!v1_budget.validate());
+    assert_eq!(SOAK_MAXIMUM_ACTIVE_MS, SOAK_WORK_GATE_MS);
 }
 
 #[test]
@@ -35,7 +35,7 @@ fn reserving_charges_the_whole_allowance_before_preparation() {
             reserved.next_ordinal(),
             reserved.last_completed_ordinal()
         ),
-        (619_050, 2, 0)
+        (600_000, 2, 0)
     );
 }
 
@@ -79,7 +79,7 @@ fn finishing_is_idempotent_and_never_refunds() {
             twice.pending(),
             twice.last_completed_ordinal()
         ),
-        (619_050, false, 1)
+        (600_000, false, 1)
     );
 }
 
@@ -92,7 +92,7 @@ fn a_stored_ledger_whose_total_disagrees_with_its_ordinals_is_rejected() {
             .expect("reserved"),
     )
     .expect("value");
-    value["total_charged_ms"] = json!(600_000);
+    value["total_charged_ms"] = json!(619_050);
     // Act
     let tampered: SoakLedger = serde_json::from_value(value).expect("parsed");
     // Assert

@@ -15,7 +15,7 @@ const state = { schema: "worker-serial-acceptance-v1", gateCommit: context.gate_
 const proof = { schema: "worker-cooling-proof-v1", fan_duty_percent: 100, fan_rpm: 5000, post_command_fan_proven: true, asic_effects: false, budget_reserved: false };
 const restoration = { schema: "worker-cooling-baseline-v1", fan_duty_percent: 30, cooling_proven: true, asic_effects: false, budget_reserved: false };
 const qualificationLedger = { schema: "worker-qualification-ledger-v1", next_ordinal: 34, total_charged_ms: 4260000, pending: false, last_completed_ordinal: 33 };
-const soakLedger = { schema: "worker-soak-ledger-v1", next_ordinal: 1, total_charged_ms: 0, pending: false, last_completed_ordinal: 0 };
+const soakLedger = { schema: "worker-soak-ledger-v2", next_ordinal: 1, total_charged_ms: 0, pending: false, last_completed_ordinal: 0 };
 const binding = "A".repeat(43);
 
 async function supervisor({ idlePassed = true } = {}) {

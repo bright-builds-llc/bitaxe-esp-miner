@@ -120,7 +120,7 @@ pub(crate) fn review() -> anyhow::Result<serde_json::Value> {
     let store = BwgWorkerNvs::open().map_err(|_| anyhow::anyhow!("soak_budget=storage"))?;
     let ledger = store.soak_ledger()?;
     Ok(
-        serde_json::json!({"schema":"worker-soak-ledger-v1","next_ordinal":ledger.next_ordinal(),"total_charged_ms":ledger.total_charged_ms(),"pending":ledger.pending(),"last_completed_ordinal":ledger.last_completed_ordinal()}),
+        serde_json::json!({"schema":"worker-soak-ledger-v2","next_ordinal":ledger.next_ordinal(),"total_charged_ms":ledger.total_charged_ms(),"pending":ledger.pending(),"last_completed_ordinal":ledger.last_completed_ordinal()}),
     )
 }
 

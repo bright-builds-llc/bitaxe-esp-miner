@@ -53,12 +53,6 @@ pub struct WorkerLeaseGrant {
         deserialize_with = "qualification_attempt"
     )]
     maybe_qualification_attempt: Option<crate::QualificationAttempt>,
-    #[serde(
-        default,
-        rename = "hardwareProfile",
-        deserialize_with = "hardware_profile"
-    )]
-    maybe_hardware_profile: Option<crate::HardwareProfile>,
     #[serde(default, rename = "soakAllowance", deserialize_with = "soak_allowance")]
     maybe_soak_allowance: Option<crate::SoakAllowance>,
 }
@@ -100,22 +94,16 @@ impl WorkerLeaseGrant {
                 .is_none_or(AcceptanceCampaign::validate)
     }
 
-    /// ADR-0033: upstream-default needs a soak; a soak states its profile and is a 60/20 s Stratum V1 lease.
+    /// ADR-0033: a soak is a 60/20 s Stratum V1 lease. A grant carries no hardware
+    /// profile; the device's own settings choose it (ADR-0037).
     fn valid_soak_shape(&self) -> bool {
         let Some(soak) = self.maybe_soak_allowance.as_ref() else {
-            return self.maybe_hardware_profile != Some(crate::HardwareProfile::UpstreamDefault);
+            return true;
         };
         soak.validate()
-            && self.maybe_hardware_profile.is_some()
             && self.maybe_v2().is_none()
             && self.duration_milliseconds == 60_000
             && self.renew_after_milliseconds == 20_000
-    }
-
-    /// The signed profile; an absent field means Conservative.
-    #[must_use]
-    pub fn hardware_profile(&self) -> crate::HardwareProfile {
-        self.maybe_hardware_profile.unwrap_or_default()
     }
 
     #[must_use]
@@ -203,7 +191,6 @@ impl WorkerLeaseGrant {
             maybe_qualification_attempt: self.maybe_qualification_attempt.as_ref(),
             challenge_id: &self.challenge_id,
             duration_milliseconds: self.duration_milliseconds,
-            maybe_hardware_profile: self.maybe_hardware_profile,
             lease_id: &self.lease_id,
             protocol_version: &self.protocol_version,
             renew_after_milliseconds: self.renew_after_milliseconds,
@@ -263,8 +250,6 @@ struct AuthorizationlessGrant<'a> {
     maybe_acceptance_campaign: Option<&'a AcceptanceCampaign>,
     challenge_id: &'a str,
     duration_milliseconds: u64,
-    #[serde(rename = "hardwareProfile", skip_serializing_if = "Option::is_none")]
-    maybe_hardware_profile: Option<crate::HardwareProfile>,
     lease_id: &'a str,
     protocol_version: &'a str,
     #[serde(
@@ -449,12 +434,6 @@ fn qualification_attempt<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<crate::QualificationAttempt>, D::Error> {
     crate::QualificationAttempt::deserialize(deserializer).map(Some)
-}
-
-fn hardware_profile<'de, D: serde::Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<crate::HardwareProfile>, D::Error> {
-    crate::HardwareProfile::deserialize(deserializer).map(Some)
 }
 
 fn soak_allowance<'de, D: serde::Deserializer<'de>>(

@@ -103,7 +103,6 @@ use crate::production_mining_session::cooling_core::{
 pub struct Ultra205MiningActuationAdapter {
     maybe_worker_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
     maybe_requested_profile: Option<MiningHardwareProfile>,
-    reserved_tail_ms: u32,
     maybe_fan_command_baseline: Option<ObservationStamp>,
     maybe_fan_command_started_at_ms: Option<u64>,
     maybe_pending_fan_actuation: Option<PendingSafetyActuation>,
@@ -120,7 +119,6 @@ impl Ultra205MiningActuationAdapter {
         Self {
             maybe_worker_generation: None,
             maybe_requested_profile: None,
-            reserved_tail_ms: 0,
             maybe_fan_command_baseline: None,
             maybe_fan_command_started_at_ms: None,
             maybe_pending_fan_actuation: None,
@@ -132,14 +130,11 @@ impl Ultra205MiningActuationAdapter {
         }
     }
 
-    /// Prepares `profile`, whose shutdown must fit the caller's reserved tail (ADR-0037).
     pub fn prepare(
         &mut self,
         profile: MiningHardwareProfile,
-        reserved_tail_ms: u32,
     ) -> Result<(), PreparationExecutionFailure<MiningActuationAdapterError>> {
         self.maybe_requested_profile = Some(profile);
-        self.reserved_tail_ms = reserved_tail_ms;
         // A profile from an earlier preparation must not choose this rollback's ramp.
         self.maybe_asic_profile = None;
         self.fan_proof_confirmed = false;
@@ -443,10 +438,7 @@ impl Ultra205MiningActuationAdapter {
 
     fn requested_profile_is_admissible(&self) -> bool {
         self.maybe_requested_profile.is_some_and(|profile| {
-            crate::production_mining_session::shutdown_budget::profile_admissible(
-                profile,
-                self.reserved_tail_ms,
-            )
+            crate::production_mining_session::shutdown_budget::profile_admissible(profile)
         })
     }
 }

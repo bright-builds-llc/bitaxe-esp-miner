@@ -15,6 +15,7 @@ import { validateState } from "../fixed-usb-qualification/judge.mjs";
 import { signSoak } from "./authority.mjs";
 import { requireIdleSoakLedger, requireQualificationIdle, soakAllowance, SOAK_WORK_GATE_MS } from "./contract.mjs";
 import { clockObservations, judgeSoak } from "./judge.mjs";
+import { applyDeviceSettings } from "./device-settings.mjs";
 import { createSoakObserver } from "./observer.mjs";
 import { verifyFrozenSoak } from "./preflight.mjs";
 
@@ -112,7 +113,8 @@ export async function createSoakSupervisor(options, operations = {}) {
     const observerClean = await observer.stop().then(() => true, () => false);
     await writeNew(resolve(root, "completion-input.json"), { ledger_after: input.ledger_after, final_state: input.final_state });
     const windowJudgement = await runWindowJudge();
-    const result = judgeSoak({ context, records, issuance, ledgerAfter: input.ledger_after, finalState: input.final_state, windowJudgement, observerClean });
+    const deviceSettings = await readJson(resolve(root, "device-settings.json")).catch(() => null);
+    const result = judgeSoak({ context, records, issuance, ledgerAfter: input.ledger_after, finalState: input.final_state, windowJudgement, observerClean, deviceSettings });
     await writeNew(resolve(root, "result.json"), { result, sha256: digest(JSON.stringify(result)) });
     return { result: result.result, ordinal: result.ordinal, cumulative_charged_ms: result.cumulative_charged_ms, cleanup_confirmed: result.cleanup_confirmed };
   }
@@ -143,6 +145,11 @@ export async function createSoakSupervisor(options, operations = {}) {
       idleState(input.state);
       const endpoint = input.endpoint;
       requireCondition(endpoint?.schema === "worker-telemetry-endpoint-v1" && canonicalBase64(endpoint.controlSessionBindingSha256, 32), "observer_endpoint");
+      // ADR-0037: the device's settings are the mining profile; set and record them while idle.
+      // One PATCH per attempt: a retry after an observer failure never writes again.
+      await missing(resolve(root, "device-settings.json"));
+      const settings = await (operations.applyDeviceSettings ?? applyDeviceSettings)({ ipv4: endpoint.ipv4, httpPort: endpoint.httpPort });
+      await writeNew(resolve(root, "device-settings.json"), { ...settings, context_sha256: digest(JSON.stringify(context)) });
       return observer.start({ ipv4: endpoint.ipv4, httpPort: endpoint.httpPort });
     },
     "GET /observer/idle-proof": async () => observer.idle(),

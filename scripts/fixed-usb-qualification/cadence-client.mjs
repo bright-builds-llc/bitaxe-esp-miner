@@ -48,9 +48,9 @@ export function createCadenceSupervisor(operations) {
       const settled = await Promise.allSettled([
         (async () => {
           let maybeStopFailure;
-          try { if (worker().state().connected) await bounded(() => worker().stop(), 150000); }
+          try { if (worker().state().connected) await bounded(() => worker().stop(), 160000); }
           catch (error) { maybeStopFailure = error; }
-          try { await bounded(() => worker().close(), 150000); }
+          try { await bounded(() => worker().close(), 160000); }
           catch (error) { throw maybeStopFailure ? new AggregateError([maybeStopFailure, error], "Worker cleanup failed") : error; }
           if (maybeStopFailure) throw maybeStopFailure;
         })(),
@@ -138,7 +138,7 @@ export function createCadenceSupervisor(operations) {
     if (maybeFaultAtUnixMs === undefined || maybeFaultObservedAtMs === undefined) throw new Error("cadence_fault_missing");
     await waitFor(maybeFaultObservedAtMs + 145000, false);
     if (now() < maybeFaultAtUnixMs + 145000) throw new Error("cadence_clock");
-    await bounded(() => worker().close(), 150000); await flush();
+    await bounded(() => worker().close(), 160000); await flush();
     const resumed = new Promise((resolve, reject) => { maybeResume = { resolve, reject }; });
     publish("awaiting_reconnect");
     await resumed;

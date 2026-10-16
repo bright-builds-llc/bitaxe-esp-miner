@@ -1199,62 +1199,6 @@ Divergences, recorded:
   `verified` → `verified` transitions, so the correction lives here.
 Verification: pending. Completion review: pending.
 
-### task-lease-without-hardware-profile | 2026-10-16 | Retire the signed hardware profile and accept ADR-0037
-
-ADR-0037 step 3. Depends on `task-asic-actuation-catalog-profiles` and
-`task-fan-policy-from-device-config`. This is a cross-repository change.
-
-- [x] Owner review and acceptance of ADR-0037 (accepted 2026-10-16). ADR-0033
-      decisions 1–2 are marked superseded, in force until this task lands.
-- [ ] Gate (`bitaxe-turnstile-system`) and the host signer: stop parsing and
-      signing `hardwareProfile`. The soak budget becomes 600,000 ms of mining
-      (ADR-0037 decision 5, amended). The baseline deadline allows the
-      maximum tail plus cooling. Update the pinned Gate commit.
-- [ ] Firmware lease parser: refuse grants that carry `hardwareProfile`. The
-      hardware profile comes from device configuration. Admission refuses an
-      out-of-range configuration with a typed reason.
-- [ ] Soak and qualification tooling sets the device configuration before a
-      run and records it in evidence. Update `scripts/fixed-usb-soak`.
-
-Owner decisions (2026-10-16):
-- **Decouple shutdown from the budget:** the budget is mining time, and
-  shutdown is bounded separately. ADR-0037 decision 5 is amended, replacing
-  ADR-0033 decision 4 and ADR-0024's window note.
-- **Soak ledger:** a new soak ledger key with fresh ordinals; the old ledger
-  stays read-only as history.
-- **Bad settings:** refuse the lease, before any charge, for a fractional,
-  NaN or corrupt saved frequency, or an out-of-range frequency or voltage.
-- **Next soak:** 485 MHz / 1200 mV with the automatic fan. Tooling sets the
-  configuration with an HTTP PATCH while idle and records it in evidence.
-
-Plan:
-1. Firmware runtime and worker control:
-   - the work window equals the budget, and the soak is 600,000 ms;
-   - admission no longer fits a tail; a profile only needs a bounded plan
-     within the catalog range;
-   - remove `hardwareProfile` and `HardwareProfile`, so `deny_unknown_fields`
-     refuses old soak grants;
-   - add the new soak ledger key.
-2. Firmware:
-   - read the device profile (`asicfrequency_f`, `asicvoltage`) at Start,
-     before the budget is charged, refusing with a typed reason;
-   - replace `signed_profile`;
-   - update host tests.
-3. Gate repo:
-   - remove `hardwareProfile`;
-   - soak value 600,000, and the ledger and observation parsers;
-   - baseline and backstop deadlines include the maximum tail plus cooling;
-   - regenerate the vectors, run `bun run verify`, add a `.scratch` ticket,
-     then commit and push.
-4. Firmware tooling:
-   - copy the new vectors and bump the Gate pin;
-   - judges and fixtures: the 15,550 / 619,050 values and window timing;
-   - soak tooling sets and reads back the device configuration and records it
-     in evidence and samples.
-5. Gate, review, commit.
-
-Verification: pending. Completion review: pending.
-
 ## Future
 
 ### task-live-hardware-settings-owner | 2026-10-16 | Apply frequency and voltage changes while mining, like upstream

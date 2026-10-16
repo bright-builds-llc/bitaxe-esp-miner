@@ -22,6 +22,7 @@ static CURRENT_SETTINGS_SNAPSHOT: OnceLock<crate::settings_snapshot_store::Confi
     OnceLock::new();
 static SETTINGS_TRANSACTION_LOCK: Mutex<()> = Mutex::new(());
 
+pub(crate) mod device_profile;
 mod noise_guard;
 pub(crate) use noise_guard::claim_noise_fence;
 

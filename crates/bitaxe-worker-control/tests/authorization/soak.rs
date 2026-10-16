@@ -22,7 +22,7 @@ fn context(vector: &Value) -> WorkerLeaseAuthorizationContext {
     .expect("context")
 }
 #[test]
-fn gate_signed_soak_grants_verify_in_rust_with_their_profiles() {
+fn gate_signed_soak_grants_verify_in_rust() {
     // Arrange
     let f = fixture();
     let mut v = verifier(&f);
@@ -31,19 +31,14 @@ fn gate_signed_soak_grants_verify_in_rust_with_their_profiles() {
             serde_json::from_value(vector["grant"].clone()).expect("grant");
         // Act / Assert
         assert_eq!(v.verify_start(&grant, &context(vector)), Ok(()));
-        assert_eq!(
-            serde_json::to_value(grant.hardware_profile()).expect("profile"),
-            vector["hardwareProfile"]
-        );
     }
 }
 #[test]
-fn changing_the_signed_profile_or_allowance_invalidates_authorization() {
+fn changing_the_signed_allowance_invalidates_authorization() {
     // Arrange
     let f = fixture();
     let vector = &f["vectors"][0];
     for (pointer, value) in [
-        ("/hardwareProfile", serde_json::json!("conservative")),
         ("/soakAllowance/ordinal", serde_json::json!(2)),
         (
             "/soakAllowance/id",

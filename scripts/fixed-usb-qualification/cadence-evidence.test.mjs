@@ -300,7 +300,7 @@ function liveFixture() {
       maximum_execution_ms: 500, maximum_storage_bytes: 2048, observer_lifetime_ms: 360000, usb_probes: 12, probe_period_ms: 5000 },
     cadence_observer: { path: "/fixture", sha256: "a".repeat(64) }, cadence_validator_sha256: "b".repeat(64) };
   const q = { generation: 2, budget_reserved_ms: 240000, budget_complete: true, active_ms: 65000, generation_elapsed_ms: 66000,
-    active_limit_ms: 180000, shutdown_budget_ms: 15550, work_gate_remaining_ms: 10000, voltage_fresh: true, power_fresh: true,
+    active_limit_ms: 180000, shutdown_budget_ms: 22550, work_gate_remaining_ms: 10000, voltage_fresh: true, power_fresh: true,
     temperature_fresh: true, fan_fresh: true, voltage_volts: 5, power_watts: 8, chip_temp_celsius: 35, fan_rpm: 5000,
     watchdog_alive: true, mine_on_boot: false, safe_stop_complete: false, gate_closed_ms: null, shutdown_started_ms: null,
     last_valid_heartbeat_ms: 202000, accepted: 0,

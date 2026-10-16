@@ -239,7 +239,8 @@ fn renewed_heartbeat_cannot_extend_the_reserved_campaign_window() {
     assert!(gate.admit_budget(generation, 30_000));
     assert!(gate.activate(generation));
     gate.note_first_dispatch(Some(generation), 0);
-    let stop_at = 30_000 - super::super::shutdown_budget::PRE_RESET_BOUND_MS;
+    // The whole budget is mining time; the shutdown runs after it (ADR-0037).
+    let stop_at: u32 = 30_000;
     // Act
     for now in (1000..stop_at).step_by(1000) {
         assert!(gate.heartbeat(generation, u64::from(now)));
@@ -252,11 +253,11 @@ fn renewed_heartbeat_cannot_extend_the_reserved_campaign_window() {
 }
 
 #[test]
-fn active_budget_is_not_spent_on_preparation_and_cannot_omit_shutdown_reserve() {
+fn active_budget_is_not_spent_on_preparation_and_cannot_be_empty() {
     // Arrange
     let gate = GenerationGate::new();
     let worker = gate.begin_link(0).expect("link");
-    assert!(!gate.admit_budget(worker, 1_000));
+    assert!(!gate.admit_budget(worker, 0));
     assert!(!gate.activate(worker));
     assert!(gate.admit_budget(worker, 30_000));
     assert!(gate.activate_at(worker, 0));
@@ -277,7 +278,7 @@ fn active_budget_is_not_spent_on_preparation_and_cannot_omit_shutdown_reserve() 
     let timing = gate.timing(10_000).expect("first work");
     assert_eq!(timing.active_ms, 0);
     assert_eq!(timing.active_limit_ms, Some(30_000));
-    assert_eq!(timing.work_gate_remaining_ms, Some(14_450));
+    assert_eq!(timing.work_gate_remaining_ms, Some(30_000));
 }
 
 #[test]

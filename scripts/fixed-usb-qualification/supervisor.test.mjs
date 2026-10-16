@@ -73,7 +73,7 @@ function cycle(context, index, extra = {}) {
 function qualification(window, done = false) {
   const limit = WINDOW_MS[window];
   return { schema: "worker-qualification-v1", generation: 1, active_ms: done ? limit - 4000 : 1000,
-    active_limit_ms: limit, shutdown_budget_ms: 15550, work_gate_remaining_ms: done ? 0 : limit - 16550,
+    active_limit_ms: limit, shutdown_budget_ms: 22550, work_gate_remaining_ms: done ? 0 : limit - 1000,
     generation_elapsed_ms: done ? limit - 1000 : 3000, budget_reserved_ms: WINDOW_MS.slice(0, window + 1).reduce((a, b) => a + b, 0),
     budget_complete: window === 2 && done, submitted: 3, accepted: 2, rejected: 0, nonce_work_correlations: 4, work_dispatched: 5,
     last_valid_heartbeat_ms: limit - 4000, gate_closed_ms: done ? limit - 1200 : null, shutdown_started_ms: done ? limit - 1100 : null,

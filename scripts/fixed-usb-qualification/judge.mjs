@@ -29,8 +29,10 @@ function validateOwnerResources(resource) {
       ["heap_free_bytes", "heap_largest_bytes", "stack_free_bytes"].every((key) => u32(resource[key])), "owner_resources_shape");
 }
 
-/** One-shot soak budget: 600,000 ms of work plus the 19,050 ms upstream-default shutdown tail (firmware ADR-0033). */
-export const SOAK_MAXIMUM_ACTIVE_MS = 619050;
+/** One-shot soak budget: 600,000 ms of mining. Shutdown runs after it (firmware ADR-0037 decision 5). */
+export const SOAK_MAXIMUM_ACTIVE_MS = 600000;
+/** The firmware's shutdown bound outside every budget: the 575 MHz closed tail (ADR-0037). */
+export const SHUTDOWN_BOUND_MS = 22550;
 
 function validateSoakObservation(soak, activeMs) {
   exactObject(soak, ["schema", "ordinal", "maximum_active_ms", "reserved_ms", "complete", "active_ms"]);
@@ -147,7 +149,7 @@ export function judgeWindow(index, records, fault, { successor = false, lastWind
   requireCondition(q.safe_stop_stage === "fan_paused" && q.temperature_fresh && q.chip_temp_celsius <= 45 &&
     q.fan_fresh && q.fan_rpm > 0, "terminal_cooling_proof_missing");
   requireCondition(q.active_ms > 0 && q.active_ms <= q.generation_elapsed_ms && q.active_ms <= maximum &&
-    q.active_limit_ms === maximum && q.shutdown_budget_ms === 15550 &&
+    q.active_limit_ms === maximum && q.shutdown_budget_ms === SHUTDOWN_BOUND_MS &&
     q.submitted >= q.accepted + q.rejected && q.work_dispatched > 0 && (diagnostic || q.nonce_work_correlations > 0 || filterFaultWork), "mining_evidence_missing");
   if (index === 0 && !diagnostic) {
     requireCondition(bound.some((record) => record.state.renewalsConfirmed >= 1) && fault === undefined &&

@@ -58,7 +58,7 @@ async function fixture(t, purpose = "diagnostic") {
 function observations(context) {
   const a = context.qualification_attempt;
   const q = { schema: "worker-qualification-v1", generation: 1, active_ms: 1000, generation_elapsed_ms: 2000,
-    budget_reserved_ms: 240000, budget_complete: true, active_limit_ms: a.maximumActiveMilliseconds, shutdown_budget_ms: 15550,
+    budget_reserved_ms: 240000, budget_complete: true, active_limit_ms: a.maximumActiveMilliseconds, shutdown_budget_ms: 22550,
     work_gate_remaining_ms: 10000, submitted: 0, accepted: 0, rejected: 0, nonce_work_correlations: 0, work_dispatched: 1,
     last_valid_heartbeat_ms: 1000, gate_closed_ms: null, shutdown_started_ms: null, safe_stop_complete: false,
     safe_stop_stage: "not_started", revocation_reason: "none", voltage_volts: 5, power_watts: 10, chip_temp_celsius: 40,

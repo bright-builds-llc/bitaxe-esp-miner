@@ -1,4 +1,4 @@
-// `just ultra205-soak preflight|serve|finish`: one task-gated upstream-default soak (firmware ADR-0033).
+// `just ultra205-soak preflight|serve|finish`: one task-gated soak (firmware ADR-0033, ADR-0037).
 // Usage: scripts/fixed-usb-soak/README.md. Effects need the active soak task's exact enable line.
 import { fstatSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";

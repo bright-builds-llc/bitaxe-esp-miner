@@ -3,13 +3,10 @@ use bitaxe_runtime::reply::ReplySender;
 use bitaxe_stratum::v1::production_session::{
     LivePoolCredentials, LiveRuntimeConfig, MiningCampaignLease, MiningCampaignLeaseId,
     MiningCampaignMonotonicDeadline, MiningCampaignState, MiningCampaignStopCondition,
-    MiningHardwareProfile, MiningHardwareProfilePreset, MiningHardwareState,
-    ProductionPoolConfiguration, ProductionPoolEndpoint, ProductionPoolSet,
-    ProductionProtocolConfig, V2PoolConfig,
+    MiningHardwareProfile, MiningHardwareState, ProductionPoolConfiguration,
+    ProductionPoolEndpoint, ProductionPoolSet, ProductionProtocolConfig, V2PoolConfig,
 };
-use bitaxe_worker_control::{
-    HardwareProfile, LeaseDeadlines, WorkerLeaseGrant, WorkerLeaseRenewal,
-};
+use bitaxe_worker_control::{LeaseDeadlines, WorkerLeaseGrant, WorkerLeaseRenewal};
 
 pub(super) struct OwnerSession {
     pub(super) generation: revocation::WorkerGeneration,
@@ -84,6 +81,7 @@ pub(crate) fn start(
     grant: &WorkerLeaseGrant,
     deadlines: LeaseDeadlines,
     generation: revocation::WorkerGeneration,
+    profile: MiningHardwareProfile,
 ) -> Result<(), Error> {
     if !revocation::is_live(generation) {
         return Err(Error::Rejected);
@@ -93,7 +91,6 @@ pub(crate) fn start(
         return Err(Error::Rejected);
     }
     let pools = pool_set(grant)?;
-    let profile = signed_profile(grant.hardware_profile());
     request(
         |reply| OwnerCommand::Start {
             generation,
@@ -181,16 +178,6 @@ fn notifications() -> Result<&'static SyncSender<OwnerInboxMessage>, Error> {
 fn deadline(deadlines: LeaseDeadlines) -> Result<MiningCampaignMonotonicDeadline, Error> {
     MiningCampaignMonotonicDeadline::new(deadlines.expires_at_monotonic_milliseconds())
         .map_err(|_| Error::Rejected)
-}
-
-/// ADR-0033: the signed grant selects the preset; the grant's validation already admits
-/// upstream-default only with a soak allowance.
-fn signed_profile(profile: HardwareProfile) -> MiningHardwareProfile {
-    match profile {
-        HardwareProfile::Conservative => MiningHardwareProfilePreset::Conservative,
-        HardwareProfile::UpstreamDefault => MiningHardwareProfilePreset::UpstreamDefault,
-    }
-    .profile()
 }
 
 fn lease(

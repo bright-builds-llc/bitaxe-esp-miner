@@ -36,12 +36,12 @@ export async function requireSoakTask(firmwareRoot) {
 
 export function soakAllowance(ordinal) {
   requireCondition(Number.isSafeInteger(ordinal) && ordinal > 0 && ordinal <= 0xffffffff, "soak_ordinal");
-  return { schema: "worker-soak-allowance-v1", id: nonce(), ordinal, maximumActiveMilliseconds: SOAK_MAXIMUM_ACTIVE_MS };
+  return { schema: "worker-soak-allowance-v2", id: nonce(), ordinal, maximumActiveMilliseconds: SOAK_MAXIMUM_ACTIVE_MS };
 }
 
 /** A device soak ledger that is idle and internally consistent; its next ordinal is the soak to sign. */
 export function requireIdleSoakLedger(value) {
-  requireCondition(value && value.schema === "worker-soak-ledger-v1" && value.pending === false &&
+  requireCondition(value && value.schema === "worker-soak-ledger-v2" && value.pending === false &&
     Number.isSafeInteger(value.next_ordinal) && value.next_ordinal >= 1 &&
     value.last_completed_ordinal === value.next_ordinal - 1 &&
     value.total_charged_ms === (value.next_ordinal - 1) * SOAK_MAXIMUM_ACTIVE_MS, "soak_ledger_not_idle");

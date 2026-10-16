@@ -119,6 +119,15 @@ mod startup {
     pub struct BootMiningBaselineConfirmed;
 }
 mod settings_adapter {
+    pub mod device_profile {
+        pub fn device_mining_profile() -> Result<
+            bitaxe_stratum::v1::production_session::MiningHardwareProfile,
+            bitaxe_stratum::v1::production_session::DeviceProfileRefusal,
+        > {
+            Ok(bitaxe_stratum::v1::production_session::MiningHardwareProfilePreset::Conservative
+                .profile())
+        }
+    }
     pub mod preservation {
         pub fn read() -> Result<bitaxe_worker_control::SettingsPreservation, ()> {
             Err(())
@@ -238,6 +247,7 @@ mod production_mining_session {
         _: &bitaxe_worker_control::WorkerLeaseGrant,
         _: bitaxe_worker_control::LeaseDeadlines,
         _: revocation::WorkerGeneration,
+        _: bitaxe_stratum::v1::production_session::MiningHardwareProfile,
     ) -> Result<(), ()> {
         Err(())
     }
