@@ -1169,90 +1169,38 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-### task-http-server-task-stall-diagnostics | 2026-10-15 | Find what stalls the HTTP server task for seconds
-
-Origin: soaks 002 and 003 each had one paired stall, both in the first minute
-of work: 4.6 s HTTP with 3.6 s WebSocket, and 5.6 s with 4.8 s. Soak 004 and
-the 2026-10-06 soak had none. With the publication lock no longer held
-across socket writes (`task-operator-snapshot-io-outside-lock`), the remaining
-candidates are:
-- a slow `httpd` socket write;
-- a send timeout on the single HTTP server task;
-- a Wi-Fi or TCP stall.
-
-The stalls sat near the first clean-jobs refresh, which may be a confounder.
-
-- [x] Add redacted diagnostics on the server task: the duration and outcome
-      of each response write and queued WebSocket send, a send-timeout count,
-      and the worst duration per minute. Expose them in a way the soak
-      observer or qualification report can record, with host tests.
-- Diagnostics (2026-10-15):
-  - `bitaxe_core::runtime_health::SendDurationTracker` counts sends and
-    failures. It keeps the worst duration since boot and the worst in the
-    current and previous minute.
-  - `firmware/bitaxe/src/http_send_timing.rs` times every blocking send on the
-    HTTP server task, in two kinds:
-    - HTTP responses: every `write_all`, and `httpd_resp_send`;
-    - WebSocket frames: the synchronous `httpd_ws_send_frame` (text, pong and
-      close) and the queued `httpd_ws_send_frame_async`.
-  - The counts reach `/api/system/info` as the additive
-    `runtimeHealth.httpServerSends` object, which defaults when absent. They
-    are boxed in the runtime-health snapshot, so `ApiSnapshot` stays within
-    its 1,920-byte stack guard. The retained runtime-health log record is
-    unchanged.
-  - Soak samples now record both kinds' recent worst duration and failures,
-    plus Wi-Fi RSSI. The new fields default, as do `bestDiff` and
-    `bestSessionDiff`, so older sealed journals still parse.
-  - Regressions:
-    - the tracker's unit tests;
-    - the soak sample tests, including parsing an older sample;
-    - `http_send_timing_ownership_tests`, which requires every server-task
-      send to sit inside a timing wrapper and lists all 11 sends as untimed
-      on the old code.
-- [ ] On the next scheduled soak, correlate any paired gap with those
-      durations, with Wi-Fi RSSI and with clean-jobs refreshes. Only then
-      decide on a fix, such as send timeouts or handler restructuring.
-
-Verification: pending. Completion review: pending.
-
-### task-ultra205-default-profile-soak-005 | 2026-10-15 | Soak with server-task send timing to read any stall
-
-Objective: the soak step of `task-http-server-task-stall-diagnostics`.
-Firmware that times every HTTP server task send (`52b54758`) mines one soak,
-and the observer records each sample's send durations, failures and Wi-Fi
-RSSI. If a paired HTTP and WebSocket stall happens, those values tell a slow
-server-task write from a network stall. The owner authorized this soak on
-2026-10-15.
-
-Ultra 205 upstream-default soak hardware: enabled.
-
-- [x] Point `SOAK_TASK` at this task.
-- [ ] Soak attempt 001 (soak ledger ordinal 6), with an independent review.
-
-Hardware contract (owner-authorized 2026-10-15). It is the archived
-`task-ultra205-default-profile-soak-004` contract, unchanged except:
-- package at the clean, pushed `HEAD` that records this contract;
-- parent `P = scratch/ultra205-soak-005`, with `R = P/attempt-001`;
-- soak ledger ordinal 6;
-- no BAP traffic.
-
-Allowed effects, live limits, the seal path, retry bound and outcomes are as
-that contract. Parity promotion is prohibited.
-
-Diagnostic reading (observation, not a pass criterion):
-- For every HTTP gap above 3,000 ms or WebSocket gap above 2,000 ms, report:
-  - the `httpResponseRecentWorstMs` and `websocketSendRecentWorstMs` in the
-    samples around it;
-  - any change in send failures;
-  - `wifiRssi`;
-  - whether a clean-jobs refresh (`stale_completion`) was near.
-- Also report the run's worst send durations and failure counts overall.
-- A clean run, with no such gap, is recorded as no stall observed. The
-  diagnostic stays in place for later soaks.
-
-Verification: pending. Completion review: pending.
-
 ## Future
+
+### task-parity-wifi-rssi-live | 2026-10-15 | Read Wi-Fi RSSI live, like upstream
+
+Origin: the soak 005 review.
+- `wifiRssi` in `/api/system/info` (and in soak samples) is read only when
+  Wi-Fi connects (`firmware/bitaxe/src/wifi_adapter.rs`
+  `publish_connected_wifi`), so it stays constant until a reconnect.
+- Upstream reads it live on every system-info request
+  (`reference/esp-miner/main/http_server/system_api_json.c`, through
+  `get_wifi_current_rssi`), and sends `-128` when disconnected (BAP `wifi`).
+- A live value also lets a soak see a Wi-Fi dip during a stall
+  (`task-http-server-task-stall-diagnostics`).
+
+- [ ] Read RSSI when each snapshot is collected (or at a bounded cadence),
+      cheaply and off any lock, with a host-testable projection. Check the
+      disconnected value against upstream.
+- [ ] Find the parity rows that cover `wifiRSSI` and record the change there.
+
+Verification: pending. Completion review: pending.
+
+### task-soak-sample-send-counters | 2026-10-15 | Record send counts and lifetime worst in soak samples
+
+Origin: the soak 005 review. Soak samples carry each send kind's recent worst
+and failures, but not `sends` or the lifetime `worstMillis`. A reviewer
+therefore cannot confirm the counters advance, or see a long send that has
+aged out of the one-to-two-minute window.
+
+- [ ] Add both fields per kind to `SoakSample` (defaulted, so older journals
+      still parse), with a regression.
+
+Verification: pending. Completion review: pending.
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 

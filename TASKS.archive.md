@@ -30042,3 +30042,128 @@ Residual risk: the paired multi-second HTTP and WebSocket stalls seen in soaks
 002 and 003 are not explained. They are consistent with a slow server-task
 write or a Wi-Fi or TCP stall, and are now
 `task-http-server-task-stall-diagnostics`.
+
+### task-ultra205-default-profile-soak-005 | 2026-10-15 | Soak with server-task send timing to read any stall
+
+Objective: the soak step of `task-http-server-task-stall-diagnostics`.
+Firmware that times every HTTP server task send (`52b54758`) mines one soak,
+and the observer records each sample's send durations, failures and Wi-Fi
+RSSI. If a paired HTTP and WebSocket stall happens, those values tell a slow
+server-task write from a network stall. The owner authorized this soak on
+2026-10-15.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task.
+- [x] Soak attempt 001 (soak ledger ordinal 6), with an independent review.
+
+Hardware contract (owner-authorized 2026-10-15). It is the archived
+`task-ultra205-default-profile-soak-004` contract, unchanged except:
+- package at the clean, pushed `HEAD` that records this contract;
+- parent `P = scratch/ultra205-soak-005`, with `R = P/attempt-001`;
+- soak ledger ordinal 6;
+- no BAP traffic.
+
+Allowed effects, live limits, the seal path, retry bound and outcomes are as
+that contract. Parity promotion is prohibited.
+
+Diagnostic reading (observation, not a pass criterion):
+- For every HTTP gap above 3,000 ms or WebSocket gap above 2,000 ms, report:
+  - the `httpResponseRecentWorstMs` and `websocketSendRecentWorstMs` in the
+    samples around it;
+  - any change in send failures;
+  - `wifiRssi`;
+  - whether a clean-jobs refresh (`stale_completion`) was near.
+- Also report the run's worst send durations and failure counts overall.
+- A clean run, with no such gap, is recorded as no stall observed. The
+  diagnostic stays in place for later soaks.
+
+Soak attempt 001 result (2026-10-15): `complete`. `result.json` is `passed`,
+and the independent review agrees.
+- 607,744 active ms, ended by budget; safe-stop reached `fan_paused`.
+- Soak ordinal 6 charged once.
+- 20 of 20 submitted shares accepted.
+- 20/20 windows; maximum gaps 902 ms WebSocket and 2,307 ms HTTP, so no stall
+  was observed.
+
+The send diagnostics were present in every sample: HTTP recent worst 0–59 ms,
+WebSocket 0–26 ms, and 0 failures each.
+
+The review found that `wifiRssi` is read only at connect, so it was a constant
+−38 dBm all run.
+
+Summary: `docs/parity/evidence/20261015-ultra205-soak-005.md`.
+
+Verification: as above, sealed through a named-port detector and
+`just ultra205-soak finish`.
+
+Completion review: the diagnostic run passed, with no stall to read.
+
+### task-http-server-task-stall-diagnostics | 2026-10-15 | Find what stalls the HTTP server task for seconds
+
+Origin: soaks 002 and 003 each had one paired stall, both in the first minute
+of work: 4.6 s HTTP with 3.6 s WebSocket, and 5.6 s with 4.8 s. Soak 004 and
+the 2026-10-06 soak had none. With the publication lock no longer held
+across socket writes (`task-operator-snapshot-io-outside-lock`), the remaining
+candidates are:
+- a slow `httpd` socket write;
+- a send timeout on the single HTTP server task;
+- a Wi-Fi or TCP stall.
+
+The stalls sat near the first clean-jobs refresh, which may be a confounder.
+
+- [x] Add redacted diagnostics on the server task: the duration and outcome
+      of each response write and queued WebSocket send, a send-timeout count,
+      and the worst duration per minute. Expose them in a way the soak
+      observer or qualification report can record, with host tests.
+- Diagnostics (2026-10-15):
+  - `bitaxe_core::runtime_health::SendDurationTracker` counts sends and
+    failures. It keeps the worst duration since boot and the worst in the
+    current and previous minute.
+  - `firmware/bitaxe/src/http_send_timing.rs` times every blocking send on the
+    HTTP server task, in two kinds:
+    - HTTP responses: every `write_all`, and `httpd_resp_send`;
+    - WebSocket frames: the synchronous `httpd_ws_send_frame` (text, pong and
+      close) and the queued `httpd_ws_send_frame_async`.
+  - The counts reach `/api/system/info` as the additive
+    `runtimeHealth.httpServerSends` object, which defaults when absent. They
+    are boxed in the runtime-health snapshot, so `ApiSnapshot` stays within
+    its 1,920-byte stack guard. The retained runtime-health log record is
+    unchanged.
+  - Soak samples now record both kinds' recent worst duration and failures,
+    plus Wi-Fi RSSI. The new fields default, as do `bestDiff` and
+    `bestSessionDiff`, so older sealed journals still parse.
+  - Regressions:
+    - the tracker's unit tests;
+    - the soak sample tests, including parsing an older sample;
+    - `http_send_timing_ownership_tests`, which requires every server-task
+      send to sit inside a timing wrapper and lists all 11 sends as untimed
+      on the old code.
+- [x] On the next scheduled soak, correlate any paired gap with those
+      durations, with Wi-Fi RSSI and with clean-jobs refreshes. Only then
+      decide on a fix, such as send timeouts or handler restructuring.
+
+Soak 005 (2026-10-15) found no stall: maximum gaps were 902 ms WebSocket and
+2,307 ms HTTP. Its server-task sends stayed at most 59 ms (HTTP) and 26 ms
+(WebSocket), with 0 failures.
+
+A first-minute clean-jobs refresh came with no stall, which weakens that
+confounder. The review found two gaps in the instrument itself, now tracked:
+- `wifiRssi` is read only at connect, so it cannot show a dip during a stall.
+  It is also a parity gap: upstream reads RSSI live
+  (`task-parity-wifi-rssi-live`).
+- Samples omit the send counts and the lifetime worst
+  (`task-soak-sample-send-counters`).
+
+Verification:
+- `SendDurationTracker` unit tests, the soak sample tests and
+  `http_send_timing_ownership_tests` pass (all 11 sends timed).
+- The full gate passes.
+- Soak 005 `passed`, and the review confirms the fields are live.
+
+Completion review: every HTTP server task send is now timed and recorded by
+the soak observer, so any future paired stall can be attributed to a slow send
+or ruled out as one.
+
+Residual risk: the stalls of soaks 002 and 003 remain unexplained. They now
+stand at 2 in 5 soaks. Time spent outside the send calls is not measured.
