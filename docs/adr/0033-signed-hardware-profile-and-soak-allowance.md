@@ -7,7 +7,9 @@ Decisions 1 and 2 (the signed `hardwareProfile`, and `upstream-default` only
 with a soak) are superseded by
 [ADR-0037](0037-device-configuration-owns-the-hardware-profile.md), accepted
 2026-10-16. They stay in force until `task-lease-without-hardware-profile`
-lands. Decisions 3–6 stand. ADR-0037 decision 6 also replaces this ADR's
+lands. Decisions 3, 5 and 6 stand. Decision 4 (the budget includes the
+shutdown tail) is superseded by ADR-0037 decision 5 as amended 2026-10-16:
+the budget is mining time and shutdown is bounded on its own. ADR-0037 decision 6 also replaces this ADR's
 100% fan and its non-claim of automatic fan control: under a lease the fan now
 follows the device's fan settings after preparation
 (`task-fan-policy-from-device-config`).

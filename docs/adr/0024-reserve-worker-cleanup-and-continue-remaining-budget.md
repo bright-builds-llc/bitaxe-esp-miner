@@ -46,6 +46,8 @@ Window 2 observes work before suppressing application heartbeats. Both keep
 the original conservative profile, safety observations, lease authorization,
 three-second revocation/initiation requirement, ordered shutdown and cooling.
 The 15550-ms shutdown reserve leaves 14450 ms of work-gate time per window.
+(Superseded by ADR-0037 decision 5 as amended 2026-10-16: a window's budget is
+now its mining time, and shutdown runs after it.)
 Use a signed 5000-ms renewal interval, keep the signed lease duration unchanged,
 and inject a fault only with more than 3000 ms of fresh device headroom;
 prefer at least 6000 ms. Stop and retain missing evidence if that window closes.

@@ -65,12 +65,22 @@ change.
    - It raises voltage before frequency and lowers frequency before voltage,
      stepping frequency with the same ramp plans as preparation and shutdown.
    - Every step stays inside the runtime safety predicate.
-5. **The shutdown tail covers the catalog maximum.** Settings can rise during
-   a lease, so the budget reserves the closed ramp-down tail from the catalog's
-   highest frequency. The firmware and the host signer compute the same tail
-   from the same closed plan, and admission checks that the signed budget
-   covers it. ADR-0033's soak budget changes accordingly; the 600,000 ms work
-   gate stays.
+5. **The budget is mining time; shutdown is bounded on its own.** Amended
+   2026-10-16 by the owner's decision, replacing "the budget reserves the
+   catalog-maximum tail".
+   - A grant's `maximumActiveMilliseconds` is the work window. The work gate
+     closes at the budget, and the ledger charges the budget.
+   - The ordered shutdown then runs outside the budget. It is bounded by the
+     firmware's closed plan for the frequency actually running: at most
+     22,550 ms at the catalog maximum.
+   - The Gate's deadline for restoring the baseline allows the maximum tail
+     plus cooling.
+   - Safety does not change: revocation and expiry still start the shutdown
+     within three seconds.
+   - This replaces ADR-0033 decision 4 and ADR-0024's 14,450 ms window. A soak
+     is 600,000 ms, charged as such, in a new soak ledger (fresh ordinals). The
+     qualification charges (30,000 and 180,000 ms) keep their values but now
+     mean mining time.
 6. **The fan follows device configuration while mining.** That means the
    automatic fan controller or the manual duty, as on upstream. The fan is no
    longer pinned to 100%. Cooling proof and the ordered safe-stop keep their
