@@ -12,6 +12,31 @@ Gate. The decisions behind it are
   while the device is idle. It reads them back from `/api/system/info` and
   records both in the private `device-settings.json`. A read-back that does
   not match refuses the soak.
+- **Live changes (optional):** `preflight --live-changes` freezes
+  `SOAK_LIVE_CHANGES` (`live-changes.mjs`) into the context. While the soak
+  mines with its work gate open, `serve` sends one PATCH at 200 s of mining
+  (400 MHz, 1100 mV) and one at 400 s (back to 485 MHz, 1200 mV). It records
+  each in `live-change-N.json`. Ending on the starting pair keeps the settings
+  fingerprint equal to the page's baseline. `serve` accepts only that exact
+  plan from the context.
+
+  The judge needs every change recorded with a matching read-back. Segments
+  run from 20 s after each change to the next request; the first segment
+  starts at settled mining, and the last ends at the last open-gate record.
+  In each segment:
+  - every mining HTTP sample must carry the target settings;
+  - there must be at least five fresh measured core-voltage readings and
+    five nonzero counter-hashrate readings.
+
+  Later segments are judged against the first, so a fixed ADC offset cannot
+  fail them:
+  - the median measured voltage must move by the settings' step, within
+    30 mV;
+  - the median hashrate must change by the frequency ratio, within 0.12.
+
+  A soak that sent a change but not the whole plan restores the soak's
+  settings once at completion. It records `live-restore.json` and stays
+  `unverified`.
 - **Budget:** the soak budget (v2) is 600,000 ms of mining, charged in the v2
   soak ledger. The ordered shutdown runs after it, bounded at 22,550 ms.
 

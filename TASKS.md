@@ -1223,6 +1223,15 @@ Ultra 205 upstream-default soak hardware: enabled.
 - [x] Fix the soak tooling so the page baseline follows the settings write,
       with regressions.
 - [x] Soak 007 attempt 002 (ordinal 2), with an independent review: `complete`.
+- [x] Live-change soak tooling:
+  - soak samples record the saved frequency and core voltage, the fresh
+    measured core voltage, power and hashrate;
+  - `preflight --live-changes` freezes two changes that `serve` sends during
+    the work gate;
+  - the judge requires each change and its settled segment;
+  - regressions cover all of it.
+- [ ] Soak 008 attempt 001: one live change down and back during a lease
+      (ordinal 3), with an independent review.
 
 Soak 007 hardware contract (owner-authorized 2026-10-16). It is the archived
 `task-ultra205-default-profile-soak-006` contract, unchanged except:
@@ -1332,6 +1341,51 @@ Soak 007 attempt 002 result (2026-10-16): `complete`. Redacted summary:
   from the raw files and checked the sealed inventory, the self-digests and
   the baseline binding. It noted one observation that is not a criterion:
   cooling proof read 3,680 RPM at 100%, an early spin-up snapshot.
+
+Soak 008 hardware contract (live changes during a lease, under the standing
+authorization). It is the soak 007 attempt 002 contract, unchanged except:
+- **Package:** `just package` at the clean, pushed `HEAD` that records this
+  contract. It adds the observer's hardware fields and the live-change
+  tooling, and changes no firmware behavior. Install it with the same
+  state-preserving `just flash-monitor ... --capture-timeout-seconds 360
+  --redact-evidence`.
+- **Parent and ledger:** `P = scratch/ultra205-soak-008`, with
+  `R = P/attempt-001`. Soak ledger v2 ordinal 3. The ledger must report next
+  ordinal 3 and total 1,200,000.
+- **Preflight:** add `--live-changes`. The context must record the two
+  planned changes.
+- **New allowed effects:** while the soak mines unrevoked with its work gate
+  open, `serve` sends at most two HTTP PATCHes to the device's private
+  address:
+  - at 200,000 active ms or later: `frequency` 400, `coreVoltage` 1100;
+  - at 400,000 active ms or later: `frequency` 485, `coreVoltage` 1200.
+
+  Each is sent once, read back and recorded. Neither is sent after
+  revocation or the gate closes. Both pairs already have hardware evidence.
+  The firmware's live owner applies them in its safe order: frequency before
+  voltage going down, voltage before frequency going up.
+- **Unchanged:** the initial settings write and the page reload; the live
+  stop limits; the 22,550 ms shutdown bound; the seal path; no BAP traffic.
+  Parity promotion is prohibited.
+- **Judged:** each change is recorded with a matching read-back. In every
+  settled segment, the saved settings follow. The median measured core
+  voltage steps by the settings' step, within 30 mV. The median counter
+  hashrate changes by the frequency ratio, within 0.12. Segment medians and
+  settle times are reported.
+- **Recovery:** a run that sent the first change but not the whole plan may
+  leave 400 MHz / 1100 mV saved. That pair already has hardware evidence.
+  At completion, `serve` sends one restore PATCH of 485/1200 with the
+  automatic fan, while the device is idle, and records `live-restore.json`.
+  The attempt then stays `unverified`. If completion never runs, the next
+  soak's initial settings write restores the pair before its page baseline.
+- **Stop conditions:** a failed live step revokes the lease with
+  `ControlFailed`, and the ordered shutdown follows. The attempt then seals
+  `unverified`. Diagnose it before any retry, and treat a recurrence after a
+  targeted fix as `stop_repeated_boundary`.
+
+Evidence to read (observations, not pass criteria): each segment's median
+measured core voltage, power and hashrate, and how long each change took to
+settle.
 
 Verification: soak 007 `complete` (attempt 002). Completion review: pending
 until the remaining soaks and parity rows.

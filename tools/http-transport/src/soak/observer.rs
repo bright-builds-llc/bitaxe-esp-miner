@@ -21,7 +21,7 @@ const WEBSOCKET_IO_TIMEOUT: Duration = Duration::from_millis(250);
 const IDLE: Duration = Duration::from_millis(50);
 
 pub(super) enum Event {
-    Sample(SoakTransport, SoakSample),
+    Sample(SoakTransport, Box<SoakSample>),
     Connected { reconnect: bool },
     Closed,
     Failed(&'static str),
@@ -75,7 +75,7 @@ fn poll_http(
             let matches = *initial == pool;
             Event::Sample(
                 SoakTransport::Http,
-                SoakSample::from_wire(&wire, Some(matches)),
+                Box::new(SoakSample::from_wire(&wire, Some(matches))),
             )
         }
     };
@@ -138,9 +138,10 @@ pub(super) fn websocket_thread(origin: &str, stop: &AtomicBool, events: &Sender<
         let event = match socket.read() {
             Ok(WebSocketRead::Timeout) => continue,
             Ok(WebSocketRead::Text(bytes)) => match apply_live_frame(&bytes, &mut projection) {
-                Some(wire) => {
-                    Event::Sample(SoakTransport::Websocket, SoakSample::from_wire(&wire, None))
-                }
+                Some(wire) => Event::Sample(
+                    SoakTransport::Websocket,
+                    Box::new(SoakSample::from_wire(&wire, None)),
+                ),
                 None => Event::ProjectionInvalid(SoakTransport::Websocket),
             },
             Ok(WebSocketRead::Closed) => Event::Closed,

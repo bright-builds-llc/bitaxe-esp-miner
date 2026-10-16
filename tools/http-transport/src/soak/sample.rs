@@ -1,4 +1,5 @@
-//! Metadata-only soak samples: identity, mining state, safety, sequences and counters.
+//! Metadata-only soak samples: identity, mining state, safety, hardware settings and readings,
+//! sequences and counters.
 //! Pool endpoints, users and other operator values never enter a sample (evidence policy).
 use bitaxe_api::{reference_u64, ObservationStateWire, SystemInfoWire};
 use serde::{Deserialize, Serialize};
@@ -53,6 +54,18 @@ pub struct SoakSample {
     pub websocket_send_failures: u64,
     #[serde(default)]
     pub wifi_rssi: i16,
+    /// The saved frequency and core voltage (ADR-0037: the device settings are the profile).
+    #[serde(default)]
+    pub frequency_mhz: f64,
+    #[serde(default)]
+    pub core_voltage_mv: u16,
+    /// The measured core voltage, only while its reading is fresh.
+    #[serde(default)]
+    pub maybe_core_voltage_actual_mv: Option<f64>,
+    #[serde(default)]
+    pub power_watts: f64,
+    #[serde(default)]
+    pub hash_rate_ghs: f64,
     pub revision: u64,
     /// HTTP only: whether the configured pool settings still equal the first HTTP sample's.
     pub maybe_pool_matches_initial: Option<bool>,
@@ -87,6 +100,13 @@ impl SoakSample {
             websocket_send_recent_worst_ms: sends.websocket_sends.recent_worst_millis,
             websocket_send_failures: sends.websocket_sends.failures,
             wifi_rssi: wire.wifi_rssi,
+            frequency_mhz: wire.frequency,
+            core_voltage_mv: wire.core_voltage,
+            maybe_core_voltage_actual_mv: (wire.core_voltage_actual_status.state
+                == ObservationStateWire::Fresh)
+                .then_some(wire.core_voltage_actual),
+            power_watts: wire.power,
+            hash_rate_ghs: wire.hash_rate,
             revision: wire.operator_snapshot_revision.get(),
             maybe_pool_matches_initial,
         }

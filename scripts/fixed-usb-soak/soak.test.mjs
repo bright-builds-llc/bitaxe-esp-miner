@@ -158,6 +158,11 @@ test("the terminal judgement fails closed on each missing criterion", () => {
     window_judge_unavailable: soakInput({ windowJudgement: null }),
     observer_unclean: soakInput({ observerClean: false }),
     device_settings_unrecorded: soakInput({ deviceSettings: null }),
+    live_change_unjudged: soakInput({ context: { ...base.context, live_changes: [{ atActiveMs: 200000, settings: {} }] } }),
+    live_change_voltage_unconfirmed: soakInput({ context: { ...base.context, live_changes: [{ atActiveMs: 200000, settings: {} }] },
+      maybeLiveChanges: { failures: ["live_change_voltage_unconfirmed"], segments: [] } }),
+    live_change_restored: soakInput({ context: { ...base.context, live_changes: [{ atActiveMs: 200000, settings: {} }] },
+      maybeLiveChanges: { failures: [], segments: [] }, maybeRestore: { schema: "fixed-usb-soak-live-restore-v1" } }),
     preservation_baseline_changed: soakInput({ issuance: { ...base.issuance, preservation_baseline_id: "A".repeat(22) },
       finalState: { preservation: { baseline_id: `${"B".repeat(21)}A` } } }),
   };

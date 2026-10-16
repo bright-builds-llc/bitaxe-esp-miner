@@ -1927,6 +1927,7 @@ js_binary(
     entry_point = "fixed-usb-soak/%s.test.mjs" % name,
 ) for name in [
     "device-settings",
+    "live-changes",
     "server",
     "soak",
 ]]

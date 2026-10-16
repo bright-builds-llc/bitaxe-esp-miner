@@ -53,7 +53,7 @@ function terminalFailures(records, ordinal) {
  * Judge one completed soak. `windowJudgement` is the parsed `soak-judge` output, or null when it could not
  * run. The result is `passed` only when every terminal, ledger, cleanup and window criterion holds.
  */
-export function judgeSoak({ context, records, issuance, ledgerAfter, finalState, windowJudgement, observerClean, deviceSettings }) {
+export function judgeSoak({ context, records, issuance, ledgerAfter, finalState, windowJudgement, observerClean, deviceSettings, maybeLiveChanges, maybeRestore }) {
   const failures = [];
   const check = (failed, category) => { if (failed) failures.push(category); };
   // ADR-0037: the device settings are the profile; the soak must have recorded the ones it set.
@@ -73,7 +73,13 @@ export function judgeSoak({ context, records, issuance, ledgerAfter, finalState,
   check(windowJudgement === null, "window_judge_unavailable");
   check(!observerClean, "observer_unclean");
   if (windowJudgement && !windowJudgement.passed) failures.push(...windowJudgement.failures.map((failure) => `window_${failure}`));
+  // A soak that planned live changes passes only with their judgement.
+  const planned = (context.live_changes ?? []).length > 0;
+  check(planned && !maybeLiveChanges, "live_change_unjudged");
+  if (planned && maybeLiveChanges) failures.push(...maybeLiveChanges.failures);
+  check(maybeRestore !== undefined, "live_change_restored");
   return { schema: "fixed-usb-soak-result-v1", result: failures.length === 0 ? "passed" : "unverified", ordinal: issuance.ordinal,
     cumulative_charged_ms: ledgerAfter?.total_charged_ms ?? null, cleanup_confirmed: cleanupConfirmed, failures,
-    window_judgement: windowJudgement, parity_promotion: false };
+    window_judgement: windowJudgement, ...(planned ? { live_changes: maybeLiveChanges?.segments ?? [] } : {}),
+    ...(maybeRestore ? { live_restore: maybeRestore.failure ?? "restored" } : {}), parity_promotion: false };
 }

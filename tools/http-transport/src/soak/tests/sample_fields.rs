@@ -1,5 +1,5 @@
 //! The diagnostic fields a soak sample copies from system info: send counts and
-//! durations on the HTTP server task, and the Wi-Fi RSSI.
+//! durations on the HTTP server task, the Wi-Fi RSSI, and the hardware settings and readings.
 
 use super::super::sample::SoakSample;
 use super::sample;
@@ -76,6 +76,11 @@ fn a_journal_sample_from_before_the_new_fields_still_parses() {
         "websocketSendRecentWorstMs",
         "websocketSendFailures",
         "wifiRssi",
+        "frequencyMhz",
+        "coreVoltageMv",
+        "maybeCoreVoltageActualMv",
+        "powerWatts",
+        "hashRateGhs",
     ] {
         object.remove(key).expect("field present");
     }
@@ -109,4 +114,41 @@ fn a_soak_005_journal_sample_without_the_counts_still_parses() {
     let parsed: Result<SoakSample, _> = serde_json::from_value(value);
     // Assert
     assert!(parsed.is_ok());
+}
+
+#[test]
+fn a_sample_records_the_settings_and_the_fresh_measured_core_voltage() {
+    // Arrange
+    let mut wire = wire();
+    wire.frequency = 400.0;
+    wire.core_voltage = 1_100;
+    wire.core_voltage_actual = 1_096.0;
+    wire.core_voltage_actual_status.state = bitaxe_api::ObservationStateWire::Fresh;
+    wire.power = 8.25;
+    wire.hash_rate = 410.5;
+    // Act
+    let sample = SoakSample::from_wire(&wire, None);
+    // Assert
+    assert_eq!(
+        (
+            sample.frequency_mhz,
+            sample.core_voltage_mv,
+            sample.maybe_core_voltage_actual_mv,
+            sample.power_watts,
+            sample.hash_rate_ghs
+        ),
+        (400.0, 1_100, Some(1_096.0), 8.25, 410.5)
+    );
+}
+
+#[test]
+fn a_stale_core_voltage_reading_is_not_recorded() {
+    // Arrange
+    let mut wire = wire();
+    wire.core_voltage_actual = 1_196.0;
+    wire.core_voltage_actual_status.state = bitaxe_api::ObservationStateWire::Stale;
+    // Act
+    let sample = SoakSample::from_wire(&wire, None);
+    // Assert
+    assert_eq!(sample.maybe_core_voltage_actual_mv, None);
 }

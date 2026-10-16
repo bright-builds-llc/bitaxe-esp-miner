@@ -40,6 +40,11 @@ fn sample(active_ms: i64, sequence: u64) -> SoakSample {
         websocket_send_recent_worst_ms: 0,
         websocket_send_failures: 0,
         wifi_rssi: -50,
+        frequency_mhz: 485.0,
+        core_voltage_mv: 1_200,
+        maybe_core_voltage_actual_mv: Some(1_198.0),
+        power_watts: 12.0,
+        hash_rate_ghs: 500.0,
         revision: sequence,
         maybe_pool_matches_initial: None,
     }

@@ -17,7 +17,7 @@ const string = { type: "string" };
 const FINAL_DETECTOR_FRESH_MS = 300000;
 const ACTIONS = {
   preflight: { options: { "private-root": string, "firmware-root": string, "gate-root": string, "firmware-commit": string, "gate-commit": string,
-    manifest: string, "authority-directory": string, detector: string, bun: string },
+    manifest: string, "authority-directory": string, detector: string, bun: string, "live-changes": { type: "boolean" } },
   required: ["private-root", "firmware-root", "gate-root", "firmware-commit", "gate-commit", "manifest", "authority-directory", "detector"] },
   serve: { options: { "private-root": string, "authority-directory": string, "pool-credentials": string, bun: string }, required: ["private-root", "authority-directory", "pool-credentials"] },
   finish: { options: { "private-root": string }, required: ["private-root"] },
@@ -34,7 +34,8 @@ export function argumentsFor(argv) {
   const path = (name) => values[name] === undefined ? undefined : resolve(base, values[name]);
   return { action, options: { privateRoot: path("private-root"), firmwareRoot: path("firmware-root"), gateRoot: path("gate-root"),
     firmwareCommit: values["firmware-commit"], gateCommit: values["gate-commit"], manifest: path("manifest"), authorityDirectory: path("authority-directory"),
-    detector: path("detector"), poolCredentials: path("pool-credentials"), bun: values.bun ?? "bun" } };
+    detector: path("detector"), poolCredentials: path("pool-credentials"), bun: values.bun ?? "bun",
+    liveChanges: values["live-changes"] === true } };
 }
 
 async function serve(options) {
