@@ -51,9 +51,17 @@ pub(super) fn send_json<'request, 'connection, T: Serialize>(
     value: &T,
 ) -> anyhow::Result<()> {
     let body = serde_json::to_vec(value)?;
+    send_json_body(request, &body)
+}
+
+/// Writes an already serialized JSON body.
+pub(super) fn send_json_body<'request, 'connection>(
+    request: ApiRequest<'request, 'connection>,
+    body: &[u8],
+) -> anyhow::Result<()> {
     request
         .into_response(200, Some("OK"), &[("Content-Type", "application/json")])?
-        .write_all(&body)?;
+        .write_all(body)?;
     Ok(())
 }
 

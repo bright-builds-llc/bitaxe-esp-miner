@@ -1063,6 +1063,19 @@ rust_test(
 )
 
 rust_test(
+    name = "snapshot_io_ownership_tests",
+    srcs = [
+        "src/bap_adapter.rs",
+        "src/http_api/handlers.rs",
+        "src/http_api/websocket.rs",
+        "src/snapshot_io_ownership_test.rs",
+    ],
+    crate_name = "snapshot_io_ownership_tests",
+    crate_root = "src/snapshot_io_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "scoreboard_source_ownership_tests",
     srcs = [
         "src/production_mining_session.rs",

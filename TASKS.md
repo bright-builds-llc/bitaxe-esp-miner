@@ -1169,6 +1169,53 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
+### task-operator-snapshot-io-outside-lock | 2026-10-14 | Keep socket writes out of the operator-snapshot publication lock
+
+Origin: `task-parity-bap-value-sources` investigation of the soak 002 gap.
+`OperatorSnapshotPublisher::publish` (`firmware/bitaxe/src/operator_snapshot_publication.rs`)
+holds one global sequence mutex through `issue`. The HTTP handlers
+(`send_json`) and the WebSocket connect path (`httpd_ws_send_frame`) write
+their sockets inside `issue`, with up to 5 s per send. One slow client can
+therefore block every other publication: WebSocket cadence, other HTTP
+requests and BAP.
+
+- Evidence (2026-10-15): soak 003 had an about 5 s HTTP stall, with paired
+  WebSocket gaps, while no BAP traffic was running. The stall is not
+  BAP-specific.
+- [x] Serialize inside the publication and write after it returns, for HTTP
+      responses and the WebSocket connect frame. Cadence frames may keep
+      queueing under the lock to preserve their order.
+- [x] Host regression: a publisher blocked in a fake socket write after
+      release must not delay a second publication (the write-step mirror of
+      `second_completion_waits_until_first_issue_returns`).
+- [x] Source-ownership audit: no socket write inside `publish_projected_*`
+      closures.
+- Software (2026-10-15):
+  - `/api/system/info`, `/api/system/asic` and the WebSocket live-telemetry
+    connect frame now serialize inside the publication. They do this in
+    request-free body functions (`system_info_body`, `asic_settings_body`,
+    `live_connect_frame_body`), and the caller writes the bytes after the lock
+    is released.
+  - The cadence broadcast still queues frames under the lock, through
+    `httpd_queue_work` with no socket I/O, which keeps frame order.
+  - The regression is structural: `snapshot_io_ownership_tests` splits the
+    sources into functions. Every function that publishes must be
+    request-free, with no socket or UART write. Its HTTP and WebSocket cases
+    fail on the old code.
+  - A host test of the publisher alone would not catch this, because the
+    defect lived at the call sites. The write-after-release property is
+    therefore enforced on the call sites.
+  - Phase 34's source guard (`tools/parity/src/phase34_source_guard.rs`)
+    asserted the old `send_json(request, &system_info)` line. It now asserts
+    serialization inside the publication and the write after it, with the same
+    intent. The full gate passes: `just test` 336/336, and the HTTP stack
+    headroom is 1,296 bytes.
+- [ ] Hardware evidence under its own contract: an A/B soak window, with the
+      cadence recorder's `PublicationOrderWait` stage, to see whether the
+      multi-second paired gaps go away.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
@@ -1223,33 +1270,6 @@ explicit non-claims.
       `task-parity-bap-live-accessory-verification`): electrical safety,
       allowed settings, restoration of changed settings, evidence and stop
       conditions. Each setting needs the owner's go-ahead.
-
-Verification: pending. Completion review: pending.
-
-### task-operator-snapshot-io-outside-lock | 2026-10-14 | Keep socket writes out of the operator-snapshot publication lock
-
-Origin: `task-parity-bap-value-sources` investigation of the soak 002 gap.
-`OperatorSnapshotPublisher::publish` (`firmware/bitaxe/src/operator_snapshot_publication.rs`)
-holds one global sequence mutex through `issue`. The HTTP handlers
-(`send_json`) and the WebSocket connect path (`httpd_ws_send_frame`) write
-their sockets inside `issue`, with up to 5 s per send. One slow client can
-therefore block every other publication: WebSocket cadence, other HTTP
-requests and BAP.
-
-- Evidence (2026-10-15): soak 003 had an about 5 s HTTP stall, with paired
-  WebSocket gaps, while no BAP traffic was running. The stall is not
-  BAP-specific.
-- [ ] Serialize inside the publication and write after it returns, for HTTP
-      responses and the WebSocket connect frame. Cadence frames may keep
-      queueing under the lock to preserve their order.
-- [ ] Host regression: a publisher blocked in a fake socket write after
-      release must not delay a second publication (the write-step mirror of
-      `second_completion_waits_until_first_issue_returns`).
-- [ ] Source-ownership audit: no socket write inside `publish_projected_*`
-      closures.
-- [ ] Hardware evidence under its own contract: an A/B soak window, with the
-      cadence recorder's `PublicationOrderWait` stage, to see whether the
-      multi-second paired gaps go away.
 
 Verification: pending. Completion review: pending.
 

@@ -496,7 +496,10 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
     assert!(!SNAPSHOT_RETENTION_SOURCE.contains("append_runtime_log_line"));
 
     assert!(system_info.contains("publish_projected_system_info"));
-    assert!(system_info.contains("send_json(request, &system_info)"));
+    // Serialized inside the publication; written after the lock is released.
+    assert!(system_info.contains("serde_json::to_vec(&system_info)"));
+    assert!(system_info.contains("let body = system_info_body()?;"));
+    assert!(system_info.contains("send_json_body(request, &body)"));
     assert!(live_cadence.contains("publish_projected_live_telemetry_payload"));
     assert!(live_cadence.contains("websocket_api::plan_live_cadence_frame(current)"));
     assert!(live_cadence.contains("broadcast_websocket_text_frame("));

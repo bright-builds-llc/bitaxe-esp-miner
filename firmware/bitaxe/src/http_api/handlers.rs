@@ -4,11 +4,18 @@ pub(super) fn handle_system_info<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        publish_projected_system_info(crate::runtime_uptime::millis(), |system_info| {
-            send_json(request, &system_info)
-        })
-        .map_err(|error| anyhow::anyhow!("operator snapshot publication failed: {error}"))
+        let body = system_info_body()?;
+        send_json_body(request, &body)
     })
+}
+
+/// Serializes `/api/system/info` inside the snapshot publication. It takes no request,
+/// so the socket write happens only after the global publication lock is released.
+fn system_info_body() -> anyhow::Result<Vec<u8>> {
+    publish_projected_system_info(crate::runtime_uptime::millis(), |system_info| {
+        serde_json::to_vec(&system_info)
+    })
+    .map_err(|error| anyhow::anyhow!("operator snapshot publication failed: {error}"))
 }
 
 pub(super) fn handle_command_status<'request, 'connection>(
@@ -66,9 +73,15 @@ pub(super) fn handle_asic_settings<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {
     handle_with_access_gate(request, |request| {
-        publish_projected_asic_settings(|asic_settings| send_json(request, &asic_settings))
-            .map_err(|error| anyhow::anyhow!("operator snapshot publication failed: {error}"))
+        let body = asic_settings_body()?;
+        send_json_body(request, &body)
     })
+}
+
+/// Serializes `/api/system/asic` inside the snapshot publication; written after release.
+fn asic_settings_body() -> anyhow::Result<Vec<u8>> {
+    publish_projected_asic_settings(|asic_settings| serde_json::to_vec(&asic_settings))
+        .map_err(|error| anyhow::anyhow!("operator snapshot publication failed: {error}"))
 }
 
 pub(super) fn handle_statistics<'request, 'connection>(

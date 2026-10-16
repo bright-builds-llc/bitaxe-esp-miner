@@ -453,27 +453,26 @@ pub(super) fn send_websocket_connect_frames(
             }
             sys::ESP_OK
         }
-        WebSocketRouteKind::LiveTelemetry => {
-            match publish_projected_live_telemetry_payload(
-                crate::runtime_uptime::millis(),
-                |current| {
-                    let Some(frame) = websocket_api::maybe_live_connect_frame(current) else {
-                        return Err(sys::ESP_FAIL);
-                    };
-                    let body = serde_json::to_string(&frame).map_err(|_| sys::ESP_FAIL)?;
-                    let result = send_websocket_text_frame(request, &body);
-                    if result == sys::ESP_OK {
-                        return Ok(result);
-                    }
-                    Err(result)
-                },
-            ) {
-                Ok(result) => result,
-                Err(OperatorSnapshotPublishError::Issuance { source, .. }) => source,
-                Err(_) => sys::ESP_FAIL,
-            }
-        }
+        WebSocketRouteKind::LiveTelemetry => match live_connect_frame_body() {
+            Ok(body) => send_websocket_text_frame(request, &body),
+            Err(OperatorSnapshotPublishError::Issuance { source, .. }) => source,
+            Err(_) => sys::ESP_FAIL,
+        },
     }
+}
+
+/// Serializes the live-telemetry connect frame inside the snapshot publication. It
+/// takes no request, so the synchronous frame send happens after the lock is released.
+fn live_connect_frame_body() -> Result<
+    String,
+    OperatorSnapshotPublishError<crate::log_buffer::RetainedPairStorageError, sys::esp_err_t>,
+> {
+    publish_projected_live_telemetry_payload(crate::runtime_uptime::millis(), |current| {
+        let Some(frame) = websocket_api::maybe_live_connect_frame(current) else {
+            return Err(sys::ESP_FAIL);
+        };
+        serde_json::to_string(&frame).map_err(|_| sys::ESP_FAIL)
+    })
 }
 
 pub(super) fn send_websocket_text_frame(
