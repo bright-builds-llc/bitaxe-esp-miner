@@ -1230,8 +1230,8 @@ Ultra 205 upstream-default soak hardware: enabled.
     the work gate;
   - the judge requires each change and its settled segment;
   - regressions cover all of it.
-- [ ] Soak 008 attempt 001: one live change down and back during a lease
-      (ordinal 3), with an independent review.
+- [x] Soak 008 attempt 001: one live change down and back during a lease
+      (ordinal 3), with an independent review: `complete`.
 
 Soak 007 hardware contract (owner-authorized 2026-10-16). It is the archived
 `task-ultra205-default-profile-soak-006` contract, unchanged except:
@@ -1387,8 +1387,33 @@ Evidence to read (observations, not pass criteria): each segment's median
 measured core voltage, power and hashrate, and how long each change took to
 settle.
 
-Verification: soak 007 `complete` (attempt 002). Completion review: pending
-until the remaining soaks and parity rows.
+Soak 008 attempt 001 result (2026-10-16): `complete`. Redacted summary:
+`docs/parity/evidence/20261016-ultra205-soak-008.md`.
+- Package `fbcf38a6`, installed `observed_exact_package`; Gate `eacd8147`.
+- `result.json`: `passed`, with no failures.
+  - Mining: 600,000 active ms, ended by the budget.
+  - Shutdown: about 7.7 s on the device, then `fan_paused`.
+  - Ledger: v2 ordinal 3, charged once (total 1,800,000 ms, next 4).
+  - Shares: 34 accepted, 0 rejected.
+  - Windows: 20/20 credited, with zero reconnects.
+  - Preservation: final `settings_match` true, from the signing page.
+- Live changes were sent at 200,069 and 400,074 active ms and read back as
+  sent, with no revocation and no restore.
+- Segments (medians):
+  - 485/1200: 1,198 mV, 431.1 GH/s, 11.64 W.
+  - 400/1100: 1,091 mV, 356.3 GH/s, 8.35 W. Voltage settled in 6.0 s.
+  - Back to 485/1200: 1,199 mV, 431.8 GH/s, 11.85 W. Settled in 2.0 s.
+  - The voltage step was −107 mV for −100. The hashrate ratio was 0.826 for
+    0.825.
+- The largest gaps (4,052 ms HTTP, 3,098 ms WebSocket) came about 16–20 s
+  after the second change. The review traced them to Wi-Fi delivery: RSSI
+  dipped, and the device's own send times stayed under 25 ms.
+- The independent review agrees `complete`. It recomputed every criterion
+  and segment from the raw files. It noted that the median takes the upper
+  middle value for an even count; that changes no outcome.
+
+Verification: soaks 007 and 008 `complete`. Completion review: pending the
+catalog-maximum soak and the parity rows.
 
 ## Future
 
