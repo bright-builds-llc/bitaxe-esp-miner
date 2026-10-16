@@ -29913,3 +29913,132 @@ device's own report, as well as from the released final state.
 
 Residual risk: none beyond the existing reliance on the Gate relaying the
 device report.
+
+### task-ultra205-default-profile-soak-004 | 2026-10-15 | Soak once more to check the publication-lock fix
+
+Objective: hardware evidence for `task-operator-snapshot-io-outside-lock`.
+Firmware that writes HTTP responses and the WebSocket connect frame after the
+snapshot lock is released should not show the multi-second paired HTTP and
+WebSocket gaps seen in soak 002 (4,632 ms HTTP / 3,551 ms WebSocket) and soak
+003 (5,601 / 4,781). The owner authorized this soak on 2026-10-15.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task.
+- [x] Soak attempt 001 (soak ledger ordinal 5), with an independent review.
+
+Hardware contract (owner-authorized 2026-10-15). It is the archived
+`task-ultra205-default-profile-soak-003` soak contract, unchanged except:
+- package at the clean, pushed `HEAD` that records this contract;
+- parent `P = scratch/ultra205-soak-004`, with `R = P/attempt-001`;
+- soak ledger ordinal 5;
+- no BAP traffic at all.
+
+Allowed effects, live limits, the seal path, retry bound and outcomes are as
+that contract. Parity promotion is prohibited.
+
+Comparison for the lock task, read from `soak-judge` and the private journals.
+It is an observation, not a soak pass criterion:
+- The soak's maximum WebSocket gap is at most 2,000 ms, and its maximum HTTP
+  gap is at most 3,000 ms. The verified soak of 2026-10-06 had 843 ms and
+  2,265 ms.
+- No HTTP gap above 3,000 ms coincides with a WebSocket gap above 2,000 ms.
+
+If a larger paired gap recurs, the lock fix is not sufficient. The result is
+then recorded as such, and the stall is investigated (for example, a Wi-Fi or
+TCP stall) under the lock task, without another soak.
+
+Soak attempt 001 result (2026-10-15): `complete`. `result.json` is `passed`,
+and the independent review agrees.
+- 607,707 active ms, ended by budget; safe-stop reached `fan_paused`.
+- Soak ordinal 5 charged once.
+- 27 of 27 submitted shares accepted, 0 rejected.
+- 20/20 windows; maximum gaps 843 ms WebSocket and 2,392 ms HTTP, none
+  paired.
+
+The lock-task observation criterion is met. Per the review, though, it does not
+discriminate. ESP-IDF runs request handlers and queued WebSocket sends on one
+server task, so a paired observer gap from a slow server-task write or a
+Wi-Fi or TCP stall looks the same before and after the fix. And a clean
+10-minute run is about 37% likely by chance.
+
+`stale_completion` stayed 0, so the clean-jobs share-accounting path was not
+exercised live.
+
+Summary: `docs/parity/evidence/20261015-ultra205-soak-004.md`.
+
+Verification: as above, sealed through a named-port detector and
+`just ultra205-soak finish`.
+
+Completion review: the fixed firmware mined a clean, passing soak. The
+paired-stall cause moves to `task-http-server-task-stall-diagnostics`.
+
+### task-operator-snapshot-io-outside-lock | 2026-10-14 | Keep socket writes out of the operator-snapshot publication lock
+
+Origin: `task-parity-bap-value-sources` investigation of the soak 002 gap.
+`OperatorSnapshotPublisher::publish` (`firmware/bitaxe/src/operator_snapshot_publication.rs`)
+holds one global sequence mutex through `issue`. The HTTP handlers
+(`send_json`) and the WebSocket connect path (`httpd_ws_send_frame`) write
+their sockets inside `issue`, with up to 5 s per send. One slow client can
+therefore block every other publication: WebSocket cadence, other HTTP
+requests and BAP.
+
+- Evidence (2026-10-15): soak 003 had an about 5 s HTTP stall, with paired
+  WebSocket gaps, while no BAP traffic was running. The stall is not
+  BAP-specific.
+- [x] Serialize inside the publication and write after it returns, for HTTP
+      responses and the WebSocket connect frame. Cadence frames may keep
+      queueing under the lock to preserve their order.
+- [x] Host regression: a publisher blocked in a fake socket write after
+      release must not delay a second publication (the write-step mirror of
+      `second_completion_waits_until_first_issue_returns`).
+- [x] Source-ownership audit: no socket write inside `publish_projected_*`
+      closures.
+- Software (2026-10-15):
+  - `/api/system/info`, `/api/system/asic` and the WebSocket live-telemetry
+    connect frame now serialize inside the publication. They do this in
+    request-free body functions (`system_info_body`, `asic_settings_body`,
+    `live_connect_frame_body`), and the caller writes the bytes after the lock
+    is released.
+  - The cadence broadcast still queues frames under the lock, through
+    `httpd_queue_work` with no socket I/O, which keeps frame order.
+  - The regression is structural: `snapshot_io_ownership_tests` splits the
+    sources into functions. Every function that publishes must be
+    request-free, with no socket or UART write. Its HTTP and WebSocket cases
+    fail on the old code.
+  - A host test of the publisher alone would not catch this, because the
+    defect lived at the call sites. The write-after-release property is
+    therefore enforced on the call sites.
+  - Phase 34's source guard (`tools/parity/src/phase34_source_guard.rs`)
+    asserted the old `send_json(request, &system_info)` line. It now asserts
+    serialization inside the publication and the write after it, with the same
+    intent. The full gate passes: `just test` 336/336, and the HTTP stack
+    headroom is 1,296 bytes.
+- [x] Hardware evidence under its own contract: an A/B soak window, with the
+      cadence recorder's `PublicationOrderWait` stage, to see whether the
+      multi-second paired gaps go away.
+
+Hardware evidence (2026-10-15): soak 004 on the fix had no paired stall (843 ms
+WebSocket / 2,392 ms HTTP maximum gaps), against 3,551 / 4,632 ms in soak 002
+and 4,781 / 5,601 ms in soak 003.
+
+As planned, the A/B evidence was one fixed soak compared against the earlier
+soaks; there was no cadence-recorder `PublicationOrderWait` run. The review
+showed this cannot attribute the earlier stalls to the lock:
+- The HTTP server task both writes responses and sends queued WebSocket
+  frames. So before the fix, only that task could hold the lock through a slow
+  write, and its own blockage already stalled both streams.
+- The fix's real effect is that the cadence task and BAP no longer wait
+  behind a slow client.
+
+Verification: `snapshot_io_ownership_tests` (its HTTP and WebSocket cases fail
+on the old code); the full gate, with `just test` 336/336 and both stack
+audits within budget; soak 004 `passed` with an independent review.
+
+Completion review: no snapshot publication writes a socket or the UART while
+holding the global lock any more.
+
+Residual risk: the paired multi-second HTTP and WebSocket stalls seen in soaks
+002 and 003 are not explained. They are consistent with a slow server-task
+write or a Wi-Fi or TCP stall, and are now
+`task-http-server-task-stall-diagnostics`.

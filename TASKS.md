@@ -1169,90 +1169,30 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-### task-operator-snapshot-io-outside-lock | 2026-10-14 | Keep socket writes out of the operator-snapshot publication lock
-
-Origin: `task-parity-bap-value-sources` investigation of the soak 002 gap.
-`OperatorSnapshotPublisher::publish` (`firmware/bitaxe/src/operator_snapshot_publication.rs`)
-holds one global sequence mutex through `issue`. The HTTP handlers
-(`send_json`) and the WebSocket connect path (`httpd_ws_send_frame`) write
-their sockets inside `issue`, with up to 5 s per send. One slow client can
-therefore block every other publication: WebSocket cadence, other HTTP
-requests and BAP.
-
-- Evidence (2026-10-15): soak 003 had an about 5 s HTTP stall, with paired
-  WebSocket gaps, while no BAP traffic was running. The stall is not
-  BAP-specific.
-- [x] Serialize inside the publication and write after it returns, for HTTP
-      responses and the WebSocket connect frame. Cadence frames may keep
-      queueing under the lock to preserve their order.
-- [x] Host regression: a publisher blocked in a fake socket write after
-      release must not delay a second publication (the write-step mirror of
-      `second_completion_waits_until_first_issue_returns`).
-- [x] Source-ownership audit: no socket write inside `publish_projected_*`
-      closures.
-- Software (2026-10-15):
-  - `/api/system/info`, `/api/system/asic` and the WebSocket live-telemetry
-    connect frame now serialize inside the publication. They do this in
-    request-free body functions (`system_info_body`, `asic_settings_body`,
-    `live_connect_frame_body`), and the caller writes the bytes after the lock
-    is released.
-  - The cadence broadcast still queues frames under the lock, through
-    `httpd_queue_work` with no socket I/O, which keeps frame order.
-  - The regression is structural: `snapshot_io_ownership_tests` splits the
-    sources into functions. Every function that publishes must be
-    request-free, with no socket or UART write. Its HTTP and WebSocket cases
-    fail on the old code.
-  - A host test of the publisher alone would not catch this, because the
-    defect lived at the call sites. The write-after-release property is
-    therefore enforced on the call sites.
-  - Phase 34's source guard (`tools/parity/src/phase34_source_guard.rs`)
-    asserted the old `send_json(request, &system_info)` line. It now asserts
-    serialization inside the publication and the write after it, with the same
-    intent. The full gate passes: `just test` 336/336, and the HTTP stack
-    headroom is 1,296 bytes.
-- [ ] Hardware evidence under its own contract: an A/B soak window, with the
-      cadence recorder's `PublicationOrderWait` stage, to see whether the
-      multi-second paired gaps go away.
-
-Verification: pending. Completion review: pending.
-
-### task-ultra205-default-profile-soak-004 | 2026-10-15 | Soak once more to check the publication-lock fix
-
-Objective: hardware evidence for `task-operator-snapshot-io-outside-lock`.
-Firmware that writes HTTP responses and the WebSocket connect frame after the
-snapshot lock is released should not show the multi-second paired HTTP and
-WebSocket gaps seen in soak 002 (4,632 ms HTTP / 3,551 ms WebSocket) and soak
-003 (5,601 / 4,781). The owner authorized this soak on 2026-10-15.
-
-Ultra 205 upstream-default soak hardware: enabled.
-
-- [x] Point `SOAK_TASK` at this task.
-- [ ] Soak attempt 001 (soak ledger ordinal 5), with an independent review.
-
-Hardware contract (owner-authorized 2026-10-15). It is the archived
-`task-ultra205-default-profile-soak-003` soak contract, unchanged except:
-- package at the clean, pushed `HEAD` that records this contract;
-- parent `P = scratch/ultra205-soak-004`, with `R = P/attempt-001`;
-- soak ledger ordinal 5;
-- no BAP traffic at all.
-
-Allowed effects, live limits, the seal path, retry bound and outcomes are as
-that contract. Parity promotion is prohibited.
-
-Comparison for the lock task, read from `soak-judge` and the private journals.
-It is an observation, not a soak pass criterion:
-- The soak's maximum WebSocket gap is at most 2,000 ms, and its maximum HTTP
-  gap is at most 3,000 ms. The verified soak of 2026-10-06 had 843 ms and
-  2,265 ms.
-- No HTTP gap above 3,000 ms coincides with a WebSocket gap above 2,000 ms.
-
-If a larger paired gap recurs, the lock fix is not sufficient. The result is
-then recorded as such, and the stall is investigated (for example, a Wi-Fi or
-TCP stall) under the lock task, without another soak.
-
-Verification: pending. Completion review: pending.
-
 ## Future
+
+### task-http-server-task-stall-diagnostics | 2026-10-15 | Find what stalls the HTTP server task for seconds
+
+Origin: soaks 002 and 003 each had one paired stall, both in the first minute
+of work: 4.6 s HTTP with 3.6 s WebSocket, and 5.6 s with 4.8 s. Soak 004 and
+the 2026-10-06 soak had none. With the publication lock no longer held
+across socket writes (`task-operator-snapshot-io-outside-lock`), the remaining
+candidates are:
+- a slow `httpd` socket write;
+- a send timeout on the single HTTP server task;
+- a Wi-Fi or TCP stall.
+
+The stalls sat near the first clean-jobs refresh, which may be a confounder.
+
+- [ ] Add redacted diagnostics on the server task: the duration and outcome
+      of each response write and queued WebSocket send, a send-timeout count,
+      and the worst duration per minute. Expose them in a way the soak
+      observer or qualification report can record, with host tests.
+- [ ] On the next scheduled soak, correlate any paired gap with those
+      durations, with Wi-Fi RSSI and with clean-jobs refreshes. Only then
+      decide on a fix, such as send timeouts or handler restructuring.
+
+Verification: pending. Completion review: pending.
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 
