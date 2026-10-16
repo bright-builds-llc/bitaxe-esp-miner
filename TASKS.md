@@ -1210,7 +1210,19 @@ each soak needs its own `TASKS.md` contract.
   - the catalog-maximum shutdown tail.
   Record the device configuration in evidence.
 - [ ] Update the PWR and ASIC parity rows whose non-claims name "arbitrary
-      profiles", within what the evidence shows.
+      profiles", within what the evidence shows. Each row change needs a
+      formal transition (work plan, result and `checklist-transitions`
+      record); a direct edit fails `just parity`. Candidates, with the
+      soak 007 and 008 evidence:
+      - ASIC-007: live retuning from 485 to 400 MHz and back;
+      - PWR-002: the 485/1200 device-settings profile with the automatic
+        fan;
+      - PWR-003: measured core-voltage steps;
+      - PWR-005: DS4432U codes for 1200 and 1100 mV;
+      - THR-002: automatic fan settling near the 60 C target.
+
+      Do them after the catalog-maximum decision, so each row transitions
+      once.
 
 Started 2026-10-16 at the owner's request ("do step 4 and 5").
 
