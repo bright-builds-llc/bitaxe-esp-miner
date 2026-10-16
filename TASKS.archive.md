@@ -30252,3 +30252,68 @@ Residual risks:
   where the reference sends `-128`. That only happens between the AP being
   lost and the disconnect event being published.
 - The profiled `LiveStage::Wifi` timing now includes the driver call.
+
+### task-ultra205-default-profile-soak-006 | 2026-10-16 | Soak on the live-RSSI build
+
+Objective: the hardware observation left open by the archived
+`task-parity-wifi-rssi-live` (`34465167`). Firmware that reads Wi-Fi RSSI
+live for each request mines one soak. The observer's `wifiRssi` samples show
+whether the value now follows the radio instead of staying at its connect-time
+reading. The soak also keeps the server-task send timing in place for any
+stall. The owner authorized this soak on 2026-10-16.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task.
+- [x] Soak attempt 001 (soak ledger ordinal 7), with an independent review.
+
+Hardware contract (owner-authorized 2026-10-16). It is the archived
+`task-ultra205-default-profile-soak-005` contract, unchanged except:
+- package at the clean, pushed `HEAD` that records this contract;
+- parent `P = scratch/ultra205-soak-006`, with `R = P/attempt-001`;
+- soak ledger ordinal 7;
+- no BAP traffic.
+
+Allowed effects, live limits, the seal path, retry bound and outcomes are as
+that contract. Parity promotion is prohibited.
+
+RSSI reading (observation, not a pass criterion):
+- Report the `wifiRssi` range, the number of distinct values, and whether it
+  changed between samples.
+- Report any sample whose value is outside a plausible station range
+  (-100..0 dBm), or `-90` while connected, which would mean a failed read.
+- Several distinct values confirm the live read. A constant value is not by
+  itself a failure, because a still radio environment can hold a steady RSSI,
+  but it is recorded as unconfirmed.
+- Keep soak 005's stall reading: for every HTTP gap above 3,000 ms or
+  WebSocket gap above 2,000 ms, report the recent-worst send durations, send
+  failures, `wifiRssi` and any nearby `stale_completion`.
+
+Soak attempt 001 result (2026-10-16): `complete`. `result.json` is `passed`,
+and the independent review agrees.
+- 607,787 active ms, ended by budget; safe-stop reached `fan_paused`.
+- Soak ordinal 7 charged once (4,333,350 ms in total).
+- 26 of 26 submitted shares accepted.
+- 20/20 windows; maximum gaps 892 ms WebSocket and 2,367 ms HTTP, so no stall
+  was observed.
+
+RSSI reading: `wifiRssi` ranged from −45 to −35 dBm, with 9 distinct values
+and 408 changes over 1,553 samples. No value was implausible or `-90`. Soak
+005 read a constant −38, so this confirms the live read.
+
+Sends: HTTP at most 71 ms, WebSocket at most 36 ms, no failures.
+`stale_completion` reached 4, and every submission was answered. One notice
+fell in the same Gate sample as share 9's submit and acceptance, so the
+clean-jobs fix is still not proven live.
+
+Summary: `docs/parity/evidence/20261016-ultra205-soak-006.md`.
+
+Verification: as above, sealed through a named-port detector and
+`just ultra205-soak finish`.
+
+Completion review: the live-RSSI build mined a clean, passing soak, and its
+RSSI follows the radio. This closes the hardware observation
+`task-parity-wifi-rssi-live` left open.
+
+Residual risk: the stalls of soaks 002 and 003 remain unexplained. Now 2 in 6
+soaks.
