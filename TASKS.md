@@ -1171,19 +1171,6 @@ named-phase allocation profile item stays open. Qualification stays false.
 
 ## Future
 
-### task-soak-judge-mineonboot-field | 2026-10-15 | Make the soak judge's mineonboot check able to fail
-
-Origin: the soak 003 review. `scripts/fixed-usb-soak/judge.mjs:41` checks
-`last.mine_on_boot`, a field the Gate samples never carry, so the check always
-passes. `mineonboot=false` is proven today only by the released final state.
-
-- [ ] Judge `mineonboot` from a sample source that carries it, such as the
-      qualification report's `mine_on_boot` or the released state, and fail
-      closed when it is absent. Add a regression in which a missing or true
-      value fails.
-
-Verification: pending. Completion review: pending.
-
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 
 Owner request (2026-10-15). Start only after the parity work is complete.

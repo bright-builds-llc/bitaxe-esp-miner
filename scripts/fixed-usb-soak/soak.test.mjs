@@ -164,6 +164,25 @@ test("the terminal judgement fails closed on each missing criterion", () => {
   }
 });
 
+test("the mine-on-boot criterion needs an explicit false in the final soak report", () => {
+  // Arrange
+  const withFinal = (mineOnBoot) => {
+    const input = soakInput();
+    const last = input.records[1];
+    const { mine_on_boot: _omitted, ...rest } = last.state.qualification;
+    const qualification = mineOnBoot === undefined ? rest : { ...rest, mine_on_boot: mineOnBoot };
+    return { ...input, records: [input.records[0], { ...last, state: { ...last.state, qualification } }] };
+  };
+  // Act
+  const enabled = judgeSoak(withFinal(true)).failures;
+  const absent = judgeSoak(withFinal(undefined)).failures;
+  const disabled = judgeSoak(withFinal(false)).failures;
+  // Assert: an absent field used to pass, because `undefined` is falsy.
+  assert.ok(enabled.includes("mine_on_boot_enabled"));
+  assert.ok(absent.includes("mine_on_boot_unobserved"));
+  assert.ok(!disabled.some((failure) => failure.startsWith("mine_on_boot")));
+});
+
 test("an unreleased final state is never a passed soak", () => {
   // Arrange / Act
   const result = judgeSoak(soakInput());

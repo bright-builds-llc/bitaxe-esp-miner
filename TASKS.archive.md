@@ -29874,3 +29874,42 @@ Residual risks:
   task.
 - STR-09's row text is unchanged: stale response paths on hardware were
   already a non-claim.
+
+### task-soak-judge-mineonboot-field | 2026-10-15 | Make the soak judge's mineonboot check able to fail
+
+Origin: the soak 003 review. `scripts/fixed-usb-soak/judge.mjs:41` checks
+`last.mine_on_boot`, a field the Gate samples never carry, so the check always
+passes. `mineonboot=false` is proven today only by the released final state.
+
+- [x] Judge `mineonboot` from a sample source that carries it, such as the
+      qualification report's `mine_on_boot` or the released state, and fail
+      closed when it is absent. Add a regression in which a missing or true
+      value fails.
+
+Finding (2026-10-15): the review's premise was only partly right.
+- 623 of soak 003's 625 Gate samples do carry `qualification.mine_on_boot`.
+  The two without it are from before the first report. Every soak sample
+  carries it.
+- The real defect: the check was fail-open. It failed only on a truthy value,
+  so an absent field (`undefined`) passed.
+
+Fix (`scripts/fixed-usb-soak/judge.mjs`): the final soak report must carry an
+explicit `false`.
+- `true` fails as `mine_on_boot_enabled`.
+- An absent or non-boolean value fails as the new `mine_on_boot_unobserved`.
+
+Regression: `the mine-on-boot criterion needs an explicit false in the final
+soak report` (`soak.test.mjs`). It fails on the old judge.
+
+The final soak samples of soak 002 and soak 003 both carry `false`, so their
+`passed` results stand under the stricter rule.
+
+Verification: `fixed_usb_soak_soak_test` and `fixed_usb_soak_server_test`
+pass, and the regression fails without the fix. The Bright Builds checks and
+`just verify-redaction` pass.
+
+Completion review: the soak judge now proves `mineonboot=false` from the
+device's own report, as well as from the released final state.
+
+Residual risk: none beyond the existing reliance on the Gate relaying the
+device report.

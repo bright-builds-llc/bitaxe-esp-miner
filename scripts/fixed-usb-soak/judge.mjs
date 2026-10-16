@@ -38,7 +38,9 @@ function terminalFailures(records, ordinal) {
   check(!(last.active_ms >= SOAK_WORK_GATE_MS && last.active_ms <= SOAK_MAXIMUM_ACTIVE_MS), "soak_active_time");
   check(last.accepted < 1, "no_accepted_share");
   check(last.work_dispatched < 1 || last.nonce_work_correlations < 1, "no_correlated_work");
-  check(last.mine_on_boot, "mine_on_boot_enabled");
+  // Fail closed: only an explicit `false` in the final soak report proves the boot preference stayed off.
+  check(last.mine_on_boot === true, "mine_on_boot_enabled");
+  check(typeof last.mine_on_boot !== "boolean", "mine_on_boot_unobserved");
   check(soakSamples.some((q) => q.revocation_reason !== "none" && q.revocation_reason !== "lease_or_budget_expired"), "soak_revoked");
   check(records.some((record) => record.state.running && record.state.qualification && unsafeSample(record.state.qualification)), "unsafe_sample");
   check(records.some((record) => record.state.renewalsConfirmed > SOAK_RENEWALS), "renewal_bound");
