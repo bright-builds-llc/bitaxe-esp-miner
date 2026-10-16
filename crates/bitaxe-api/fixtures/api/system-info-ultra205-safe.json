@@ -50,6 +50,10 @@
     }
   },
   "runtimeHealth": {
+    "httpServerSends": {
+      "httpResponses": { "sends": 0, "failures": 0, "worstMillis": 0, "recentWorstMillis": 0 },
+      "websocketSends": { "sends": 0, "failures": 0, "worstMillis": 0, "recentWorstMillis": 0 }
+    },
     "selfTestState": "unavailable",
     "supervisorAvailability": "unavailable",
     "checkpointCategory": null,

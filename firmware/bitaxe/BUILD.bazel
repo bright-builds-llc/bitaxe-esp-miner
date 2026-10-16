@@ -1063,6 +1063,20 @@ rust_test(
 )
 
 rust_test(
+    name = "http_send_timing_ownership_tests",
+    srcs = [
+        "src/http_api/handlers.rs",
+        "src/http_api/response.rs",
+        "src/http_api/websocket.rs",
+        "src/http_send_timing_ownership_test.rs",
+        "src/runtime_health_adapter.rs",
+    ],
+    crate_name = "http_send_timing_ownership_tests",
+    crate_root = "src/http_send_timing_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "snapshot_io_ownership_tests",
     srcs = [
         "src/bap_adapter.rs",

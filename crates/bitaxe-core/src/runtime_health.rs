@@ -1,7 +1,12 @@
 //! Pure, observation-only runtime-health derivation.
 
+#[path = "runtime_health/send_durations.rs"]
+mod send_durations;
 #[path = "runtime_health/wait.rs"]
 mod wait;
+pub use send_durations::{
+    HttpServerSendsSnapshot, SendDurationSnapshot, SendDurationTracker, SEND_WINDOW_MS,
+};
 pub use wait::{
     TaskWatchdogOwnerPhase, TaskWatchdogOwnerSubphase, TaskWatchdogReadOutcome,
     TaskWatchdogWaitObservation, TaskWatchdogWaitState,
@@ -291,6 +296,9 @@ pub struct RuntimeHealthSnapshot {
     task_watchdog_owner_phase: TaskWatchdogOwnerPhase,
     task_watchdog_owner_subphase: TaskWatchdogOwnerSubphase,
     task_watchdog_wait_state: TaskWatchdogWaitState,
+    /// Boxed so the snapshot, which `ApiSnapshot` carries on task stacks, grows by
+    /// one pointer only.
+    http_server_sends: Box<HttpServerSendsSnapshot>,
 }
 
 impl RuntimeHealthSnapshot {
@@ -338,6 +346,7 @@ impl RuntimeHealthSnapshot {
             task_watchdog_owner_phase: TaskWatchdogOwnerPhase::Unavailable,
             task_watchdog_owner_subphase: TaskWatchdogOwnerSubphase::Unavailable,
             task_watchdog_wait_state: TaskWatchdogWaitState::NotWaiting,
+            http_server_sends: Box::default(),
         }
     }
 

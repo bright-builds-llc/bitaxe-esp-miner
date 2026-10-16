@@ -1,4 +1,4 @@
-use bitaxe_core::runtime_health::RuntimeHealthSnapshot;
+use bitaxe_core::runtime_health::{RuntimeHealthSnapshot, SendDurationSnapshot};
 use serde::{Deserialize, Serialize};
 
 use crate::{BootSessionId, OperatorSnapshotRevision};
@@ -40,6 +40,40 @@ pub struct RuntimeHealthWire {
     pub task_watchdog_owner_subphase: String,
     #[serde(rename = "taskWatchdogWaitState", default = "invalid_wait_state")]
     pub task_watchdog_wait_state: String,
+    /// Blocking sends on the HTTP server task; absent from older captures.
+    #[serde(rename = "httpServerSends", default)]
+    pub http_server_sends: HttpServerSendsWire,
+}
+
+/// Send counts and durations on the HTTP server task (project extension).
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HttpServerSendsWire {
+    #[serde(rename = "httpResponses")]
+    pub http_responses: SendDurationWire,
+    #[serde(rename = "websocketSends")]
+    pub websocket_sends: SendDurationWire,
+}
+
+/// One send kind: counts, the worst duration since boot and in the last minute or two.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SendDurationWire {
+    pub sends: u64,
+    pub failures: u64,
+    #[serde(rename = "worstMillis")]
+    pub worst_millis: u32,
+    #[serde(rename = "recentWorstMillis")]
+    pub recent_worst_millis: u32,
+}
+
+impl From<SendDurationSnapshot> for SendDurationWire {
+    fn from(snapshot: SendDurationSnapshot) -> Self {
+        Self {
+            sends: snapshot.sends,
+            failures: snapshot.failures,
+            worst_millis: snapshot.worst_ms,
+            recent_worst_millis: snapshot.recent_worst_ms,
+        }
+    }
 }
 
 impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
@@ -62,6 +96,10 @@ impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
                 .as_str()
                 .to_owned(),
             task_watchdog_wait_state: snapshot.task_watchdog_wait_state().as_str().to_owned(),
+            http_server_sends: HttpServerSendsWire {
+                http_responses: snapshot.http_server_sends().http_responses.into(),
+                websocket_sends: snapshot.http_server_sends().websocket_sends.into(),
+            },
         }
     }
 }

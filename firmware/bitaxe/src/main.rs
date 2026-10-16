@@ -20,6 +20,7 @@ mod fan_controller_plan;
 mod fan_controller_runtime;
 mod filesystem;
 mod http_api;
+mod http_send_timing;
 mod input_adapter;
 mod log_buffer;
 mod mining_actuation;

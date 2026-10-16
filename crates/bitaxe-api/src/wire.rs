@@ -20,7 +20,9 @@ use crate::{
 
 #[path = "wire/runtime_health.rs"]
 mod runtime_health;
-pub use runtime_health::{retained_runtime_health_record, RuntimeHealthWire};
+pub use runtime_health::{
+    retained_runtime_health_record, HttpServerSendsWire, RuntimeHealthWire, SendDurationWire,
+};
 
 /// Error type for host-side fixture compatibility helpers.
 #[derive(Debug, Error, PartialEq, Eq)]

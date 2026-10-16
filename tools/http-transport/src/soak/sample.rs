@@ -28,8 +28,23 @@ pub struct SoakSample {
     pub shares_accepted: u64,
     pub shares_rejected: u64,
     /// The all-time and session best nonce difficulty (`bestDiff`, `bestSessionDiff`).
+    /// Defaulted so journals from before these fields still parse.
+    #[serde(default)]
     pub best_diff: u64,
+    #[serde(default)]
     pub best_session_diff: u64,
+    /// HTTP server task sends: the worst duration in the last minute or two, and
+    /// failures since boot (`runtimeHealth.httpServerSends`).
+    #[serde(default)]
+    pub http_response_recent_worst_ms: u32,
+    #[serde(default)]
+    pub http_response_failures: u64,
+    #[serde(default)]
+    pub websocket_send_recent_worst_ms: u32,
+    #[serde(default)]
+    pub websocket_send_failures: u64,
+    #[serde(default)]
+    pub wifi_rssi: i16,
     pub revision: u64,
     /// HTTP only: whether the configured pool settings still equal the first HTTP sample's.
     pub maybe_pool_matches_initial: Option<bool>,
@@ -38,6 +53,7 @@ pub struct SoakSample {
 impl SoakSample {
     #[must_use]
     pub fn from_wire(wire: &SystemInfoWire, maybe_pool_matches_initial: Option<bool>) -> Self {
+        let sends = wire.runtime_health.http_server_sends;
         Self {
             boot_session: wire.boot_session.to_string(),
             boot_ordinal: wire.boot_ordinal,
@@ -54,6 +70,11 @@ impl SoakSample {
             shares_rejected: wire.shares_rejected,
             best_diff: reference_u64(wire.best_diff),
             best_session_diff: reference_u64(wire.best_session_diff),
+            http_response_recent_worst_ms: sends.http_responses.recent_worst_millis,
+            http_response_failures: sends.http_responses.failures,
+            websocket_send_recent_worst_ms: sends.websocket_sends.recent_worst_millis,
+            websocket_send_failures: sends.websocket_sends.failures,
+            wifi_rssi: wire.wifi_rssi,
             revision: wire.operator_snapshot_revision.get(),
             maybe_pool_matches_initial,
         }

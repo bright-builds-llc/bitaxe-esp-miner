@@ -377,14 +377,20 @@ pub(super) fn handle_websocket_frame(request: *mut sys::httpd_req_t) -> sys::esp
     match frame.type_ {
         sys::httpd_ws_type_t_HTTPD_WS_TYPE_PING => {
             frame.type_ = sys::httpd_ws_type_t_HTTPD_WS_TYPE_PONG;
-            unsafe { sys::httpd_ws_send_frame(request, &mut frame) }
+            crate::http_send_timing::timed_esp(
+                crate::http_send_timing::SendKind::WebSocketFrame,
+                || unsafe { sys::httpd_ws_send_frame(request, &mut frame) },
+            )
         }
         sys::httpd_ws_type_t_HTTPD_WS_TYPE_PONG => sys::ESP_OK,
         sys::httpd_ws_type_t_HTTPD_WS_TYPE_CLOSE => {
             unregister_request_websocket_session(request, "close_frame");
             frame.len = 0;
             frame.payload = ptr::null_mut();
-            unsafe { sys::httpd_ws_send_frame(request, &mut frame) }
+            crate::http_send_timing::timed_esp(
+                crate::http_send_timing::SendKind::WebSocketFrame,
+                || unsafe { sys::httpd_ws_send_frame(request, &mut frame) },
+            )
         }
         _ => sys::ESP_ERR_NOT_SUPPORTED,
     }
@@ -486,7 +492,10 @@ pub(super) fn send_websocket_text_frame(
         payload: body.as_ptr() as *mut u8,
         len: body.len(),
     };
-    unsafe { sys::httpd_ws_send_frame(request, &mut frame) }
+    crate::http_send_timing::timed_esp(
+        crate::http_send_timing::SendKind::WebSocketFrame,
+        || unsafe { sys::httpd_ws_send_frame(request, &mut frame) },
+    )
 }
 
 pub(super) fn send_websocket_text_frame_async(
@@ -576,9 +585,12 @@ unsafe extern "C" fn send_queued_websocket_frame(argument: *mut c_void) {
         payload,
         len: queued.payload.len(),
     };
-    let result = unsafe {
-        sys::httpd_ws_send_frame_async(queued.server, queued.lease.session(), &mut frame)
-    };
+    let result = crate::http_send_timing::timed_esp(
+        crate::http_send_timing::SendKind::WebSocketFrame,
+        || unsafe {
+            sys::httpd_ws_send_frame_async(queued.server, queued.lease.session(), &mut frame)
+        },
+    );
     if let Some(token) = queued.maybe_cadence {
         RECORDER.send_completed(token, result == sys::ESP_OK);
     }

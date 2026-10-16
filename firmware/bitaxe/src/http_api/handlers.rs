@@ -63,7 +63,10 @@ pub(super) fn handle_logs_download<'request, 'connection>(
         ];
         let mut response = request.into_response(200, Some("OK"), &response_headers)?;
         for chunk in log_buffer::download_chunks() {
-            response.write_all(chunk.as_bytes())?;
+            crate::http_send_timing::timed(
+                crate::http_send_timing::SendKind::HttpResponse,
+                || response.write_all(chunk.as_bytes()),
+            )?;
         }
         Ok(())
     })

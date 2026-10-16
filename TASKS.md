@@ -1169,8 +1169,6 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-## Future
-
 ### task-http-server-task-stall-diagnostics | 2026-10-15 | Find what stalls the HTTP server task for seconds
 
 Origin: soaks 002 and 003 each had one paired stall, both in the first minute
@@ -1184,15 +1182,40 @@ candidates are:
 
 The stalls sat near the first clean-jobs refresh, which may be a confounder.
 
-- [ ] Add redacted diagnostics on the server task: the duration and outcome
+- [x] Add redacted diagnostics on the server task: the duration and outcome
       of each response write and queued WebSocket send, a send-timeout count,
       and the worst duration per minute. Expose them in a way the soak
       observer or qualification report can record, with host tests.
+- Diagnostics (2026-10-15):
+  - `bitaxe_core::runtime_health::SendDurationTracker` counts sends and
+    failures. It keeps the worst duration since boot and the worst in the
+    current and previous minute.
+  - `firmware/bitaxe/src/http_send_timing.rs` times every blocking send on the
+    HTTP server task, in two kinds:
+    - HTTP responses: every `write_all`, and `httpd_resp_send`;
+    - WebSocket frames: the synchronous `httpd_ws_send_frame` (text, pong and
+      close) and the queued `httpd_ws_send_frame_async`.
+  - The counts reach `/api/system/info` as the additive
+    `runtimeHealth.httpServerSends` object, which defaults when absent. They
+    are boxed in the runtime-health snapshot, so `ApiSnapshot` stays within
+    its 1,920-byte stack guard. The retained runtime-health log record is
+    unchanged.
+  - Soak samples now record both kinds' recent worst duration and failures,
+    plus Wi-Fi RSSI. The new fields default, as do `bestDiff` and
+    `bestSessionDiff`, so older sealed journals still parse.
+  - Regressions:
+    - the tracker's unit tests;
+    - the soak sample tests, including parsing an older sample;
+    - `http_send_timing_ownership_tests`, which requires every server-task
+      send to sit inside a timing wrapper and lists all 11 sends as untimed
+      on the old code.
 - [ ] On the next scheduled soak, correlate any paired gap with those
       durations, with Wi-Fi RSSI and with clean-jobs refreshes. Only then
       decide on a fix, such as send timeouts or handler restructuring.
 
 Verification: pending. Completion review: pending.
+
+## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 

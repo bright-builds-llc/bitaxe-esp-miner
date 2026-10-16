@@ -11,13 +11,13 @@ pub(super) fn send_raw_public_response(
         return sys::ESP_FAIL;
     }
 
-    unsafe {
+    crate::http_send_timing::timed_esp(crate::http_send_timing::SendKind::HttpResponse, || unsafe {
         sys::httpd_resp_send(
             request,
             response.body.as_ptr().cast(),
             response.body.len() as isize,
         )
-    }
+    })
 }
 
 pub(super) fn set_raw_status(request: *mut sys::httpd_req_t, status: u16) -> sys::esp_err_t {
@@ -59,9 +59,11 @@ pub(super) fn send_json_body<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
     body: &[u8],
 ) -> anyhow::Result<()> {
-    request
-        .into_response(200, Some("OK"), &[("Content-Type", "application/json")])?
-        .write_all(body)?;
+    crate::http_send_timing::timed(crate::http_send_timing::SendKind::HttpResponse, || {
+        request
+            .into_response(200, Some("OK"), &[("Content-Type", "application/json")])?
+            .write_all(body)
+    })?;
     Ok(())
 }
 
@@ -71,9 +73,10 @@ pub(super) fn send_settings_response<'request, 'connection>(
 ) -> anyhow::Result<()> {
     match response {
         SettingsPublicResponse::EmptySuccess => {
-            request
-                .into_response(200, Some("OK"), &[])?
-                .write_all(b"")?;
+            crate::http_send_timing::timed(
+                crate::http_send_timing::SendKind::HttpResponse,
+                || request.into_response(200, Some("OK"), &[])?.write_all(b""),
+            )?;
             Ok(())
         }
         SettingsPublicResponse::Error(error) => send_text_error(request, 400, error.body()),
@@ -85,9 +88,11 @@ pub(super) fn send_text_error<'request, 'connection>(
     status: u16,
     body: &'static str,
 ) -> anyhow::Result<()> {
-    request
-        .into_response(status, None, &[("Content-Type", "text/plain")])?
-        .write_all(body.as_bytes())?;
+    crate::http_send_timing::timed(crate::http_send_timing::SendKind::HttpResponse, || {
+        request
+            .into_response(status, None, &[("Content-Type", "text/plain")])?
+            .write_all(body.as_bytes())
+    })?;
     Ok(())
 }
 
@@ -97,15 +102,19 @@ pub(super) fn send_public_response(
 ) -> anyhow::Result<()> {
     let maybe_content_type = response.content_type;
     if let Some(content_type) = maybe_content_type {
-        request
-            .into_response(response.status, None, &[("Content-Type", content_type)])?
-            .write_all(response.body.as_bytes())?;
+        crate::http_send_timing::timed(crate::http_send_timing::SendKind::HttpResponse, || {
+            request
+                .into_response(response.status, None, &[("Content-Type", content_type)])?
+                .write_all(response.body.as_bytes())
+        })?;
         return Ok(());
     }
 
-    request
-        .into_status_response(response.status)?
-        .write_all(response.body.as_bytes())?;
+    crate::http_send_timing::timed(crate::http_send_timing::SendKind::HttpResponse, || {
+        request
+            .into_status_response(response.status)?
+            .write_all(response.body.as_bytes())
+    })?;
     Ok(())
 }
 
