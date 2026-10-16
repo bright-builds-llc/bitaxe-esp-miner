@@ -1199,8 +1199,6 @@ Divergences, recorded:
   `verified` → `verified` transitions, so the correction lives here.
 Verification: pending. Completion review: pending.
 
-## Future
-
 ### task-device-config-profile-evidence-soaks | 2026-10-16 | Soak the device-configured profiles on hardware
 
 ADR-0037 step 5. Depends on `task-live-hardware-settings-owner`. Hardware;
@@ -1214,7 +1212,52 @@ each soak needs its own `TASKS.md` contract.
 - [ ] Update the PWR and ASIC parity rows whose non-claims name "arbitrary
       profiles", within what the evidence shows.
 
+Started 2026-10-16 at the owner's request ("do step 4 and 5").
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task.
+- [ ] Soak 007 attempt 001: the first soak on device settings, at 485 MHz,
+      1200 mV and the automatic fan (soak ledger v2, ordinal 1), with an
+      independent review.
+
+Soak 007 hardware contract (owner-authorized 2026-10-16). It is the archived
+`task-ultra205-default-profile-soak-006` contract, unchanged except:
+- **Package:** `just package` at the clean, pushed `HEAD` that records this
+  contract. It carries ADR-0037 steps 1–4: device-settings profiles, mining
+  time as the budget, the fan following settings, and live settings. Install
+  it with that contract's state-preserving `just flash-monitor ...
+  --capture-timeout-seconds 360 --redact-evidence`.
+- **Parent and ledger:** `P = scratch/ultra205-soak-007`, with
+  `R = P/attempt-001`. Soak ledger v2 (`soak_ledger2`), ordinal 1; its fresh
+  ledger must report next ordinal 1 and total 0.
+- **Gate:** `eacd8147ead746711be6a03341a32e3cfed41a3e` (preflight
+  `--gate-commit`).
+- **New allowed effect:** at `/observer/start`, while the device is idle,
+  `serve` sends one HTTP PATCH to the device's private address:
+  `frequency` 485, `coreVoltage` 1200, `autofanspeed` 1. It reads them back
+  and records `device-settings.json`; a mismatch refuses the soak. These
+  values equal the device defaults, so nothing needs restoring.
+- **Budget:** 600,000 ms of mining, charged once. The ordered shutdown runs
+  after it, bounded at 22,550 ms.
+- **Fan:** after preparation's 100% and live-RPM proof, the automatic fan
+  controller drives the fan (`temptarget` 60 C, `minFanSpeed` 25%).
+- **Unchanged:** live stop limits (input 4.5–5.5 V, at most 15 W, ASIC below
+  75 C, fresh nonzero fan, watchdog alive, 2.8 s heartbeat), the seal path
+  (named-port detector, then `just ultra205-soak finish`), retry bound and
+  outcomes. No BAP traffic. Parity promotion is prohibited.
+
+Evidence to read (observations, not pass criteria):
+- `device-settings.json` requested and observed values;
+- fan RPM range under the automatic fan versus soaks 002–006 at 100%;
+- chip temperature range;
+- `active_ms` ending at 600,000;
+- the shutdown completing to `fan_paused` within the 22,550 ms bound plus
+  cooling.
+
 Verification: pending. Completion review: pending.
+
+## Future
 
 ### task-mining-baseline-after-lease | 2026-10-16 | Decide whether the Worker mines on its own after a lease
 

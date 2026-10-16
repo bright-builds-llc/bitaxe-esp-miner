@@ -16,11 +16,11 @@ Gate. The decisions behind it are
   soak ledger. The ordered shutdown runs after it, bounded at 22,550 ms.
 
 The command adds no authority. It refuses to run unless
-`task-ultra205-default-profile-soak-006` is active and contains the exact line
+`task-device-config-profile-evidence-soaks` is active and contains the exact line
 `Ultra 205 upstream-default soak hardware: enabled.` That task's contract still
 governs every effect, the evidence, recovery and the stop conditions. Its
 predecessors (`task-ultra205-default-profile-soak-reverification` and `-002`
-through `-005`) are archived. After this task is archived the command refuses
+through `-006`) are archived. After this task is archived the command refuses
 again; a later soak needs a new active task with its own contract and the
 enabling line, with `SOAK_TASK` in `contract.mjs` pointed at it.
 
