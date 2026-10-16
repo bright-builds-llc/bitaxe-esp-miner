@@ -1217,9 +1217,12 @@ Started 2026-10-16 at the owner's request ("do step 4 and 5").
 Ultra 205 upstream-default soak hardware: enabled.
 
 - [x] Point `SOAK_TASK` at this task.
-- [ ] Soak 007 attempt 001: the first soak on device settings, at 485 MHz,
-      1200 mV and the automatic fan (soak ledger v2, ordinal 1), with an
-      independent review.
+- [x] Soak 007 attempt 001: the first soak on device settings, at 485 MHz,
+      1200 mV and the automatic fan (soak ledger v2, ordinal 1). It was
+      `unverified` on a tooling-order fault; the result is below.
+- [x] Fix the soak tooling so the page baseline follows the settings write,
+      with regressions.
+- [ ] Soak 007 attempt 002 (ordinal 2), with an independent review.
 
 Soak 007 hardware contract (owner-authorized 2026-10-16). It is the archived
 `task-ultra205-default-profile-soak-006` contract, unchanged except:
@@ -1254,6 +1257,60 @@ Evidence to read (observations, not pass criteria):
 - `active_ms` ending at 600,000;
 - the shutdown completing to `fan_paused` within the 22,550 ms bound plus
   cooling.
+
+Soak 007 attempt 001 result (2026-10-16): `unverified`. Its single failure,
+`cleanup_unconfirmed`, is a tooling-order fault, not a device fault.
+- Package `2f65509c`, installed `observed_exact_package`; Gate `eacd8147`.
+  Device settings were read back as requested: 485 MHz, 1200 mV, automatic
+  fan, `temptarget` 60, `minFanSpeed` 25.
+- The device side passed every other criterion.
+  - Mining: 600,000 active ms, ended by the budget.
+  - Ledger: v2 ordinal 1, charged once.
+  - Shares: 26 accepted, 0 rejected.
+  - Windows: 20/20 credited, with zero reconnects. Maximum gaps were 836 ms
+    on the WebSocket and 2,231 ms on HTTP.
+  - Shutdown: about 7.7 s on the device from revocation to the end of the
+    pre-reset shutdown, within the 19,050 ms bound for 485 MHz. That is
+    generation elapsed 617,400 ms, minus 600,000 ms of mining, minus about
+    9.7 s of preparation. Safe-stop reached `fan_paused`.
+  - Boot preference: `mineonboot=false`.
+  - Work-gate samples stayed within 5.23–5.27 V, 10.4–12.5 W and 35–61 C,
+    with the watchdog alive.
+  - The automatic fan ran at 2,433–3,938 RPM, against about 7,300 RPM at
+    100% in soaks 002–006.
+- Cause: the Gate page takes its preservation baseline from the first device
+  status after Connect. `startObserver()` then wrote the settings from that
+  same page, so the final comparison reported `settings_match: false`.
+  Soaks 002–006 wrote no settings.
+- Fix: `serve` records the page's baseline id when it writes the settings. The
+  budget review then refuses (`soak_settings_baseline_stale`) unless a page
+  reloaded after the write reports a different baseline with
+  `settings_match: true`. The issuance records the reviewed baseline id. The
+  judge adds `preservation_baseline_changed` when the final state comes from
+  any other page, so cleanup is only judged against the page that signed.
+  Regressions cover each refusal: no settings written, the writing page's
+  baseline, a changed setting, an unobserved preservation (with no PATCH
+  sent), and a final state from another page. The README adds the reload
+  step.
+- Risk accepted: the idle proof needs one unbroken WebSocket across the page
+  reload. If the reload breaks it, the attempt fails closed before signing,
+  and nothing is charged.
+
+Soak 007 attempt 002 contract (the verified-fix continuation, under the
+standing authorization). Same as attempt 001 except:
+- **Package:** at the clean, pushed fix commit, installed by the same
+  state-preserving `just flash-monitor ... --capture-timeout-seconds 360
+  --redact-evidence`.
+- **Parent:** `P = scratch/ultra205-soak-007-attempt-002`, with
+  `R = P/attempt-002`.
+- **Ledger:** soak ledger v2 ordinal 2. The ledger must report next ordinal 2
+  and total 600,000.
+- **Page sequence:** Connect, `startObserver()`, then reload and Connect
+  again before the idle proof and reviews.
+- **Settings write:** it writes the same values. The device already holds
+  them.
+- **Repeated boundary:** if attempt 002 again fails `cleanup_unconfirmed`
+  with `settings_match: false`, the outcome is `stop_repeated_boundary`.
 
 Verification: pending. Completion review: pending.
 

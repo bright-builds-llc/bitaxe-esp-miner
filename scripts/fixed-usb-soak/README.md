@@ -52,8 +52,12 @@ mode 0600; preflight and finish refuse other modes.
 1. In the dedicated Gate tab, open `http://127.0.0.1:48765/` and press Connect.
    Then call these page operations in order:
    1. `soakSupervisor.startObserver()`. This reads one station endpoint while
-      idle and starts the observer, which polls HTTP and reads the WebSocket on
-      separate threads.
+      idle, writes the soak's device settings and starts the observer, which
+      polls HTTP and reads the WebSocket on separate threads.
+   1. Reload the page and press Connect again. The page compares the final
+      state against the first settings snapshot it saw, so the snapshot must
+      come after the write. The budget review refuses a page loaded before it
+      (`soak_settings_baseline_stale`). The observer keeps running.
    1. Wait at least 60 s; `GET /observer/idle-proof` reports progress.
    1. `workerAcceptance.submitCoolingReview()`.
    1. `workerAcceptance.submitBudgetReview()`, which reviews the device soak
@@ -83,11 +87,12 @@ mode 0600; preflight and finish refuse other modes.
 
 `R/result.json` is `passed` only when every one of these holds:
 
-- The device ends the soak by its budget, with work admitted for 600–619.05 active seconds.
+- The device ends the soak by its budget, after exactly 600 active seconds.
 - Safe-stop completes at `fan_paused`.
 - `mineonboot` stays false and the soak ledger is charged exactly once.
 - Pool settings are retained.
-- The final state is released.
+- The final state is released, and it comes from the page that signed the
+  soak, so its settings comparison covers the whole soak.
 - Every running sample stays inside the live limits: 4.5–5.5 V, at most 15 W,
   below 75 C, fan above 0 RPM, watchdog alive.
 - At least one accepted share.

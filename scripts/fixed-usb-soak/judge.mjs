@@ -63,6 +63,9 @@ export function judgeSoak({ context, records, issuance, ledgerAfter, finalState,
   let cleanupConfirmed = true;
   try { requireReleasedState(finalState, context); } catch { cleanupConfirmed = false; }
   check(!cleanupConfirmed, "cleanup_unconfirmed");
+  // Cleanup compares against the page's own baseline, so it proves the soak only from the page that signed it.
+  check(typeof issuance.preservation_baseline_id !== "string" || finalState?.preservation?.baseline_id !== issuance.preservation_baseline_id,
+    "preservation_baseline_changed");
   const before = issuance.ledger_before;
   check(!(ledgerAfter?.schema === "worker-soak-ledger-v2" && ledgerAfter.pending === false && ledgerAfter.next_ordinal === issuance.ordinal + 1 &&
     ledgerAfter.total_charged_ms === before.total_charged_ms + SOAK_MAXIMUM_ACTIVE_MS), "soak_ledger_not_charged_once");

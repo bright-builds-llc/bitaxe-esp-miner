@@ -37,7 +37,7 @@ export async function createSoakSupervisor(options, operations = {}) {
   const readPool = operations.readPool ?? (() => readPoolForSigning(context.firmware_root, options.poolCredentials));
   const observer = (operations.createObserver ?? createSoakObserver)(root, context, operations);
   const recordsPath = resolve(root, "soak.samples.jsonl");
-  let scope, challenge, review, pending, cooling, lastState, records = [], queue = Promise.resolve();
+  let scope, challenge, review, pending, cooling, lastState, settingsBaselineId, records = [], queue = Promise.resolve();
 
   function challengeFor(kind) {
     requireCondition(scope && !pending, "soak_review_scope");
@@ -53,6 +53,15 @@ export async function createSoakSupervisor(options, operations = {}) {
   function idleState(state) {
     validateState(state, context);
     requireCondition(state.connected && !state.running && !state.failure && state.deviceLeaseInactive, "soak_device_not_idle");
+  }
+  /**
+   * The Gate page keeps its first preservation snapshot as the baseline that cleanup compares against.
+   * Writing the soak's settings changes that snapshot, so signing needs a page loaded after the write.
+   */
+  function requireSettingsBaseline(state) {
+    requireCondition(settingsBaselineId !== undefined, "soak_device_settings_required");
+    requireCondition(typeof state.preservation?.baseline_id === "string", "soak_preservation_unobserved");
+    requireCondition(state.preservation.baseline_id !== settingsBaselineId && state.preservation.settings_match === true, "soak_settings_baseline_stale");
   }
 
   async function authorize(input) {
@@ -70,7 +79,8 @@ export async function createSoakSupervisor(options, operations = {}) {
     requireCondition(saved.expires > now() && Buffer.byteLength(JSON.stringify(artifacts)) <= 65536, "soak_signing_expired");
     await writeNew(resolve(root, "idle-proof.json"), idle);
     await writeNew(resolve(root, "issued.json"), { schema: "fixed-usb-soak-issuance-v1", ordinal: allowance.ordinal, allowance_id: allowance.id,
-      context_sha256: digest(JSON.stringify(context)), ledger_before: saved.report, renewals: artifacts.renewals.length, private_payload_persisted: false });
+      context_sha256: digest(JSON.stringify(context)), ledger_before: saved.report, renewals: artifacts.renewals.length,
+      preservation_baseline_id: saved.baselineId, private_payload_persisted: false });
     pending = artifacts;
     return { ready: true };
   }
@@ -143,6 +153,8 @@ export async function createSoakSupervisor(options, operations = {}) {
     "POST /observer/start": async (input) => {
       exactObject(input, ["endpoint", "state"]);
       idleState(input.state);
+      const baselineId = input.state.preservation?.baseline_id;
+      requireCondition(typeof baselineId === "string", "soak_preservation_unobserved");
       const endpoint = input.endpoint;
       requireCondition(endpoint?.schema === "worker-telemetry-endpoint-v1" && canonicalBase64(endpoint.controlSessionBindingSha256, 32), "observer_endpoint");
       // ADR-0037: the device's settings are the mining profile; set and record them while idle.
@@ -150,6 +162,7 @@ export async function createSoakSupervisor(options, operations = {}) {
       await missing(resolve(root, "device-settings.json"));
       const settings = await (operations.applyDeviceSettings ?? applyDeviceSettings)({ ipv4: endpoint.ipv4, httpPort: endpoint.httpPort });
       await writeNew(resolve(root, "device-settings.json"), { ...settings, context_sha256: digest(JSON.stringify(context)) });
+      settingsBaselineId = baselineId;
       return observer.start({ ipv4: endpoint.ipv4, httpPort: endpoint.httpPort });
     },
     "GET /observer/idle-proof": async () => observer.idle(),
@@ -159,7 +172,8 @@ export async function createSoakSupervisor(options, operations = {}) {
       const ordinal = requireIdleSoakLedger(input.report);
       requireCondition(canonicalBase64(input.controlSessionBindingSha256, 32), "soak_review_binding");
       idleState(input.state);
-      review = { binding: input.controlSessionBindingSha256, expires: saved.expires, report: input.report, ordinal };
+      requireSettingsBaseline(input.state);
+      review = { binding: input.controlSessionBindingSha256, expires: saved.expires, report: input.report, ordinal, baselineId: input.state.preservation.baseline_id };
       lastState = input.state;
       return { budget_review_saved: true };
     },

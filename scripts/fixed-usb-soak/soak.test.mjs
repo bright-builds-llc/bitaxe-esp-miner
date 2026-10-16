@@ -158,6 +158,8 @@ test("the terminal judgement fails closed on each missing criterion", () => {
     window_judge_unavailable: soakInput({ windowJudgement: null }),
     observer_unclean: soakInput({ observerClean: false }),
     device_settings_unrecorded: soakInput({ deviceSettings: null }),
+    preservation_baseline_changed: soakInput({ issuance: { ...base.issuance, preservation_baseline_id: "A".repeat(22) },
+      finalState: { preservation: { baseline_id: `${"B".repeat(21)}A` } } }),
   };
   // Act / Assert
   for (const [category, input] of Object.entries(cases)) {
@@ -184,6 +186,16 @@ test("the mine-on-boot criterion needs an explicit false in the final soak repor
   assert.ok(enabled.includes("mine_on_boot_enabled"));
   assert.ok(absent.includes("mine_on_boot_unobserved"));
   assert.ok(!disabled.some((failure) => failure.startsWith("mine_on_boot")));
+});
+
+test("a final state from the page that signed the soak keeps its baseline", () => {
+  // Arrange
+  const base = soakInput();
+  const input = soakInput({ issuance: { ...base.issuance, preservation_baseline_id: "A".repeat(22) }, finalState: { preservation: { baseline_id: "A".repeat(22) } } });
+  // Act
+  const result = judgeSoak(input);
+  // Assert
+  assert.ok(!result.failures.includes("preservation_baseline_changed"));
 });
 
 test("an unreleased final state is never a passed soak", () => {

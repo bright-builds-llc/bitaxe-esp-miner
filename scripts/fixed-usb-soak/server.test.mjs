@@ -17,17 +17,24 @@ const restoration = { schema: "worker-cooling-baseline-v1", fan_duty_percent: 30
 const qualificationLedger = { schema: "worker-qualification-ledger-v1", next_ordinal: 34, total_charged_ms: 4260000, pending: false, last_completed_ordinal: 33 };
 const soakLedger = { schema: "worker-soak-ledger-v2", next_ordinal: 1, total_charged_ms: 0, pending: false, last_completed_ordinal: 0 };
 const binding = "A".repeat(43);
+const preservation = (baselineId) => ({ schema: "worker-preservation-continuity-v1", baseline_id: baselineId, settings_match: true,
+  authorization_high_water_match: false, device_identity_match: true, mine_on_boot: false });
+/** The page that wrote the settings, and the page reloaded after the write. */
+const beforeSettings = { ...state, preservation: preservation("A".repeat(22)) };
+const afterSettings = { ...state, preservation: preservation(`${"B".repeat(21)}A`) };
+const endpoint = { schema: "worker-telemetry-endpoint-v1", controlSessionBindingSha256: binding, ipv4: "192.168.0.2", httpPort: 80 };
 
 async function supervisor({ idlePassed = true } = {}) {
   const root = await realpath(await mkdtemp(resolve(process.env.TEST_TMPDIR ?? tmpdir(), "soak-server-")));
   const firmware = resolve(root, "firmware");
   await mkdir(resolve(firmware, "firmware/bitaxe/bwg"), { recursive: true });
   await writeFile(resolve(firmware, "firmware/bitaxe/bwg/deployment-trust.json"), "{}");
-  const signed = [];
+  const signed = [], patches = [];
   const server = await createSoakSupervisor({ privateRoot: root, context: { ...context, firmware_root: firmware } }, {
     verifyFrozen: async () => undefined,
     readPool: async () => ({ endpoint: "stratum+tcp://pool.invalid:3333/", username: "u", password: "p" }),
     sign: async (operation, input) => { signed.push(input); return { profile: "bwg-worker-lease-authorization-artifact/0.1", operation, authorization: "signed" }; },
+    applyDeviceSettings: async (target) => (patches.push(target), { schema: "fixed-usb-soak-device-settings-v1", requested: {}, observed: {} }),
     createObserver: () => ({ start: async () => ({ observer_started: true }), idle: async () => ({ passed: idlePassed }), stop: async () => ({}), started: () => 1, journalPath: "/nonexistent" }),
   });
   server.listen(0, "127.0.0.1");
@@ -38,18 +45,24 @@ async function supervisor({ idlePassed = true } = {}) {
       : { method: "POST", headers: { "content-type": "application/json", origin }, body: JSON.stringify(maybeBody) });
     return { status: response.status, value: await response.json() };
   };
-  return { root, server, call, signed };
+  return { root, server, call, signed, patches };
+}
+
+async function budgetReview(call, reviewState) {
+  const { value: budget } = await call("/budget-review-context", {});
+  assert.equal(budget.mode, "soak");
+  return call("/budget-review", { nonce: budget.nonce, report: soakLedger, controlSessionBindingSha256: binding, state: reviewState });
 }
 
 async function reviewed(call, { withCooling = true } = {}) {
   await call("/activate", {});
+  assert.deepEqual((await call("/observer/start", { endpoint, state: beforeSettings })).value, { observer_started: true });
+  await call("/activate", {});
   if (withCooling) {
     const { value: cooling } = await call("/cooling-review-context", {});
-    await call("/cooling-review", { nonce: cooling.nonce, proof, restoration, budget_before: qualificationLedger, budget_after: qualificationLedger, state });
+    await call("/cooling-review", { nonce: cooling.nonce, proof, restoration, budget_before: qualificationLedger, budget_after: qualificationLedger, state: afterSettings });
   }
-  const { value: budget } = await call("/budget-review-context", {});
-  assert.equal(budget.mode, "soak");
-  const result = await call("/budget-review", { nonce: budget.nonce, report: soakLedger, controlSessionBindingSha256: binding, state });
+  const result = await budgetReview(call, afterSettings);
   assert.deepEqual(result.value, { budget_review_saved: true });
   return result;
 }
@@ -70,7 +83,67 @@ test("a reviewed, cooled, idle-proven soak is signed once from the device ledger
   assert.equal(second.value.error, "soak_artifacts_unavailable");
   assert.equal(signed.length, 37);
   const issued = JSON.parse(await readFile(resolve(root, "issued.json"), "utf8"));
-  assert.deepEqual([issued.ordinal, issued.private_payload_persisted], [1, false]);
+  assert.deepEqual([issued.ordinal, issued.private_payload_persisted, issued.preservation_baseline_id], [1, false, afterSettings.preservation.baseline_id]);
+});
+
+test("a budget review is refused before the soak's device settings are written", async (t) => {
+  // Arrange
+  const { server, call } = await supervisor();
+  t.after(() => server.close());
+  await call("/activate", {});
+  // Act
+  const refused = await budgetReview(call, afterSettings);
+  // Assert
+  assert.equal(refused.value.error, "soak_device_settings_required");
+});
+
+test("a budget review is refused from the page that wrote the settings", async (t) => {
+  // Arrange
+  const { server, call } = await supervisor();
+  t.after(() => server.close());
+  await call("/activate", {});
+  await call("/observer/start", { endpoint, state: beforeSettings });
+  // Act
+  const refused = await budgetReview(call, beforeSettings);
+  // Assert
+  assert.equal(refused.value.error, "soak_settings_baseline_stale");
+});
+
+test("a budget review is refused when the reloaded page sees the settings change again", async (t) => {
+  // Arrange
+  const { server, call } = await supervisor();
+  t.after(() => server.close());
+  await call("/activate", {});
+  await call("/observer/start", { endpoint, state: beforeSettings });
+  const changed = { ...afterSettings, preservation: { ...afterSettings.preservation, settings_match: false } };
+  // Act
+  const refused = await budgetReview(call, changed);
+  // Assert
+  assert.equal(refused.value.error, "soak_settings_baseline_stale");
+});
+
+test("settings are never written from a page that has not observed preservation", async (t) => {
+  // Arrange
+  const { server, call, patches } = await supervisor();
+  t.after(() => server.close());
+  await call("/activate", {});
+  // Act
+  const refused = await call("/observer/start", { endpoint, state });
+  // Assert
+  assert.equal(refused.value.error, "soak_preservation_unobserved");
+  assert.equal(patches.length, 0);
+});
+
+test("a budget review is refused from a page that has not observed preservation", async (t) => {
+  // Arrange
+  const { server, call } = await supervisor();
+  t.after(() => server.close());
+  await call("/activate", {});
+  await call("/observer/start", { endpoint, state: beforeSettings });
+  // Act
+  const refused = await budgetReview(call, state);
+  // Assert
+  assert.equal(refused.value.error, "soak_preservation_unobserved");
 });
 
 test("signing is refused until the idle WebSocket pre-phase passes", async (t) => {
@@ -113,9 +186,10 @@ test("a pending soak ledger cannot be reviewed for signing", async (t) => {
   const { server, call } = await supervisor();
   t.after(() => server.close());
   await call("/activate", {});
+  await call("/observer/start", { endpoint, state: beforeSettings });
   const { value: budget } = await call("/budget-review-context", {});
   // Act
-  const refused = await call("/budget-review", { nonce: budget.nonce, report: { ...soakLedger, pending: true }, controlSessionBindingSha256: binding, state });
+  const refused = await call("/budget-review", { nonce: budget.nonce, report: { ...soakLedger, pending: true }, controlSessionBindingSha256: binding, state: afterSettings });
   // Assert
   assert.equal(refused.value.error, "soak_ledger_not_idle");
 });
