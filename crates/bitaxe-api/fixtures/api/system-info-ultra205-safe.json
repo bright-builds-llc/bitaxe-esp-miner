@@ -1,6 +1,7 @@
 {
   "bootSession": "00000000000000000000000000000000",
   "bootOrdinal": 0,
+  "bootOrdinalTransition": "unavailable",
   "resetReasonCategory": "unavailable",
   "operatorSnapshotRevision": 1,
   "platformIdentity": {

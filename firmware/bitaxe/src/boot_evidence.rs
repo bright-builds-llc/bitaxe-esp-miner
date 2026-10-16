@@ -10,7 +10,8 @@ use std::{
 };
 
 use bitaxe_api::boot_identity::{
-    boot_identity_marker, runtime_origin_marker, ResetReasonCategory, BOOT_EVIDENCE_INTERVAL_MS,
+    boot_identity_marker, runtime_origin_marker, ResetReasonCategory, RtcBootTransitionKind,
+    BOOT_EVIDENCE_INTERVAL_MS,
 };
 use bitaxe_api::logs::{
     RuntimeHeartbeatModel, ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
@@ -32,6 +33,7 @@ static BOOT_SESSION: OnceLock<BootSessionNonce> = OnceLock::new();
 static HEARTBEAT_MODEL: OnceLock<Mutex<RuntimeHeartbeatModel>> = OnceLock::new();
 static BOOT_ORDINAL: OnceLock<u64> = OnceLock::new();
 static RESET_REASON: OnceLock<ResetReasonCategory> = OnceLock::new();
+static BOOT_ORDINAL_TRANSITION: OnceLock<RtcBootTransitionKind> = OnceLock::new();
 static RESET_RECEIPTS: OnceLock<crate::panic_evidence::ResetReceipts> = OnceLock::new();
 static CONNECTED_ORIGIN: OnceLock<Mutex<Option<ConnectedOriginReplay>>> = OnceLock::new();
 static RUNTIME_ATTESTATION: OnceLock<Mutex<Option<RuntimeAttestationReplay>>> = OnceLock::new();
@@ -140,6 +142,7 @@ pub fn initialize_observer() {
     RESET_RECEIPTS.get_or_init(|| crate::panic_evidence::initialize(reset_reason));
     let transition = rtc_boot_ordinal::initialize(reset_reason);
     let ordinal = *BOOT_ORDINAL.get_or_init(|| transition.record.ordinal);
+    BOOT_ORDINAL_TRANSITION.get_or_init(|| transition.kind);
     crate::panic_evidence::initialize_identity(ordinal);
     crate::preparation_evidence::initialize(ordinal);
     crate::core_dump_evidence::initialize(ordinal);
@@ -302,6 +305,12 @@ pub fn operator_snapshot_boot_session() -> BootSessionId {
 /// Returns the reset-retained ordinal for the current boot.
 pub fn operator_snapshot_boot_ordinal() -> u64 {
     boot_ordinal()
+}
+
+/// Returns how this boot's ordinal was chosen, or none before boot evidence
+/// initializes.
+pub fn operator_snapshot_boot_ordinal_transition() -> Option<RtcBootTransitionKind> {
+    BOOT_ORDINAL_TRANSITION.get().copied()
 }
 
 /// Returns the closed reset category for the current boot.

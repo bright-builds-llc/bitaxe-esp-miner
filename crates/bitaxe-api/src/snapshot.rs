@@ -139,6 +139,8 @@ impl AsicSnapshot {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlatformSnapshot {
     pub boot_ordinal: u64,
+    /// How the boot ordinal was chosen; none before boot evidence initializes.
+    pub maybe_boot_ordinal_transition: Option<crate::boot_identity::RtcBootTransitionKind>,
     pub reset_reason_category: String,
     pub version: String,
     pub semantic_version: String,
@@ -179,6 +181,7 @@ impl PlatformSnapshot {
     pub fn safe_ultra_205() -> Self {
         Self {
             boot_ordinal: 0,
+            maybe_boot_ordinal_transition: None,
             reset_reason_category: "unavailable".to_owned(),
             version: "000000000000-dev".to_owned(),
             semantic_version: "0.0.0-safe".to_owned(),

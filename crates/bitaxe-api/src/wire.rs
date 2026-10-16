@@ -52,6 +52,10 @@ pub struct SystemInfoWire {
     pub boot_session: BootSessionId,
     #[serde(rename = "bootOrdinal")]
     pub boot_ordinal: u64,
+    /// Project extension: `initialized`, `incremented`, `reinitialized_corrupt`
+    /// or `reinitialized_overflow`. Ordinals compare only within one record.
+    #[serde(rename = "bootOrdinalTransition", default)]
+    pub boot_ordinal_transition: String,
     #[serde(rename = "resetReasonCategory")]
     pub reset_reason_category: String,
     #[serde(rename = "operatorSnapshotRevision")]
@@ -328,6 +332,10 @@ impl SystemInfoWire {
         Self {
             boot_session: snapshot.operator_snapshot_identity.boot_session(),
             boot_ordinal: platform.boot_ordinal,
+            boot_ordinal_transition: platform
+                .maybe_boot_ordinal_transition
+                .map_or("unavailable", |kind| kind.label())
+                .to_owned(),
             reset_reason_category: platform.reset_reason_category.clone(),
             operator_snapshot_revision: snapshot.operator_snapshot_identity.revision(),
             platform_identity: snapshot.platform_identity.clone(),

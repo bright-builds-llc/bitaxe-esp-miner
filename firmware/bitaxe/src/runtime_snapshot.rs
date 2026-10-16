@@ -580,6 +580,8 @@ fn collect_platform_snapshot(
         crate::boot_evidence::operator_snapshot_reset_reason_category()
             .label()
             .to_owned();
+    platform.maybe_boot_ordinal_transition =
+        crate::boot_evidence::operator_snapshot_boot_ordinal_transition();
     platform.version = crate::build_label().to_owned();
     platform.semantic_version = crate::semantic_version().to_owned();
     platform.source_commit = crate::firmware_commit().to_owned();

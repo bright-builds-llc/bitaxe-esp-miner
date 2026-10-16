@@ -82,6 +82,10 @@ fn system_info_wire_serializes_upstream_field_names_and_encodings() {
     assert_eq!(value.get("bootSession"), Some(&json!("0".repeat(32))));
     assert_eq!(value.get("bootOrdinal"), Some(&json!(0)));
     assert_eq!(
+        value.get("bootOrdinalTransition"),
+        Some(&json!("unavailable"))
+    );
+    assert_eq!(
         value.get("resetReasonCategory"),
         Some(&json!("unavailable"))
     );

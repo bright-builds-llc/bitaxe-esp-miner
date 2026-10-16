@@ -1098,6 +1098,56 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
+### task-parity-bap-settings-effects | 2026-10-15 | Apply BAP settings and close the remaining BAP gaps
+
+Origin: the BAP ordinal 009 review. BAP-001 is `verified` with these as
+explicit non-claims.
+
+- [ ] Settings: upstream `BAP_handle_settings` applies frequency, ASIC voltage,
+      Wi-Fi SSID and password, fan speed, auto fan, found block and show new
+      block, and acknowledges each (fan speed silently). The firmware answers
+      every accepted intent with `set_failed` (`firmware/bitaxe/src/bap_adapter.rs`).
+      Route the intents to the settings and actuation owners under their
+      safety gates, or record owner-accepted divergences.
+      The setting parsers are also stricter than the reference's
+      `atoi`/`atof` (`crates/bitaxe-core/src/bap/semantics.rs`).
+- [x] Several subscriptions due on one tick are published in subscription
+      order, while the reference uses `BAP_PARAM` order
+      (`firmware/bitaxe/src/bap_runtime.rs`). Subscriptions are now kept in
+      `BapParameter::ALL` order, with a regression.
+- [x] Check `wifi_rssi` while disconnected: the reference sends `-128`.
+      Done in `task-parity-wifi-rssi-live` (`34465167`). Observed live in
+      soak 006.
+- [x] Report the boot-ordinal transition kind (initialized vs reinitialized
+      after an invalid record), or pin the RTC record's address, so the
+      ordinal can be compared across builds. System info now reports
+      `bootOrdinalTransition` (`initialized`, `incremented`,
+      `reinitialized_corrupt`, `reinitialized_overflow`) beside
+      `bootOrdinal`.
+- [ ] A settings hardware contract (moved from
+      `task-parity-bap-live-accessory-verification`): electrical safety,
+      allowed settings, restoration of changed settings, evidence and stop
+      conditions. Each setting needs the owner's go-ahead.
+
+Started 2026-10-16. Software only; no hardware effect without a settings
+hardware contract.
+
+Settings findings (2026-10-16):
+- The HTTP settings PATCH path validates, persists and reloads settings
+  through `FirmwareSettingsAdapter`.
+- Frequency and core voltage persisted that way are display-only. Mining uses
+  the signed Work Lease's fixed hardware profile, and nothing applies NVS
+  frequency or voltage to the ASIC. Upstream applies BAP frequency live, and
+  its power task re-applies NVS changes.
+- Fan settings are applied live by `fan_controller_runtime`.
+- Wi-Fi settings persist without a restart. The restart owner is in
+  `http_api/deferred_effects.rs`.
+- `block_found` and `show_new_block` are command-visible RAM state.
+- The BAP owner has 832 bytes of stack headroom, so it cannot run
+  persistence itself.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
@@ -1124,36 +1174,6 @@ upstream clients keep working.
       design in an ADR.
 - [ ] Keep every upstream field byte-compatible, and document the extensions
       as accepted project behaviour, not parity.
-
-Verification: pending. Completion review: pending.
-
-### task-parity-bap-settings-effects | 2026-10-15 | Apply BAP settings and close the remaining BAP gaps
-
-Origin: the BAP ordinal 009 review. BAP-001 is `verified` with these as
-explicit non-claims.
-
-- [ ] Settings: upstream `BAP_handle_settings` applies frequency, ASIC voltage,
-      Wi-Fi SSID and password, fan speed, auto fan, found block and show new
-      block, and acknowledges each (fan speed silently). The firmware answers
-      every accepted intent with `set_failed` (`firmware/bitaxe/src/bap_adapter.rs`).
-      Route the intents to the settings and actuation owners under their
-      safety gates, or record owner-accepted divergences.
-      The setting parsers are also stricter than the reference's
-      `atoi`/`atof` (`crates/bitaxe-core/src/bap/semantics.rs`).
-- [ ] Several subscriptions due on one tick are published in subscription
-      order, while the reference uses `BAP_PARAM` order
-      (`firmware/bitaxe/src/bap_runtime.rs`). Sort by `BapParameter::ALL`,
-      with a regression.
-- [x] Check `wifi_rssi` while disconnected: the reference sends `-128`.
-      Done in `task-parity-wifi-rssi-live` (`34465167`). Observed live in
-      soak 006.
-- [ ] Report the boot-ordinal transition kind (initialized vs reinitialized
-      after an invalid record), or pin the RTC record's address, so the
-      ordinal can be compared across builds.
-- [ ] A settings hardware contract (moved from
-      `task-parity-bap-live-accessory-verification`): electrical safety,
-      allowed settings, restoration of changed settings, evidence and stop
-      conditions. Each setting needs the owner's go-ahead.
 
 Verification: pending. Completion review: pending.
 

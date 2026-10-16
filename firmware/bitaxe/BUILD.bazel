@@ -459,8 +459,12 @@ rust_test(
 
 rust_test(
     name = "bap_runtime_tests",
-    srcs = ["src/bap_runtime.rs"],
+    srcs = [
+        "src/bap_runtime.rs",
+        "src/bap_runtime/tests.rs",
+    ],
     crate_name = "bap_runtime_tests",
+    crate_root = "src/bap_runtime.rs",
     deps = ["//crates/bitaxe-core:bitaxe_core"],
     edition = "2021",
 )
@@ -470,6 +474,7 @@ rust_test(
     srcs = [
         "src/bap_adapter.rs",
         "src/bap_runtime.rs",
+        "src/bap_runtime/tests.rs",
         "src/bap_source_ownership_test.rs",
         "src/main.rs",
         "src/startup.rs",

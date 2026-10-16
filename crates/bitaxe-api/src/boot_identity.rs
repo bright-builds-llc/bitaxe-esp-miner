@@ -87,6 +87,21 @@ pub enum RtcBootTransitionKind {
     ReinitializedOverflow,
 }
 
+impl RtcBootTransitionKind {
+    /// The stable label reported beside the boot ordinal. A reinitialized record
+    /// restarts the ordinal at 1, so ordinals from different records, such as
+    /// before and after installing a build whose link layout moved the record,
+    /// are not comparable.
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Initialized => "initialized",
+            Self::Incremented => "incremented",
+            Self::ReinitializedCorrupt => "reinitialized_corrupt",
+            Self::ReinitializedOverflow => "reinitialized_overflow",
+        }
+    }
+}
+
 /// Result of advancing or safely reinitializing retained boot state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RtcBootTransition {
@@ -255,6 +270,47 @@ pub fn runtime_origin_marker(session: [u32; 4], ordinal: u64, device_url: &str) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_record_with_a_bad_checksum_is_reported_as_reinitialized() {
+        // Arrange: what a new build reads when its link layout moved the record.
+        let mut previous = RtcBootRecord::new(9);
+        previous.ordinal = 10;
+
+        // Act
+        let transition = transition_rtc_boot_record(previous, false);
+
+        // Assert
+        assert_eq!(
+            (transition.record.ordinal, transition.kind.label()),
+            (1, "reinitialized_corrupt")
+        );
+    }
+
+    #[test]
+    fn transition_labels_are_stable() {
+        // Arrange
+        let kinds = [
+            RtcBootTransitionKind::Initialized,
+            RtcBootTransitionKind::Incremented,
+            RtcBootTransitionKind::ReinitializedCorrupt,
+            RtcBootTransitionKind::ReinitializedOverflow,
+        ];
+
+        // Act
+        let labels = kinds.map(RtcBootTransitionKind::label);
+
+        // Assert
+        assert_eq!(
+            labels,
+            [
+                "initialized",
+                "incremented",
+                "reinitialized_corrupt",
+                "reinitialized_overflow"
+            ]
+        );
+    }
 
     #[test]
     fn valid_record_increments_once() {
