@@ -1201,24 +1201,6 @@ Verification: pending. Completion review: pending.
 
 ## Future
 
-### task-live-hardware-settings-owner | 2026-10-16 | Apply frequency and voltage changes while mining, like upstream
-
-ADR-0037 step 4. Depends on `task-lease-without-hardware-profile`.
-
-Upstream's `power_management_task` re-reads NVS frequency and voltage and
-applies changes live (`ASIC_set_frequency`, `VCORE_set_voltage`).
-
-- [ ] An owner re-applies saved frequency and voltage changes during an active
-      lease, in safe order: voltage up before frequency up, frequency down
-      before voltage down, frequency in ramp steps.
-      - An out-of-range change keeps the applied values and is reported.
-      - Every step stays inside the runtime safety predicate.
-- [ ] HTTP settings and BAP `frequency` and `asic_voltage` then take effect
-      live. Close the divergence recorded in
-      `task-parity-bap-settings-effects`.
-
-Verification: pending. Completion review: pending.
-
 ### task-device-config-profile-evidence-soaks | 2026-10-16 | Soak the device-configured profiles on hardware
 
 ADR-0037 step 5. Depends on `task-live-hardware-settings-owner`. Hardware;

@@ -60,6 +60,8 @@ where
     Ok(())
 }
 
+// Kept as its own frame so `just audit-bap-stack` can root its audit here.
+#[inline(never)]
 fn run_owner(mut driver: UartDriver<'static>) {
     if let Err(error) = write_all(&mut driver, BAP_INITIALIZATION_BANNER) {
         log::warn!("bap_status=unavailable reason=initialization_banner error={error:#}");

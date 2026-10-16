@@ -30822,3 +30822,100 @@ Firmware and Gate change together, and mismatched peers fail closed:
 
 The next soak (a new task) runs at 485/1200 with the automatic fan, as
 `task-device-config-profile-evidence-soaks`.
+
+### task-live-hardware-settings-owner | 2026-10-16 | Apply frequency and voltage changes while mining, like upstream
+
+ADR-0037 step 4. Depends on `task-lease-without-hardware-profile`.
+
+Upstream's `power_management_task` re-reads NVS frequency and voltage and
+applies changes live (`ASIC_set_frequency`, `VCORE_set_voltage`).
+
+- [x] An owner re-applies saved frequency and voltage changes during an active
+      lease, in safe order: voltage up before frequency up, frequency down
+      before voltage down, frequency in ramp steps.
+      - An out-of-range change keeps the applied values and is reported.
+      - Every step stays inside the runtime safety predicate.
+- [x] HTTP settings and BAP `frequency` and `asic_voltage` then take effect
+      live. Close the divergence recorded in
+      `task-parity-bap-settings-effects`.
+
+Started 2026-10-16 at the owner's request ("do step 4 and 5").
+
+Findings:
+- Upstream's power-management task re-reads NVS every 100 ms. It writes the
+  voltage, then ramps the frequency (`frequency_transition_bmXX.c`, 6.25 MHz
+  steps, 100 ms apart) and sets the nonce space for the actual frequency.
+- Here the ASIC UART is shared through one mutex. The owner thread already
+  runs preparation and safe-stop. `SettingsChanged` would end the lease, so it
+  is not used.
+- The shutdown ramp starts from the adapter's ASIC profile, which only ever
+  held the Start profile.
+
+Implementation:
+- **`bitaxe_asic::bm1366::live_transition`:** `live_frequency_steps` and
+  `live_nonce_space_actions`. The ramp's target sequence is factored out
+  (`frequency_transition_targets`), so preparation, shutdown and live changes
+  share one algorithm.
+- **`bitaxe_runtime::live_hardware`:** `AppliedHardware` and
+  `next_live_hardware_action`, deciding one step per tick:
+  1. raise the voltage (its next step comes at least one tick later, more
+     than the 500 ms preparation settle);
+  2. step the frequency;
+  3. set the nonce space;
+  4. lower the voltage.
+
+  A change arriving mid-ramp is re-planned on the next tick.
+- **Firmware:**
+  - `production_mining_session/live_hardware.rs` runs once a second on the
+    owner thread, after the hashrate service. It acts only for a Gate lease
+    whose hardware is Ready, whose generation permits work, and whose safety
+    predicate holds.
+  - `mining_actuation_adapter/live.rs` applies at most 5 ramp steps per tick.
+    It re-checks admission before each step. The shutdown profile follows
+    each step, set to the higher of the old and attempted frequencies until
+    the write is confirmed.
+  - `execute_live_actions_guarded` runs ASIC actions only while production
+    work is admitted and the generation permits it.
+  - An unusable saved setting keeps the applied values and is logged once. A
+    failed step revokes the lease (`ControlFailed`), and safe-stop follows.
+  - Safe-stop clears the live owner first.
+
+Independent review (2026-10-16) found no blocking defect. The safety ordering
+and the shutdown invariants hold. This change also addresses:
+- **Zero-RPM fan:** a live change would have revoked the lease. The owner now
+  skips while the fan, safety readings or dispatch are unavailable.
+- **Long ticks:** a voltage-rise tick could block for about 3.6 s. The 500 ms
+  blocking settle is replaced by the 1 s tick spacing.
+- **Hardening and tests:**
+  - an admissibility re-check of the target, and distinct logs for a step
+    stopped by revocation;
+  - the refusal state resets at preparation;
+  - the attempted/applied rule is a pure, tested
+    `AppliedHardware::while_stepping_to`;
+  - mixed-direction and mid-ramp sequence tests, and a byte-for-byte
+    equivalence between live steps from 50 MHz and the preparation ramp.
+
+The BAP owner's `run_owner` is now `#[inline(never)]`: the compiler had
+inlined it, which removed the BAP stack audit's root.
+
+Verification (2026-10-16):
+- `bitaxe-runtime` live tests: 12. `bitaxe-asic` live-transition tests: 7.
+  Source guards cover placement after the hashrate service, the guarded
+  executor, and safe-stop stopping the live owner first.
+- Stack audits: BAP 720 bytes of headroom, HTTP 1,104; owner entry 3,984 bytes
+  against an 8,192 budget; no realignment callers.
+- The full gate passes, including `just test` (338 tests).
+
+Completion review: while a Gate lease mines, saved frequency and voltage
+changes now apply live, as upstream's power task does, in safe order. That
+covers HTTP and BAP changes alike, and safe-stop always ramps down from at
+or above the applied frequency.
+
+Residual risks:
+- Live changes have no hardware evidence yet (the step-5 soaks).
+- Refused settings are logged, not exposed in status.
+- The nonce space is set one tick after the ramp ends.
+- BAP's separate frequency and voltage writes can briefly ramp at the old
+  voltage, as on upstream.
+- A resumable re-prepare returns to the Start profile, then the live owner
+  re-applies the saved settings.

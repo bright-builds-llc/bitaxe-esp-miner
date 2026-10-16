@@ -8,6 +8,7 @@ pub mod allocation;
 pub mod clock;
 pub mod cooling;
 pub mod i2c_retry;
+pub mod live_hardware;
 pub mod mining_actuation;
 pub mod queue;
 pub mod reply;

@@ -854,6 +854,8 @@ rust_test(
         "src/operator_sensor_runtime.rs",
         "src/production_mining_session.rs",
         "src/production_mining_session/bwg.rs",
+        "src/production_mining_session/live_hardware.rs",
+        "src/asic_adapter/production/admission.rs",
         "src/production_mining_session/inbox.rs",
         "src/production_mining_session/readiness.rs",
         "src/production_mining_session/asic_worker.rs",

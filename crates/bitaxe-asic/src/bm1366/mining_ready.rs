@@ -273,7 +273,7 @@ pub fn mining_ready_commands(
 const QUARTERS_PER_MHZ: u32 = 4;
 const FREQ_RAMP_START_QUARTER_MHZ: u32 = 50 * QUARTERS_PER_MHZ;
 const FREQ_RAMP_STEP_QUARTER_MHZ: u32 = 25;
-const FREQ_RAMP_DELAY_MS: u32 = 100;
+pub(crate) const FREQ_RAMP_DELAY_MS: u32 = 100;
 
 /// Plans the upstream-aligned 50-MHz-to-profile frequency ramp.
 pub fn mining_ready_frequency_ramp_commands(
@@ -285,28 +285,23 @@ pub fn mining_ready_frequency_ramp_commands(
     )
 }
 
-fn frequency_transition_commands(
+/// The ramp's frequency targets in quarter MHz, each with whether the 100 ms settle
+/// follows it, as upstream's `frequency_transition_bmXX.c` steps: on the 6.25 MHz
+/// grid, then a final off-grid write; a change under one step is a single write.
+pub(crate) fn frequency_transition_targets(
     start_quarter_mhz: u32,
     target_quarter_mhz: u32,
-) -> Result<Vec<Bm1366Command>, &'static str> {
-    let mut commands = Vec::new();
-
+) -> Vec<(u32, bool)> {
     if start_quarter_mhz == target_quarter_mhz {
-        return Ok(commands);
+        return Vec::new();
     }
-
-    let frequency_distance = start_quarter_mhz.abs_diff(target_quarter_mhz);
-    if frequency_distance < FREQ_RAMP_STEP_QUARTER_MHZ {
-        commands.push(Bm1366Command::SetFrequency(transition_plan(
-            target_quarter_mhz,
-        )?));
-        return Ok(commands);
+    if start_quarter_mhz.abs_diff(target_quarter_mhz) < FREQ_RAMP_STEP_QUARTER_MHZ {
+        return vec![(target_quarter_mhz, false)];
     }
-
     let increasing = target_quarter_mhz > start_quarter_mhz;
     let mut current_step = transition_step(start_quarter_mhz, increasing);
     let target_step = transition_step(target_quarter_mhz, increasing);
-
+    let mut targets = Vec::new();
     while (increasing && current_step < target_step) || (!increasing && current_step > target_step)
     {
         if increasing {
@@ -314,21 +309,26 @@ fn frequency_transition_commands(
         } else {
             current_step -= 1;
         }
-
-        let current_quarter_mhz = current_step * FREQ_RAMP_STEP_QUARTER_MHZ;
-        commands.push(Bm1366Command::SetFrequency(transition_plan(
-            current_quarter_mhz,
-        )?));
-        commands.push(Bm1366Command::DelayMs(FREQ_RAMP_DELAY_MS));
+        targets.push((current_step * FREQ_RAMP_STEP_QUARTER_MHZ, true));
     }
-
-    let current_quarter_mhz = current_step * FREQ_RAMP_STEP_QUARTER_MHZ;
-    if current_quarter_mhz != target_quarter_mhz {
-        commands.push(Bm1366Command::SetFrequency(transition_plan(
-            target_quarter_mhz,
-        )?));
+    if current_step * FREQ_RAMP_STEP_QUARTER_MHZ != target_quarter_mhz {
+        targets.push((target_quarter_mhz, false));
     }
+    targets
+}
 
+fn frequency_transition_commands(
+    start_quarter_mhz: u32,
+    target_quarter_mhz: u32,
+) -> Result<Vec<Bm1366Command>, &'static str> {
+    let mut commands = Vec::new();
+    for (quarter_mhz, settle) in frequency_transition_targets(start_quarter_mhz, target_quarter_mhz)
+    {
+        commands.push(Bm1366Command::SetFrequency(transition_plan(quarter_mhz)?));
+        if settle {
+            commands.push(Bm1366Command::DelayMs(FREQ_RAMP_DELAY_MS));
+        }
+    }
     Ok(commands)
 }
 
@@ -340,7 +340,7 @@ const fn transition_step(frequency_quarter_mhz: u32, increasing: bool) -> u32 {
     }
 }
 
-fn transition_plan(frequency_quarter_mhz: u32) -> Result<FrequencyPlan, &'static str> {
+pub(crate) fn transition_plan(frequency_quarter_mhz: u32) -> Result<FrequencyPlan, &'static str> {
     transition_frequency_plan(frequency_quarter_mhz).ok_or(FREQUENCY_TRANSITION_INVALID)
 }
 

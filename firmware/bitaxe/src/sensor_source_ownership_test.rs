@@ -15,7 +15,12 @@ const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
 const PRODUCTION_ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const BWG_SOURCE: &str = include_str!("production_mining_session/bwg.rs");
-const PRODUCTION_SESSION_SOURCE: &str = concat!(include_str!("production_mining_session.rs"),include_str!("production_mining_session/inbox.rs"));
+const LIVE_HARDWARE_SOURCE: &str = include_str!("production_mining_session/live_hardware.rs");
+const ASIC_ADMISSION_SOURCE: &str = include_str!("asic_adapter/production/admission.rs");
+const PRODUCTION_SESSION_SOURCE: &str = concat!(
+    include_str!("production_mining_session.rs"),
+    include_str!("production_mining_session/inbox.rs")
+);
 const READINESS_SOURCE: &str = include_str!("production_mining_session/readiness.rs");
 const PRODUCTION_OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_loop.rs");
 const PRODUCTION_NOTIFICATIONS_SOURCE: &str =
@@ -101,7 +106,12 @@ fn fan_controller_uses_the_pure_plan_and_typed_owner_queue_only() {
     assert!(PRODUCTION_SESSION_SOURCE.contains("revocation::FanControllerOwner::Lease("));
     assert!(SAFETY_ADAPTER_SOURCE.contains("permits_controller_fan("));
     // Activation and cooling take the fan back from any earlier owner.
-    assert_eq!(BWG_SOURCE.matches("set_fan_controller_owner(None);").count(), 2);
+    assert_eq!(
+        BWG_SOURCE
+            .matches("set_fan_controller_owner(None);")
+            .count(),
+        2
+    );
 }
 
 #[test]
@@ -113,9 +123,15 @@ fn a_lease_safe_stop_revokes_then_takes_the_fan_before_its_first_fan_command() {
     let effect = &PRODUCTION_SESSION_SOURCE[start..];
 
     // Act
-    let revoke = effect.find("revocation::revoke_reason_at(").expect("revoke");
-    let clear = effect.find("set_fan_controller_owner(None);").expect("owner cleared");
-    let stop = effect.find(".safe_stop(purpose").expect("ordered safe-stop");
+    let revoke = effect
+        .find("revocation::revoke_reason_at(")
+        .expect("revoke");
+    let clear = effect
+        .find("set_fan_controller_owner(None);")
+        .expect("owner cleared");
+    let stop = effect
+        .find(".safe_stop(purpose")
+        .expect("ordered safe-stop");
 
     // Assert: a revoked lease's controller writes are refused before safe-stop's 100%.
     assert!(revoke < clear && clear < stop);
@@ -482,4 +498,49 @@ fn pool_secrets_are_owned_only_by_the_lazy_settings_reader() {
     assert!(SETTINGS_ADAPTER_SOURCE.contains("mod production;"));
     assert!(SETTINGS_PRODUCTION_SOURCE.contains("read_production_pool_set"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("ProductionSessionEffect::ReadPoolConfiguration"));
+}
+
+#[test]
+fn live_hardware_changes_run_only_on_the_owner_thread_between_dispatches() {
+    // Arrange
+    let monitor = PRODUCTION_OWNER_LOOP_SOURCE
+        .find("adapter.service_hashrate_monitor(&snapshot, now_ms);")
+        .expect("hashrate service");
+    let live = PRODUCTION_OWNER_LOOP_SOURCE
+        .find("adapter.service_live_hardware_settings(&snapshot, now_ms);")
+        .expect("live hardware service");
+
+    // Act
+    let guarded = ASIC_ADMISSION_SOURCE
+        .split("pub fn execute_live_actions_guarded(")
+        .nth(1)
+        .expect("live executor");
+
+    // Assert: the owner loop runs it, after the hashrate service; the executor only
+    // runs while production work is admitted and the generation still permits work.
+    assert!(monitor < live);
+    assert!(guarded.contains("!state.production_ready"));
+    assert!(guarded.contains("revocation::permits(Some(generation))"));
+    assert!(LIVE_HARDWARE_SOURCE.contains("revocation::permits(Some(generation))"));
+    assert!(LIVE_HARDWARE_SOURCE.contains("RevocationReason::ControlFailed"));
+}
+
+#[test]
+fn safe_stop_takes_the_hardware_from_the_live_owner_first() {
+    // Arrange
+    let start = PRODUCTION_SESSION_SOURCE
+        .find("ProductionSessionEffect::SafeStopHardware")
+        .expect("safe-stop effect");
+    let effect = &PRODUCTION_SESSION_SOURCE[start..];
+
+    // Act
+    let stopped = effect
+        .find("self.live_hardware.stopped();")
+        .expect("live owner stopped");
+    let stop = effect
+        .find(".safe_stop(purpose")
+        .expect("ordered safe-stop");
+
+    // Assert
+    assert!(stopped < stop);
 }

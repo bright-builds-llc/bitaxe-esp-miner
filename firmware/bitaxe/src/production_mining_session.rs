@@ -8,6 +8,7 @@ pub(crate) mod cooling;
 pub(crate) mod cooling_core;
 mod hashrate;
 mod inbox;
+mod live_hardware;
 pub(crate) mod mining_progress;
 mod notifications;
 mod owner_loop;
@@ -104,6 +105,7 @@ struct OrdinaryEspProductionSessionAdapter {
     maybe_bwg_session: Option<bwg::OwnerSession>,
     maybe_bwg_reply: Option<bwg::PendingReply>,
     maybe_cooling_generation: Option<revocation::WorkerGeneration>,
+    live_hardware: live_hardware::LiveHardwareOwner,
 }
 impl OrdinaryEspProductionSessionAdapter {
     fn new(owner_sender: SyncSender<OwnerInboxMessage>) -> anyhow::Result<Self> {
@@ -157,6 +159,7 @@ impl OrdinaryEspProductionSessionAdapter {
             maybe_bwg_session: None,
             maybe_bwg_reply: None,
             maybe_cooling_generation: None,
+            live_hardware: live_hardware::LiveHardwareOwner::default(),
         })
     }
 
@@ -252,6 +255,7 @@ impl OrdinaryEspProductionSessionAdapter {
                             set_fan_controller_owner(Some(revocation::FanControllerOwner::Lease(
                                 session.generation,
                             )));
+                            self.live_hardware.prepared(profile);
                         }
                         Some(ProductionSessionEvent::HardwarePrepared { lease_id, now_ms: crate::runtime_uptime::millis() })
                     }
@@ -461,6 +465,7 @@ impl OrdinaryEspProductionSessionAdapter {
                     );
                 }
                 set_fan_controller_owner(None);
+                self.live_hardware.stopped();
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_safe_stop_pending();
                 }

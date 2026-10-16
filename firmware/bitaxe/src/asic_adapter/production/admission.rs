@@ -117,3 +117,24 @@ pub fn execute_mining_ready_actions_guarded(
     status::publish_production_asic_status(ProductionAsicStatus::InitializedForProduction);
     Ok(())
 }
+
+/// Runs a live frequency or nonce-space change between dispatches (ADR-0037) while
+/// `generation` still permits work. Production work stays admitted; the UART check
+/// cancels the change if the generation is revoked part way.
+pub fn execute_live_actions_guarded(
+    actions: &[Bm1366AdapterAction],
+    generation: crate::production_mining_session::revocation::WorkerGeneration,
+) -> Result<(), ProductionAsicBlocker> {
+    let Ok(mut state) = production_state().lock() else {
+        return Err(ProductionAsicBlocker::UartFailed);
+    };
+    if !state.production_ready
+        || !crate::production_mining_session::revocation::permits(Some(generation))
+    {
+        return Err(ProductionAsicBlocker::AsicInitFailed);
+    }
+    if let Some(uart) = state.maybe_uart.as_mut() {
+        uart.set_worker_generation(Some(generation));
+    }
+    execute_adapter_actions_on_state(actions, &mut state)
+}

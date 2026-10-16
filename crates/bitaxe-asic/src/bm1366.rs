@@ -13,6 +13,7 @@ pub mod crc;
 pub mod expected_filter;
 pub mod frequency_voltage;
 pub mod init_plan;
+pub mod live_transition;
 pub mod mining_ready;
 pub mod observation;
 pub mod packet;

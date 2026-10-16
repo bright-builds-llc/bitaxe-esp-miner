@@ -35,6 +35,7 @@ use crate::safety_adapter::{
 
 mod clock;
 use clock::ProductionClock;
+mod live;
 
 const FAN_PROOF_TIMEOUT_MS: u64 = 3_000;
 const FAN_PROOF_POLL_MS: u64 = 50;
@@ -440,12 +441,6 @@ impl Ultra205MiningActuationAdapter {
         self.maybe_requested_profile.is_some_and(|profile| {
             crate::production_mining_session::shutdown_budget::profile_admissible(profile)
         })
-    }
-}
-
-impl Default for Ultra205MiningActuationAdapter {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

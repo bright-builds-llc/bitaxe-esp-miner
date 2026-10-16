@@ -187,6 +187,7 @@ pub(super) fn run_owner(
         task_watchdog.feed(crate::runtime_uptime::millis());
         record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate);
         adapter.service_hashrate_monitor(&snapshot, now_ms);
+        adapter.service_live_hardware_settings(&snapshot, now_ms);
         if shutdown_requested {
             record_owner_phase(TaskWatchdogOwnerPhase::Shutdown);
             return;
