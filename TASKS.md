@@ -1169,6 +1169,44 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
+### task-ultra205-default-profile-soak-006 | 2026-10-16 | Soak on the live-RSSI build
+
+Objective: the hardware observation left open by the archived
+`task-parity-wifi-rssi-live` (`34465167`). Firmware that reads Wi-Fi RSSI
+live for each request mines one soak. The observer's `wifiRssi` samples show
+whether the value now follows the radio instead of staying at its connect-time
+reading. The soak also keeps the server-task send timing in place for any
+stall. The owner authorized this soak on 2026-10-16.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task.
+- [ ] Soak attempt 001 (soak ledger ordinal 7), with an independent review.
+
+Hardware contract (owner-authorized 2026-10-16). It is the archived
+`task-ultra205-default-profile-soak-005` contract, unchanged except:
+- package at the clean, pushed `HEAD` that records this contract;
+- parent `P = scratch/ultra205-soak-006`, with `R = P/attempt-001`;
+- soak ledger ordinal 7;
+- no BAP traffic.
+
+Allowed effects, live limits, the seal path, retry bound and outcomes are as
+that contract. Parity promotion is prohibited.
+
+RSSI reading (observation, not a pass criterion):
+- Report the `wifiRssi` range, the number of distinct values, and whether it
+  changed between samples.
+- Report any sample whose value is outside a plausible station range
+  (-100..0 dBm), or `-90` while connected, which would mean a failed read.
+- Several distinct values confirm the live read. A constant value is not by
+  itself a failure, because a still radio environment can hold a steady RSSI,
+  but it is recorded as unconfirmed.
+- Keep soak 005's stall reading: for every HTTP gap above 3,000 ms or
+  WebSocket gap above 2,000 ms, report the recent-worst send durations, send
+  failures, `wifiRssi` and any nearby `stale_completion`.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-soak-sample-send-counters | 2026-10-15 | Record send counts and lifetime worst in soak samples
