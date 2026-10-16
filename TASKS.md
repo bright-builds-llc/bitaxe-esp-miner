@@ -1222,7 +1222,7 @@ Ultra 205 upstream-default soak hardware: enabled.
       `unverified` on a tooling-order fault; the result is below.
 - [x] Fix the soak tooling so the page baseline follows the settings write,
       with regressions.
-- [ ] Soak 007 attempt 002 (ordinal 2), with an independent review.
+- [x] Soak 007 attempt 002 (ordinal 2), with an independent review: `complete`.
 
 Soak 007 hardware contract (owner-authorized 2026-10-16). It is the archived
 `task-ultra205-default-profile-soak-006` contract, unchanged except:
@@ -1312,7 +1312,29 @@ standing authorization). Same as attempt 001 except:
 - **Repeated boundary:** if attempt 002 again fails `cleanup_unconfirmed`
   with `settings_match: false`, the outcome is `stop_repeated_boundary`.
 
-Verification: pending. Completion review: pending.
+Soak 007 attempt 002 result (2026-10-16): `complete`. Redacted summary:
+`docs/parity/evidence/20261016-ultra205-soak-007.md`.
+- Package `6b3e567a`, installed `observed_exact_package`; Gate `eacd8147`.
+  Device settings were read back as requested.
+- `result.json`: `passed`, with no failures.
+  - Mining: 600,000 active ms, ended by the budget.
+  - Shutdown: about 7.7 s on the device, then `fan_paused`.
+  - Ledger: v2 ordinal 2, charged once (total 1,200,000 ms, next 3).
+  - Shares: 33 accepted, 0 rejected.
+  - Windows: 20/20 credited, with zero reconnects. Maximum gaps were 961 ms
+    on the WebSocket and 2,493 ms on HTTP.
+  - Preservation: final `settings_match` true, from the page that signed.
+    `mineonboot=false`, and pool settings retained.
+- Work-gate samples stayed within 5.24–5.29 V, 10.36–12.42 W and 35–61 C.
+  The automatic fan ran at 2,433–3,950 RPM, against 7,267–7,427 at 100%.
+- The observer kept one unbroken WebSocket across the page reload.
+- The independent review agrees `complete`. It recomputed every criterion
+  from the raw files and checked the sealed inventory, the self-digests and
+  the baseline binding. It noted one observation that is not a criterion:
+  cooling proof read 3,680 RPM at 100%, an early spin-up snapshot.
+
+Verification: soak 007 `complete` (attempt 002). Completion review: pending
+until the remaining soaks and parity rows.
 
 ## Future
 
