@@ -2,7 +2,7 @@
 
 use bitaxe_core::bap::{
     plan_command, BapAdmission, BapCommand, BapConnectionMode, BapEffect, BapFrame, BapFrameError,
-    BapIngress, BapParameter, BapPlanError, BapRequestSnapshot, BapRestartPolicy, BapSettingIntent,
+    BapIngress, BapParameter, BapPendingSetting, BapPlanError, BapRequestSnapshot,
     BAP_MAX_MESSAGE_LEN,
 };
 
@@ -21,7 +21,9 @@ pub enum BapRuntimeAction {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BapDispatch {
     pub responses: Vec<BapFrame>,
-    pub maybe_setting: Option<(BapSettingIntent, BapRestartPolicy)>,
+    /// A setting awaiting its effect; its acknowledgement is sent only after the
+    /// effect succeeds.
+    pub maybe_setting: Option<BapPendingSetting>,
     /// A (re)subscription: the reference clears this parameter's last-sent values,
     /// so its next update is sent even when unchanged.
     pub maybe_subscribed: Option<BapParameter>,
@@ -115,8 +117,11 @@ impl BapRuntime {
             }
             BapEffect::Unsubscribe { parameter } => self.unsubscribe(*parameter),
             BapEffect::ApplySetting { setting, restart } => {
-                dispatch.responses.clear();
-                dispatch.maybe_setting = Some((setting.clone(), *restart));
+                dispatch.maybe_setting = Some(BapPendingSetting {
+                    setting: setting.clone(),
+                    restart: *restart,
+                    acknowledgement: std::mem::take(&mut dispatch.responses),
+                });
             }
         }
         Ok(dispatch)

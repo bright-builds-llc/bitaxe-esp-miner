@@ -2,6 +2,7 @@ const ADAPTER_SOURCE: &str = include_str!("bap_adapter.rs");
 const RUNTIME_SOURCE: &str = include_str!("bap_runtime.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 const MAIN_SOURCE: &str = include_str!("main.rs");
+const ACCESSORY_SOURCE: &str = include_str!("http_api/accessory_settings.rs");
 
 #[test]
 fn bap_owner_uses_one_pinned_uart2_shell_and_pure_runtime() {
@@ -32,16 +33,40 @@ fn bap_owner_uses_one_pinned_uart2_shell_and_pure_runtime() {
 #[test]
 fn bap_diagnostics_do_not_render_frames_or_setting_values() {
     // Arrange
-    let forbidden = ["input={", "frame={", "value={", "ssid={", "password={"];
+    let forbidden = [
+        "input={",
+        "frame={",
+        "value={",
+        "ssid={",
+        "password={",
+        "patch={",
+        "{value",
+        "{patch",
+        "{setting:?}",
+    ];
 
     // Act
     let maybe_forbidden = forbidden
         .iter()
-        .find(|token| ADAPTER_SOURCE.contains(**token));
+        .find(|token| ADAPTER_SOURCE.contains(**token) || ACCESSORY_SOURCE.contains(**token));
 
     // Assert
     assert_eq!(maybe_forbidden, None);
-    assert!(ADAPTER_SOURCE.contains("setting_category(&setting)"));
+    assert!(ADAPTER_SOURCE.contains("setting_category(&pending.setting)"));
     assert!(RUNTIME_SOURCE.contains("BapIngress"));
     assert!(RUNTIME_SOURCE.contains("plan_command"));
+}
+
+#[test]
+fn bap_settings_run_on_the_http_task_through_its_settings_owners() {
+    // Arrange / Act
+    let queued = ACCESSORY_SOURCE.matches("sys::httpd_queue_work(").count();
+
+    // Assert: the BAP owner never persists or actuates on its own stack.
+    assert_eq!(queued, 1);
+    assert!(ADAPTER_SOURCE.contains("crate::http_api::apply_accessory_setting("));
+    assert!(ADAPTER_SOURCE.contains("crate::http_api::restart_for_accessory()"));
+    assert!(!ADAPTER_SOURCE.contains("FirmwareSettingsAdapter"));
+    assert!(ACCESSORY_SOURCE.contains("execute_settings_persistence_plan(&plan, &mut adapter)"));
+    assert!(ACCESSORY_SOURCE.contains("apply_block_found_dismiss_command("));
 }

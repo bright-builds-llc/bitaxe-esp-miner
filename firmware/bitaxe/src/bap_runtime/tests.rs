@@ -1,5 +1,5 @@
 use super::*;
-use bitaxe_core::bap::BAP_SUBSCRIPTION_TIMEOUT_MS;
+use bitaxe_core::bap::{BapRestartPolicy, BapSettingIntent, BAP_SUBSCRIPTION_TIMEOUT_MS};
 
 fn snapshot() -> BapRequestSnapshot {
     BapRequestSnapshot {
@@ -260,7 +260,11 @@ fn runtime_defers_setting_ack_until_the_adapter_applies_the_effect() {
     assert!(dispatch.responses.is_empty());
     assert!(matches!(
         dispatch.maybe_setting,
-        Some((BapSettingIntent::WifiPassword(_), BapRestartPolicy::Always))
+        Some(BapPendingSetting {
+            setting: BapSettingIntent::WifiPassword(_),
+            restart: BapRestartPolicy::Always,
+            ..
+        })
     ));
     assert!(!format!("{dispatch:?}").contains("secret-value"));
 }
@@ -312,4 +316,31 @@ fn updates_due_on_one_tick_follow_the_reference_parameter_order() {
             BapRuntimeAction::PublishSubscription(BapParameter::FoundBlock),
         ]
     );
+}
+
+#[test]
+fn a_setting_holds_its_acknowledgement_until_the_effect_succeeds() {
+    // Arrange
+    let mut runtime = BapRuntime::default();
+    runtime.set_mode(BapConnectionMode::Connected, 0);
+
+    let frame = BapFrame::new(
+        BapCommand::Set,
+        BapParameter::Frequency,
+        Some("500".to_owned()),
+    )
+    .expect("set frame")
+    .encode()
+    .expect("set frame encodes");
+
+    // Act
+    let dispatch = runtime
+        .admit(frame.as_bytes(), 100, || Some(snapshot()))
+        .expect("setting plans");
+
+    // Assert: nothing is sent yet; the acknowledgement waits in the pending setting.
+    let pending = dispatch.maybe_setting.expect("pending setting");
+    assert!(dispatch.responses.is_empty());
+    assert_eq!(pending.setting, BapSettingIntent::FrequencyMhz(500.0));
+    assert_eq!(pending.acknowledgement[0].value(), Some("500.00"));
 }

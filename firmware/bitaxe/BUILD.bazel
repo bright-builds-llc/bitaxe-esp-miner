@@ -476,6 +476,7 @@ rust_test(
         "src/bap_runtime.rs",
         "src/bap_runtime/tests.rs",
         "src/bap_source_ownership_test.rs",
+        "src/http_api/accessory_settings.rs",
         "src/main.rs",
         "src/startup.rs",
     ],

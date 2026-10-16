@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { auditHttpStack, DISPATCH, HANDLER } from './http-stack-audit.mjs';
+import { auditHttpStack, DISPATCH, HANDLER, QUEUED_WORK } from './http-stack-audit.mjs';
 
 const SOURCE = 'const HTTP_SERVER_TASK_STACK_BYTES: usize = 16 * 1024;\n        stack_size: HTTP_SERVER_TASK_STACK_BYTES,\n';
 // [key, label, frame bytes, callee keys]; two handler instances share one label, as in firmware.
@@ -9,6 +9,8 @@ function graph(sizes = {}) {
     ...DISPATCH.map((name) => [name, name, 64, []]),
     ['small', HANDLER, 32, ['gate']],
     ['deep', HANDLER, 32, ['snapshot', 'core::panicking::panic_fmt']],
+    ['job', QUEUED_WORK[0], 48, ['persist']],
+    ['persist', 'persist', 4000, []],
     ['gate', 'gate', 96, []],
     ['snapshot', 'snapshot', 9000, []],
     ['core::panicking::panic_fmt', 'core::panicking::panic_fmt', 20000, []],
@@ -56,4 +58,21 @@ test('a missing dispatch frame is refused', () => {
 
 test('a source without the stack contract is refused', () => {
   assert.throws(() => auditHttpStack(disassembly(graph()), 'const OTHER: usize = 1;'), /http_stack_contract/u);
+});
+
+test('a queued job deeper than every handler sets the deepest path', () => {
+  // Arrange: httpd_thread (64) + job (48) + persist (12000) exceeds the handler path.
+  const deep = graph({ persist: 12000 });
+  // Act
+  const result = auditHttpStack(disassembly(deep), SOURCE);
+  // Assert
+  assert.equal(result.deepest_normal_path_bytes, 64 + 48 + 12000 + 256);
+  assert.ok(result.deepest_symbols.includes('persist'));
+});
+
+test('a missing queued job is refused', () => {
+  // Arrange
+  const rows = graph().filter(([key]) => key !== 'job');
+  // Act / Assert
+  assert.throws(() => auditHttpStack(disassembly(rows), SOURCE), /http_queued_work_missing/u);
 });

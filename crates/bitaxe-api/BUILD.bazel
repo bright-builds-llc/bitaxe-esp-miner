@@ -124,6 +124,7 @@ rust_library(
     name = "bitaxe_api",
     srcs = [
         "src/asic.rs",
+        "src/bap_settings.rs",
         "src/bap_values.rs",
         "src/bap_values/tests.rs",
         "src/best_difficulty.rs",

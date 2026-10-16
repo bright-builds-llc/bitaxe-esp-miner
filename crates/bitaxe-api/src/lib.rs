@@ -6,6 +6,7 @@
 //! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
 
 pub mod asic;
+pub mod bap_settings;
 pub mod bap_values;
 pub mod best_difficulty;
 pub mod boot_identity;

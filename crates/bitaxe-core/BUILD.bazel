@@ -61,7 +61,10 @@ rust_library(
     srcs = [
         "src/bap.rs",
         "src/bap/semantics.rs",
+        "src/bap/reference_numbers.rs",
         "src/bap/reference_tests.rs",
+        "src/bap/settings.rs",
+        "src/bap/settings_tests.rs",
         "src/bap/tests.rs",
         "src/bap/wire.rs",
         "src/display.rs",

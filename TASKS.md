@@ -1103,14 +1103,11 @@ named-phase allocation profile item stays open. Qualification stays false.
 Origin: the BAP ordinal 009 review. BAP-001 is `verified` with these as
 explicit non-claims.
 
-- [ ] Settings: upstream `BAP_handle_settings` applies frequency, ASIC voltage,
+- [x] Settings: upstream `BAP_handle_settings` applies frequency, ASIC voltage,
       Wi-Fi SSID and password, fan speed, auto fan, found block and show new
-      block, and acknowledges each (fan speed silently). The firmware answers
-      every accepted intent with `set_failed` (`firmware/bitaxe/src/bap_adapter.rs`).
-      Route the intents to the settings and actuation owners under their
-      safety gates, or record owner-accepted divergences.
-      The setting parsers are also stricter than the reference's
-      `atoi`/`atof` (`crates/bitaxe-core/src/bap/semantics.rs`).
+      block, and acknowledges each (fan speed silently). Done in software
+      (2026-10-16): each intent now reaches the existing owners, and setting
+      values parse like the reference's `atoi`/`atof` and `uint16_t` casts.
 - [x] Several subscriptions due on one tick are published in subscription
       order, while the reference uses `BAP_PARAM` order
       (`firmware/bitaxe/src/bap_runtime.rs`). Subscriptions are now kept in
@@ -1159,10 +1156,47 @@ Plan (2026-10-16, after the owner's decisions):
   2026-10-16). Record that divergence until then.
 - Parse values the way the reference's `atoi`/`atof` and `uint16_t` casts do,
   in the pure core, with tests.
-- Run persistence off the BAP owner's thread, which has 768 bytes of stack
-  headroom. A bounded worker with its own stack runs it, and the BAP thread
-  waits for the result before acknowledging, as upstream's handler does.
+- Run persistence off the BAP owner's thread, which has 720 bytes of stack
+  headroom.
+  - The work runs on the HTTP server task through `httpd_queue_work`. That
+    task already persists PATCHes on its audited 16 KiB stack, so the change
+    adds no RAM.
+  - The BAP thread waits on a `bitaxe_runtime::reply`. Firmware never uses
+    `std` channels, because of the Xtensa realignment bug.
+  - The HTTP stack audit now also charges the queued job.
 
+Implementation (2026-10-16):
+- Pure core:
+  - `bitaxe_core::bap::{reference_atoi, reference_atof, complete_setting}`;
+  - `bitaxe_api::bap_settings`, which maps settings onto PATCH writes and
+    block state.
+- Firmware: `http_api/accessory_settings.rs` holds the queued job, with a
+  claim state. A job abandoned after the 10 s wait never runs, so a
+  `set_failed` answer is final.
+- The adapter sends the acknowledgement. For credentials it then waits
+  100 ms, sends `STA status restarting`, and calls the HTTP restart owner,
+  which waits 1,000 ms before restarting.
+
+Divergences, recorded:
+- **Frequency and voltage** are persisted only; mining uses the lease's
+  profile until ADR-0037's `task-live-hardware-settings-owner`.
+- **Negative `found_block`** is answered `set_failed`. The count is unsigned;
+  the reference stores the negative value.
+- **Frequency values:** NaN and infinity are refused (the reference would
+  store NaN). Hexadecimal floats read as 0.
+- **Wi-Fi limits:** the settings schema refuses an SSID outside 1–32 bytes and
+  a password over 63 bytes, answering `set_failed`. The reference's BAP path
+  writes them.
+- **Owner unavailable:** `set_failed` is sent before the HTTP server starts,
+  after a 10 s queue wait, or if ESP-IDF drops the queued control message,
+  which leaks that one job.
+- **Unset credentials** read as empty. That matches the factory
+  `config-205.cvs`; the reference's Kconfig defaults apply only to a missing
+  key.
+- **Command status:** BAP block flags are recorded as a block-found dismiss.
+- **Checklist text:** the BAP-001 row's non-claims still say settings get
+  `set_failed`. The row is `verified`, and the parity tool forbids
+  `verified` → `verified` transitions, so the correction lives here.
 Verification: pending. Completion review: pending.
 
 ## Future

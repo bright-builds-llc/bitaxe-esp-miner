@@ -47,6 +47,7 @@ use bitaxe_api::www_update::{
 };
 
 mod access;
+mod accessory_settings;
 mod cadence_owner;
 mod deferred_effect_queue;
 mod deferred_effects;
@@ -59,6 +60,7 @@ mod updates;
 mod websocket;
 
 use access::*;
+pub(crate) use accessory_settings::{apply_accessory_setting, restart_for_accessory};
 pub(crate) use cadence_owner::PreparedHttpRuntime;
 use deferred_effects::*;
 use handlers::*;
@@ -127,6 +129,7 @@ fn start_http_api_inner(
         StartupPhase::HttpRoutes,
         register_http_handlers(&mut server, filesystem_status),
     )?;
+    accessory_settings::register_accessory_server(server.handle());
     let route_report = phase07_route_report();
     log::info!(
         "axeos_api_route_shell=started manifest_routes={} firmware_update_routes={} static_update_routes={} recovery_routes={} static_file_routes={}",

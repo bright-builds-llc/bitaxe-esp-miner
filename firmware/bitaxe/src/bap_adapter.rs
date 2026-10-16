@@ -1,13 +1,13 @@
 //! Single-owner ESP-IDF adapter for the Bitaxe Accessory Port.
 
 use std::thread;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::{ensure, Context};
 use bitaxe_api::SystemInfoWire;
 use bitaxe_core::bap::{
-    BapCommand, BapConnectionMode, BapErrorCode, BapFrame, BapParameter, BapRequestSnapshot,
-    BapSettingIntent,
+    complete_setting, BapCommand, BapConnectionMode, BapErrorCode, BapFrame, BapParameter,
+    BapPendingSetting, BapRequestSnapshot, BapSettingIntent,
 };
 use esp_idf_svc::hal::{
     delay::TickType,
@@ -24,6 +24,9 @@ pub const BAP_UART_RX_PIN: i32 = 40;
 const BAP_UART_BUFFER_BYTES: usize = 1_024;
 const BAP_READ_TIMEOUT_MS: u32 = 100;
 const BAP_OWNER_STACK_BYTES: usize = 16 * 1_024;
+/// The reference's `vTaskDelay(100)` between a credential acknowledgement and
+/// `STA status restarting`.
+const BAP_RESTART_STATUS_DELAY_MS: u64 = 100;
 const BAP_INITIALIZATION_BANNER: &[u8] = b"BAP UART Interface Initialized\r\n";
 
 pub fn start<UART, TX, RX>(uart: UART, tx: TX, rx: RX) -> anyhow::Result<()>
@@ -110,19 +113,8 @@ fn handle_frame(
             return None;
         }
     };
-    if let Some((setting, _restart)) = dispatch.maybe_setting {
-        log::warn!(
-            "bap_setting=rejected category=effect_owner_unavailable setting={}",
-            setting_category(&setting)
-        );
-        let maybe_error = BapFrame::new(
-            BapCommand::Error,
-            setting_parameter(&setting),
-            Some(BapErrorCode::SetFailed.token().to_owned()),
-        );
-        if let Ok(error) = maybe_error {
-            write_frame(driver, &error);
-        }
+    if let Some(pending) = dispatch.maybe_setting {
+        apply_setting(driver, &pending);
         return None;
     }
     for response in dispatch.responses {
@@ -208,16 +200,31 @@ fn subscription_frames(parameter: BapParameter, info: &SystemInfoWire) -> Vec<Ba
         .collect()
 }
 
-fn setting_parameter(setting: &BapSettingIntent) -> BapParameter {
-    match setting {
-        BapSettingIntent::FrequencyMhz(_) => BapParameter::Frequency,
-        BapSettingIntent::AsicVoltageMillivolts(_) => BapParameter::AsicVoltage,
-        BapSettingIntent::WifiSsid(_) => BapParameter::Ssid,
-        BapSettingIntent::WifiPassword(_) => BapParameter::Password,
-        BapSettingIntent::ManualFanPercent(_) => BapParameter::FanSpeed,
-        BapSettingIntent::AutoFan(_) => BapParameter::AutoFan,
-        BapSettingIntent::FoundBlock(_) => BapParameter::FoundBlock,
-        BapSettingIntent::ShowNewBlock(_) => BapParameter::ShowNewBlock,
+/// Runs one setting through the HTTP-task owners, then sends the reference's
+/// replies. The `restarting` status follows 100 ms after the acknowledgement,
+/// and the restart owner waits 1,000 ms more, as the reference does.
+#[inline(never)]
+fn apply_setting(driver: &mut UartDriver<'static>, pending: &BapPendingSetting) {
+    let category = setting_category(&pending.setting);
+    let result = crate::http_api::apply_accessory_setting(pending.setting.clone());
+    log::info!("bap_setting=handled setting={category} result={result:?}");
+    let completion = match complete_setting(pending, result) {
+        Ok(completion) => completion,
+        Err(error) => {
+            log::warn!("bap_egress=rejected category={error:?}");
+            return;
+        }
+    };
+    for frame in &completion.acknowledgement {
+        write_frame(driver, frame);
+    }
+    let Some(restart_status) = completion.maybe_restart_status else {
+        return;
+    };
+    std::thread::sleep(Duration::from_millis(BAP_RESTART_STATUS_DELAY_MS));
+    write_frame(driver, &restart_status);
+    if !crate::http_api::restart_for_accessory() {
+        log::warn!("bap_restart=unavailable setting={category}");
     }
 }
 

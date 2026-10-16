@@ -1,3 +1,4 @@
+use super::reference_numbers::{reference_atof, reference_atoi, reference_atoi_u16};
 use super::{BapCommand, BapFrame, BapFrameError, BapParameter};
 use std::fmt;
 
@@ -97,6 +98,23 @@ pub enum BapSettingIntent {
     AutoFan(bool),
     FoundBlock(i32),
     ShowNewBlock(bool),
+}
+
+impl BapSettingIntent {
+    /// The setting's BAP parameter.
+    #[must_use]
+    pub const fn parameter(&self) -> BapParameter {
+        match self {
+            Self::FrequencyMhz(_) => BapParameter::Frequency,
+            Self::AsicVoltageMillivolts(_) => BapParameter::AsicVoltage,
+            Self::WifiSsid(_) => BapParameter::Ssid,
+            Self::WifiPassword(_) => BapParameter::Password,
+            Self::ManualFanPercent(_) => BapParameter::FanSpeed,
+            Self::AutoFan(_) => BapParameter::AutoFan,
+            Self::FoundBlock(_) => BapParameter::FoundBlock,
+            Self::ShowNewBlock(_) => BapParameter::ShowNewBlock,
+        }
+    }
 }
 
 impl fmt::Debug for BapSettingIntent {
@@ -296,26 +314,6 @@ fn plan_subscribe(frame: &BapFrame, mode: BapConnectionMode) -> Result<BapPlan, 
     ))
 }
 
-/// C `atoi` as the reference uses it for intervals: leading whitespace, an
-/// optional sign, then digits up to the first non-digit; `0` when none. Values
-/// beyond `int` are clamped where C would be undefined.
-fn reference_atoi(text: &str) -> i64 {
-    let trimmed = text.trim_start_matches([' ', '\t', '\n', '\r', '\x0b', '\x0c']);
-    let (negative, digits) = match trimmed.as_bytes().first() {
-        Some(b'-') => (true, &trimmed[1..]),
-        Some(b'+') => (false, &trimmed[1..]),
-        _ => (false, trimmed),
-    };
-    let magnitude = digits
-        .bytes()
-        .take_while(u8::is_ascii_digit)
-        .fold(0_i64, |total, digit| {
-            (total * 10 + i64::from(digit - b'0')).min(i64::from(i32::MAX) + 1)
-        });
-    let value = if negative { -magnitude } else { magnitude };
-    value.clamp(i64::from(i32::MIN), i64::from(i32::MAX))
-}
-
 fn plan_unsubscribe(frame: &BapFrame) -> Result<BapPlan, BapPlanError> {
     let Some(parameter) = frame.known_parameter() else {
         return Ok(BapPlan::no_response());
@@ -347,21 +345,20 @@ fn plan_setting(frame: &BapFrame, mode: BapConnectionMode) -> Result<BapPlan, Ba
 
     let (setting, restart, maybe_ack) = match maybe_parameter {
         Some(BapParameter::Frequency) => {
-            let Some(frequency) = value
-                .parse::<f32>()
-                .ok()
-                .filter(|value| value.is_finite() && (100.0..=800.0).contains(value))
-            else {
+            // `float target = atof(value)`. The reference would accept NaN, which
+            // fails both comparisons; non-finite values are refused here.
+            let frequency = reference_atof(value) as f32;
+            if !(frequency.is_finite() && (100.0..=800.0).contains(&frequency)) {
                 return error_plan(frame.parameter_token(), BapErrorCode::InvalidRange);
-            };
+            }
             (
                 BapSettingIntent::FrequencyMhz(frequency),
                 BapRestartPolicy::Never,
-                Some(format!("{frequency:.2}")),
+                Some(format!("{:.2}", f64::from(frequency))),
             )
         }
         Some(BapParameter::AsicVoltage) => {
-            let Some(voltage) = parse_bounded_u16(value, 700, 1_400) else {
+            let Some(voltage) = bounded_reference_u16(value, 700, 1_400) else {
                 return error_plan(frame.parameter_token(), BapErrorCode::InvalidRange);
             };
             (
@@ -381,7 +378,7 @@ fn plan_setting(frame: &BapFrame, mode: BapConnectionMode) -> Result<BapPlan, Ba
             Some("password_set".to_owned()),
         ),
         Some(BapParameter::FanSpeed) => {
-            let Some(fan_speed) = parse_bounded_u16(value, 0, 100) else {
+            let Some(fan_speed) = bounded_reference_u16(value, 0, 100) else {
                 return error_plan(frame.parameter_token(), BapErrorCode::InvalidRange);
             };
             (
@@ -391,7 +388,7 @@ fn plan_setting(frame: &BapFrame, mode: BapConnectionMode) -> Result<BapPlan, Ba
             )
         }
         Some(BapParameter::AutoFan) => {
-            let Some(auto_fan) = parse_bounded_u16(value, 0, 1) else {
+            let Some(auto_fan) = bounded_reference_u16(value, 0, 1) else {
                 return error_plan(frame.parameter_token(), BapErrorCode::InvalidRange);
             };
             (
@@ -401,9 +398,7 @@ fn plan_setting(frame: &BapFrame, mode: BapConnectionMode) -> Result<BapPlan, Ba
             )
         }
         Some(BapParameter::FoundBlock) => {
-            let Some(found_block) = value.parse::<i32>().ok() else {
-                return error_plan(frame.parameter_token(), BapErrorCode::InvalidRange);
-            };
+            let found_block = reference_atoi(value);
             (
                 BapSettingIntent::FoundBlock(found_block),
                 BapRestartPolicy::Never,
@@ -411,9 +406,7 @@ fn plan_setting(frame: &BapFrame, mode: BapConnectionMode) -> Result<BapPlan, Ba
             )
         }
         Some(BapParameter::ShowNewBlock) => {
-            let Some(show_new_block) = value.parse::<i32>().ok() else {
-                return error_plan(frame.parameter_token(), BapErrorCode::InvalidRange);
-            };
+            let show_new_block = reference_atoi(value);
             (
                 BapSettingIntent::ShowNewBlock(show_new_block != 0),
                 BapRestartPolicy::Never,
@@ -434,11 +427,9 @@ fn plan_setting(frame: &BapFrame, mode: BapConnectionMode) -> Result<BapPlan, Ba
     ))
 }
 
-fn parse_bounded_u16(value: &str, minimum: u16, maximum: u16) -> Option<u16> {
-    value
-        .parse::<u16>()
-        .ok()
-        .filter(|parsed| (minimum..=maximum).contains(parsed))
+/// The reference's `(uint16_t)atoi(value)` followed by its range check.
+fn bounded_reference_u16(value: &str, minimum: u16, maximum: u16) -> Option<u16> {
+    Some(reference_atoi_u16(value)).filter(|parsed| (minimum..=maximum).contains(parsed))
 }
 
 fn error_plan(parameter_token: &str, error: BapErrorCode) -> Result<BapPlan, BapPlanError> {
