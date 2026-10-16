@@ -83,7 +83,7 @@ pub fn disable(&mut self) -> Result<()> {
         self.enable.set_high()?;
 `],
   ["firmware/bitaxe/src/safety_adapter/ds4432u.rs", `
-Self::Conservative1100Millivolts => 1_100,
+debug_assert!((1_100..=1_300).contains(&millivolts));
 bus.write_ds4432u(Ds4432uWriteRegister::Output0, code)
 `],
   ["firmware/bitaxe/src/safety_adapter/emc2101.rs", `
@@ -93,7 +93,6 @@ bus.write_emc2101(Emc2101WriteRegister::FanSetting, fan_duty_code(percent))
   ["firmware/bitaxe/src/safety_adapter/request_queue.rs", "bounded request queue\n"],
   ["crates/bitaxe-stratum/src/v1/production_session/campaign.rs", `
 Self::Conservative => (400, 1_100, 100),
-(400, 1_100, 100) | (485, 1_200, 100)
 `],
   ["firmware/bitaxe/src/safety_adapter.rs", `
 SafetyActuationCommand::SetFanDuty(percent) => {

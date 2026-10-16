@@ -98,7 +98,7 @@ const semanticFragments = new Map<string, readonly string[]>([
     "pub fn disable(&mut self) -> Result<()> {\n        self.enable.set_high()?;",
   ]],
   [unchangedPaths[3], [
-    "Self::Conservative1100Millivolts => 1_100,",
+    "debug_assert!((1_100..=1_300).contains(&millivolts));",
     "bus.write_ds4432u(Ds4432uWriteRegister::Output0, code)",
   ]],
   [unchangedPaths[4], [
@@ -107,7 +107,6 @@ const semanticFragments = new Map<string, readonly string[]>([
   ]],
   [semanticPaths[0], [
     "Self::Conservative => (400, 1_100, 100),",
-    "(400, 1_100, 100) | (485, 1_200, 100)",
   ]],
   [semanticPaths[1], [
     "SafetyActuationCommand::SetFanDuty(percent) => {\n            emc2101::write_fan_duty_percent(&mut bus, percent.get())\n        }",

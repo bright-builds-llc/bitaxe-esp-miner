@@ -417,7 +417,7 @@ fn unsupported_ultra205_vr_truth_is_projected_but_not_required_for_mining() {
         .contains("AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard)"));
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains("vr_temp_celsius: project_observation("));
     assert!(READINESS_SOURCE.contains("observations.is_ultra_205_mining_safe_at(now())"));
-    assert!(PRODUCTION_SESSION_SOURCE.contains("self.mining_actuation.prepare(profile)"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("self.mining_actuation.prepare(profile, reserved_tail_ms)"));
     assert!(READINESS_SOURCE.contains("safety_prerequisites_fresh"));
     assert!(READINESS_SOURCE.contains("actuation_qualified"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("ProductionSessionEffect::DispatchAsic"));

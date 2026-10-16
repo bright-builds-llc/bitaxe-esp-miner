@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { auditHttpStack, DISPATCH, HANDLER, QUEUED_WORK } from './http-stack-audit.mjs';
+import { auditHttpStack, DISPATCH, HANDLER, INLINED_HANDLER, QUEUED_WORK } from './http-stack-audit.mjs';
 
 const SOURCE = 'const HTTP_SERVER_TASK_STACK_BYTES: usize = 16 * 1024;\n        stack_size: HTTP_SERVER_TASK_STACK_BYTES,\n';
 // [key, label, frame bytes, callee keys]; two handler instances share one label, as in firmware.
@@ -75,4 +75,15 @@ test('a missing queued job is refused', () => {
   const rows = graph().filter(([key]) => key !== 'job');
   // Act / Assert
   assert.throws(() => auditHttpStack(disassembly(rows), SOURCE), /http_queued_work_missing/u);
+});
+
+test('handlers inlined into the native trampoline are still audited', () => {
+  // Arrange: the deep handler carries the inlined trampoline name.
+  const rows = graph({ snapshot: 10000 }).map(([key, label, bytes, callees]) =>
+    [key, key === 'deep' ? INLINED_HANDLER : label, bytes, callees]);
+  // Act
+  const result = auditHttpStack(disassembly(rows), SOURCE);
+  // Assert
+  assert.equal(result.handlers, 2);
+  assert.ok(result.deepest_symbols.includes('snapshot'));
 });

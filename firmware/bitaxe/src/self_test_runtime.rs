@@ -188,8 +188,13 @@ fn run_inner(
     wait_for_safety_preflight(watchdog)?;
     enter(admission, schedule, HardwareSelfTestStage::Preparing, None)?;
     watchdog.feed(TaskWatchdogOwnerSubphase::EffectPrepareHardware);
+    // The self-test owns its shutdown outside any Gate budget; it reserves the
+    // upstream-default profile's own tail.
     actuation
-        .prepare(MiningHardwareProfilePreset::UpstreamDefault.profile())
+        .prepare(
+            MiningHardwareProfilePreset::UpstreamDefault.profile(),
+            crate::production_mining_session::shutdown_budget::UPSTREAM_PRE_RESET_BOUND_MS,
+        )
         .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
     crate::asic_adapter::production::execute_self_test_command(Bm1366Command::SetDifficultyMask(
         difficulty_mask_value(f64::from(HARDWARE_SELF_TEST_DIFFICULTY)),

@@ -604,7 +604,7 @@ fn asic_effects_bind_generation_and_valid_job_context() {
 #[test]
 fn profile_and_campaign_bounds_reject_invalid_values() {
     // Arrange / Act
-    let invalid_frequency = MiningHardwareProfile::ultra_205_bm1366(401, 1_100, 100);
+    let invalid_frequency = MiningHardwareProfile::ultra_205_bm1366(399, 1_100, 100);
     let zero_id = MiningCampaignLeaseId::new(0);
     let zero_duration = MiningCampaignDuration::new(0);
     let overlong_duration =

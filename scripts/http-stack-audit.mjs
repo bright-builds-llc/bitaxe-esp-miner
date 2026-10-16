@@ -6,6 +6,8 @@ import { withAddressTakenCallees } from './link-stack-audit.mjs';
 
 /** Every registered handler monomorphizes this; all instances share one demangled name. */
 export const HANDLER = '<embedded_svc::http::server::FnHandler<F> as embedded_svc::http::server::Handler<C>>::handle';
+/** When the compiler inlines `HANDLER` into its native trampoline, the instances carry this name. */
+export const INLINED_HANDLER = 'esp_idf_svc::http::server::EspHttpServer::to_native_handler::{{closure}}';
 // httpd's task loop down to the Rust trampoline that calls a handler through a pointer.
 export const DISPATCH = Object.freeze(['httpd_thread', 'httpd_sess_process', 'httpd_uri',
   'esp_idf_svc::http::server::EspHttpServer::handle_req', 'esp_idf_svc::http::server::EspHttpServer::fn_handler']);
@@ -30,7 +32,7 @@ export function auditHttpStack(disassembly, serverSource) {
     return Math.max(...sizes);
   }).reduce((sum, bytes) => sum + bytes, 0);
   const dispatch = chargeChain(DISPATCH);
-  const handlers = [...(frames.byName.get(HANDLER) ?? [])];
+  const handlers = [...new Set([HANDLER, INLINED_HANDLER].flatMap((name) => [...(frames.byName.get(name) ?? [])]))];
   if (!handlers.length) throw Error('http_handlers_missing');
   let deepest = null;
   for (const address of handlers) {

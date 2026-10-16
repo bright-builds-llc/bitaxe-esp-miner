@@ -231,7 +231,13 @@ impl OrdinaryEspProductionSessionAdapter {
                         .as_ref()
                         .map(|session| session.generation),
                 );
-                match self.mining_actuation.prepare(profile) {
+                // A Gate lease reserves its budget's tail. The legacy campaign path has
+                // no Gate budget and reserves its preset profile's own tail.
+                let reserved_tail_ms = self.maybe_bwg_session.as_ref().map_or(
+                    shutdown_budget::closed_pre_reset_tail_ms(profile.frequency().mhz()),
+                    |session| revocation::reserved_shutdown_tail_ms(session.generation),
+                );
+                match self.mining_actuation.prepare(profile, reserved_tail_ms) {
                     Ok(()) if revocation::permits(self.maybe_bwg_session.as_ref().map(|session| session.generation)) => Some(ProductionSessionEvent::HardwarePrepared { lease_id, now_ms: crate::runtime_uptime::millis() }),
                     Ok(()) => Some(ProductionSessionEvent::HardwarePreparationFailed { lease_id,
                         failure: bitaxe_stratum::v1::production_session::HardwarePreparationFailure::Rejected,

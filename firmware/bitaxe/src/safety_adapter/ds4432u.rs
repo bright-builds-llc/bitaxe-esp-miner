@@ -8,25 +8,32 @@ const BITAXE_RB_OHMS: f64 = 3_320.0;
 const BITAXE_NOMINAL_VOLTS: f64 = 1.451;
 const TPS40305_FEEDBACK_VOLTS: f64 = 0.6;
 
-/// Validated Ultra 205 DS4432U setpoints.
+/// A validated Ultra 205 DS4432U setpoint: any millivolt value in the BM1366
+/// catalog range (ADR-0037).
 ///
 /// There is deliberately no `Off` setpoint. Pinned upstream
 /// `VCORE_set_voltage(0)` skips the DS4432U write and removes VCORE through
 /// the separately owned GPIO10 ASIC-enable boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Ultra205CoreVoltage {
-    /// Programs the conservative mining profile's 1100 mV setpoint.
-    Conservative1100Millivolts,
-    /// Programs the pinned upstream default profile's 1200 mV setpoint.
-    UpstreamDefault1200Millivolts,
-}
+pub(crate) struct Ultra205CoreVoltage(u16);
 
 impl Ultra205CoreVoltage {
+    /// The conservative mining profile's 1100 mV setpoint.
+    #[cfg(test)]
+    pub(crate) const CONSERVATIVE: Self = Self(1_100);
+    /// The pinned upstream default profile's 1200 mV setpoint.
+    #[cfg(test)]
+    pub(crate) const UPSTREAM_DEFAULT: Self = Self(1_200);
+
+    /// Accepts only a voltage inside the Ultra 205 BM1366 catalog range.
+    pub(crate) fn ultra_205(millivolts: u16) -> Option<Self> {
+        bitaxe_config::CoreVoltageMv::ultra_205_bm1366(i64::from(millivolts))
+            .ok()
+            .map(|voltage| Self(voltage.millivolts()))
+    }
+
     const fn millivolts(self) -> u16 {
-        match self {
-            Self::Conservative1100Millivolts => 1_100,
-            Self::UpstreamDefault1200Millivolts => 1_200,
-        }
+        self.0
     }
 }
 
@@ -65,7 +72,7 @@ where
 }
 
 fn core_voltage_code(millivolts: u16) -> u8 {
-    debug_assert!(matches!(millivolts, 1_100 | 1_200));
+    debug_assert!((1_100..=1_300).contains(&millivolts));
 
     let volts = f64::from(millivolts) / 1_000.0;
     let change = (((TPS40305_FEEDBACK_VOLTS / BITAXE_RB_OHMS
@@ -109,8 +116,7 @@ mod tests {
         let mut writer = FakeWriter::default();
 
         // Act
-        let result =
-            write_core_voltage(&mut writer, Ultra205CoreVoltage::Conservative1100Millivolts);
+        let result = write_core_voltage(&mut writer, Ultra205CoreVoltage::CONSERVATIVE);
 
         // Assert
         assert_eq!(result, Ok(()));
@@ -124,13 +130,51 @@ mod tests {
         let mut writer = FakeWriter::default();
 
         // Act
-        let result = write_core_voltage(
-            &mut writer,
-            Ultra205CoreVoltage::UpstreamDefault1200Millivolts,
-        );
+        let result = write_core_voltage(&mut writer, Ultra205CoreVoltage::UPSTREAM_DEFAULT);
 
         // Assert
         assert_eq!(result, Ok(()));
         assert_eq!(writer.writes, [(Ds4432uWriteRegister::Output0, 0xc6)]);
+    }
+
+    #[test]
+    fn every_catalog_range_voltage_programs_a_below_nominal_code() {
+        // Arrange: every millivolt from 1100 to 1300 is below the 1.451 V nominal.
+        let voltages: Vec<Ultra205CoreVoltage> = (1_100..=1_300)
+            .map(|mv| Ultra205CoreVoltage::ultra_205(mv).expect("catalog range"))
+            .collect();
+
+        // Act
+        let codes: Vec<u8> = voltages
+            .iter()
+            .map(|voltage| core_voltage_code(voltage.millivolts()))
+            .collect();
+
+        // Assert: the reduce bit is set and the step size shrinks as voltage rises.
+        assert!(codes.iter().all(|code| code & 0x80 != 0));
+        assert!(codes
+            .windows(2)
+            .all(|pair| pair[0] & 0x7f >= pair[1] & 0x7f));
+    }
+
+    #[test]
+    fn a_voltage_outside_the_catalog_range_is_not_a_setpoint() {
+        // Arrange / Act
+        let voltages = [1_099, 1_301].map(Ultra205CoreVoltage::ultra_205);
+
+        // Assert
+        assert_eq!(voltages, [None, None]);
+    }
+
+    #[test]
+    fn interior_catalog_voltages_match_the_upstream_codes() {
+        // Arrange: codes computed by the pinned upstream `DS4432U.c` formula.
+        let voltages = [1_150, 1_250, 1_300];
+
+        // Act
+        let codes = voltages.map(core_voltage_code);
+
+        // Assert
+        assert_eq!(codes, [0xd4, 0xb9, 0xab]);
     }
 }

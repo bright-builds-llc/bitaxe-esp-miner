@@ -5,7 +5,7 @@
 //! - `reference/esp-miner/components/asic/asic_common.c:get_difficulty_mask`
 //! - parity checklist rows `ASIC-006` and `ASIC-008`
 
-use bitaxe_config::{ultra_205_catalog_entry, ConfigValidationError};
+use bitaxe_config::{ultra_205_catalog_entry, AsicFrequencyMhz, ConfigValidationError};
 
 use super::{
     command::{
@@ -22,23 +22,31 @@ const INIT_COMMAND_ENCODING_FAILED: &str = "mining_ready_command_encoding_failed
 const MINING_READY_FREQUENCY_INVALID: &str = "mining_ready_frequency_invalid";
 const FREQUENCY_TRANSITION_INVALID: &str = "frequency_transition_invalid";
 
-/// Closed Ultra 205 BM1366 production frequencies.
+/// An Ultra 205 BM1366 mining frequency: any whole MHz in the catalog range
+/// (ADR-0037), with the two presets the lease can still select as constants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Bm1366MiningProfile {
-    /// Lower-power first mining profile at 400 MHz.
-    Conservative,
-    /// Upstream Ultra BM1366 default at 485 MHz.
-    UpstreamDefault,
+pub struct Bm1366MiningProfile {
+    frequency_mhz: u16,
 }
 
 impl Bm1366MiningProfile {
+    /// Lower-power first mining profile at 400 MHz.
+    pub const CONSERVATIVE: Self = Self { frequency_mhz: 400 };
+    /// Upstream Ultra BM1366 default at 485 MHz.
+    pub const UPSTREAM_DEFAULT: Self = Self { frequency_mhz: 485 };
+
+    /// A profile for a frequency inside the Ultra 205 BM1366 catalog range.
+    pub fn ultra_205(frequency: AsicFrequencyMhz) -> Result<Self, ConfigValidationError> {
+        let frequency = AsicFrequencyMhz::ultra_205_bm1366(i64::from(frequency.mhz()))?;
+        Ok(Self {
+            frequency_mhz: frequency.mhz(),
+        })
+    }
+
     /// Returns the profile target frequency.
     #[must_use]
     pub const fn frequency_mhz(self) -> u16 {
-        match self {
-            Self::Conservative => 400,
-            Self::UpstreamDefault => 485,
-        }
+        self.frequency_mhz
     }
 
     /// Revalidates the profile target against the Ultra 205 BM1366 catalog.
@@ -60,10 +68,10 @@ pub struct MiningReadyConfig {
 impl MiningReadyConfig {
     #[must_use]
     pub fn ultra_205_single_chip(chip_count: u8) -> Self {
-        Self::ultra_205_profile(chip_count, Bm1366MiningProfile::UpstreamDefault)
+        Self::ultra_205_profile(chip_count, Bm1366MiningProfile::UPSTREAM_DEFAULT)
     }
 
-    /// Builds a mining-ready config for one of the closed production profiles.
+    /// Builds a mining-ready config for a validated production profile.
     #[must_use]
     pub fn ultra_205_profile(chip_count: u8, profile: Bm1366MiningProfile) -> Self {
         let catalog = ultra_205_catalog_entry();
@@ -455,7 +463,7 @@ impl Bm1366InitPlan {
         Self::mining_ready_init_for_profile(
             preflight,
             chip_count,
-            Bm1366MiningProfile::UpstreamDefault,
+            Bm1366MiningProfile::UPSTREAM_DEFAULT,
             options,
         )
     }

@@ -34,6 +34,8 @@ pub(crate) struct RuntimeBoardAdapter {
     pub maybe_earliest_failure: Option<Failure>,
     pub cleanup_failures: Vec<Failure>,
     fan_proven: bool,
+    /// The ASIC profile initialized from the preparation step's frequency.
+    asic_profile: Bm1366MiningProfile,
     maybe_reply: Option<Vec<u8>>,
     pub maybe_cancel_preparation: Option<PreparationStep>,
     pub maybe_fail_shutdown: Option<SafeShutdownStep>,
@@ -73,6 +75,7 @@ impl RuntimeBoardAdapter {
             maybe_earliest_failure: None,
             cleanup_failures: Vec::new(),
             fan_proven: false,
+            asic_profile: Bm1366MiningProfile::CONSERVATIVE,
             maybe_reply: None,
             maybe_cancel_preparation: None,
             maybe_fail_shutdown: None,
@@ -460,11 +463,13 @@ impl MiningActuationBackend for RuntimeBoardAdapter {
                 }
                 self.actions(decision.actions(), true)?;
             }
-            PreparationStep::InitializeMiningReadyWithFrequencyRamp(_) => {
+            PreparationStep::InitializeMiningReadyWithFrequencyRamp(frequency) => {
+                self.asic_profile =
+                    Bm1366MiningProfile::ultra_205(frequency).map_err(|_| "unsupported_profile")?;
                 let decision = Bm1366InitPlan::mining_ready_init_for_profile(
                     Self::preflight(),
                     1,
-                    Bm1366MiningProfile::Conservative,
+                    self.asic_profile,
                     MiningReadyInitOptions::production_with_frequency_ramp(),
                 );
                 if decision.maybe_fail_closed_action().is_some() {
@@ -473,7 +478,9 @@ impl MiningActuationBackend for RuntimeBoardAdapter {
                 self.actions(decision.actions(), true)?;
             }
             PreparationStep::RetainProductionUart => {
-                if self.board.borrow().asic.frequency_mhz != 400 {
+                if self.board.borrow().asic.frequency_mhz
+                    != u32::from(self.asic_profile.frequency_mhz())
+                {
                     return Err("asic_not_ready");
                 }
             }
@@ -500,12 +507,10 @@ impl MiningActuationBackend for RuntimeBoardAdapter {
                     if self.board.borrow().peripherals.power_enabled
                         && !self.board.borrow().peripherals.reset_asserted
                     {
-                        let actions =
-                            safe_shutdown_command_actions(MiningReadyConfig::ultra_205_profile(
-                                1,
-                                Bm1366MiningProfile::Conservative,
-                            ))
-                            .map_err(|_| "shutdown_plan")?;
+                        let actions = safe_shutdown_command_actions(
+                            MiningReadyConfig::ultra_205_profile(1, self.asic_profile),
+                        )
+                        .map_err(|_| "shutdown_plan")?;
                         self.actions(&actions, false)?;
                     }
                 }

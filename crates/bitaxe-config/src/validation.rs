@@ -53,19 +53,12 @@ impl AsicFrequencyMhz {
         parse_u16_range("frequency", value, 1, 65_535).map(Self)
     }
 
-    /// Parses the Ultra 205 BM1366 supported frequency options.
+    /// Parses an Ultra 205 BM1366 frequency: any whole MHz between the catalog's
+    /// lowest and highest options (ADR-0037 decision 3). The options themselves
+    /// are presets, as on upstream.
     pub fn ultra_205_bm1366(value: i64) -> Result<Self, ConfigValidationError> {
-        let frequency = Self::parse(value)?;
-        let options = ultra_205_catalog_entry().asic().frequency_options();
-
-        if options.contains(&frequency.0) {
-            return Ok(frequency);
-        }
-
-        Err(ConfigValidationError::InvalidEnum {
-            field: "frequency",
-            value: value.to_string(),
-        })
+        let (min, max) = option_bounds(ultra_205_catalog_entry().asic().frequency_options());
+        parse_u16_range("frequency", value, min, max).map(Self)
     }
 
     /// Returns the frequency in MHz.
@@ -85,19 +78,11 @@ impl CoreVoltageMv {
         parse_u16_range("coreVoltage", value, 1, 65_535).map(Self)
     }
 
-    /// Parses the Ultra 205 BM1366 supported voltage options.
+    /// Parses an Ultra 205 BM1366 core voltage: any millivolt value between the
+    /// catalog's lowest and highest options (ADR-0037 decision 3).
     pub fn ultra_205_bm1366(value: i64) -> Result<Self, ConfigValidationError> {
-        let voltage = Self::parse(value)?;
-        let options = ultra_205_catalog_entry().asic().voltage_options();
-
-        if options.contains(&voltage.0) {
-            return Ok(voltage);
-        }
-
-        Err(ConfigValidationError::InvalidEnum {
-            field: "coreVoltage",
-            value: value.to_string(),
-        })
+        let (min, max) = option_bounds(ultra_205_catalog_entry().asic().voltage_options());
+        parse_u16_range("coreVoltage", value, min, max).map(Self)
     }
 
     /// Returns the voltage in millivolts.
@@ -423,6 +408,13 @@ pub fn validate_nvs_key_name(value: &str) -> Result<NvsKeyName, ConfigValidation
             max_bytes: NVS_KEY_NAME_MAX_BYTES,
         },
     })
+}
+
+/// The lowest and highest catalog option; an empty list admits nothing.
+fn option_bounds(options: &[u16]) -> (i64, i64) {
+    let min = options.iter().min().map_or(1, |value| i64::from(*value));
+    let max = options.iter().max().map_or(0, |value| i64::from(*value));
+    (min, max)
 }
 
 fn parse_u16_range(

@@ -62,7 +62,7 @@ const delegatedFragments = new Map<string, readonly string[]>([
 
 const sourceFragments = new Map<string, readonly string[]>([
   [unchangedPaths[0], [
-    "Self::Conservative1100Millivolts => 1_100,",
+    "debug_assert!((1_100..=1_300).contains(&millivolts));",
     "Self::Output0 => 0xf8,",
     "let code = core_voltage_code(voltage.millivolts());",
     "bus.write_ds4432u(Ds4432uWriteRegister::Output0, code)",

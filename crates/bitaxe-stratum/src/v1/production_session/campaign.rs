@@ -67,19 +67,6 @@ impl MiningHardwareProfile {
     pub const fn fan_duty(self) -> FanDutyPercent {
         self.fan_duty
     }
-
-    /// Returns whether this profile is one of the two closed production pairs.
-    #[must_use]
-    pub const fn is_closed_ultra_205_production_profile(self) -> bool {
-        matches!(
-            (
-                self.frequency.mhz(),
-                self.core_voltage.millivolts(),
-                self.fan_duty.percent(),
-            ),
-            (400, 1_100, 100) | (485, 1_200, 100)
-        )
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -308,7 +295,6 @@ mod tests {
         assert_eq!(profile.frequency().mhz(), 400);
         assert_eq!(profile.core_voltage().millivolts(), 1_100);
         assert_eq!(profile.fan_duty().percent(), 100);
-        assert!(profile.is_closed_ultra_205_production_profile());
     }
 
     #[test]
@@ -324,20 +310,30 @@ mod tests {
         assert_eq!(profile.frequency().mhz(), 485);
         assert_eq!(profile.core_voltage().millivolts(), 1_200);
         assert_eq!(profile.fan_duty().percent(), 100);
-        assert!(profile.is_closed_ultra_205_production_profile());
     }
 
     #[test]
-    fn individually_valid_but_mismatched_profile_values_are_not_closed() {
-        // Arrange
-        let profile = MiningHardwareProfile::ultra_205_bm1366(400, 1_200, 100)
-            .expect("catalog-valid values should construct a general hardware profile");
+    fn any_pair_inside_the_catalog_range_is_a_hardware_profile() {
+        // Arrange: ADR-0037 admits catalog-range pairs beyond the two presets.
+        let pairs = [(400, 1_200), (410, 1_175), (575, 1_300)];
 
         // Act
-        let closed = profile.is_closed_ultra_205_production_profile();
+        let profiles = pairs.map(|(mhz, mv)| MiningHardwareProfile::ultra_205_bm1366(mhz, mv, 100));
 
         // Assert
-        assert!(!closed);
+        assert!(profiles.iter().all(Result::is_ok));
+    }
+
+    #[test]
+    fn a_pair_outside_the_catalog_range_is_not_a_hardware_profile() {
+        // Arrange
+        let pairs = [(399, 1_100), (400, 1_301)];
+
+        // Act
+        let profiles = pairs.map(|(mhz, mv)| MiningHardwareProfile::ultra_205_bm1366(mhz, mv, 100));
+
+        // Assert
+        assert!(profiles.iter().all(Result::is_err));
     }
 
     #[test]

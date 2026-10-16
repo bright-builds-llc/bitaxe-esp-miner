@@ -30447,3 +30447,109 @@ identity-bound J6 evidence (`00515621`, work plan
 `20261015T024309Z-BAP-002`), and `BAP-001` is `verified` and archived. The
 setting parsers' strictness against the reference's `atoi`/`atof` moves to
 `task-parity-bap-settings-effects`. This record is complete and archived.
+
+### task-asic-actuation-catalog-profiles | 2026-10-16 | Actuate any catalog-valid frequency and voltage
+
+ADR-0037 step 1. Software only. Depends on nothing.
+
+Today the actuation adapter (`firmware/bitaxe/src/mining_actuation_adapter.rs`)
+accepts only 400 MHz/1100 mV and 485 MHz/1200 mV, and only those two have
+closed ramp plans and shutdown tails.
+
+- [x] Accept any Ultra 205 catalog-valid pair (400–575 MHz, 1100–1300 mV)
+      through a typed profile from device configuration.
+- [x] Derive the preparation and shutdown ramp plans from the target
+      frequency. Add a closed function for the shutdown tail and the
+      catalog-maximum tail (ADR-0037 decision 5). Pin both with fixtures
+      against the two existing plans (15,550 ms and 19,050 ms).
+- [x] Keep the existing presets' exact behavior, with regressions.
+- [x] Gate, stack audits.
+
+Started 2026-10-16 (ADR-0037 accepted that day).
+
+Findings:
+- The Ultra 205 validators accept only the catalog's listed values: 400, 425,
+  450, 475, 485, 500, 525, 550 and 575 MHz; 1100–1300 mV in 50 mV steps.
+  ADR-0037 decision 3 says ranges, and upstream offers those values as presets
+  plus custom values. Its PLL search handles any frequency.
+- Two closed enums can hold only the two presets: `Bm1366MiningProfile`
+  (400/485) and `Ultra205CoreVoltage` (1100/1200 mV). The adapter maps
+  anything else to `UnsupportedProfile`. The ramp, PLL, nonce-space and
+  DS4432U code math are already generic.
+- The shutdown tail is 1,550 + 250 × (ceil(4f/25) − 8) ms: 15,550 at 400 MHz,
+  19,050 at 485 MHz and 22,550 at 575 MHz.
+
+Plan:
+- **Validators:** `AsicFrequencyMhz`/`CoreVoltageMv::ultra_205_bm1366` accept
+  any whole MHz and mV within the catalog's lowest and highest options. The
+  option lists stay as presets.
+- **Profile types:** `Bm1366MiningProfile` becomes a validated frequency, with
+  `CONSERVATIVE` and `UPSTREAM_DEFAULT` constants. `Ultra205CoreVoltage`
+  becomes a validated millivolt value.
+- **Shutdown tail:** `pre_reset_bound_ms(profile)` derives it from the
+  shutdown plan, and `closed_pre_reset_tail_ms(f)` gives the closed form. A
+  test checks they agree for every whole MHz in range. Pin 15,550, 19,050 and
+  22,550.
+- **Admission:** replace the two-pair allow-list with `profile_admissible`.
+  The adapter admits a profile only if its fan is 100%, its frequency is in
+  range, and its tail fits the tail the caller passes to `prepare`:
+  - a Gate lease passes its generation's admitted budget tail;
+  - the self-test passes the upstream-default tail;
+  - Stratum V2 passes the Conservative tail;
+  - the legacy campaign path passes its preset's own tail.
+
+  This keeps today's rule that 485 MHz needs a soak budget, and holds for any
+  frequency.
+- **Unchanged here:** the lease still selects a preset. Soak budgets and the
+  signer change in `task-lease-without-hardware-profile`.
+
+Independent review (2026-10-16) found, and this change fixes:
+- **High:** the self-test (485 MHz, no Gate budget) would have been refused.
+  The reserved tail is now an explicit `prepare` input from each caller.
+- **Medium:** the gate's budget fields outlive their generation, so a stale
+  soak tail could be read. `reserved_shutdown_tail_ms` now takes the
+  generation and requires it to match, with a regression.
+- **Medium, older than this change:** `maybe_asic_profile` survived across
+  preparations, so a failed Conservative preparation after a soak could ramp
+  down from 481 MHz. `prepare` now clears it.
+- **Low:**
+  - admission tests at the boundaries (400/401 under a normal budget, 487/488
+    under a soak, the catalog-maximum tail, fan below 100%);
+  - golden DS4432U codes for 1150, 1250 and 1300 mV;
+  - evidence fragments that point at production code.
+
+The DS4432U formula matches upstream's C for every mV from 1100 to 1300, as
+the review checked.
+
+Also: the compiler now inlines `FnHandler::handle` into
+`EspHttpServer::to_native_handler::{{closure}}`. The HTTP stack audit had
+correctly failed closed on the missing symbol; it now recognises both names,
+with a test.
+
+Verification (2026-10-16):
+- Cargo:
+  - validators: in-range values between presets accepted, out-of-range
+    refused;
+  - every whole MHz from 400 to 575 has ramp, shutdown and PLL plans;
+  - the plan bound equals the closed tail for every whole MHz;
+  - presets pinned at 15,550 and 19,050 ms, and the catalog maximum at
+    22,550 ms;
+  - admission boundaries and generation-bound reserved tails.
+- The full gate passes: fmt, clippy, build, tests, `just build`, both stack
+  audits, `just test`, Bright Builds, redaction and parity.
+
+Completion review: the actuation path now accepts any Ultra 205
+catalog-range frequency and voltage. A profile is admitted only when its
+closed shutdown tail fits what the caller reserved, so ADR-0037's safety
+invariant holds for every frequency. The lease still selects only the two
+presets, so behaviour on hardware is unchanged.
+
+Residual risks:
+- Pairs other than the presets have no hardware evidence. That is
+  `task-device-config-profile-evidence-soaks`.
+- Frequency and voltage are no longer paired: any in-range voltage is
+  accepted with any admitted frequency, as ADR-0037 decision 3 intends.
+- `CATALOG_MAXIMUM_PRE_RESET_TAIL_MS` waits for
+  `task-lease-without-hardware-profile`.
+- The rollback ramp starts from the profile frequency, not from the frequency
+  actually applied.

@@ -154,7 +154,7 @@ fn max_baud_prelude_can_insert_post_host_delay() {
 #[test]
 fn conservative_profile_ramp_matches_golden_frequency_order() {
     // Arrange
-    let profile = Bm1366MiningProfile::Conservative;
+    let profile = Bm1366MiningProfile::CONSERVATIVE;
 
     // Act
     let commands = mining_ready_frequency_ramp_commands(profile).expect("ramp should build");
@@ -173,7 +173,7 @@ fn conservative_profile_ramp_matches_golden_frequency_order() {
 #[test]
 fn upstream_default_profile_ramp_matches_golden_frequency_order() {
     // Arrange
-    let profile = Bm1366MiningProfile::UpstreamDefault;
+    let profile = Bm1366MiningProfile::UPSTREAM_DEFAULT;
 
     // Act
     let commands = mining_ready_frequency_ramp_commands(profile).expect("ramp should build");
@@ -205,9 +205,9 @@ fn production_ramp_option_is_explicitly_enabled() {
 #[test]
 fn mining_ready_profiles_select_validated_400_and_485_mhz_plans() {
     // Arrange
-    let conservative = MiningReadyConfig::ultra_205_profile(1, Bm1366MiningProfile::Conservative);
+    let conservative = MiningReadyConfig::ultra_205_profile(1, Bm1366MiningProfile::CONSERVATIVE);
     let upstream_default =
-        MiningReadyConfig::ultra_205_profile(1, Bm1366MiningProfile::UpstreamDefault);
+        MiningReadyConfig::ultra_205_profile(1, Bm1366MiningProfile::UPSTREAM_DEFAULT);
 
     // Act
     let conservative_plan = conservative.profile().frequency_plan();
@@ -224,8 +224,8 @@ fn mining_ready_profiles_select_validated_400_and_485_mhz_plans() {
 fn safe_shutdown_orders_50_mhz_nonce_reset_wait_and_reset_hold() {
     // Arrange
     let profiles = [
-        Bm1366MiningProfile::Conservative,
-        Bm1366MiningProfile::UpstreamDefault,
+        Bm1366MiningProfile::CONSERVATIVE,
+        Bm1366MiningProfile::UPSTREAM_DEFAULT,
     ];
 
     for profile in profiles {
@@ -266,7 +266,7 @@ fn safe_shutdown_orders_50_mhz_nonce_reset_wait_and_reset_hold() {
 #[test]
 fn safe_shutdown_ramp_exceeds_owner_watchdog_but_each_delay_stays_bounded() {
     // Arrange
-    let config = MiningReadyConfig::ultra_205_profile(1, Bm1366MiningProfile::Conservative);
+    let config = MiningReadyConfig::ultra_205_profile(1, Bm1366MiningProfile::CONSERVATIVE);
     let actions = safe_shutdown_command_actions(config).expect("shutdown actions should build");
 
     // Act
@@ -383,4 +383,42 @@ fn bm1366_job_interval_zero_chips_guards_as_single_chip() {
 
     // Assert
     assert_eq!(interval_ms, 2000);
+}
+
+#[test]
+fn every_whole_mhz_in_the_catalog_range_has_ramp_and_shutdown_plans() {
+    // Arrange: ADR-0037 admits any whole MHz from 400 to 575, not only presets.
+    let profiles: Vec<Bm1366MiningProfile> = (400..=575)
+        .map(|mhz| {
+            Bm1366MiningProfile::ultra_205(AsicFrequencyMhz::parse(mhz).expect("frequency"))
+                .expect("in catalog range")
+        })
+        .collect();
+
+    // Act
+    let unplanned: Vec<u16> = profiles
+        .iter()
+        .filter(|profile| {
+            let config = MiningReadyConfig::ultra_205_profile(1, **profile);
+            mining_ready_frequency_ramp_commands(**profile).is_err()
+                || safe_shutdown_commands(config).is_err()
+                || profile.frequency_plan().is_err()
+        })
+        .map(|profile| profile.frequency_mhz())
+        .collect();
+
+    // Assert
+    assert!(unplanned.is_empty(), "unplanned: {unplanned:?}");
+}
+
+#[test]
+fn a_frequency_outside_the_catalog_range_is_not_a_profile() {
+    // Arrange
+    let frequencies = [399, 576].map(|mhz| AsicFrequencyMhz::parse(mhz).expect("frequency"));
+
+    // Act
+    let profiles = frequencies.map(Bm1366MiningProfile::ultra_205);
+
+    // Assert
+    assert!(profiles.iter().all(Result::is_err));
 }

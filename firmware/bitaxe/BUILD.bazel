@@ -691,6 +691,7 @@ rust_test(
     name = "ds4432u_actuation_tests",
     srcs = ["src/safety_adapter/ds4432u.rs"],
     crate_name = "ds4432u_actuation_tests",
+    deps = ["//crates/bitaxe-config:bitaxe_config"],
     edition = "2021",
 )
 

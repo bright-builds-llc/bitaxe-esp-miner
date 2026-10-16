@@ -20,6 +20,43 @@ fn validation_accepts_ultra_205_frequency_and_voltage_options() {
 }
 
 #[test]
+fn ultra_205_accepts_values_between_its_catalog_options() {
+    // Arrange: neither value is a listed preset, but both lie inside the range.
+    let frequency = 410;
+    let voltage = 1_175;
+
+    // Act
+    let parsed = (
+        AsicFrequencyMhz::ultra_205_bm1366(frequency),
+        CoreVoltageMv::ultra_205_bm1366(voltage),
+    );
+
+    // Assert
+    assert_eq!(
+        (
+            parsed.0.map(AsicFrequencyMhz::mhz),
+            parsed.1.map(CoreVoltageMv::millivolts)
+        ),
+        (Ok(410), Ok(1_175))
+    );
+}
+
+#[test]
+fn ultra_205_rejects_values_outside_its_catalog_range() {
+    // Arrange
+    let frequencies = [399, 576];
+    let voltages = [1_099, 1_301];
+
+    // Act
+    let parsed_frequencies = frequencies.map(AsicFrequencyMhz::ultra_205_bm1366);
+    let parsed_voltages = voltages.map(CoreVoltageMv::ultra_205_bm1366);
+
+    // Assert
+    assert!(parsed_frequencies.iter().all(Result::is_err));
+    assert!(parsed_voltages.iter().all(Result::is_err));
+}
+
+#[test]
 fn validation_rejects_frequency_voltage_fan_temperature_bounds() {
     // Arrange
     let invalid_frequency = 0;

@@ -98,7 +98,10 @@ fn run_owner() {
 
     let mut actuation = crate::mining_actuation_adapter::Ultra205MiningActuationAdapter::new();
     watchdog.feed_owner_progress(now_ms(), TaskWatchdogOwnerSubphase::EffectPrepareHardware);
-    if let Err(failure) = actuation.prepare(profile.profile()) {
+    if let Err(failure) = actuation.prepare(
+        profile.profile(),
+        crate::production_mining_session::shutdown_budget::PRE_RESET_BOUND_MS,
+    ) {
         log::error!(
             "stratum_v2_owner=fail_closed category=hardware_preparation step={} detail={}",
             failure.original().step().label(),

@@ -1,5 +1,20 @@
 use super::*;
 impl GenerationGate {
+    /// The pre-reset tail `generation`'s admitted budget reserves, or the
+    /// Conservative tail when that generation has no limited budget. A mining
+    /// profile must fit inside it, so its ordered shutdown completes within the
+    /// budget (ADR-0037). The budget fields outlive their generation, so the
+    /// generation must match.
+    pub fn reserved_shutdown_tail_ms(&self, generation: WorkerGeneration) -> u32 {
+        let budgeted = self.budget_generation.load(Ordering::Acquire) == generation.0
+            && self.budget_limited.load(Ordering::Acquire);
+        if budgeted {
+            shutdown_tail_ms(self.budget_limit_ms.load(Ordering::Acquire))
+        } else {
+            crate::shutdown_budget::PRE_RESET_BOUND_MS
+        }
+    }
+
     #[cfg(test)]
     pub fn note_first_dispatch(&self, maybe_generation: Option<WorkerGeneration>, now_ms: u64) {
         let _ = self.begin_dispatch(self.stamp(maybe_generation), now_ms);
