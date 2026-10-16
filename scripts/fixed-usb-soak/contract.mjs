@@ -6,7 +6,7 @@ import { nonce, requireCondition } from "../fixed-usb-qualification/contract.mjs
 import { SOAK_CONTEXT_SCHEMA, SOAK_MAXIMUM_ACTIVE_MS } from "../fixed-usb-qualification/judge.mjs";
 
 export { SOAK_CONTEXT_SCHEMA, SOAK_MAXIMUM_ACTIVE_MS };
-export const SOAK_TASK = "task-ultra205-default-profile-soak-003";
+export const SOAK_TASK = "task-ultra205-default-profile-soak-004";
 export const SOAK_TASK_LINE = "Ultra 205 upstream-default soak hardware: enabled.";
 export const SOAK_WORK_GATE_MS = 600000;
 /** 36 renewals at 20 s, the Gate's soak bound, cover up to 120 s of preparation plus the 600 s gate. */

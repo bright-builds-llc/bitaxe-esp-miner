@@ -1216,6 +1216,42 @@ requests and BAP.
 
 Verification: pending. Completion review: pending.
 
+### task-ultra205-default-profile-soak-004 | 2026-10-15 | Soak once more to check the publication-lock fix
+
+Objective: hardware evidence for `task-operator-snapshot-io-outside-lock`.
+Firmware that writes HTTP responses and the WebSocket connect frame after the
+snapshot lock is released should not show the multi-second paired HTTP and
+WebSocket gaps seen in soak 002 (4,632 ms HTTP / 3,551 ms WebSocket) and soak
+003 (5,601 / 4,781). The owner authorized this soak on 2026-10-15.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task.
+- [ ] Soak attempt 001 (soak ledger ordinal 5), with an independent review.
+
+Hardware contract (owner-authorized 2026-10-15). It is the archived
+`task-ultra205-default-profile-soak-003` soak contract, unchanged except:
+- package at the clean, pushed `HEAD` that records this contract;
+- parent `P = scratch/ultra205-soak-004`, with `R = P/attempt-001`;
+- soak ledger ordinal 5;
+- no BAP traffic at all.
+
+Allowed effects, live limits, the seal path, retry bound and outcomes are as
+that contract. Parity promotion is prohibited.
+
+Comparison for the lock task, read from `soak-judge` and the private journals.
+It is an observation, not a soak pass criterion:
+- The soak's maximum WebSocket gap is at most 2,000 ms, and its maximum HTTP
+  gap is at most 3,000 ms. The verified soak of 2026-10-06 had 843 ms and
+  2,265 ms.
+- No HTTP gap above 3,000 ms coincides with a WebSocket gap above 2,000 ms.
+
+If a larger paired gap recurs, the lock fix is not sufficient. The result is
+then recorded as such, and the stall is investigated (for example, a Wi-Fi or
+TCP stall) under the lock task, without another soak.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
