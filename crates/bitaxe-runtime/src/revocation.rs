@@ -33,10 +33,14 @@ fn elapsed_ms(now: u32, then: u32) -> u32 {
 
 #[path = "revocation/budget_observation.rs"]
 mod budget_observation;
+#[path = "revocation/deadline.rs"]
+mod deadline;
 #[path = "revocation/diagnostic.rs"]
 mod diagnostic;
 #[path = "revocation/fan_controller.rs"]
 mod fan_controller;
+#[path = "revocation/local.rs"]
+mod local;
 #[path = "revocation/panic.rs"]
 mod panic;
 #[path = "revocation/reason.rs"]
@@ -50,7 +54,7 @@ mod types;
 #[path = "revocation/unsafe_detail.rs"]
 mod unsafe_detail;
 pub use bitaxe_api::SafetyVerdict;
-pub use types::{FanControllerOwner, RevocationTiming, WorkPermit, WorkerGeneration};
+pub use types::{FanControllerOwner, IdleFanEpoch, RevocationTiming, WorkPermit, WorkerGeneration};
 pub use unsafe_detail::{UnsafeObservationDetail, UnsafeTrigger};
 
 /// `repr(C)` keeps `state` at offset 0: the native panic cutoff revokes by
@@ -92,6 +96,8 @@ pub struct GenerationGate {
     rejected: AtomicU32,
     correlated: AtomicU32,
     dispatched: AtomicU32,
+    local_generation: AtomicU32,
+    idle_fan_epoch: AtomicU32,
 }
 
 impl Default for GenerationGate {
@@ -138,6 +144,8 @@ impl GenerationGate {
             rejected: AtomicU32::new(0),
             correlated: AtomicU32::new(0),
             dispatched: AtomicU32::new(0),
+            local_generation: AtomicU32::new(0),
+            idle_fan_epoch: AtomicU32::new(0),
         }
     }
 
@@ -412,44 +420,6 @@ impl GenerationGate {
         false
     }
 
-    pub fn check_deadline(&self, now_ms: u64) {
-        let state = self.state.load(Ordering::Acquire);
-        if !matches!(
-            state & FLAGS,
-            LIVE | RESERVED | BUDGETED | ACTIVE | DIAGNOSTIC
-        ) {
-            return;
-        }
-        let now = now_ms as u32;
-        let reason = if elapsed_ms(now, self.heartbeat_ms.load(Ordering::Acquire))
-            >= HEARTBEAT_CUTOFF_MS
-        {
-            RevocationReason::HeartbeatTimeout
-        } else if (self.lease_limited.load(Ordering::Acquire)
-            && now.wrapping_sub(self.lease_deadline_ms.load(Ordering::Acquire)) as i32 >= 0)
-            || (state & FLAGS == ACTIVE
-                && self.budget_limited.load(Ordering::Acquire)
-                && self.budget_armed_generation.load(Ordering::Acquire) == state & !FLAGS
-                && now.wrapping_sub(self.budget_deadline_ms.load(Ordering::Acquire)) as i32 >= 0)
-        {
-            RevocationReason::LeaseOrBudgetExpired
-        } else if state & FLAGS == ACTIVE
-            && self.fan_proof_generation.load(Ordering::Acquire) == state & !FLAGS
-            && elapsed_ms(now, self.last_safety_ms.load(Ordering::Acquire)) > 1_000
-        {
-            self.revoke_unsafe_at(
-                WorkerGeneration(state & !FLAGS),
-                now_ms,
-                UnsafeTrigger::NoSafeSample,
-                None,
-            );
-            return;
-        } else {
-            return;
-        };
-        self.revoke_reason_at(WorkerGeneration(state & !FLAGS), now_ms, reason);
-    }
-
     pub fn note_fan_proof(&self, generation: WorkerGeneration, now_ms: u64) {
         if !self.permits(Some(generation)) {
             return;
@@ -617,3 +587,7 @@ mod clock_race_tests;
 #[cfg(test)]
 #[path = "revocation/soak_tests.rs"]
 mod soak_tests;
+
+#[cfg(test)]
+#[path = "revocation/local_tests.rs"]
+mod local_tests;

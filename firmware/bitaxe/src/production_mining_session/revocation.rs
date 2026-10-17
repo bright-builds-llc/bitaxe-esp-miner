@@ -1,6 +1,7 @@
 //! Physical singleton wrappers around the shared lock-free authority runtime.
 pub(crate) use bitaxe_runtime::revocation::{
-    FanControllerOwner, GenerationGate, RevocationReason, RevocationTiming, WorkPermit,
+    FanControllerOwner, GenerationGate, IdleFanEpoch, RevocationReason, RevocationTiming,
+    WorkPermit,
 };
 pub use bitaxe_runtime::revocation::{WorkerGeneration, HEARTBEAT_CUTOFF_MS};
 #[path = "revocation/global.rs"]

@@ -1,7 +1,7 @@
 //! Boot-lifetime generation gate shared by the existing hardware owners.
 use super::{
-    FanControllerOwner, GenerationGate, RevocationReason, RevocationTiming, WorkPermit,
-    WorkerGeneration,
+    FanControllerOwner, GenerationGate, IdleFanEpoch, RevocationReason, RevocationTiming,
+    WorkPermit, WorkerGeneration,
 };
 
 #[cfg_attr(target_os = "espidf", link_section = ".dram1.bitaxe_generation_gate")]
@@ -96,6 +96,14 @@ pub(crate) fn admit_budget(generation: WorkerGeneration, active_limit_ms: u64) -
 /// Whether a fan-controller write of `duty_percent` may reach the fan now.
 pub(crate) fn permits_controller_fan(owner: FanControllerOwner, duty_percent: u8) -> bool {
     GATE.permits_controller_fan(owner, duty_percent)
+}
+/// Grants idle fan control (ADR-0038); called only by the production owner.
+pub(crate) fn grant_idle_fan() -> IdleFanEpoch {
+    GATE.grant_idle_fan()
+}
+/// Ends idle fan control before anything else drives the fan.
+pub(crate) fn withdraw_idle_fan() {
+    GATE.withdraw_idle_fan();
 }
 
 pub(crate) fn activate(generation: WorkerGeneration, now_ms: u64) -> bool {

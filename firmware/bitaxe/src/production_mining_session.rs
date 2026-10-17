@@ -67,6 +67,17 @@ pub(super) fn set_fan_controller_owner(maybe_owner: Option<revocation::FanContro
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = maybe_owner;
 }
+/// Ends idle fan control before preparation or the cooling review drives the fan,
+/// so an idle write queued earlier is refused at the safety adapter (ADR-0038).
+fn release_idle_fan() {
+    revocation::withdraw_idle_fan();
+    if matches!(
+        fan_controller_owner(),
+        Some(revocation::FanControllerOwner::Idle(_))
+    ) {
+        set_fan_controller_owner(None);
+    }
+}
 enum OwnerInboxMessage {
     Wake(ProductionSessionWakeup),
     Transport(PoolTransportEvent),
@@ -214,13 +225,30 @@ impl OrdinaryEspProductionSessionAdapter {
                         && crate::safety_adapter::safety_actuation_available()
                         && crate::asic_adapter::production::production_handle_available();
                     // A Gate lease owns the fan from its preparation until its safe-stop.
+                    revocation::withdraw_idle_fan();
                     if self.maybe_bwg_session.is_none() {
                         set_fan_controller_owner(
                             qualified.then_some(revocation::FanControllerOwner::Campaign),
                         );
                     }
-                } else if self.maybe_bwg_session.is_none() {
-                    set_fan_controller_owner(None);
+                } else if revocation::permits(None)
+                    && cooling_core::baseline_safe(
+                        &crate::safety_adapter::observation_snapshot(),
+                        now_ms,
+                    )
+                {
+                    // No lease is reserved, active or shutting down, and the chip has
+                    // cooled to the baseline, so upstream's idle duties may lower the
+                    // fan (ADR-0038). A Start that never prepared leaves the cooling
+                    // review's 100% until this holds.
+                    set_fan_controller_owner(Some(revocation::FanControllerOwner::Idle(
+                        revocation::grant_idle_fan(),
+                    )));
+                } else {
+                    revocation::withdraw_idle_fan();
+                    if self.maybe_bwg_session.is_none() {
+                        set_fan_controller_owner(None);
+                    }
                 }
                 crate::runtime_snapshot::publish_production_session_snapshot(*snapshot);
                 None
@@ -241,6 +269,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 None
             }
             ProductionSessionEffect::PrepareHardware { lease_id, profile } => {
+                release_idle_fan();
                 self.note_worker_preparation_started();
                 self.mining_actuation.set_worker_generation(
                     self.maybe_bwg_session
@@ -464,6 +493,7 @@ impl OrdinaryEspProductionSessionAdapter {
                         revocation::RevocationReason::ControlFailed,
                     );
                 }
+                release_idle_fan();
                 set_fan_controller_owner(None);
                 self.live_hardware.stopped();
                 if let Some(status) = self.maybe_campaign_status.as_mut() {

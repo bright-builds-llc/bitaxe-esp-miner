@@ -42,7 +42,9 @@ below land, the firmware stays lease-only.
 - After a lease the ordered safe-stop runs: frequency down, reset held low,
   voltage off, ASIC off, fan at 100% until the chip reads 45 C or less, then
   fan at 30%. The device then stays idle.
-- With no fan owner, no fan duty is written at all.
+- With no fan owner, no fan duty was written at all. Since
+  `task-local-protection-every-owner`, an idle owner runs upstream's idle
+  duties once the chip has cooled to the baseline.
 
 **What upstream does.** ESP-Miner mines whenever it is powered, connected and
 not paused. Pause is held in RAM and starts false at boot.
@@ -83,7 +85,8 @@ explicitly left mining outside a lease undecided.
 - the lease and budget deadlines;
 - the per-sample revocation on an unsafe reading or a zero fan reading
   (`revocation/unsafe_detail.rs`: it runs only while a lease is active);
-- the fan controller, which needs a lease or campaign owner.
+- the fan controller, which needed a lease or campaign owner until
+  `task-local-protection-every-owner` added the idle owner.
 
 ADR-0037's safety list counts the heartbeat as lease-independent. In code it
 is tied to the lease, so this ADR corrects that reading.

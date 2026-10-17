@@ -50,4 +50,12 @@ pub enum FanControllerOwner {
     Campaign,
     /// One prepared Gate lease's generation.
     Lease(WorkerGeneration),
+    /// The idle device, while no lease is reserved, active or shutting down
+    /// (ADR-0038). Valid only for the epoch the production owner granted.
+    Idle(IdleFanEpoch),
 }
+
+/// One grant of idle fan control. Withdrawing the grant ends the epoch, so a write
+/// queued under it is refused afterwards.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct IdleFanEpoch(pub(super) u32);

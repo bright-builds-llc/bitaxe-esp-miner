@@ -83,6 +83,7 @@ pub(super) fn qualify(
     if !revocation::is_live(generation) {
         return Err(CoolingError::Rejected);
     }
+    super::release_idle_fan();
     let rpm = cooling_core::qualify(&mut backend(generation, false))?;
     Ok(
         serde_json::json!({"schema":"worker-cooling-proof-v1","fan_duty_percent":100,"fan_rpm":rpm,"post_command_fan_proven":true,"asic_effects":false,"budget_reserved":false}),
@@ -91,6 +92,7 @@ pub(super) fn qualify(
 pub(super) fn restore(
     generation: revocation::WorkerGeneration,
 ) -> Result<serde_json::Value, CoolingError> {
+    super::release_idle_fan();
     cooling_core::restore(&mut backend(generation, true))?;
     Ok(
         serde_json::json!({"schema":"worker-cooling-baseline-v1","fan_duty_percent":30,"cooling_proven":true,"asic_effects":false,"budget_reserved":false}),

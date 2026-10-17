@@ -1100,21 +1100,6 @@ named-phase allocation profile item stays open. Qualification stays false.
 
 ## Future
 
-### task-local-protection-every-owner | 2026-10-16 | Device-local protection and fan control for every mining owner
-
-ADR-0038 step 1. Software first.
-
-- [ ] Apply the per-sample unsafe-reading and zero-fan revocation to every
-      mining owner, not only an active lease
-      (`crates/bitaxe-runtime/src/revocation/unsafe_detail.rs`).
-- [ ] Add a local fan owner that runs the automatic or manual fan while
-      mining, and 30% while paused or without a pool, as upstream's
-      `fan_controller_task.c` does.
-- [ ] Keep the stricter limits: 15 W, input 4.5–5.5 V, ASIC below 75 C, and
-      the catalog range. Add regressions for each.
-
-Verification: pending. Completion review: pending.
-
 ### task-local-power-down-conditions | 2026-10-16 | Upstream power-down conditions and overheat recovery
 
 ADR-0038 step 2. Depends on `task-local-protection-every-owner`.

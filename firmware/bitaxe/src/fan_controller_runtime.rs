@@ -91,7 +91,7 @@ fn service_iteration(state: &mut RuntimeState, now_ms: u64) {
         state.warn_once("settings_unavailable");
         return;
     };
-    let runtime = current_runtime_status(owner.is_some());
+    let runtime = current_runtime_status(owner);
     let observation = current_thermal_observation();
     let plan = match state
         .controller
@@ -166,15 +166,19 @@ fn loaded_u16(loaded: &bitaxe_config::PersistenceDecision, key: &str) -> Option<
     Some(*value)
 }
 
-fn current_runtime_status(hardware_control_qualified: bool) -> FanRuntimeStatus {
+fn current_runtime_status(maybe_owner: Option<FanControllerOwner>) -> FanRuntimeStatus {
     let mining = crate::runtime_snapshot::mining_runtime_state();
+    // An idle owner always means the ASIC is off, so upstream's not-hashing duty
+    // applies even if the pool status still reads active after a lease (ADR-0038).
+    let idle = matches!(maybe_owner, Some(FanControllerOwner::Idle(_)));
     FanRuntimeStatus {
-        hardware_control_qualified,
+        hardware_control_qualified: maybe_owner.is_some(),
         operator_paused: mining.operator_intent == MiningOperatorIntent::Paused,
-        pools_unavailable: !matches!(
-            mining.lifecycle,
-            PoolLifecycleStatus::Active | PoolLifecycleStatus::FallbackActive
-        ),
+        pools_unavailable: idle
+            || !matches!(
+                mining.lifecycle,
+                PoolLifecycleStatus::Active | PoolLifecycleStatus::FallbackActive
+            ),
     }
 }
 

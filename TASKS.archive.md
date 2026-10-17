@@ -31511,3 +31511,96 @@ Completion review: the firmware will mine locally like upstream once the
 follow-up tasks land. It stays lease-only until then. The main risk is
 unbounded mining with no heartbeat, so device-local protection for every
 owner comes first. Every claim waits on long soaks.
+
+### task-local-protection-every-owner | 2026-10-16 | Device-local protection and fan control for every mining owner
+
+ADR-0038 step 1. Software first.
+
+- [x] Apply the per-sample unsafe-reading and zero-fan revocation to every
+      mining owner, not only an active lease
+      (`crates/bitaxe-runtime/src/revocation/unsafe_detail.rs`).
+- [x] Add a local fan owner that runs the automatic or manual fan while
+      mining, and 30% while paused or without a pool, as upstream's
+      `fan_controller_task.c` does.
+- [x] Keep the stricter limits: 15 W, input 4.5–5.5 V, ASIC below 75 C, and
+      the catalog range. Add regressions for each.
+
+Started 2026-10-17 at the owner's request. Software only; no hardware
+effect.
+
+Plan:
+- **Local generations in the revocation gate** (`bitaxe-runtime`).
+  - `begin_local` creates a generation with no heartbeat and no lease
+    deadline. It can carry an unlimited budget.
+  - The gate's existing device-local stops still apply to it: an unsafe
+    reading, a zero fan reading, and no safe sample within 1 s after the fan
+    proof.
+  - Task 3's local owner will run under it. While a Gate link exists,
+    `begin_local` is refused; handover is task 4.
+  - `check_deadline` moves to `revocation/deadline.rs`, so `revocation.rs`
+    stays within the file-length limit.
+- **Idle fan owner** (`FanControllerOwner::Idle(epoch)`).
+  - The production owner grants an epoch while no lease is reserved,
+    active or shutting down (`permits(None)`) and no campaign exists. It
+    withdraws the epoch before the cooling review and before any
+    preparation.
+  - The safety adapter applies an idle write only for the current epoch
+    while `permits(None)` holds. A write queued before a withdrawal can
+    therefore never override a 100% fan.
+  - The existing plan then gives upstream's idle duties: 30% while paused
+    or without a pool, and 100% in overheat mode.
+- **Regressions:**
+  - local generations: no heartbeat cutoff, revocation on each unsafe
+    trigger, refusal beside a Gate link;
+  - the idle permit: grant, withdraw, a stale epoch, and refusal during a
+    lease or shutdown.
+
+Implementation (2026-10-17):
+- **Runtime** (`crates/bitaxe-runtime/src/revocation/`):
+  - `local.rs` adds `begin_local` and `is_local`.
+  - `deadline.rs` holds `check_deadline`. A local generation skips the
+    heartbeat cutoff and the lease deadline, and keeps the unsafe-sample,
+    zero-fan (after the fan proof) and safety-silence stops.
+  - `fan_controller.rs` adds `FanControllerOwner::Idle(IdleFanEpoch)`,
+    `grant_idle_fan` and `withdraw_idle_fan`. An idle write needs the current
+    odd epoch and `permits(None)`.
+- **Firmware:**
+  - The production owner grants idle control only while `permits(None)`
+    holds, there is no campaign, and the cooling baseline is safe (a fresh,
+    safe reading at 45 C or less). So the fan never drops before cooling is
+    proven, including after a Start that never prepared.
+  - `release_idle_fan` withdraws the epoch before preparation, before the
+    cooling review's qualify and restore, at safe-stop, and in the campaign
+    branch.
+  - An idle owner always selects upstream's not-hashing duty: 30%, or 100%
+    in overheat mode.
+- The V2 native-readiness source list now includes `deadline.rs`, `local.rs`
+  and `fan_controller.rs`. ADR-0038's context reflects the idle owner.
+- The local mining owner (task 3) will use `begin_local`.
+
+Divergence, recorded: with no fresh, safe chip reading the idle fan is left
+as it is. Upstream writes 30% regardless. This firmware's thermal decision
+fails closed without a reading, and the baseline check needs one.
+
+Verification:
+- `cargo test -p bitaxe-runtime` (110), with regressions:
+  - local generations: no heartbeat cutoff, each unsafe stop, refusal beside
+    a link, no stale local flag;
+  - the idle epoch: grant, withdraw, a stale epoch, refusal while reserved,
+    budgeted, active, revoked or in a diagnostic, and allowed beside an idle
+    link.
+- The full gate: fmt, clippy, build, tests, `just build`, BAP and HTTP stack
+  audits, `just test`, Bright Builds, redaction, `just parity`.
+- The owner stack and stack-realignment audits.
+- An independent safety review: no idle write can override a 100% fan on
+  any path. Its findings are fixed: the cooling-baseline gate, the
+  not-hashing duty, the extra withdrawals, a removed dead V2 hunk, the
+  reserved, budgeted and diagnostic tests, and the provenance list.
+
+Completion review: every mining owner can now get device-local protection.
+Leases already had it, and a local generation is ready for task 3. The idle
+device runs upstream's idle fan duties. Residual risks:
+- Not yet observed on hardware. The next soak's idle phase should show the
+  idle fan at 30% before preparation.
+- The campaign path keeps only the session's 1 s safety re-check. It is
+  stale (ADR-0033), and the host tool refuses it without a factory reset.
