@@ -1133,6 +1133,7 @@ explicit non-claims.
       on the plan;
     - the judge checks each operation and the fan segment;
     - regressions cover all of it.
+  - [x] Point `SOAK_TASK` at this task.
   - [ ] Soak 010 attempt 001 (soak ledger v2, ordinal 5), with an
         independent review.
 
@@ -1207,6 +1208,8 @@ Divergences, recorded:
 - **Checklist text:** the BAP-001 row's non-claims still say settings get
   `set_failed`. The row is `verified`, and the parity tool forbids
   `verified` → `verified` transitions, so the correction lives here.
+
+Ultra 205 upstream-default soak hardware: enabled.
 
 Soak 010 hardware contract (BAP settings during a lease). The owner gave
 the go-ahead on 2026-10-16 ("Let's close the bap settings gap, since the
