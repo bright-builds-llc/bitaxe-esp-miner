@@ -53,9 +53,10 @@ not paused. Pause is held in RAM and starts false at boot.
 - Its fan task runs 100% on overheat, 30% while paused or with no pool, and
   otherwise the PID or manual duty.
 - On overheat (ASIC above 75 C or VR above 105 C) it stops mining and saves
-  fan 100% and `overheat_mode`. After at least 30 s and a chip reading of
-  45 C or less, it lowers voltage and frequency by 100 each and restarts on
-  its own.
+  fan 100% and `overheat_mode`. Its loop waits at least 30 s and for a chip
+  reading of 45 C or less. On the Ultra 205 the chip reading is invalid
+  while the ASIC is off, so in practice it waits a fixed 30 s. Then it
+  lowers voltage and frequency by 100 each and restarts on its own.
 - It has no input-voltage or power cutoff for the Ultra 205.
 
 **What the Gate expects.** The Worker has a Mining Baseline: "the Worker's

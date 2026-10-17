@@ -31604,3 +31604,84 @@ device runs upstream's idle fan duties. Residual risks:
   idle fan at 30% before preparation.
 - The campaign path keeps only the session's 1 s safety re-check. It is
   stale (ADR-0033), and the host tool refuses it without a factory reset.
+
+### task-local-power-down-conditions | 2026-10-16 | Upstream power-down conditions and overheat recovery
+
+ADR-0038 step 2. Depends on `task-local-protection-every-owner`.
+
+- [x] ~~Power the ASIC down while paused, after a pool failure, and on a
+      fan or sensor fault.~~ Moved to `task-local-mining-owner` on
+      2026-10-17. The review showed these do not yet exist for a non-lease
+      owner:
+      - the session's readiness needs a lease;
+      - a hardware safe-stop needs a `lease_id`;
+      - exhausted pools end the session for good, not as a resumable
+        30 s-probe cycle;
+      - a failed fan write is only retried, not latched as upstream's
+        `hardware_fault`.
+
+      They belong with the local owner's lifecycle.
+- [x] Overheat recovery (ADR-0038 sub-decision 1), as a pure core in
+      `crates/bitaxe-runtime/src/local_mining.rs`:
+  - stop at 75 C;
+  - after at least 30 s and a chip reading of 45 C or less, restart
+    100 mV and 100 MHz lower;
+  - stay stopped if the lowered pair would leave the catalog range.
+- [x] Regressions for the recovery's range check. The existing
+      conditions keep their recovery-policy tests.
+
+Started 2026-10-17 at the owner's request. Software only; no hardware
+effect.
+
+Implementation (2026-10-17): `bitaxe_runtime::local_mining`.
+- `is_overheat(reason, chip reading)`: an `UnsafeObservation` revocation
+  with a chip reading of 75 C or more at that moment. It is judged from the
+  reading, not from the verdict's first failing fact, which may name power
+  or a stale fact first.
+- `OVERHEAT_ENTRY_SETTINGS`: the fan as manual at 100% with
+  `overheat_mode`, as upstream saves them. Recovery clears only
+  `overheat_mode`, so the fan stays manual at 100%, as upstream leaves it.
+- `OverheatRecovery`:
+  - It counts only fresh chip readings (1 s or newer) taken after the
+    overheat.
+  - It needs 30 s of continuous cool readings (45 C or less, gaps of 2 s at
+    most). A hot, stale or missing reading, or a gap, restarts the 30 s.
+  - It then returns `Recover` with the pair 100 MHz and 100 mV lower, or
+    `StayStopped` when that pair leaves the catalog.
+  - Only an operator resume ends `StayStopped`. A resume never cancels a
+    cooling overheat.
+- `reduced_profile` uses the lease's catalog check
+  (`MiningHardwareProfile::from_device_settings`).
+
+Consequences and divergences, recorded:
+- Recovery needs a saved frequency of at least 500 MHz and a saved voltage
+  of at least 1200 mV. The default 485 MHz / 1200 mV lowers to 385 MHz,
+  below the 400 MHz floor, so an overheat at the default stays stopped until
+  resumed. Upstream would run at 385 MHz.
+- On the Ultra 205, upstream's chip reading is invalid while the ASIC is
+  uninitialized, so its cooling loop in practice waits a fixed 30 s. This
+  firmware reads the EMC2101 die temperature while the ASIC is off, as the
+  ordered safe-stop already does, and waits for 30 s of readings at 45 C or
+  less. That is stricter: in hot surroundings that never cool to 45 C it
+  stays down where upstream would restart.
+
+Verification:
+- `cargo test -p bitaxe-runtime` passes, including 20 overheat-core tests:
+  - classification;
+  - the 30 s rule at the 45 C boundary;
+  - hot, missing, stale and pre-overheat readings, and gaps;
+  - both catalog floors;
+  - stop and resume;
+  - the clear phase.
+- Clippy is clean, and the full gate is clean.
+- An independent review checked fidelity to upstream. Its findings are fixed:
+  - classification from the chip reading;
+  - freshness and continuity enforced in `observe`;
+  - the power-down item moved to task 3 with the specific gaps;
+  - the voltage-floor note and ADR-0038's account of upstream's cooling.
+
+Completion review: the overheat recovery core is ready for the local owner,
+and it is stricter than upstream about cooling, within the catalog. The
+power-down conditions are not done here; they moved to
+`task-local-mining-owner`, where the session lifecycle changes. No hardware
+behavior changed.

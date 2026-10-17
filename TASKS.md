@@ -1100,23 +1100,6 @@ named-phase allocation profile item stays open. Qualification stays false.
 
 ## Future
 
-### task-local-power-down-conditions | 2026-10-16 | Upstream power-down conditions and overheat recovery
-
-ADR-0038 step 2. Depends on `task-local-protection-every-owner`.
-
-- [ ] Power the ASIC down while paused, after a pool failure (retries, then a
-      30 s probe), and on a fan or sensor fault. Power it up again when the
-      condition clears (`power_management_task.c`,
-      `protocol_coordinator.c`).
-- [ ] Overheat recovery (ADR-0038 sub-decision 1):
-  - stop at 75 C;
-  - after at least 30 s and a chip reading of 45 C or less, restart
-    100 mV and 100 MHz lower;
-  - stay stopped if the lowered pair would leave the catalog range.
-- [ ] Regressions for each condition and for the recovery's range check.
-
-Verification: pending. Completion review: pending.
-
 ### task-local-mining-owner | 2026-10-16 | Mine the saved pool with no lease
 
 ADR-0038 step 3. Depends on the two tasks above.
@@ -1126,6 +1109,26 @@ ADR-0038 step 3. Depends on the two tasks above.
       device is not paused. Reuse the campaign path's pool reading, without
       its one-time budget.
 - [ ] Pause and resume, and `startMiningOnBoot`, take real effect.
+- [ ] Wire `bitaxe_runtime::local_mining::OverheatRecovery`:
+  - on an overheat revocation, save `OVERHEAT_ENTRY_SETTINGS`, then feed
+    chip readings;
+  - on `Recover`, save the lowered pair, clear `overheat_mode` and mine
+    again;
+  - on `StayStopped`, hold until resumed.
+- [ ] Upstream's power-down conditions for the local owner (moved from
+      `task-local-power-down-conditions`):
+  - readiness without a lease for the local owner;
+  - a power-down (safe-stop) without a `lease_id`;
+  - exhausted pools as a resumable power-down that probes every 30 s and
+    powers up again, not a terminal stop;
+  - a latched hardware fault on a failed fan write, as upstream's
+    `hardware_fault`.
+- [ ] Overheat details for the shell:
+  - what ends `StayStopped` (resume, clearing `overheat_mode`, or new
+    settings), and whether a resume clears `overheat_mode`;
+  - clear `overheat_mode` only after the restart's preparation succeeds,
+    as upstream does after it detects the ASIC;
+  - behavior on boot with `overheat_mode` saved.
 - [ ] Update README text that still says the adapter is fail-closed before
       pool effects.
 
