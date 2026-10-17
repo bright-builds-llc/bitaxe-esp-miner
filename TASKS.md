@@ -1208,6 +1208,45 @@ Plan (small commits, pure core first, the full gate after each):
      first;
    - lease Start refused while a local run exists;
    - off while a campaign, diagnostic or stimulus owns the boot.
+   - Landed with a pure `LocalOwnerCore` (`local_mining::owner`) that
+     remembers the run, the hold and the restart guard. The firmware shell
+     (`local_owner.rs`) begins, activates and retires the local generation
+     and leases the session a `Local` run.
+   - A run ends when the session has consumed its lease with the hardware
+     stopped (`maybe_consumed_lease_id`). A run the session never adopted
+     is retired at once, before any hardware effect, and counts as failed.
+     The protocol gate is re-read before deciding, so the decision matches
+     the session's readiness.
+   - Ending classification moved here from commit 9:
+     - The generation's unsafe detail decides first: an overheat, or a
+       failure for any other unsafe stop, whatever the session blocked on
+       afterwards.
+     - Then a settings change, or the session's first stop cause for the
+       lease (`stop_cause_for`), when that is a pause or a lost readiness
+       fact (network, Stratum V1, stale safety, no pool configuration), is
+       `Requested`, so an outage never spends the guard.
+     - Anything else is `Failed`.
+   - Ordinary retirement revokes with `RestorationRequested`, never
+     `ControlFailed`, which the commit 8 latch reads.
+   - Accepted residuals:
+     - While a run probes or is paused with the ASIC off, its generation
+       is active, so the idle fan does not run. The fan stays where the
+       safe-stop left it (30% after cooling). This is thermally safe, but
+       upstream would run its fan controller.
+     - The resume edge is sampled once per tick.
+     - A zero-fan stop with a hot chip counts as an overheat, as upstream
+       judges by temperature alone.
+     - The firmware shell has only source guards; its behavior is
+       verified with the switch on (task 5 and the task 6 soaks).
+   - A `Paused` to `Run` edge is the operator's resume and clears the
+     guard.
+   - The other boot owners are a campaign or a thermal stimulus.
+     Diagnostic owners never start the production owner, and a Gate link
+     or diagnostic claim is `gate_link` (`holds_link`).
+   - Holds are logged when they change. Their API labels come with commit
+     9.
+   - Host source guards pin the switch off and check the tick order, the
+     Start refusal and the `Local` fan owner.
 8. **Hardware fault latch:** a real failed controller fan write under
    `Local` revokes with `ControlFailed` and holds until reboot.
 9. **Overheat wiring:** enter, cool, save the lowered pair, and clear

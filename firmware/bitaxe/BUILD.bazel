@@ -722,6 +722,7 @@ rust_test(
         "src/production_mining_session/cooling_core.rs",
         "src/production_worker_admission_host_test.rs",
         "src/production_worker_admission_host_test/start_boundary.rs",
+        "src/production_worker_admission_host_test/local_owner.rs",
         "src/production_worker_admission_host_test/resource_acknowledgement.rs",
         "src/production_worker_admission_host_test/worker_observations.rs",
         "src/production_worker_admission_host_test/mining_progress.rs",
@@ -935,6 +936,19 @@ rust_test(
         "//crates/bitaxe-stratum:bitaxe_stratum",
         "@crates//:log",
     ],
+)
+
+rust_test(
+    name = "local_mining_source_ownership_tests",
+    srcs = [
+        "src/local_mining_source_ownership_test.rs",
+        "src/production_mining_session.rs",
+        "src/production_mining_session/bwg.rs",
+        "src/production_mining_session/local_owner.rs",
+        "src/production_mining_session/owner_loop.rs",
+    ],
+    crate_root = "src/local_mining_source_ownership_test.rs",
+    edition = "2021",
 )
 
 rust_test(

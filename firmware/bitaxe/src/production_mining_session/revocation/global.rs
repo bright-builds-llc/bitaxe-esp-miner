@@ -20,6 +20,21 @@ pub(crate) fn diagnostic_reason(generation: WorkerGeneration) -> RevocationReaso
     GATE.diagnostic_reason(generation)
 }
 
+/// Begins a local mining generation (ADR-0038); refused beside any other.
+pub(crate) fn begin_local() -> Option<WorkerGeneration> {
+    GATE.begin_local()
+}
+/// Whether a Gate link, or its diagnostic, reservation or lease, holds the gate.
+pub(crate) fn holds_link() -> bool {
+    GATE.holds_link()
+}
+/// The unsafe stop that revoked `generation`, if one did: an unsafe sample, a
+/// stopped fan, or no safe sample.
+pub(crate) fn maybe_unsafe_detail_for(
+    generation: WorkerGeneration,
+) -> Option<bitaxe_runtime::revocation::UnsafeObservationDetail> {
+    GATE.maybe_unsafe_detail_for(generation)
+}
 pub fn begin_link(now_ms: u64) -> Option<WorkerGeneration> {
     GATE.begin_link(now_ms)
 }

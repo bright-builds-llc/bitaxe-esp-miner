@@ -6,6 +6,8 @@
 mod admission_diagnostics;
 #[path = "production_mining_session/bwg.rs"]
 mod bwg;
+#[path = "production_worker_admission_host_test/local_owner.rs"]
+mod local_owner;
 #[path = "production_mining_session/revocation.rs"]
 mod revocation;
 #[path = "production_mining_session/shutdown_budget.rs"]
@@ -72,6 +74,7 @@ struct OrdinaryEspProductionSessionAdapter {
     maybe_bwg_reply: Option<bwg::PendingReply>,
     maybe_cooling_generation: Option<revocation::WorkerGeneration>,
     readiness: ProductionReadiness,
+    local: local_owner::LocalOwner,
 }
 
 impl OrdinaryEspProductionSessionAdapter {
@@ -149,6 +152,7 @@ fn blocked_adapter() -> OrdinaryEspProductionSessionAdapter {
             safety_prerequisites_fresh: false,
             ..readiness()
         },
+        local: local_owner::LocalOwner::default(),
     }
 }
 

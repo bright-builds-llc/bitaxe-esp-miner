@@ -43,13 +43,12 @@ impl OrdinaryEspProductionSessionAdapter {
             return;
         }
         self.live_hardware.next_due_ms = now_ms.saturating_add(LIVE_HARDWARE_CADENCE_MS);
-        let (Some(session), Some(mut applied)) = (
-            self.maybe_bwg_session.as_ref(),
+        let (Some(generation), Some(mut applied)) = (
+            self.maybe_owner_generation(),
             self.live_hardware.maybe_applied,
         ) else {
             return;
         };
-        let generation = session.generation;
         // Skip, never revoke, while a step could not run: unsafe readings, a stopped
         // fan (the zero-RPM revocation owns that) or stopped dispatch (pool loss).
         let observations = crate::safety_adapter::observation_snapshot();

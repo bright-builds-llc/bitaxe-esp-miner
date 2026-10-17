@@ -260,6 +260,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 reply,
             } => {
                 if self.maybe_bwg_session.is_some()
+                    || self.local.maybe_run.is_some()
                     || self
                         .maybe_cooling_generation
                         .is_some_and(|owned| owned != generation)
@@ -427,6 +428,9 @@ impl OrdinaryEspProductionSessionAdapter {
     }
 
     pub(super) fn note_worker_preparation_started(&mut self) {
+        if let Some(run) = self.local.maybe_run.as_mut() {
+            run.preparation_started = true;
+        }
         if let Some(session) = self.maybe_bwg_session.as_mut() {
             // Even cancelled or failed preparation must follow ordered safe stop.
             session.preparation_started = true;

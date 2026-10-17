@@ -9,6 +9,7 @@ pub(crate) mod cooling_core;
 mod hashrate;
 mod inbox;
 mod live_hardware;
+pub(crate) mod local_owner;
 pub(crate) mod mining_progress;
 mod notifications;
 mod owner_loop;
@@ -117,13 +118,16 @@ struct OrdinaryEspProductionSessionAdapter {
     maybe_bwg_reply: Option<bwg::PendingReply>,
     maybe_cooling_generation: Option<revocation::WorkerGeneration>,
     live_hardware: live_hardware::LiveHardwareOwner,
+    local: local_owner::LocalOwner,
 }
 impl OrdinaryEspProductionSessionAdapter {
-    /// The revocation generation that owns this session's effects, if any.
+    /// The revocation generation that owns this session's effects, if any: a Gate
+    /// lease's or a local run's (ADR-0038).
     fn maybe_owner_generation(&self) -> Option<revocation::WorkerGeneration> {
         self.maybe_bwg_session
             .as_ref()
             .map(|session| session.generation)
+            .or_else(|| self.local.maybe_generation())
     }
 
     fn new(owner_sender: SyncSender<OwnerInboxMessage>) -> anyhow::Result<Self> {
@@ -178,6 +182,7 @@ impl OrdinaryEspProductionSessionAdapter {
             maybe_bwg_reply: None,
             maybe_cooling_generation: None,
             live_hardware: live_hardware::LiveHardwareOwner::default(),
+            local: local_owner::LocalOwner::default(),
         })
     }
 
@@ -229,7 +234,7 @@ impl OrdinaryEspProductionSessionAdapter {
                         && crate::asic_adapter::production::production_handle_available();
                     // A Gate lease owns the fan from its preparation until its safe-stop.
                     revocation::withdraw_idle_fan();
-                    if self.maybe_bwg_session.is_none() {
+                    if self.maybe_owner_generation().is_none() {
                         set_fan_controller_owner(
                             qualified.then_some(revocation::FanControllerOwner::Campaign),
                         );
@@ -249,7 +254,7 @@ impl OrdinaryEspProductionSessionAdapter {
                     )));
                 } else {
                     revocation::withdraw_idle_fan();
-                    if self.maybe_bwg_session.is_none() {
+                    if self.maybe_owner_generation().is_none() {
                         set_fan_controller_owner(None);
                     }
                 }
@@ -283,6 +288,11 @@ impl OrdinaryEspProductionSessionAdapter {
                         if let Some(session) = self.maybe_bwg_session.as_ref() {
                             set_fan_controller_owner(Some(revocation::FanControllerOwner::Lease(
                                 session.generation,
+                            )));
+                            self.live_hardware.prepared(profile);
+                        } else if let Some(generation) = self.local.maybe_generation() {
+                            set_fan_controller_owner(Some(revocation::FanControllerOwner::Local(
+                                generation,
                             )));
                             self.live_hardware.prepared(profile);
                         }

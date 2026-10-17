@@ -10,6 +10,7 @@ impl OrdinaryEspProductionSessionAdapter {
     ) -> ProductionSessionEvent {
         match message {
             OwnerInboxMessage::Wake(wakeup) => {
+                self.local.note_wakeup(wakeup);
                 self.wake_event(Some(wakeup), now_ms, snapshot, false)
             }
             OwnerInboxMessage::Transport(event) => match event {

@@ -39,6 +39,15 @@ pub(super) fn run_owner(
                 revocation::finish_shutdown(generation);
             }
         }
+        if let Some(event) = adapter.service_local_mining(&session, revocation_now) {
+            drive_session(
+                &mut session,
+                &mut adapter,
+                &mut task_watchdog,
+                event,
+                revocation_now,
+            );
+        }
         record_owner_phase(TaskWatchdogOwnerPhase::LoopStart);
         task_watchdog.feed(crate::runtime_uptime::millis());
         let before_wait_ms = elapsed_millis(started_at);

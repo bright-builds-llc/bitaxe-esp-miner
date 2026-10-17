@@ -23,10 +23,24 @@ impl OrdinaryEspProductionSessionAdapter {
                 .as_ref()
                 .is_some_and(|session| !session.preparation_started),
         );
+        // A local run's preparation proves the fan as a lease's does (ADR-0038), so
+        // an unprepared run may also begin from a stopped fan.
+        let safety_prerequisites_fresh = safety_prerequisites_fresh
+            || (self
+                .local
+                .maybe_run
+                .as_ref()
+                .is_some_and(|run| !run.preparation_started)
+                && cooling_core::preparation_safety(
+                    observations.is_ultra_205_mining_safe_at(now()),
+                    false,
+                    true,
+                ));
         let maybe_campaign_lease = self
             .maybe_bwg_session
             .as_ref()
             .map(|session| session.lease)
+            .or_else(|| self.local.maybe_lease())
             .or_else(|| {
                 self.maybe_campaign_status
                     .as_ref()
@@ -42,6 +56,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 })
         };
         let actuation_qualified = (self.maybe_bwg_session.is_some()
+            || self.local.maybe_run.is_some()
             || self
                 .maybe_campaign_status
                 .as_ref()
