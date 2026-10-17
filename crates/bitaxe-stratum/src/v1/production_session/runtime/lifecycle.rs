@@ -34,10 +34,10 @@ impl ProductionMiningSession {
             return self.begin_terminal_safe_stop(None, true, effects);
         }
         if matches!(wakeup, Some(ProductionSessionWakeup::SettingsChanged))
-            && matches!(
+            && (matches!(
                 self.hardware_state,
                 MiningHardwareState::Preparing | MiningHardwareState::Ready
-            )
+            ) || self.probing_local())
         {
             return self.begin_terminal_safe_stop(
                 Some(ProductionSessionBlocker::CampaignLeaseConsumed),
@@ -54,6 +54,7 @@ impl ProductionMiningSession {
                     .is_some_and(|lease| lease.stop_condition().allows_operator_resume())
                 || self.is_resumable_reactivation_safety_lapse(blocker);
             self.begin_hardware_safe_stop_if_needed(effects)?;
+            self.end_unpowered_local_run();
             return Ok(());
         }
 
@@ -71,7 +72,10 @@ impl ProductionMiningSession {
             );
         }
         if let Some(active_lease) = self.maybe_lease {
-            if active_lease.id() != lease.id() {
+            // A local run never turns into another kind of lease under the same id.
+            if active_lease.id() != lease.id()
+                || Self::is_local_lease(active_lease) != Self::is_local_lease(lease)
+            {
                 return self.begin_terminal_safe_stop(
                     Some(ProductionSessionBlocker::CampaignLeaseConsumed),
                     false,
@@ -81,6 +85,11 @@ impl ProductionMiningSession {
         }
 
         match self.hardware_state {
+            MiningHardwareState::Unprepared | MiningHardwareState::Stopped
+                if Self::is_local_lease(lease) =>
+            {
+                self.probe_local(lease, wakeup, readiness, now_ms, effects)?;
+            }
             MiningHardwareState::Unprepared | MiningHardwareState::Stopped => {
                 self.maybe_lease = Some(lease);
                 self.maybe_activation_started_at_ms.get_or_insert(now_ms);

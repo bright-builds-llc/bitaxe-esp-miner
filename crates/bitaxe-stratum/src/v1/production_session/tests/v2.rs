@@ -4,7 +4,7 @@ use crate::v2::{
     messages::*,
     standard::{BASE_VERSION, NBITS, TARGET},
 };
-fn configured() -> DeterministicProductionSessionAdapter {
+fn v2_pools() -> ProductionPoolSet {
     let config = ProductionPoolConfiguration {
         endpoint: ProductionPoolEndpoint {
             host: "192.168.1.3".into(),
@@ -16,11 +16,14 @@ fn configured() -> DeterministicProductionSessionAdapter {
             firmware: "test".into(),
         }),
     };
-    let mut a = DeterministicProductionSessionAdapter::new(Some(ProductionPoolSet {
+    ProductionPoolSet {
         primary: Some(config),
         fallback: None,
         prefer_fallback: false,
-    }));
+    }
+}
+fn configured() -> DeterministicProductionSessionAdapter {
+    let mut a = DeterministicProductionSessionAdapter::new(Some(v2_pools()));
     a.drive(wake(ready(), 0));
     a.connect(ProductionPool::Primary, 1);
     a
@@ -170,4 +173,42 @@ fn protocol_failure_uses_ordered_safe_stop_without_v1_retry() {
         .effects
         .iter()
         .any(|e| matches!(e, ProductionSessionEffect::InvalidateWorkAndSubmissions)));
+}
+#[test]
+fn an_open_channel_ends_a_local_probe_and_powers_up() {
+    // Arrange: a local run (ADR-0038) probes its V2 pool with the ASIC off.
+    let local = ProductionReadiness {
+        maybe_campaign_lease: Some(MiningCampaignLease::new(
+            MiningCampaignLeaseId::new(1).expect("test lease id should be valid"),
+            profile(),
+            MiningCampaignStopCondition::Local,
+        )),
+        ..ready()
+    };
+    let mut a = DeterministicProductionSessionAdapter::new(Some(v2_pools()));
+    a.drive(wake(local, 0));
+    a.connect(ProductionPool::Primary, 1);
+    let setup = SetupConnectionSuccess {
+        used_version: 2,
+        flags: 0,
+    };
+    feed(&mut a, setup.encode().expect("setup"), 2);
+    // Act
+    let channel = OpenStandardMiningChannelSuccess {
+        request_id: 1,
+        channel_id: 9,
+        target: TARGET,
+        extranonce_prefix: Vec::new(),
+        group_channel_id: 0,
+    };
+    feed(&mut a, channel.encode().expect("channel"), 3);
+    // Assert: the probe closes before preparation, and the run reconnects once ready.
+    let position = |wanted: fn(&ProductionSessionEffect) -> bool| a.effects.iter().position(wanted);
+    let close = position(|e| matches!(e, ProductionSessionEffect::ClosePoolConnection { .. }));
+    let prepare = position(|e| matches!(e, ProductionSessionEffect::PrepareHardware { .. }));
+    assert!(close.is_some() && prepare.is_some() && close < prepare);
+    assert_eq!(
+        a.connections,
+        vec![ProductionPool::Primary, ProductionPool::Primary]
+    );
 }

@@ -523,6 +523,20 @@ impl RecoveryPolicy {
         actions
     }
 
+    /// A local run's probe authorized and closed (ADR-0038): start over from
+    /// readiness, keeping the pool availability, so the run reconnects once ready.
+    pub fn reset_after_probe(&mut self) {
+        self.phase = ProductionSessionPhase::WaitingForReadiness;
+        self.maybe_blocker = None;
+        self.maybe_active_pool = None;
+        self.attempts = [0; 2];
+        self.maybe_next_action_at_ms = None;
+        self.maybe_primary_probe_at_ms = None;
+        self.primary_probe_started = false;
+        self.fallback_automatic = false;
+        self.resources_live = false;
+    }
+
     /// Drops cached availability when a terminal lease releases its pool configuration.
     /// The global shutdown phase remains terminal; this does not authorize restart.
     pub(super) fn discard_pool_configuration(&mut self) {

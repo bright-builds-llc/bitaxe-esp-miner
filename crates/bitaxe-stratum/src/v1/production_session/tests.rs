@@ -354,6 +354,7 @@ mod campaign_timing;
 mod difficulty_hint;
 mod job_transition;
 mod lifecycle;
+mod local;
 mod readiness_recovery;
 mod recovery;
 mod restart;

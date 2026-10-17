@@ -92,6 +92,10 @@ impl ProductionMiningSession {
                     })
                 }
                 StandardEvent::Channel => {
+                    // A local run's probe powers up instead of mining on this channel.
+                    if self.finish_local_probe(effects)? {
+                        return Ok(());
+                    }
                     if let Some(v) = self
                         .maybe_pool_runtime_mut(pool)
                         .and_then(|r| r.protocol.maybe_v2_mut())
@@ -194,8 +198,7 @@ impl ProductionMiningSession {
             );
         }
         v2.dispatched = true;
-        self.job_transition.note_dispatch(generation);
-        self.asic_diagnostics.note_dispatch(generation, now_ms);
+        self.note_asic_dispatch(generation, now_ms);
         self.drive_v2_bridge(pool, now_ms, effects)
     }
     pub(in crate::v1::production_session) fn handle_v2_nonce(

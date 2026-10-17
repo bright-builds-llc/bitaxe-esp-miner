@@ -255,6 +255,9 @@ impl ProductionMiningSession {
                     return Ok(());
                 }
                 if maybe_event == Some(LiveRuntimeEvent::Authorized) {
+                    if self.finish_local_probe(effects)? {
+                        return Ok(());
+                    }
                     self.replace_fallback_after_primary_probe(pool, effects);
                     let actions = self.recovery.on_connection_result(pool, true, now_ms);
                     self.apply_recovery_actions(actions, effects)?;
@@ -529,6 +532,11 @@ impl ProductionMiningSession {
         let Some(pool) = self.recovery.projection().maybe_active_pool else {
             return Ok(());
         };
+        // Work reaches the ASIC only once its hardware is ready. A probe's pool never
+        // becomes active, so this is defense in depth for the ADR-0038 probe.
+        if self.hardware_state != super::campaign::MiningHardwareState::Ready {
+            return Ok(());
+        }
         if self
             .maybe_pool_runtime_mut(pool)
             .is_some_and(|p| p.protocol.maybe_v2_mut().is_some())
@@ -595,9 +603,7 @@ impl ProductionMiningSession {
             .transpose();
         match maybe_dispatch {
             Ok(Some(dispatch)) => {
-                self.job_transition.note_dispatch(dispatch.generation);
-                self.asic_diagnostics
-                    .note_dispatch(dispatch.generation, now_ms);
+                self.note_asic_dispatch(dispatch.generation, now_ms);
                 let valid_jobs = self
                     .maybe_v1_pool_runtime(pool)
                     .map(|runtime| runtime.runtime.production_registry().valid_jobs().clone())

@@ -1,6 +1,7 @@
 mod asic;
 mod campaign_state;
 mod lifecycle;
+mod local;
 mod protocol;
 mod transport;
 mod v2;
@@ -53,6 +54,8 @@ pub struct ProductionMiningSession {
     pub(super) resumable_active_ms: u64,
     pub(super) maybe_active_since_ms: Option<u64>,
     pub(super) resumable_pause_pending: bool,
+    /// Work reached the ASIC since the last power-up; a local run uses it.
+    pub(super) dispatched_since_power_up: bool,
     pub(super) job_transition: JobTransitionTracker,
     pub(super) asic_diagnostics: AsicBridgeDiagnosticsTracker,
     pub(super) terminal_publication_pending: bool,
@@ -157,6 +160,7 @@ impl ProductionMiningSession {
             resumable_active_ms: 0,
             maybe_active_since_ms: None,
             resumable_pause_pending: false,
+            dispatched_since_power_up: false,
             job_transition: JobTransitionTracker::default(),
             asic_diagnostics: AsicBridgeDiagnosticsTracker::default(),
             terminal_publication_pending: false,
@@ -180,7 +184,7 @@ impl ProductionMiningSession {
                 self.handle_wakeup(wakeup, readiness, now_ms, &mut effects)?;
             }
             ProductionSessionEvent::PoolConfigurationLoaded(maybe_pool_set) => {
-                if self.hardware_state != MiningHardwareState::Ready {
+                if self.hardware_state != MiningHardwareState::Ready && !self.probing_local() {
                     self.publish_if_changed(&mut effects);
                     return Ok(effects);
                 }
@@ -198,8 +202,11 @@ impl ProductionMiningSession {
                 self.apply_recovery_actions(recovery_actions, &mut effects)?;
             }
             ProductionSessionEvent::CampaignLeaseRenewed { lease, now_ms } => {
-                // A renewal never changes the hardware profile its Start prepared (ADR-0033).
+                // A renewal never changes the hardware profile its Start prepared (ADR-0033),
+                // and a local run (ADR-0038) is never renewed.
                 if self.maybe_lease.map(MiningCampaignLease::id) != Some(lease.id())
+                    || self.maybe_lease.is_some_and(Self::is_local_lease)
+                    || Self::is_local_lease(lease)
                     || self.maybe_lease.map(MiningCampaignLease::profile) != Some(lease.profile())
                     || !matches!(
                         self.campaign_state,
@@ -437,6 +444,7 @@ impl ProductionMiningSession {
                     | ProductionSessionBlocker::PoolsExhausted
             )
         ) {
+            self.note_local_pools_exhausted();
             self.begin_hardware_safe_stop_if_needed(&mut effects)?;
         }
         self.publish_if_changed(&mut effects);
@@ -497,6 +505,8 @@ impl ProductionMiningSession {
             Vec::new()
         };
         self.apply_recovery_actions(actions, effects)?;
+        // A local run with no powered hardware has nothing to stop; it ends here.
+        self.end_unpowered_local_run();
         if self.hardware_state == MiningHardwareState::Stopped {
             if let Some(lease_id) = self.maybe_lease.map(MiningCampaignLease::id) {
                 // A prior resumable-stop confirmation already proves the
