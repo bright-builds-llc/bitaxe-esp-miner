@@ -258,7 +258,9 @@ impl OrdinaryEspProductionSessionAdapter {
                         set_fan_controller_owner(None);
                     }
                 }
-                crate::runtime_snapshot::publish_production_session_snapshot(*snapshot);
+                let mut snapshot = *snapshot;
+                self.local.label_hold(&mut snapshot);
+                crate::runtime_snapshot::publish_production_session_snapshot(snapshot);
                 None
             }
             ProductionSessionEffect::BlockSubmissions
@@ -295,6 +297,7 @@ impl OrdinaryEspProductionSessionAdapter {
                                 generation,
                             )));
                             self.live_hardware.prepared(profile);
+                            self.local.note_prepared();
                         }
                         Some(ProductionSessionEvent::HardwarePrepared { lease_id, now_ms: crate::runtime_uptime::millis() })
                     }

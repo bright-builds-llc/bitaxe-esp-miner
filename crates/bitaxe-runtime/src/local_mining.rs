@@ -131,10 +131,11 @@ impl OverheatRecovery {
     /// last recovery stayed stopped, which only an operator resume ends, so the
     /// stop holds. Otherwise the reboot interrupted a recovery (owner decision
     /// 2026-10-17): cool for 30 s, then restart at the saved pair without lowering
-    /// it again, since it may already be lowered.
+    /// it again, since it may already be lowered. A saved pair outside the catalog
+    /// (`None`) leaves nothing to cool for; the owner then holds on the profile.
     pub fn enter_after_boot(
         &mut self,
-        saved: MiningHardwareProfile,
+        maybe_saved: Option<MiningHardwareProfile>,
         stopped_marker: bool,
         now_ms: u64,
     ) {
@@ -142,6 +143,10 @@ impl OverheatRecovery {
             self.phase = Phase::Stopped;
             return;
         }
+        let Some(saved) = maybe_saved else {
+            self.phase = Phase::Clear;
+            return;
+        };
         self.phase = Phase::Cooling {
             profile: saved,
             lower: false,

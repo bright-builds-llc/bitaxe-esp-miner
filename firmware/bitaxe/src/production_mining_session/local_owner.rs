@@ -10,12 +10,22 @@
 //! retired and the ending feeds the restart guard. A run the session never
 //! adopted (readiness changed between the decision and the session's wake) is
 //! retired at once, before any hardware effect, and counts as failed.
+//!
+//! An overheat ending enters upstream's recovery (`overheat.rs`). The restart
+//! guard's hold, like an overheat that stays stopped, pauses the device so the
+//! operator has a resume to give. Holds other than a pause, another owner or a
+//! link reach the API's `blockedReason`.
+mod overheat;
+mod overheat_store;
+
 use super::*;
 use bitaxe_runtime::local_mining::hardware_fault::{
     faulted_local_generation, hardware_fault_message,
 };
 use bitaxe_runtime::local_mining::owner::{LocalOwnerCore, UnsafeStop};
-use bitaxe_runtime::local_mining::policy::{LocalDecision, LocalHoldReason, LocalInputs};
+use bitaxe_runtime::local_mining::policy::{
+    LocalDecision, LocalHoldReason, LocalInputs, RunEnding,
+};
 use bitaxe_stratum::v1::production_session::{
     DeviceProfileRefusal, MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState,
     MiningCampaignStopCondition, MiningHardwareProfile, MiningHardwareState,
@@ -76,6 +86,8 @@ pub(super) struct LocalRun {
     pub(super) generation: revocation::WorkerGeneration,
     pub(super) lease: MiningCampaignLease,
     pub(super) preparation_started: bool,
+    /// Preparation succeeded; a saved `overheat_mode` may now clear.
+    pub(super) prepared: bool,
 }
 
 #[derive(Default)]
@@ -84,6 +96,9 @@ pub(super) struct LocalOwner {
     core: LocalOwnerCore,
     maybe_logged_hold: Option<LocalHoldReason>,
     last_requested_intent: Option<MiningOperatorIntent>,
+    overheat: overheat::OverheatState,
+    /// The device has paused itself for the restart guard's hold.
+    guard_paused: bool,
 }
 
 impl LocalOwner {
@@ -93,6 +108,39 @@ impl LocalOwner {
 
     pub(super) fn maybe_lease(&self) -> Option<MiningCampaignLease> {
         self.maybe_run.as_ref().map(|run| run.lease)
+    }
+
+    /// A prepared local run: `overheat_mode` may clear.
+    pub(super) fn note_prepared(&mut self) {
+        if let Some(run) = self.maybe_run.as_mut() {
+            run.prepared = true;
+        }
+    }
+
+    /// The hold the API shows as `blockedReason`. The device's own pause names the
+    /// overheat or guard behind it; an operator pause shows as paused, and another
+    /// owner or a Gate link show their own state.
+    fn maybe_api_hold(&self) -> Option<LocalHoldReason> {
+        if !LOCAL_MINING_ENABLED {
+            return None;
+        }
+        match self.core.maybe_hold()? {
+            LocalHoldReason::Paused if self.overheat.stopped_by_device() => {
+                Some(LocalHoldReason::Overheat)
+            }
+            LocalHoldReason::Paused if self.guard_paused => Some(LocalHoldReason::RestartGuardHeld),
+            LocalHoldReason::Paused
+            | LocalHoldReason::OtherBootOwner
+            | LocalHoldReason::GateLink => None,
+            reason => Some(reason),
+        }
+    }
+
+    /// Labels a published session snapshot with the current hold.
+    pub(super) fn label_hold(&self, snapshot: &mut ProductionSessionSnapshot) {
+        if let Some(reason) = self.maybe_api_hold() {
+            snapshot.mining.block_work_submission(reason.label());
+        }
     }
 
     /// The session ends a local run on a settings change; the ending is requested.
@@ -115,8 +163,15 @@ impl OrdinaryEspProductionSessionAdapter {
             return None;
         }
         let snapshot = &session.snapshot();
+        self.read_overheat_at_boot(now_ms);
         self.note_operator_resume();
         if let Some(run) = self.local.maybe_run.as_ref() {
+            if run.prepared {
+                self.clear_overheat_mode_after_preparation();
+            }
+            let Some(run) = self.local.maybe_run.as_ref() else {
+                return None;
+            };
             let id = run.lease.id();
             let ended = session.maybe_consumed_lease_id() == Some(id)
                 && matches!(
@@ -140,12 +195,20 @@ impl OrdinaryEspProductionSessionAdapter {
             }
             return None;
         }
+        self.service_overheat(now_ms);
         let inputs = self.local_inputs(now_ms);
         match self.local.core.decide_idle(inputs, now_ms) {
             LocalDecision::Hold(reason) => {
+                if reason == LocalHoldReason::RestartGuardHeld && !self.local.guard_paused {
+                    self.local.guard_paused = true;
+                    self.pause_by_device();
+                }
                 if self.local.maybe_logged_hold != Some(reason) {
                     self.local.maybe_logged_hold = Some(reason);
                     log::info!("local_mining=hold reason={}", reason.label());
+                    let mut labelled = session.snapshot();
+                    self.local.label_hold(&mut labelled);
+                    crate::runtime_snapshot::publish_production_session_snapshot(labelled);
                 }
                 None
             }
@@ -155,13 +218,29 @@ impl OrdinaryEspProductionSessionAdapter {
         }
     }
 
-    /// A Paused-to-Run edge is the operator's resume; it clears the restart guard.
+    /// The device pauses itself: the requested intent turns Paused, as recorded here
+    /// so an operator resume before the next tick is still seen, and the session
+    /// wakes to stop, as for an operator pause.
+    fn pause_by_device(&mut self) {
+        crate::runtime_snapshot::pause_mining_by_device();
+        self.local.last_requested_intent = Some(MiningOperatorIntent::Paused);
+        if notifications::notify(ProductionSessionWakeup::OperatorIntentChanged)
+            == bitaxe_stratum::v1::production_session::ProductionSessionNotificationOutcome::OwnerUnavailable
+        {
+            log::warn!("local_mining=pause_wake_unavailable");
+        }
+    }
+
+    /// A Paused-to-Run edge is the operator's resume: it clears the restart guard
+    /// and ends an overheat that stayed stopped.
     fn note_operator_resume(&mut self) {
         let intent = crate::runtime_snapshot::requested_mining_operator_intent();
         if self.local.last_requested_intent == Some(MiningOperatorIntent::Paused)
             && intent == MiningOperatorIntent::Run
         {
             self.local.core.resume();
+            self.local.guard_paused = false;
+            self.resume_overheat();
         }
         self.local.last_requested_intent = Some(intent);
     }
@@ -181,7 +260,7 @@ impl OrdinaryEspProductionSessionAdapter {
             operator_paused: crate::runtime_snapshot::requested_mining_operator_intent()
                 == MiningOperatorIntent::Paused,
             hardware_fault: maybe_hardware_fault_context().is_some(),
-            overheat_holds: false,
+            overheat_holds: self.local.overheat.holds(),
             network_ready: crate::wifi_adapter::current_wifi_snapshot().wifi_status == "connected",
             stratum_v1_supported: self.protocol_gate.is_ready(),
             // The run's preparation proves the fan, so it may begin from a stopped fan.
@@ -217,6 +296,7 @@ impl OrdinaryEspProductionSessionAdapter {
             generation,
             lease: MiningCampaignLease::new(id, profile, MiningCampaignStopCondition::Local),
             preparation_started: false,
+            prepared: false,
         });
         self.local.core.run_began();
         self.local.maybe_logged_hold = None;
@@ -262,6 +342,9 @@ impl OrdinaryEspProductionSessionAdapter {
             "local_mining=run_ended generation={} ending={maybe_ending:?}",
             run.generation.raw()
         );
+        if maybe_ending == Some(RunEnding::Overheat) {
+            self.enter_overheat(run.lease.profile(), now_ms);
+        }
     }
 }
 

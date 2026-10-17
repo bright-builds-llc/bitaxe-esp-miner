@@ -5,7 +5,6 @@ mod operator_intent;
 
 pub(crate) mod settings_projection;
 use bitaxe_worker_control::cadence::{LiveStage, LiveStageProfiler};
-pub(crate) use command_surface::apply_command_effects_run_bootstrap;
 pub use command_surface::{
     apply_block_found_dismiss_command, apply_identify_mode_command,
     apply_mining_operator_intent_command, block_found_notification_state,
@@ -13,6 +12,7 @@ pub use command_surface::{
     record_display_render, record_found_block, record_nonce_difficulty, record_restart_command,
     restore_best_difficulty, ButtonIdentifyCancellation,
 };
+pub(crate) use command_surface::{apply_command_effects_run_bootstrap, pause_mining_by_device};
 use settings_projection::{
     apply_settings_snapshot, apply_wifi_snapshot, collect_settings_projection,
     collect_settings_projection_profiled,

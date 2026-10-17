@@ -367,3 +367,57 @@ fn a_stable_run_that_ends_on_request_resets_the_guard() {
     // Assert
     assert_eq!(decide(ready(), &guard, 10), LocalDecision::Begin(profile()));
 }
+
+#[test]
+fn hold_labels_form_a_distinct_redaction_safe_vocabulary() {
+    // Arrange
+    let refusal = MiningHardwareProfile::from_device_settings(Some(600.0), Some(1200))
+        .expect_err("out of range");
+    let holds = [
+        LocalHoldReason::OtherBootOwner,
+        LocalHoldReason::GateLink,
+        LocalHoldReason::HardwareFault,
+        LocalHoldReason::Overheat,
+        LocalHoldReason::Paused,
+        LocalHoldReason::RestartGuardHeld,
+        LocalHoldReason::RestartBackoff,
+        LocalHoldReason::NetworkUnavailable,
+        LocalHoldReason::StratumV1Unsupported,
+        LocalHoldReason::SafetyStale,
+        LocalHoldReason::ActuationUnavailable,
+        LocalHoldReason::ProfileRefused(refusal),
+    ];
+    use bitaxe_stratum::v1::production_session::ProductionSessionBlocker as Blocker;
+    let session_labels = [
+        Blocker::OperatorPaused,
+        Blocker::NetworkUnavailable,
+        Blocker::StratumV1Unsupported,
+        Blocker::SafetyPrerequisitesStale,
+        Blocker::CampaignLeaseUnavailable,
+        Blocker::CampaignLeaseConsumed,
+        Blocker::CampaignActivationTimedOut,
+        Blocker::ProductionAsicUnavailable,
+        Blocker::ProductionAsicVersionMaskUnavailable,
+        Blocker::ProductionAsicDispatchUnavailable,
+        Blocker::ProductionAsicPollUnavailable,
+        Blocker::ProductionAsicQueueFull,
+        Blocker::ProductionAsicWorkerUnavailable,
+        Blocker::JobTransitionProtocolInconsistent,
+        Blocker::ActuationUnqualified,
+        Blocker::PoolConfigurationUnavailable,
+        Blocker::PoolsExhausted,
+    ]
+    .map(Blocker::label);
+    // Act
+    let labels = holds.map(LocalHoldReason::label);
+    // Assert
+    let unique: std::collections::BTreeSet<_> = labels.iter().collect();
+    assert_eq!(unique.len(), labels.len());
+    for label in labels {
+        assert!(label.starts_with("local_"), "{label}");
+        assert!(label
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte == b'_' || byte.is_ascii_digit()));
+        assert!(!session_labels.contains(&label), "{label}");
+    }
+}

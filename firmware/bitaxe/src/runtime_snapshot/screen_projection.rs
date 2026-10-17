@@ -20,7 +20,10 @@ pub(super) struct ScreenCommandProjection {
 pub(super) fn collect(now_ms: u64) -> ScreenCommandProjection {
     super::mutate_command_visible_state_with_result(ScreenCommandProjection::default(), |state| {
         ScreenCommandProjection {
-            overheat: state.mining.maybe_blocked_reason == Some("overheat_safe_stop"),
+            overheat: matches!(
+                state.mining.maybe_blocked_reason,
+                Some("overheat_safe_stop" | "local_overheat")
+            ),
             identify_active: state.identify.mode_at(now_ms) == IdentifyMode::Active,
             fallback_active: state.mining.fallback_active,
             hashrate_ghs: state.mining.hashrate_inputs.current_ghs,

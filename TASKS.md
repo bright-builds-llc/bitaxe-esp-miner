@@ -1258,7 +1258,33 @@ Plan (small commits, pure core first, the full gate after each):
    firmware holds the fan at boot instead of applying 70%.
    Original plan: a real failed controller fan write under
    `Local` revokes with `ControlFailed` and holds until reboot.
-9. **Overheat wiring:** enter, cool, save the lowered pair, and clear
+9. **Overheat wiring (landed):** `local_owner/overheat.rs` and
+   `overheat_store.rs`.
+   - An overheat ending saves the entry (marker first) and cools.
+     `Recover` saves the lowered pair before any run may begin; an
+     unsaved pair keeps the ASIC down.
+   - `overheat_mode` clears once a run has prepared, retried until saved.
+   - `StayStopped`, and the guard's hold, pause the device
+     (`pause_mining_by_device`). The pause is not saved.
+   - A resume clears the guard, ends a stop that stayed stopped, and
+     clears the marker.
+   - At boot, a saved `overheat_mode` or stop marker resumes the recovery
+     once. A marker holds even after the settings page cleared
+     `overheat_mode`, because only a resume ends a stop. An unreadable
+     marker reads as set. A saved pair outside the catalog leaves nothing
+     to cool for, so it holds as `ProfileRefused`.
+   - A failed entry save is retried each tick, as the pair and clear
+     saves are. After a reboot, `Recover` does not save the
+     unlowered pair again, so a pair the operator saved while it cooled
+     stays.
+   - A device pause wakes the session (`OperatorIntentChanged`) and
+     records the pause for resume detection.
+   - Holds other than a pause, another owner or a link label the
+     published snapshot's `blockedReason` (`local_*`). A device pause
+     names the overheat or guard behind it. The display's overheat screen
+     also shows `local_overheat`. A runtime test keeps the labels
+     distinct from the session's.
+   Original plan: enter, cool, save the lowered pair, and clear
    `overheat_mode` after preparation. `StayStopped` forces Paused and saves
    a stop marker.
    - At boot with `overheat_mode` saved, a stop marker holds until resumed.

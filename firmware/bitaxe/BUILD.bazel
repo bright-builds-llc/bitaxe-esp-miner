@@ -946,6 +946,7 @@ rust_test(
         "src/production_mining_session.rs",
         "src/production_mining_session/bwg.rs",
         "src/production_mining_session/local_owner.rs",
+        "src/production_mining_session/local_owner/overheat.rs",
         "src/production_mining_session/owner_loop.rs",
     ],
     crate_root = "src/local_mining_source_ownership_test.rs",

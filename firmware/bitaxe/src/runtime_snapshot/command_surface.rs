@@ -29,6 +29,21 @@ pub fn apply_mining_operator_intent_command(effect: MiningOperatorIntentEffect) 
     retain_command_status_transition(transition);
 }
 
+/// The device paused mining itself (ADR-0038): an overheat that stays stopped, or
+/// the restart guard holding. Only an operator resume ends either, so the pause is
+/// shown as the operator's to undo; it is not saved, like any pause.
+pub(crate) fn pause_mining_by_device() {
+    mutate_command_visible_state(|state| {
+        state
+            .requested_operator_intent
+            .set(MiningOperatorIntent::Paused);
+        state
+            .mining
+            .set_operator_intent(MiningOperatorIntent::Paused);
+        state.command_status.record_runtime_change();
+    });
+}
+
 pub(crate) fn apply_command_effects_run_bootstrap() {
     mutate_command_visible_state(|state| {
         state
