@@ -1098,50 +1098,6 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-### task-lease-handover-and-baseline-restore | 2026-10-16 | Leases take over local mining and restore it
-
-ADR-0038 step 4. Depends on `task-local-mining-owner`.
-
-- [ ] Lease admission while mining locally runs an ordered stop of local
-      mining before the lease prepares. Today Start is refused unless the
-      session is idle (`production_mining_session/bwg.rs`).
-- [ ] After the lease, restore local mining, or the paused state if it was
-      paused: the Mining Baseline (Gate ADR-0017). Grant credentials are
-      never saved, and the preservation fingerprint keeps proving it.
-- [ ] Regressions across Start, Stop, expiry, heartbeat loss and reboot.
-
-Started 2026-10-17 at the owner's request. Software only, no hardware
-effects. Local mining stays switched off until task 5 turns it on.
-
-Owner decisions (2026-10-17):
-- Handover: stop, then reconnect. A Gate Hello while a local generation
-  exists is refused, as the gate already does. It also stops local mining
-  through its ordered safe-stop. The Gate's first Connect fails once, and a
-  later one succeeds once the ASIC is stopped. The revocation gate keeps its
-  one-generation design.
-- Resume: local mining stays off while the Gate link is active, meaning any
-  received link frame or Hello within 15 s, so one Gate session can run
-  several leases. It resumes once the link has been quiet that long. The
-  requested operator intent survives a lease in RAM, so a pause is
-  restored too.
-
-Plan (pure core first, the full gate after each commit):
-1. **Runtime (pure):** link presence, active within 15 s of the last frame
-   or Hello. The owner core records a handover as a requested stop, so it
-   never spends the restart guard.
-2. **Firmware:** the serial link thread notes link activity on every
-   received envelope, including a refused Hello. Within that window the
-   local owner stops a run once with `RestorationRequested`, and holds
-   with `GateLink` while idle.
-3. **Regressions:**
-   - pure presence and classification tests;
-   - source guards for the link hook and the stop;
-   - a host test that a Hello is refused beside a local generation and
-     admitted after it finishes.
-4. **Records:** ADR-0038 (the first Connect fails once) and TASKS.
-
-Verification: pending. Completion review: pending.
-
 ### task-boot-resume-and-crash-loop-guard | 2026-10-16 | Resume mining on boot, with a crash-loop guard
 
 ADR-0038 step 5.

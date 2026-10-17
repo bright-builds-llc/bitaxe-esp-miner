@@ -215,5 +215,18 @@ Implementation status (2026-10-17):
   fails, it backs off from 30 s, doubling. After five failures in a row it
   holds until resumed. Ten minutes of hashing resets it.
 
+Handover (task 4, owner decision 2026-10-17):
+- A Gate Hello while the device mines locally is refused. It also stops
+  local mining through its ordered safe-stop, so Connect fails until local
+  mining has stopped (up to two minutes, while the chip cools), and then
+  succeeds.
+- Local mining stays off while the link is active (a Hello or heartbeat
+  within 15 s), across the session's leases. After a refused Hello it
+  stays off for up to 5 minutes, until a Hello is admitted, so the next
+  Connect finds the ASIC stopped. Any refused Hello starts this hold, even
+  one refused while a lease shuts down; that errs toward staying off.
+- It resumes once the link has been quiet for 15 s, in the paused state if
+  the operator paused it.
+
 The Gate needs no protocol change: it already expects a Mining Baseline. Its
 tooling's `mine_on_boot=false` checks keep working for test contracts.

@@ -31935,3 +31935,99 @@ Residual risks, for task 5 (which turns the switch on) and task 6 (soaks):
   configuration makes them retry, logging each tick.
 - Each local `blockedReason` label is new API vocabulary. No web UI reads
   it yet.
+
+### task-lease-handover-and-baseline-restore | 2026-10-16 | Leases take over local mining and restore it
+
+ADR-0038 step 4. Depends on `task-local-mining-owner`.
+
+- [x] Lease admission while mining locally runs an ordered stop of local
+      mining before the lease prepares. Today Start is refused unless the
+      session is idle (`production_mining_session/bwg.rs`).
+- [x] After the lease, restore local mining, or the paused state if it was
+      paused: the Mining Baseline (Gate ADR-0017). Grant credentials are
+      never saved, and the preservation fingerprint keeps proving it.
+- [x] Regressions across Start, Stop, expiry, heartbeat loss and reboot.
+
+Started 2026-10-17 at the owner's request. Software only, no hardware
+effects. Local mining stays switched off until task 5 turns it on.
+
+Owner decisions (2026-10-17):
+- Handover: stop, then reconnect. A Gate Hello while a local generation
+  exists is refused, as the gate already does. It also stops local mining
+  through its ordered safe-stop. The Gate's first Connect fails once, and a
+  later one succeeds once the ASIC is stopped. The revocation gate keeps its
+  one-generation design.
+- Resume: local mining stays off while the Gate link is active, meaning any
+  received link frame or Hello within 15 s, so one Gate session can run
+  several leases. It resumes once the link has been quiet that long. The
+  requested operator intent survives a lease in RAM, so a pause is
+  restored too.
+
+Plan (pure core first, the full gate after each commit):
+1. **Runtime (pure):** link presence, active within 15 s of the last frame
+   or Hello. The owner core records a handover as a requested stop, so it
+   never spends the restart guard.
+2. **Firmware:** the serial link thread notes link activity on every
+   received envelope, including a refused Hello. Within that window the
+   local owner stops a run once with `RestorationRequested`, and holds
+   with `GateLink` while idle.
+3. **Regressions:**
+   - pure presence and classification tests;
+   - source guards for the link hook and the stop;
+   - a host test that a Hello is refused beside a local generation and
+     admitted after it finishes.
+4. **Records:** ADR-0038 (the first Connect fails once) and TASKS.
+
+Implementation notes:
+- Link stamps (`local_mining::link_presence::LinkStamps`):
+  - Authenticated heartbeats and valid Hellos hold local mining for 15 s.
+  - A refused Hello holds it for up to 5 minutes, until a Hello is
+    admitted. The Gate sends one Hello per Connect and never retries it, so
+    the owner's next Connect finds the ASIC stopped rather than a restarted
+    run. The ordered safe-stop may take two minutes to cool. This refines
+    the owner's 15 s decision for refused Hellos and awaits the owner's
+    confirmation; reverting it is one constant.
+- Link-stack audit: deepest path 5,216 of 6,144 bytes (928 bytes of
+  headroom). This is the first recorded value.
+- The core decides a handover once per run (`handover_due`). It marks the
+  stop as requested only when the handover's revocation took effect
+  (`note_handover(revoked)`), so a device-local stop that revoked first
+  keeps its ending. `note_requested_stop` replaces `note_settings_changed`.
+- The firmware link effects (`bwg_worker_usb/link.rs`) report each Hello
+  with whether the gate admitted it, and each heartbeat. The protocol
+  crate is unchanged. The stamps sit behind a mutex, because the ESP32-S3
+  has no 64-bit atomics; the mutex guards one copy and inherits priority.
+- Tests:
+  - the USB link host test's pinned transcript shows a refused Hello, an
+    admitted one and a heartbeat reaching the local owner;
+  - a gate test shows a link refused while the local generation stops and
+    admitted once it is retired.
+
+Verification (2026-10-17, software only, no hardware effects):
+- the full gate passed: fmt, clippy, build, cargo tests, `just build`,
+  `just test` (341 targets), Bright Builds, redaction and parity;
+- the BAP, HTTP, owner-stack, realignment and link-stack audits passed;
+- an independent review, then a re-review of its fixes; only Low items
+  remained, and they are recorded here.
+
+Completion review:
+- A Gate link now takes over local mining. A refused Hello or an active
+  link stops a run through the ordered safe-stop, as a requested ending.
+  Local mining stays off while the link is active, and for up to 5
+  minutes after a refused Hello until one is admitted. It resumes once the
+  link is quiet, in the operator's requested intent.
+- Start, Stop, expiry and heartbeat loss all end a lease by retiring its
+  generation. Local mining then waits for the link to go quiet, which the
+  link-stamp tests cover. A reboot starts with no link.
+- Grant credentials stay in the lease session; local runs read the saved
+  pool, so the preservation fingerprint is unaffected.
+
+Residual risks:
+- The 5-minute hold after a refused Hello refines the owner's 15 s
+  decision; it awaits confirmation.
+- Any refused Hello starts that hold, even one refused while a lease
+  shuts down.
+- Connect fails until local mining has stopped, up to two minutes while
+  the chip cools.
+- Verified in software only; the task 6 soaks include a hardware check
+  that a lease interrupts and restores local mining.
