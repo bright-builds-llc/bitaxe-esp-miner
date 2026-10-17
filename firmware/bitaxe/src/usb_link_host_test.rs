@@ -133,6 +133,23 @@ mod fake_revocation {
     }
 }
 
+/// The local mining owner the link thread notifies (ADR-0038 step 4); it logs only
+/// when a script asks, so every other transcript stays as pinned.
+mod production_mining_session {
+    pub(crate) mod local_owner {
+        pub(crate) fn note_gate_hello(now_ms: u64, admitted: bool) {
+            if crate::knob(&crate::LOG_LOCAL_OWNER) {
+                crate::log(format!("local_owner_hello now={now_ms} admitted={admitted}"));
+            }
+        }
+        pub(crate) fn note_gate_link_activity(now_ms: u64) {
+            if crate::knob(&crate::LOG_LOCAL_OWNER) {
+                crate::log(format!("local_owner_activity now={now_ms}"));
+            }
+        }
+    }
+}
+
 mod runtime_uptime {
     pub(crate) fn millis() -> u64 {
         crate::CLOCK.load(super::Ordering::Acquire)
@@ -252,6 +269,7 @@ pub(crate) static ENTROPY_FAILS: AtomicBool = AtomicBool::new(false);
 pub(crate) static BEGIN_LINK_FAILS: AtomicBool = AtomicBool::new(false);
 pub(crate) static HELLO_ACK_FAILS: AtomicBool = AtomicBool::new(false);
 pub(crate) static WORK_COOLING: AtomicBool = AtomicBool::new(false);
+pub(crate) static LOG_LOCAL_OWNER: AtomicBool = AtomicBool::new(false);
 
 fn knob(flag: &AtomicBool) -> bool {
     flag.load(Ordering::Acquire)
@@ -362,6 +380,7 @@ pub(crate) fn transcript(steps: Vec<Step>) -> String {
         &BEGIN_LINK_FAILS,
         &HELLO_ACK_FAILS,
         &WORK_COOLING,
+        &LOG_LOCAL_OWNER,
     ] {
         flag.store(false, Ordering::Release);
     }

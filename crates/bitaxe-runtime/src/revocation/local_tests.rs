@@ -127,3 +127,16 @@ fn a_finished_generation_holds_nothing() {
     // Assert
     assert!(!gate.holds_link());
 }
+
+#[test]
+fn a_link_waits_until_a_stopping_local_generation_is_retired() {
+    // Arrange: the handover revoked the local generation; its safe-stop runs.
+    let (gate, local) = active_local();
+    gate.revoke_at(local, 100);
+    let while_stopping = gate.begin_link(200);
+    // Act
+    gate.finish_shutdown(local);
+    let after_retirement = gate.begin_link(300);
+    // Assert
+    assert!(while_stopping.is_none() && after_retirement.is_some());
+}

@@ -5,6 +5,7 @@ const BWG_SOURCE: &str = include_str!("production_mining_session/bwg.rs");
 const SESSION_SOURCE: &str = include_str!("production_mining_session.rs");
 const FAN_RUNTIME_SOURCE: &str = include_str!("fan_controller_runtime.rs");
 const OVERHEAT_SOURCE: &str = include_str!("production_mining_session/local_owner/overheat.rs");
+const LINK_SOURCE: &str = include_str!("bwg_worker_usb/link.rs");
 
 #[test]
 fn local_mining_stays_off_until_the_crash_loop_guard_lands() {
@@ -106,4 +107,36 @@ fn a_stop_and_the_guards_hold_pause_the_device_for_the_operator() {
 fn every_published_snapshot_carries_the_local_hold() {
     // Arrange / Act / Assert
     assert!(SESSION_SOURCE.contains("self.local.label_hold(&mut snapshot);"));
+}
+
+#[test]
+fn every_hello_and_heartbeat_reaches_the_local_owner() {
+    // Arrange
+    let (_, begin) = LINK_SOURCE
+        .split_once("fn begin_generation(&self, now_ms: u64)")
+        .expect("begin generation");
+    let (_, heartbeat) = LINK_SOURCE
+        .split_once("fn heartbeat_generation(")
+        .expect("heartbeat");
+    // Act: a Hello reports whether the gate admitted it.
+    let decided = begin.find("let maybe_generation = revocation::begin_link(now_ms);");
+    let reported = begin.find("local_owner::note_gate_hello(");
+    // Assert
+    assert!(decided.is_some() && reported.is_some() && decided < reported);
+    assert!(begin.contains("maybe_generation.is_some(),"));
+    assert!(heartbeat
+        .contains("crate::production_mining_session::local_owner::note_gate_link_activity(now_ms);"));
+}
+
+#[test]
+fn a_held_link_stops_a_run_through_the_core_and_holds_local_mining() {
+    // Arrange
+    let (_, handover) = LOCAL_OWNER_SOURCE
+        .split_once("fn hand_over_to_an_active_link(&mut self, now_ms: u64) {")
+        .expect("handover");
+    // Act / Assert: the core decides once per run, and learns whether it revoked.
+    assert!(handover.contains("self.local.core.handover_due(gate_link_holds(now_ms))"));
+    assert!(handover.contains("let revoked = revocation::revoke_at(generation, now_ms);"));
+    assert!(handover.contains("self.local.core.note_handover(revoked);"));
+    assert!(LOCAL_OWNER_SOURCE.contains("|| gate_link_holds(now_ms),"));
 }

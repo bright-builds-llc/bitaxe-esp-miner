@@ -51,9 +51,17 @@ impl SerialLinkEffects for Native {
         revoke_epoch(epoch);
     }
     fn begin_generation(&self, now_ms: u64) -> Option<WorkerGeneration> {
-        revocation::begin_link(now_ms)
+        let maybe_generation = revocation::begin_link(now_ms);
+        // A refused Hello found local mining holding the gate: local mining stops
+        // and waits for the Gate's next Connect (ADR-0038 step 4).
+        crate::production_mining_session::local_owner::note_gate_hello(
+            now_ms,
+            maybe_generation.is_some(),
+        );
+        maybe_generation
     }
     fn heartbeat_generation(&self, generation: WorkerGeneration, now_ms: u64) -> bool {
+        crate::production_mining_session::local_owner::note_gate_link_activity(now_ms);
         revocation::heartbeat(generation, now_ms)
     }
     fn close_generation(&self, generation: WorkerGeneration, now_ms: u64) {

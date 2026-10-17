@@ -24,7 +24,8 @@ pub struct LocalOwnerCore {
 struct RunProgress {
     maybe_active_since_ms: Option<u64>,
     active_ms: u64,
-    settings_changed: bool,
+    requested_stop: bool,
+    handed_over: bool,
 }
 
 impl RunProgress {
@@ -73,11 +74,28 @@ impl LocalOwnerCore {
         }
     }
 
-    /// The operator changed settings during the run; the session ends it so the
-    /// next run reads them.
-    pub fn note_settings_changed(&mut self) {
+    /// The run is stopping on request: the operator changed settings (the session
+    /// ends the run so the next one reads them), or a Gate link takes over.
+    pub fn note_requested_stop(&mut self) {
         if let Some(run) = self.maybe_run.as_mut() {
-            run.settings_changed = true;
+            run.requested_stop = true;
+        }
+    }
+
+    /// Whether a Gate link that holds local mining off should take over the run:
+    /// once per run.
+    #[must_use]
+    pub fn handover_due(&self, link_holds: bool) -> bool {
+        link_holds && self.maybe_run.is_some_and(|run| !run.handed_over)
+    }
+
+    /// The shell revoked the run for a Gate link; `revoked` is whether that
+    /// revocation took effect. When a device-local stop revoked it first, that
+    /// stop's ending stands, so the run is not marked as requested.
+    pub fn note_handover(&mut self, revoked: bool) {
+        if let Some(run) = self.maybe_run.as_mut() {
+            run.handed_over = true;
+            run.requested_stop |= revoked;
         }
     }
 
@@ -91,7 +109,7 @@ impl LocalOwnerCore {
         now_ms: u64,
     ) -> Option<RunEnding> {
         let run = self.maybe_run.take()?;
-        let ending = classify_run_ending(maybe_unsafe_stop, run.settings_changed, maybe_stop_cause);
+        let ending = classify_run_ending(maybe_unsafe_stop, run.requested_stop, maybe_stop_cause);
         self.guard
             .note_run_ended(ending, run.hashed_ms(now_ms), now_ms);
         Some(ending)
@@ -123,12 +141,13 @@ pub enum UnsafeStop {
 
 /// How a run ended, for the restart guard. An unsafe stop decides first: an
 /// overheat is paced by `OverheatRecovery`, any other is a failure, whatever the
-/// session blocked on afterwards. Then a settings change, a pause or a lost
-/// readiness fact is requested or environmental; anything else failed.
+/// session blocked on afterwards. Then a requested stop (a settings change or a
+/// Gate link), a pause or a lost readiness fact is requested or environmental;
+/// anything else failed.
 #[must_use]
 pub fn classify_run_ending(
     maybe_unsafe_stop: Option<UnsafeStop>,
-    settings_changed: bool,
+    requested_stop: bool,
     maybe_stop_cause: Option<ProductionSessionBlocker>,
 ) -> RunEnding {
     match maybe_unsafe_stop {
@@ -136,7 +155,7 @@ pub fn classify_run_ending(
         Some(UnsafeStop::Other) => return RunEnding::Failed,
         None => {}
     }
-    if settings_changed {
+    if requested_stop {
         return RunEnding::Requested;
     }
     match maybe_stop_cause {

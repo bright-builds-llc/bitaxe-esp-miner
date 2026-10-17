@@ -22,6 +22,7 @@ use super::*;
 use bitaxe_runtime::local_mining::hardware_fault::{
     faulted_local_generation, hardware_fault_message,
 };
+use bitaxe_runtime::local_mining::link_presence::LinkStamps;
 use bitaxe_runtime::local_mining::owner::{LocalOwnerCore, UnsafeStop};
 use bitaxe_runtime::local_mining::policy::{
     LocalDecision, LocalHoldReason, LocalInputs, RunEnding,
@@ -75,6 +76,32 @@ fn maybe_hardware_fault_context() -> Option<&'static str> {
 /// Upstream's `hardware_fault` message, while the latch holds.
 pub(crate) fn maybe_hardware_fault_message() -> Option<String> {
     maybe_hardware_fault_context().map(hardware_fault_message)
+}
+
+/// What the serial link thread has seen of the Gate. Written by the link thread,
+/// read by the owner; the target has no 64-bit atomics.
+static GATE_LINK: Mutex<LinkStamps> = Mutex::new(LinkStamps::new());
+
+fn with_gate_link<T>(read: impl FnOnce(&mut LinkStamps) -> T) -> T {
+    read(
+        &mut GATE_LINK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner),
+    )
+}
+
+/// An authenticated Gate heartbeat (ADR-0038 step 4): local mining stays off.
+pub(crate) fn note_gate_link_activity(now_ms: u64) {
+    with_gate_link(|stamps| stamps.note_activity(now_ms));
+}
+
+/// A valid Gate Hello, which the gate admitted or refused.
+pub(crate) fn note_gate_hello(now_ms: u64, admitted: bool) {
+    with_gate_link(|stamps| stamps.note_hello(now_ms, admitted));
+}
+
+fn gate_link_holds(now_ms: u64) -> bool {
+    with_gate_link(|stamps| stamps.holds_local_mining(now_ms))
 }
 
 /// A boot-time owner other than the production owner holds the hardware.
@@ -146,7 +173,7 @@ impl LocalOwner {
     /// The session ends a local run on a settings change; the ending is requested.
     pub(super) fn note_wakeup(&mut self, wakeup: ProductionSessionWakeup) {
         if wakeup == ProductionSessionWakeup::SettingsChanged {
-            self.core.note_settings_changed();
+            self.core.note_requested_stop();
         }
     }
 }
@@ -169,6 +196,7 @@ impl OrdinaryEspProductionSessionAdapter {
             if run.prepared {
                 self.clear_overheat_mode_after_preparation();
             }
+            self.hand_over_to_an_active_link(now_ms);
             let Some(run) = self.local.maybe_run.as_ref() else {
                 return None;
             };
@@ -218,6 +246,24 @@ impl OrdinaryEspProductionSessionAdapter {
         }
     }
 
+    /// A Gate link appeared: stop the run once, through the session's ordered
+    /// safe-stop. The Hello that found it was refused; a later one succeeds once
+    /// the generation is retired. The ending is requested, not a failure.
+    fn hand_over_to_an_active_link(&mut self, now_ms: u64) {
+        let Some(generation) = self.local.maybe_generation() else {
+            return;
+        };
+        if !self.local.core.handover_due(gate_link_holds(now_ms)) {
+            return;
+        }
+        let revoked = revocation::revoke_at(generation, now_ms);
+        self.local.core.note_handover(revoked);
+        log::info!(
+            "local_mining=handover generation={} revoked={revoked}",
+            generation.raw()
+        );
+    }
+
     /// The device pauses itself: the requested intent turns Paused, as recorded here
     /// so an operator resume before the next tick is still seen, and the session
     /// wakes to stop, as for an operator pause.
@@ -256,7 +302,9 @@ impl OrdinaryEspProductionSessionAdapter {
         LocalInputs {
             other_boot_owner: self.maybe_campaign_status.is_some()
                 || BOOT_OWNED_ELSEWHERE.load(Ordering::Acquire),
-            gate_link: self.maybe_bwg_session.is_some() || revocation::holds_link(),
+            gate_link: self.maybe_bwg_session.is_some()
+                || revocation::holds_link()
+                || gate_link_holds(now_ms),
             operator_paused: crate::runtime_snapshot::requested_mining_operator_intent()
                 == MiningOperatorIntent::Paused,
             hardware_fault: maybe_hardware_fault_context().is_some(),

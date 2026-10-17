@@ -112,7 +112,7 @@ fn a_settings_change_is_a_requested_ending() {
     // Arrange
     let mut core = LocalOwnerCore::default();
     core.run_began();
-    core.note_settings_changed();
+    core.note_requested_stop();
     // Act
     let ending = core.run_ended(
         None,
@@ -128,7 +128,7 @@ fn an_overheat_outranks_a_settings_change_and_a_pause() {
     // Arrange
     let mut core = LocalOwnerCore::default();
     core.run_began();
-    core.note_settings_changed();
+    core.note_requested_stop();
     // Act
     let ending = core.run_ended(
         Some(UnsafeStop::Overheat),
@@ -207,4 +207,65 @@ fn five_failed_runs_hold_until_resumed() {
         core.decide_idle(ready(), 5),
         LocalDecision::Begin(profile())
     );
+}
+
+#[test]
+fn a_handover_is_a_requested_ending() {
+    // Arrange: a Gate link revoked the run, so the session saw a revocation.
+    let mut core = LocalOwnerCore::default();
+    core.run_began();
+    core.note_handover(true);
+    // Act
+    let ending = core.run_ended(
+        None,
+        Some(ProductionSessionBlocker::CampaignLeaseConsumed),
+        5,
+    );
+    // Assert
+    assert_eq!(ending, Some(RunEnding::Requested));
+    assert_eq!(
+        core.decide_idle(ready(), 6),
+        LocalDecision::Begin(profile())
+    );
+}
+
+#[test]
+fn a_device_stop_that_revoked_first_keeps_its_ending() {
+    // Arrange: an actuation failure revoked the run before the link arrived.
+    let mut core = LocalOwnerCore::default();
+    core.run_began();
+    core.note_handover(false);
+    // Act
+    let ending = core.run_ended(
+        None,
+        Some(ProductionSessionBlocker::CampaignLeaseConsumed),
+        5,
+    );
+    // Assert
+    assert_eq!(ending, Some(RunEnding::Failed));
+}
+
+#[test]
+fn a_handover_happens_once_per_run() {
+    // Arrange
+    let mut core = LocalOwnerCore::default();
+    core.run_began();
+    let due_first = core.handover_due(true);
+    core.note_handover(true);
+    // Act
+    let due_again = core.handover_due(true);
+    // Assert
+    assert!(due_first && !due_again);
+}
+
+#[test]
+fn no_handover_without_a_link_or_a_run() {
+    // Arrange
+    let mut core = LocalOwnerCore::default();
+    let idle = core.handover_due(true);
+    core.run_began();
+    // Act
+    let quiet = core.handover_due(false);
+    // Assert
+    assert!(!idle && !quiet);
 }

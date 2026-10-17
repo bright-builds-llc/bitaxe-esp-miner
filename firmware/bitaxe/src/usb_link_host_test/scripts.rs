@@ -1,5 +1,8 @@
 //! One script per link behavior; each transcript is pinned byte-for-byte.
-use super::{transcript, Step, BEGIN_LINK_FAILS, ENTROPY_FAILS, HELLO_ACK_FAILS, WORK_COOLING};
+use super::{
+    transcript, Step, BEGIN_LINK_FAILS, ENTROPY_FAILS, HELLO_ACK_FAILS, LOG_LOCAL_OWNER,
+    WORK_COOLING,
+};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use bitaxe_worker_control::serial::{SerialEnvelope, SerialKind};
@@ -395,6 +398,20 @@ pinned!(
         at(0, &[&hello()]),
         at(10, &[&control(0, 1), &control(0, 2), &control(0, 3)]),
         at(20, &[&hello()]),
+        Step::Drain,
+    ]
+);
+
+pinned!(
+    hellos_and_heartbeats_reach_the_local_owner,
+    vec![
+        Step::Set(&LOG_LOCAL_OWNER, true),
+        Step::Set(&BEGIN_LINK_FAILS, true),
+        at(0, &[&hello()]),
+        Step::Set(&BEGIN_LINK_FAILS, false),
+        at(10, &[&hello()]),
+        Step::Authenticate,
+        at(20, &[&heartbeat(1, 1, "{}")]),
         Step::Drain,
     ]
 );

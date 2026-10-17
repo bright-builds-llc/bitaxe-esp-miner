@@ -20,6 +20,8 @@ use crate::revocation::RevocationReason;
 
 #[path = "local_mining/hardware_fault.rs"]
 pub mod hardware_fault;
+#[path = "local_mining/link_presence.rs"]
+pub mod link_presence;
 #[path = "local_mining/owner.rs"]
 pub mod owner;
 #[path = "local_mining/persistence.rs"]
