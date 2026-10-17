@@ -97,15 +97,21 @@ impl ProductionMiningSession {
     /// once work reached the ASIC since this power-up: an outage then probes every
     /// 30 s with the ASIC off. A power-up that never dispatched ends the run instead,
     /// so the owner's restart guard paces a pool that authorizes and then drops.
-    pub(super) fn note_local_pools_exhausted(&mut self) {
+    /// A stop that is not this resumable pause records `blocker` as the lease's
+    /// stop cause, before any later readiness blocker can.
+    pub(super) fn note_local_pools_exhausted(&mut self, blocker: ProductionSessionBlocker) {
+        let powered = matches!(
+            self.hardware_state,
+            MiningHardwareState::Preparing | MiningHardwareState::Ready
+        );
         if self.maybe_lease.is_some_and(Self::is_local_lease)
             && self.dispatched_since_power_up
-            && matches!(
-                self.hardware_state,
-                MiningHardwareState::Preparing | MiningHardwareState::Ready
-            )
+            && powered
         {
             self.resumable_pause_pending = true;
+        }
+        if powered && !self.resumable_pause_pending {
+            self.note_stop_cause(blocker);
         }
     }
 }

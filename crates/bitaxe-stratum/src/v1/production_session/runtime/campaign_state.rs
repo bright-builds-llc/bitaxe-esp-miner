@@ -6,6 +6,40 @@ use crate::v1::production_session::campaign::{
 use crate::v1::recovery_policy::{ProductionSessionBlocker, ProductionSessionPhase};
 
 impl ProductionMiningSession {
+    /// The lease this session holds, adopted from readiness.
+    #[must_use]
+    pub fn maybe_lease_id(&self) -> Option<MiningCampaignLeaseId> {
+        self.maybe_lease.map(MiningCampaignLease::id)
+    }
+
+    /// The first cause that stopped, or began stopping, lease `id`: a blocker, a
+    /// revocation (`CampaignLeaseConsumed`) or an expiry. A shutdown and a
+    /// resumable pause record none. A readiness blocker may also record one for a
+    /// lease that waits unpowered; only an owner whose run ended reads it.
+    #[must_use]
+    pub fn stop_cause_for(&self, id: MiningCampaignLeaseId) -> Option<ProductionSessionBlocker> {
+        self.maybe_stop_cause
+            .filter(|(stopped, _)| *stopped == id)
+            .map(|(_, cause)| cause)
+    }
+
+    /// Records the first cause that stops the current lease; later ones are effects.
+    pub(super) fn note_stop_cause(&mut self, blocker: ProductionSessionBlocker) {
+        let Some(id) = self.maybe_lease.map(MiningCampaignLease::id) else {
+            return;
+        };
+        if self.stop_cause_for(id).is_none() {
+            self.maybe_stop_cause = Some((id, blocker));
+        }
+    }
+
+    /// The last lease this session consumed; an owner compares it with its own run's
+    /// lease to learn that the run ended.
+    #[must_use]
+    pub const fn maybe_consumed_lease_id(&self) -> Option<MiningCampaignLeaseId> {
+        self.maybe_consumed_lease_id
+    }
+
     /// Allocates the next owner-local campaign identity without reusing a
     /// currently active or terminally consumed lease.
     #[must_use]

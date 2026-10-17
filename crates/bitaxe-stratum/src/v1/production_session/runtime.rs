@@ -48,6 +48,8 @@ pub struct ProductionMiningSession {
     pub(super) campaign_state: MiningCampaignState,
     pub(super) maybe_lease: Option<MiningCampaignLease>,
     pub(super) maybe_consumed_lease_id: Option<MiningCampaignLeaseId>,
+    /// The first cause that stopped a lease, kept for an owner to classify it.
+    pub(super) maybe_stop_cause: Option<(MiningCampaignLeaseId, ProductionSessionBlocker)>,
     pub(super) maybe_prepared_at_ms: Option<u64>,
     pub(super) maybe_activation_started_at_ms: Option<u64>,
     pub(super) maybe_resumable_epoch_started_at_ms: Option<u64>,
@@ -154,6 +156,7 @@ impl ProductionMiningSession {
             campaign_state: MiningCampaignState::Unavailable,
             maybe_lease: None,
             maybe_consumed_lease_id: None,
+            maybe_stop_cause: None,
             maybe_prepared_at_ms: None,
             maybe_activation_started_at_ms: None,
             maybe_resumable_epoch_started_at_ms: None,
@@ -437,14 +440,12 @@ impl ProductionMiningSession {
                 }
             }
         }
-        if matches!(
-            self.recovery.projection().maybe_blocker,
-            Some(
-                ProductionSessionBlocker::PoolConfigurationUnavailable
-                    | ProductionSessionBlocker::PoolsExhausted
-            )
-        ) {
-            self.note_local_pools_exhausted();
+        if let Some(
+            blocker @ (ProductionSessionBlocker::PoolConfigurationUnavailable
+            | ProductionSessionBlocker::PoolsExhausted),
+        ) = self.recovery.projection().maybe_blocker
+        {
+            self.note_local_pools_exhausted(blocker);
             self.begin_hardware_safe_stop_if_needed(&mut effects)?;
         }
         self.publish_if_changed(&mut effects);
@@ -493,6 +494,9 @@ impl ProductionMiningSession {
         // A terminal cause supersedes a pending resumable pause. Otherwise a
         // late hardware confirmation can incorrectly re-arm a consumed lease.
         self.resumable_pause_pending = false;
+        if let Some(blocker) = maybe_blocker {
+            self.note_stop_cause(blocker);
+        }
         let actions = if shutdown_requested {
             self.recovery.on_wakeup(
                 Some(ProductionSessionWakeup::ShutdownRequested),

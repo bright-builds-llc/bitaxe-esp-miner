@@ -53,6 +53,9 @@ impl ProductionMiningSession {
                     .maybe_lease
                     .is_some_and(|lease| lease.stop_condition().allows_operator_resume())
                 || self.is_resumable_reactivation_safety_lapse(blocker);
+            if !self.resumable_pause_pending {
+                self.note_stop_cause(blocker);
+            }
             self.begin_hardware_safe_stop_if_needed(effects)?;
             self.end_unpowered_local_run();
             return Ok(());

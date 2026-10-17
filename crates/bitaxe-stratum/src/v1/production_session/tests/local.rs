@@ -406,3 +406,104 @@ fn a_local_run_under_a_gate_leases_id_ends_the_lease() {
     // Assert
     assert!(consumed(&adapter));
 }
+
+#[test]
+fn an_ended_run_reports_its_lease_as_consumed() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(primary_only()));
+    adapter.drive(wake(local_ready(), 0));
+    // Act
+    adapter.drive(ProductionSessionEvent::CampaignLeaseRevoked);
+    // Assert
+    assert_eq!(
+        adapter.session.maybe_consumed_lease_id(),
+        Some(local_lease(1).id())
+    );
+}
+
+#[test]
+fn a_revoked_run_keeps_the_revocation_as_its_stop_cause() {
+    // Arrange: the run hashes, is revoked, then readiness also lapses.
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(primary_only()));
+    let hashed_at = power_and_hash(&mut adapter);
+    adapter.drive(ProductionSessionEvent::CampaignLeaseRevoked);
+    // Act
+    adapter.drive(wake(
+        ProductionReadiness {
+            safety_prerequisites_fresh: false,
+            ..local_ready()
+        },
+        hashed_at + 1,
+    ));
+    // Assert
+    assert_eq!(
+        adapter.session.stop_cause_for(local_lease(1).id()),
+        Some(ProductionSessionBlocker::CampaignLeaseConsumed)
+    );
+}
+
+#[test]
+fn a_paused_run_records_the_pause_as_its_stop_cause() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(primary_only()));
+    let hashed_at = power_and_hash(&mut adapter);
+    // Act
+    adapter.drive(wake(
+        ProductionReadiness {
+            operator_intent: MiningOperatorIntent::Paused,
+            ..local_ready()
+        },
+        hashed_at + 1,
+    ));
+    // Assert
+    assert_eq!(
+        adapter.session.stop_cause_for(local_lease(1).id()),
+        Some(ProductionSessionBlocker::OperatorPaused)
+    );
+    assert!(consumed(&adapter));
+}
+
+#[test]
+fn a_resumable_pool_pause_records_no_stop_cause() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(primary_only()));
+    let hashed_at = power_and_hash(&mut adapter);
+    // Act
+    drop_and_exhaust(&mut adapter, hashed_at + 1);
+    // Assert
+    assert_eq!(adapter.session.stop_cause_for(local_lease(1).id()), None);
+}
+
+#[test]
+fn an_adopted_run_reports_its_lease() {
+    // Arrange
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(primary_only()));
+    // Act
+    adapter.drive(wake(local_ready(), 0));
+    // Assert
+    assert_eq!(adapter.session.maybe_lease_id(), Some(local_lease(1).id()));
+}
+
+#[test]
+fn exhausted_pools_that_end_a_run_stay_its_stop_cause() {
+    // Arrange: a power-up that never dispatched exhausts its pools.
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(primary_only()));
+    adapter.drive(wake(local_ready(), 0));
+    adapter.connect(ProductionPool::Primary, 1);
+    authorize_pool(&mut adapter, ProductionPool::Primary, 2);
+    adapter.connect(ProductionPool::Primary, 3);
+    let exhausted_at = drop_and_exhaust(&mut adapter, 4);
+    // Act: the network then drops too.
+    adapter.drive(wake(
+        ProductionReadiness {
+            network_ready: false,
+            ..local_ready()
+        },
+        exhausted_at + 1,
+    ));
+    // Assert
+    assert_eq!(
+        adapter.session.stop_cause_for(local_lease(1).id()),
+        Some(ProductionSessionBlocker::PoolsExhausted)
+    );
+}
