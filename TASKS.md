@@ -1204,7 +1204,7 @@ Verification: pending. Completion review: pending.
 ADR-0037 step 5. Depends on `task-live-hardware-settings-owner`. Hardware;
 each soak needs its own `TASKS.md` contract.
 
-- [ ] Soak at least:
+- [x] Soak at least:
   - upstream default (485 MHz, 1200 mV) with the automatic fan;
   - one live frequency change during a lease;
   - the catalog-maximum shutdown tail.
@@ -1246,8 +1246,8 @@ Ultra 205 upstream-default soak hardware: enabled.
       (ordinal 3), with an independent review: `complete`.
 - [x] Selectable soak profiles: `preflight --profile`, and `serve` writes
       only the named profile's settings, with regressions.
-- [ ] Soak 009 attempt 001: the catalog-maximum frequency, 575 MHz at
-      1200 mV (ordinal 4), with an independent review.
+- [x] Soak 009 attempt 001: the catalog-maximum frequency, 575 MHz at
+      1200 mV (ordinal 4), with an independent review: `complete`.
 
 Soak 007 hardware contract (owner-authorized 2026-10-16). It is the archived
 `task-ultra205-default-profile-soak-006` contract, unchanged except:
@@ -1470,8 +1470,35 @@ Evidence to read (observations, not pass criteria):
 - the counter hashrate against soak 007's 485 MHz (expected ratio about
   575/485 = 1.19).
 
-Verification: soaks 007 and 008 `complete`. Completion review: pending the
-catalog-maximum soak and the parity rows.
+Soak 009 attempt 001 result (2026-10-16): `complete`. Redacted summary:
+`docs/parity/evidence/20261016-ultra205-soak-009.md`.
+- Package `6b6162af`, installed `observed_exact_package`; Gate `eacd8147`.
+  Device settings 575 MHz, 1200 mV and the automatic fan were read back as
+  requested.
+- `result.json`: `passed`, with no failures.
+  - Mining: 600,000 active ms, ended by the budget.
+  - Shutdown: about 9.3 s on the device, against the 22,550 ms bound at
+    575 MHz, then `fan_paused`.
+  - Ledger: v2 ordinal 4, charged once (total 2,400,000 ms, next 5).
+  - Shares: 31 accepted, 0 rejected.
+  - Windows: 20/20 credited, with zero reconnects. Maximum gaps were 897 ms
+    on the WebSocket and 2,302 ms on HTTP.
+  - Preservation: final `settings_match` true, from the signing page.
+- Work-gate samples stayed within 5.19–5.25 V, 12.24–14.34 W (median
+  13.75 W) and 37–61 C, at 2,420–5,775 RPM.
+- The counter hashrate was 1.179 times 485 MHz, against 1.186 expected.
+- After completion, the restore wrote 485/1200 with the automatic fan and
+  read it back (`profile_completed`).
+- The independent review agrees `complete`. It recomputed every criterion
+  from the raw files.
+  - It corrected the hashrate ratio to a like-for-like segment.
+  - It noted that `miningActive` stays true through the shutdown with a
+    stale hashrate.
+  - The shutdown took about 110 ms per ramp step (84 steps at 575 MHz),
+    against 250 ms in the bound.
+
+Verification: soaks 007, 008 and 009 `complete`. Completion review: pending
+the parity-row transitions.
 
 ## Future
 
