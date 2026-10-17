@@ -1098,8 +1098,6 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-## Future
-
 ### task-local-mining-owner | 2026-10-16 | Mine the saved pool with no lease
 
 ADR-0038 step 3. Depends on the two tasks above.
@@ -1132,7 +1130,68 @@ ADR-0038 step 3. Depends on the two tasks above.
 - [ ] Update README text that still says the adapter is fail-closed before
       pool effects.
 
+Started 2026-10-17 at the owner's request. Software only. Local mining stays
+off behind a compile-time switch until `task-boot-resume-and-crash-loop-guard`
+lands (owner decision 2026-10-17).
+
+Owner decisions (2026-10-17):
+- Only an operator resume ends `StayStopped`.
+- On booting with `overheat_mode` saved, cool for 30 s, then restart at the
+  saved pair without lowering it again (it may already be lowered). Clear
+  `overheat_mode` after the restart's preparation succeeds.
+- A restart guard backs off between runs that fail before hashing, or that
+  end on non-overheat unsafe stops. After several in a row it holds until
+  resumed; a stable run resets it. This diverges from upstream, which
+  retries forever.
+- Defaults:
+  - the probe connection closes and reconnects after power-up;
+  - the fault latch covers local mining only;
+  - a pause closes the pool connection;
+  - the switch is a compile-time constant;
+  - holds get API blocker labels.
+
+Plan (small commits, pure core first, the full gate after each):
+1. **Runtime:** `FanControllerOwner::Local(generation)` with the lease rule.
+   The chip temperature at revocation is recorded with the unsafe detail,
+   for `is_overheat`.
+2. **Runtime (pure):** `LocalOwnerPolicy`. It decides `Begin(profile)` or
+   `Hold(reason)` from intent, other boot owners, a Gate link, the latched
+   fault, the overheat state, readiness and the profile check. It also holds
+   the restart guard and boot-time overheat cooling.
+3. **Stratum:** a `Local` stop condition that never expires and is not
+   resumable.
+4. **Stratum:** probe-before-power for `Local` runs.
+   - Connect and authorize with the ASIC off.
+   - On success, close and prepare.
+   - Reconnect after `HardwarePrepared`.
+   - Exhausted pools probe every 30 s with no hardware effect.
+   - No dispatch unless `Ready`.
+5. **Firmware refactor, no behavior change:** an owner-generation accessor,
+   and an extensible revoked branch in `owner_loop`.
+6. **Firmware persistence:** the overheat entry, the lowered pair, and
+   clearing `overheat_mode`. `Refused` is split from `HardwareWriteFailed`.
+7. **Firmware:** the local owner behind `LOCAL_MINING_ENABLED = false`.
+   - begin, activate and prepare a local generation;
+   - the `Local` fan owner and live hardware;
+   - the ordered safe-stop on any revocation, with the local revoked branch
+     first;
+   - lease Start refused while a local run exists;
+   - off while a campaign, diagnostic or stimulus owns the boot.
+8. **Hardware fault latch:** a real failed controller fan write under
+   `Local` revokes with `ControlFailed` and holds until reboot.
+9. **Overheat wiring:** enter, cool, save the lowered pair, and clear
+   `overheat_mode` after preparation. `StayStopped` forces Paused. The
+   boot-time path is above.
+10. **Records:** README, ADR-0038 and TASKS. The switch itself is turned on
+    by task 5.
+
+Interim rule until task 4: `begin_local` is refused beside a Gate link,
+`begin_link` is refused while local mining is powered, and a link that
+appears while probing ends the run.
+
 Verification: pending. Completion review: pending.
+
+## Future
 
 ### task-lease-handover-and-baseline-restore | 2026-10-16 | Leases take over local mining and restore it
 
