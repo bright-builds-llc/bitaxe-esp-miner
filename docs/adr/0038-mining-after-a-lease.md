@@ -230,7 +230,8 @@ Handover (task 4, owner decision 2026-10-17):
   within 15 s), across the session's leases. After a refused Hello it
   stays off for up to 5 minutes, until a Hello is admitted, so the next
   Connect finds the ASIC stopped. Any refused Hello starts this hold, even
-  one refused while a lease shuts down; that errs toward staying off.
+  one refused while a lease shuts down; that errs toward staying off. The
+  owner confirmed this 5-minute hold on 2026-10-17.
 - It resumes once the link has been quiet for 15 s, in the paused state if
   the operator paused it.
 

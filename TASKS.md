@@ -1104,6 +1104,11 @@ named-phase allocation profile item stays open. Qualification stays false.
 
 ADR-0038 step 6. Hardware. Each soak needs its own `TASKS.md` contract.
 
+Follow-up note (2026-10-17): the owner confirmed task 4's 5-minute hold
+after a refused Hello, which the archived
+`task-lease-handover-and-baseline-restore` recorded as awaiting
+confirmation (ADR-0038).
+
 - [ ] Local mining soaks growing from 30 minutes to several hours, recording
       the device configuration.
 - [ ] A hardware check that a lease interrupts local mining and restores it.
