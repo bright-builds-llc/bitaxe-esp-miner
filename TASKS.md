@@ -1210,19 +1210,23 @@ each soak needs its own `TASKS.md` contract.
   - the catalog-maximum shutdown tail.
   Record the device configuration in evidence.
 - [ ] Update the PWR and ASIC parity rows whose non-claims name "arbitrary
-      profiles", within what the evidence shows. Each row change needs a
-      formal transition (work plan, result and `checklist-transitions`
-      record); a direct edit fails `just parity`. Candidates, with the
-      soak 007 and 008 evidence:
-      - ASIC-007: live retuning from 485 to 400 MHz and back;
-      - PWR-002: the 485/1200 device-settings profile with the automatic
-        fan;
-      - PWR-003: measured core-voltage steps;
+      profiles", within what the evidence shows. Blocked on an owner
+      decision. Every candidate row is `verified`, and the parity tool
+      refuses changes to verified rows:
+      - `transition-item` forbids automatic transitions out of `verified`;
+      - `revise-checklist-documentation` accepts only the hard-coded
+        2026-07-28 revision.
+
+      Narrowing these notes would need a new documentation-revision
+      authority in `tools/parity`, which is a change to the parity policy.
+      Candidates, with soaks 007–009:
+      - ASIC-007: ramps to 485 and 575 MHz, live retuning 485↔400 MHz, and
+        the 575 MHz shutdown;
+      - PWR-002: the 485/1200 and 575/1200 device-settings profiles with the
+        automatic fan;
+      - PWR-003: measured core-voltage steps of −107 and +108 mV;
       - PWR-005: DS4432U codes for 1200 and 1100 mV;
       - THR-002: automatic fan settling near the 60 C target.
-
-      Do them after the catalog-maximum decision, so each row transitions
-      once.
 
 Started 2026-10-16 at the owner's request ("do step 4 and 5").
 
@@ -1498,7 +1502,7 @@ Soak 009 attempt 001 result (2026-10-16): `complete`. Redacted summary:
     against 250 ms in the bound.
 
 Verification: soaks 007, 008 and 009 `complete`. Completion review: pending
-the parity-row transitions.
+the owner's decision on revising verified parity rows.
 
 ## Future
 
