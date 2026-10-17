@@ -93,7 +93,8 @@ pub enum LocalDecision {
 /// How a run ended, for the restart guard.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RunEnding {
-    /// Stopped on purpose: a pause, a Gate link, or a settings change.
+    /// Stopped on purpose or by the environment: a pause, a Gate link, a settings
+    /// change, or a lost readiness fact such as the network.
     Requested,
     /// An overheat; `OverheatRecovery` paces the restart instead.
     Overheat,

@@ -25,6 +25,14 @@ impl GenerationGate {
         Some(generation)
     }
 
+    /// Whether a Gate link (or its diagnostic, reservation or lease) holds the gate.
+    /// Local mining stays off then; a finished generation holds nothing.
+    pub fn holds_link(&self) -> bool {
+        let state = self.state.load(Ordering::Acquire);
+        let generation = state & !FLAGS;
+        generation != 0 && generation != self.local_generation.load(Ordering::Acquire)
+    }
+
     /// Whether `generation` was begun by [`Self::begin_local`].
     pub fn is_local(&self, generation: WorkerGeneration) -> bool {
         generation.0 != 0 && self.local_generation.load(Ordering::Acquire) == generation.0

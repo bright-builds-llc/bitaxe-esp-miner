@@ -98,3 +98,32 @@ fn a_later_link_is_not_mistaken_for_the_finished_local_generation() {
     // Assert
     assert!(!local_flag);
 }
+
+#[test]
+fn a_link_holds_the_gate() {
+    // Arrange
+    let gate = GenerationGate::new();
+    gate.begin_link(0).expect("link");
+    // Act / Assert
+    assert!(gate.holds_link());
+}
+
+#[test]
+fn a_local_generation_is_not_a_link() {
+    // Arrange / Act
+    let (gate, _generation) = active_local();
+    // Assert
+    assert!(!gate.holds_link());
+}
+
+#[test]
+fn a_finished_generation_holds_nothing() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let link = gate.begin_link(0).expect("link");
+    gate.revoke_at(link, 1);
+    // Act
+    gate.finish_shutdown(link);
+    // Assert
+    assert!(!gate.holds_link());
+}
