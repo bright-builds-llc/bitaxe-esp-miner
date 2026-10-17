@@ -31250,3 +31250,237 @@ Residual risks:
   they still need their hardware contract
   (`task-parity-bap-settings-effects`).
 - The soak's largest gaps traced to Wi-Fi delivery, not to the device.
+
+### task-parity-bap-settings-effects | 2026-10-15 | Apply BAP settings and close the remaining BAP gaps
+
+Origin: the BAP ordinal 009 review. BAP-001 is `verified` with these as
+explicit non-claims.
+
+- [x] Settings: upstream `BAP_handle_settings` applies frequency, ASIC voltage,
+      Wi-Fi SSID and password, fan speed, auto fan, found block and show new
+      block, and acknowledges each (fan speed silently). Done in software
+      (2026-10-16): each intent now reaches the existing owners, and setting
+      values parse like the reference's `atoi`/`atof` and `uint16_t` casts.
+- [x] Several subscriptions due on one tick are published in subscription
+      order, while the reference uses `BAP_PARAM` order
+      (`firmware/bitaxe/src/bap_runtime.rs`). Subscriptions are now kept in
+      `BapParameter::ALL` order, with a regression.
+- [x] Check `wifi_rssi` while disconnected: the reference sends `-128`.
+      Done in `task-parity-wifi-rssi-live` (`34465167`). Observed live in
+      soak 006.
+- [x] Report the boot-ordinal transition kind (initialized vs reinitialized
+      after an invalid record), or pin the RTC record's address, so the
+      ordinal can be compared across builds. System info now reports
+      `bootOrdinalTransition` (`initialized`, `incremented`,
+      `reinitialized_corrupt`, `reinitialized_overflow`) beside
+      `bootOrdinal`.
+- [x] A settings hardware contract (moved from
+      `task-parity-bap-live-accessory-verification`): electrical safety,
+      allowed settings, restoration of changed settings, evidence and stop
+      conditions. Each setting needs the owner's go-ahead.
+  - [x] Tooling for BAP settings during a soak's lease:
+    - soak samples record the saved fan settings and fan RPM;
+    - `bap-client` waits through the firmware's 40 s save window, and
+      reports a silent `fan_speed` as `sent_silently`;
+    - `preflight --bap-changes` and `serve --bap-port` run the frozen client
+      on the plan;
+    - the judge checks each operation and the fan segment;
+    - regressions cover all of it.
+  - [x] Point `SOAK_TASK` at this task.
+  - [x] Soak 010 attempt 001 (soak ledger v2, ordinal 5), with an
+        independent review: `complete`.
+
+Started 2026-10-16. Software only; no hardware effect without a settings
+hardware contract.
+
+Settings findings (2026-10-16):
+- The HTTP settings PATCH path validates, persists and reloads settings
+  through `FirmwareSettingsAdapter`.
+- Frequency and core voltage persisted that way were display-only at the
+  time. Mining used the signed Work Lease's fixed hardware profile, and
+  nothing applied NVS frequency or voltage to the ASIC. ADR-0037 steps 3–4
+  changed that. Upstream applies BAP frequency live, and its power task
+  re-applies NVS changes.
+- Fan settings are applied live by `fan_controller_runtime`.
+- Wi-Fi settings persist without a restart. The restart owner is in
+  `http_api/deferred_effects.rs`.
+- `block_found` and `show_new_block` are command-visible RAM state.
+- The BAP owner has 832 bytes of stack headroom, so it cannot run
+  persistence itself.
+
+Plan (2026-10-16, after the owner's decisions):
+- Route each intent through the existing owners, as an HTTP settings PATCH
+  would:
+  - frequency, core voltage, fan speed (auto fan off plus manual speed) and
+    auto fan are persisted;
+  - Wi-Fi SSID and password are persisted, and the device restarts as
+    upstream does (owner decision 2026-10-16: allow, like upstream);
+  - `found_block` and `show_new_block` are command-visible RAM state.
+- Frequency and voltage were display-only until ADR-0037's
+  `task-live-hardware-settings-owner` applied them live (owner direction
+  2026-10-16). That landed in `70f31fae`.
+- Parse values the way the reference's `atoi`/`atof` and `uint16_t` casts do,
+  in the pure core, with tests.
+- Run persistence off the BAP owner's thread, which has 720 bytes of stack
+  headroom.
+  - The work runs on the HTTP server task through `httpd_queue_work`. That
+    task already persists PATCHes on its audited 16 KiB stack, so the change
+    adds no RAM.
+  - The BAP thread waits on a `bitaxe_runtime::reply`. Firmware never uses
+    `std` channels, because of the Xtensa realignment bug.
+  - The HTTP stack audit now also charges the queued job.
+
+Implementation (2026-10-16):
+- Pure core:
+  - `bitaxe_core::bap::{reference_atoi, reference_atof, complete_setting}`;
+  - `bitaxe_api::bap_settings`, which maps settings onto PATCH writes and
+    block state.
+- Firmware: `http_api/accessory_settings.rs` holds the queued job, with a
+  claim state. A job abandoned after the 10 s wait never runs, so a
+  `set_failed` answer is final.
+- The adapter sends the acknowledgement. For credentials it then waits
+  100 ms, sends `STA status restarting`, and calls the HTTP restart owner,
+  which waits 1,000 ms before restarting.
+
+Divergences, recorded:
+- **Frequency and voltage** were persisted only until ADR-0037 step 4
+  (`70f31fae`) applied saved changes live. Soak 010 shows BAP `frequency`
+  and `asic_voltage` taking effect during a lease.
+  - The reference sets the ASIC frequency directly in the BAP handler. This
+    firmware routes it through the live owner, within the catalog range and
+    in safe order, so it applies within about a second.
+  - Outside a lease the setting is saved but nothing mines (see
+    `task-mining-baseline-after-lease`).
+- **Negative `found_block`** is answered `set_failed`. The count is unsigned;
+  the reference stores the negative value.
+- **Frequency values:** NaN and infinity are refused (the reference would
+  store NaN). Hexadecimal floats read as 0.
+- **Wi-Fi limits:** the settings schema refuses an SSID outside 1–32 bytes and
+  a password over 63 bytes, answering `set_failed`. The reference's BAP path
+  writes them.
+- **Owner unavailable:** `set_failed` is sent before the HTTP server starts,
+  after a 10 s queue wait, or if ESP-IDF drops the queued control message,
+  which leaks that one job.
+- **Unset credentials** read as empty. That matches the factory
+  `config-205.cvs`; the reference's Kconfig defaults apply only to a missing
+  key.
+- **Command status:** BAP block flags are recorded as a block-found dismiss.
+- **Checklist text:** the BAP-001 row's non-claims still say settings get
+  `set_failed`. The row is `verified`, and the parity tool forbids
+  `verified` → `verified` transitions, so the correction lives here.
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+Soak 010 hardware contract (BAP settings during a lease). The owner gave
+the go-ahead on 2026-10-16 ("Let's close the bap settings gap, since the
+uart is still connected") for these settings over the adapter that is
+already connected. It is the soak 007 attempt 002 contract, unchanged except:
+- **Electrical:** the owner's CP2102 adapter stays as wired for BAP ordinals
+  006–009: J6 GND, RXD and TXD only. J6 pin 1 (5 V) and the adapter's 3V3
+  and +5V pins stay unconnected. No wiring change and no connection
+  instructions are part of this contract. If the adapter's node
+  (`/dev/cu.usbserial-*`) is absent, stop and record
+  `stop_hardware_blocker`.
+- **Package:** `just package` at the clean, pushed `HEAD` that records this
+  contract. It adds the BAP soak tooling and sample fields, and changes no
+  firmware behavior. Install it with the same state-preserving
+  `just flash-monitor ... --capture-timeout-seconds 360 --redact-evidence`.
+- **Parent and ledger:** `P = scratch/ultra205-soak-010`, with
+  `R = P/attempt-001`. Soak ledger v2 ordinal 5. The ledger must report next
+  ordinal 5 and total 2,400,000.
+- **Preflight:** add `--bap-changes`. The context must record the
+  `upstream-default-bap` profile (485 MHz, 1200 mV, automatic fan, manual
+  fan 100%), plan `bap`, and the frozen `bap_client` digest.
+- **Serve:** add `--bap-port /dev/cu.usbserial-0001`.
+- **Allowed effects:**
+  - The initial HTTP PATCH of the profile, while idle, before the page
+    reload.
+  - During the work gate, only these BAP frames, each sent once by
+    `bap-client`:
+    - at 100 s or later: `SET show_new_block 1`, `REQ show_new_block`,
+      `SET show_new_block 0`, `REQ show_new_block`, `SET found_block 0`,
+      `REQ found_block`;
+    - at 180 s or later: `SET frequency 400`, then `SET asic_voltage 1100`;
+    - at 280 s or later: `SET fan_speed 80`;
+    - at 420 s or later: `SET asic_voltage 1200`, `SET frequency 485`,
+      `SET fan_speed 100`, `SET auto_fan 1`.
+
+    A change stops at its first failed operation. Before every frame,
+    `serve` checks the newest Gate record: the soak must be mining,
+    unrevoked, on a record at most 5 s old, with at least 60 s left on the
+    work gate. Otherwise the change stops with `bap_gate_closed`. `serve`
+    re-hashes the frozen client before each change.
+  - If a change stopped part-way, or the judge found a change that did not
+    take, one HTTP restore PATCH of the profile at completion.
+- **Prohibited:** `SET ssid` and `SET password` (they restart the device and
+  carry credentials). Also any `CMD`, and any other `SET`, `REQ` or `SUB`.
+- **Safety:** every saved pair already has hardware evidence (485/1200,
+  400/1200 and 400/1100). Frequency goes down before voltage and voltage up
+  before frequency, so 485 MHz at 1100 mV is never saved. The manual fan at
+  80–100% only adds cooling. The live stop limits are unchanged.
+- **Judged:**
+  - every operation's acknowledgement or read-back value;
+  - `fan_speed` drawing no refusal within 45 s;
+  - in each settled segment, the saved frequency, voltage and fan settings
+    on every mining sample;
+  - the voltage step and hashrate ratio, against the first segment;
+  - under the manual fan, a median fan speed at least 1.3 times the
+    automatic fan's median before it.
+- **Stop conditions:** a failed operation or a live step that revokes the
+  lease seals `unverified`. Diagnose it before any retry; a recurrence after
+  a targeted fix is `stop_repeated_boundary`.
+
+Evidence to read: each operation's frames; segment medians; fan RPM under
+the manual and automatic fan.
+
+Soak 010 attempt 001 result (2026-10-16): `complete`. Redacted summary:
+`docs/parity/evidence/20261016-ultra205-soak-010.md`.
+- Package `e9f19f95`, installed `observed_exact_package`; Gate `eacd8147`;
+  frozen `bap-client` `059a4691`.
+- `result.json`: `passed`, with no failures.
+  - Mining: 600,000 active ms, ended by the budget.
+  - Shutdown: about 7.8 s on the device, then `fan_paused`.
+  - Ledger: v2 ordinal 5, charged once (total 3,000,000 ms, next 6).
+  - Shares: 30 accepted, 0 rejected.
+  - Windows: 20/20 credited, with zero reconnects. Maximum gaps were 856 ms
+    on the WebSocket and 2,315 ms on HTTP.
+  - Preservation: final `settings_match` true, from the signing page.
+- Every BAP operation answered as the reference does:
+  - `show_new_block` and `found_block`, each acknowledged and read back over
+    BAP (`block_found 0`);
+  - `frequency` → `400.00` / `485.00`;
+  - `asic_voltage` → `1100` / `1200`;
+  - `fan_speed` silent, with no refusal within 45 s;
+  - `auto_fan` → `auto_fan_speed_set`.
+- Segments (medians):
+  - 485/1200 auto: 1,199 mV, 434.1 GH/s, 2,773 RPM.
+  - 400/1100 auto: 1,097 mV, 367.0 GH/s, 2,602 RPM.
+  - 400/1100 manual 80%: 1,085 mV, 356.4 GH/s, 7,468 RPM.
+  - Back to 485/1200 auto: 1,198 mV, 421.1 GH/s, 2,942 RPM.
+  - Voltage steps were −102 and −114 mV for −100. Hashrate ratios were
+    0.845 and 0.821 for 0.825. The manual fan ran 2.87 times faster.
+- The independent review agrees `complete`. It recomputed every criterion,
+  operation and segment from the raw files. It found that 80% duty already
+  reads at full speed: the duty code matches the reference, and the fan
+  saturates.
+
+Verification:
+- the software items, with their regressions;
+- soak 010 `complete`, with an independent review;
+- the gate (fmt, clippy, build, tests, firmware build and stack audits,
+  `just test`, Bright Builds, redaction, `just parity`).
+
+Completion review: BAP settings now match upstream in effect.
+- Frequency, core voltage, manual fan speed and auto fan take effect live
+  during a lease.
+- The block flags are acknowledged and read back.
+- Fan speed is silent, as in the reference.
+
+Residual risks and non-claims:
+- Wi-Fi `ssid` and `password` over BAP were not run on hardware; they
+  restart the device and carry credentials. Unit tests cover them.
+- The verified BAP-001 row still says settings are answered `set_failed`.
+  Correcting it needs an owner verified-revision authority, as for the
+  soak 007–009 rows.
+- Outside a lease, saved settings take effect only when the next lease
+  starts (`task-mining-baseline-after-lease`).
