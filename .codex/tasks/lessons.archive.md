@@ -199,3 +199,25 @@ Archived by lesson audits; each block keeps its original text.
 - Archive date: 2026-10-09
 - Archive reason: Fully superseded: AGENTS.md "Autonomous Ultra 205 Hardware Verification" lets local development evidence and displays keep IP addresses and requires redaction only for committed or shared evidence, with credentials kept under stronger protection.
 - Replacement ID: none; the replacement is the cited always-loaded AGENTS.md rule
+
+## lesson-earliest-typed-failure-precedence | 2026-07-19 10:31
+
+1. Date: 2026-07-19
+2. What went wrong: Cleanup or a later classifier result could replace the earliest typed failure, obscuring the boundary that actually stopped the workflow and routing recovery incorrectly.
+3. Preventive rule: Capture the first typed failure once and preserve it through restoration, cleanup, sealing, and reporting. Later failures may be recorded separately but must not overwrite the original cause.
+4. Trigger signal to catch it earlier: A mutable failure category is assigned in multiple phases after the first error, or a terminal report names cleanup instead of the earlier admission, discovery, transport, or validation boundary.
+
+- Archive date: 2026-10-17
+- Archive reason: Fully superseded: `docs/hardware/hardware-attempt-policy.md` states this preventive rule verbatim ("Preserve the earliest typed failure through restoration, cleanup, sealing, and reporting. Later failures may be recorded separately but never replace the first boundary."), AGENTS.md "Progress-Gated Hardware Attempts" requires following that policy for every hardware attempt and names earliest-failure precedence in every continuation, and `docs/hardware/esp-device-session.md` applies the same rule to its reboot classification.
+- Replacement ID: none; the replacement is the cited always-loaded AGENTS.md rule and the policy document it requires
+
+## lesson-consume-qualified-transport-capabilities | 2026-07-22 20:41
+
+1. Date: 2026-07-22
+2. What went wrong: A phase-local reboot workflow hard-coded `espflash` as its runtime observer even though earlier hardware evidence in the same repository had already shown that passive espflash delivered zero application bytes while the receive-only OS-native reader delivered valid heartbeats.
+3. Preventive rule: Model bootloader access, runtime observation, application control, and evidence proof as separate capabilities. Phase workflows must consume the repository's currently qualified backend for each capability instead of selecting a convenient tool locally.
+4. Trigger signal to catch it earlier: A phase names a concrete transport executable directly even though a repository qualification, capability contract, or prior hardware result selects a different backend for that boundary.
+
+- Archive date: 2026-10-17
+- Archive reason: Fully superseded: AGENTS.md "Deterministic ESP Device Sessions" restricts pinned espflash to detector, bootloader, flash, checksum and explicit reset stages and requires the receive-only OS-native adapter for authoritative runtime observation; the responsibility matrix in `docs/hardware/esp-device-session.md` it requires names one required backend and the prohibited substitutions for each capability (detect, flash, observe, restart, prove), including `espflash monitor` as a runtime observer.
+- Replacement ID: none; the replacement is the cited always-loaded AGENTS.md rule and the session contract it requires

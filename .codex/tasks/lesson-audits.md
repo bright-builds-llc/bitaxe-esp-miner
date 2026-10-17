@@ -140,3 +140,49 @@
   - Bytes and estimates: global `5,230` / `1,744`, repository `28,057` / `9,353`, combined `33,287` / `11,097`
   - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `5c4c671df8bf0cff541a16a40f62042330fe4aa280b6f508728fe3d8a948ed74`
   - Threshold state: above both hard loading limits; this trigger is consumed
+
+## audit-owner-requested-supersession-and-pending-lessons | 2026-10-17T20:19:13Z
+
+- Audit timestamp: `2026-10-17T20:19:13Z`
+- Trigger: owner's explicit request on 2026-10-17, together with a proposed append of three lessons that would keep the combined active total above the `24,000`-byte and `8,000`-token limits. Both active files were unchanged since the 2026-10-09 baseline (SHA-256 values matched).
+- Active source paths:
+  - Global: `/Users/peterryszkiewicz/.codex/tasks/lessons.md` (read only; not modified)
+  - Repository: `/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/.codex/tasks/lessons.md`
+- Review: every active block in both files was read in full and compared with the current always-loaded AGENTS.md rules, the policy documents they require (`docs/hardware/hardware-attempt-policy.md`, `docs/hardware/esp-device-session.md`) and the current code.
+- Before: global `7` lessons, `5,230` bytes / `1,744`; repository `31` lessons, `28,057` bytes / `9,353`; combined `38`, `33,287` bytes / `11,097` summed estimated tokens.
+- Consolidated lesson IDs: none.
+  - `lesson-surface-preflight-exit-before-advancing` and `lesson-gate-each-hardware-step-on-the-previous-result` share a broad cause but not a rule or trigger: the first validates package fields through repo-owned contracts and inspects exit codes when a preflight is silent; the second joins dependent commands with `&&` and drives one scenario at a time. Both stay active.
+  - `lesson-macos-holds-fresh-executables-at-launch` shares its cause (macOS first-launch policy assessment) with global `lesson-macos-host-stalls-separate-policy-from-cache`, but the rules differ (run built binaries directly and size test bounds, versus classify host boundaries and recover). Both stay active.
+- Archived lesson IDs (2, `1,614` bytes), original text preserved in `.codex/tasks/lessons.archive.md` with archive date, reason and `Replacement ID: none`:
+  - `lesson-earliest-typed-failure-precedence` (evidence guardrail): fully superseded; `docs/hardware/hardware-attempt-policy.md` states its preventive rule verbatim, AGENTS.md "Progress-Gated Hardware Attempts" requires that policy for every hardware attempt and names earliest-failure precedence, and `docs/hardware/esp-device-session.md` applies it to reboot classification. Its trigger boundaries (admission, discovery, transport, validation) are hardware-attempt boundaries, so the replacement is equally strong.
+  - `lesson-consume-qualified-transport-capabilities` (evidence guardrail): fully superseded by AGENTS.md "Deterministic ESP Device Sessions" and the responsibility matrix in `docs/hardware/esp-device-session.md`, which fix one required backend and the prohibited substitutions per capability, including `espflash monitor` as a runtime observer.
+- Re-checked and retained:
+  - `lesson-native-usb-and-wifi-share-internal-dma-heap`: its TinyUSB cause is gone (ADR-0021; `firmware/bitaxe/src/bwg_worker_source_ownership_test.rs` asserts no `tinyusb_driver_install`), but its lasting rule is live: one ordered internal budget for Wi-Fi and forced-internal pthread stacks, a measured internal reserve (`CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304`) and a compile-time Kconfig assertion (`firmware/bitaxe/src/startup.rs`). `lesson-diagnose-heap-loss-from-a-passive-series` extends it. Not proven obsolete.
+  - `lesson-separate-flash-effect-from-monitor-proof`: AGENTS.md "Flash And Monitor Timeouts" and "Ultra 205 Serial Session Reuse" do not state that missing monitor proof must never recommend an unchanged reflash, or that flash effect, cleanup, transcript and runtime replay are separate outcomes.
+  - `lesson-never-invite-ready-before-live-checkpoint`: still stricter than AGENTS.md "Asynchronous Human Checkpoints" (invite only after a confirmed live `required` checkpoint).
+  - `lesson-native-usb-capture-needs-prearmed-observation-or-replay`: AGENTS.md states replay proof generally but the restoration pre-arm only for Plan 13; no new evidence since the 2026-10-09 decision.
+  - Every other block records a cause, rule and trigger not stated in AGENTS.md or another active lesson.
+- Added lesson IDs: none. After archiving, the active set remains above both limits, so the three proposed lessons are recorded here as pending, over budget. None is covered by AGENTS.md or an existing lesson (`lesson-update-validator-scope-lists-with-scope-changes` and `lesson-evaluator-identity-binds-transitive-validators` concern other inventories). Pending text:
+  - `lesson-update-the-host-mirror-with-the-production-adapter` | 2026-10-17
+    1. Date: 2026-10-17
+    2. What went wrong: Adding a field to the production session adapter broke `//firmware/bitaxe:production_worker_admission_tests`, whose host test mirrors the adapter struct and compiles the real `production_mining_session/bwg.rs`.
+    3. Preventive rule: After changing `OrdinaryEspProductionSessionAdapter` fields or what `bwg.rs` reads, update the host mirror (`firmware/bitaxe/src/production_worker_admission_host_test.rs` and its submodules) and run that target before the full gate.
+    4. Trigger signal: A `self.<field>` is added in `bwg.rs` or the adapter struct.
+  - `lesson-keep-safe10-pinned-fragments-byte-identical` | 2026-10-17
+    1. Date: 2026-10-17
+    2. What went wrong: Rewriting the readiness safety expression failed `//tools/automation:automation_test` because `tools/automation/src/safe10-source-inventory.ts` pins exact source fragments of SAFE-10 files.
+    3. Preventive rule: Before editing a file listed in `safe10ProductionFragments`, keep each pinned fragment byte-identical and add new behavior as a separate term.
+    4. Trigger signal: Editing `readiness.rs`, `recovery_policy.rs`, `cooling.rs`, `mining_actuation*.rs` or another SAFE-10-listed file.
+  - `lesson-never-edit-under-a-running-gate` | 2026-10-17
+    1. Date: 2026-10-17
+    2. What went wrong: Editing files while the full gate ran produced spurious gate failures and wasted reruns.
+    3. Preventive rule: Stop a running gate before editing, or wait for it to finish; never edit the tree under a running gate.
+    4. Trigger signal: About to edit while a gate background task is active.
+- After: global `7` lessons, `5,230` / `1,744`; repository `29` lessons, `26,443` bytes / `8,815`; combined `36`, `31,673` bytes / `10,559` summed estimated tokens.
+- Remaining over budget: combined `7,673` bytes and `2,559` estimated tokens above the limits; the repository file alone exceeds both. No remaining block is proven obsolete, duplicate or fully superseded, and archiving on size alone is prohibited. Adding the pending lessons requires first promoting further rules into AGENTS.md or another always-loaded source, which is outside this audit's scope.
+- Next baseline:
+  - Timestamp: `2026-10-17T20:19:13Z`; the 90-day changed-lessons trigger becomes eligible on `2027-01-15T20:19:13Z`
+  - Counts: global `7`, repository `29`, combined `36`, with `0` new active lessons accumulated
+  - Bytes and estimates: global `5,230` / `1,744`, repository `26,443` / `8,815`, combined `31,673` / `10,559`
+  - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `7f728c00d149b7343ed2ac31ebd32bff8b823682be25eace9a257ceb52f6067a`
+  - Threshold state: above both hard loading limits; startup loading uses the priority-ordered whole-block rule, and this trigger is consumed
