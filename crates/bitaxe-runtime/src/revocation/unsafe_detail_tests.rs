@@ -33,6 +33,7 @@ fn an_unsafe_sample_records_its_first_failing_fact() {
             maybe_verdict: Some(bus_voltage_verdict(5_512)),
             since_safe_ms: 100,
             closed_ms: 500,
+            maybe_chip_temp_milli: None,
         })
     );
 }
@@ -131,4 +132,89 @@ fn a_detail_without_a_verdict_marks_its_fact_none() {
     assert!(marker.contains(
         " trigger=zero_fan fact=none state=none value_milli=unavailable age_ms=unavailable "
     ));
+}
+
+#[test]
+fn a_revocation_records_the_chip_temperature_of_the_sample_that_revoked() {
+    // Arrange
+    let (gate, _generation) = active_gate();
+    gate.check_safety(true, true, 400);
+    gate.note_chip_temperature(Some(76_000));
+    // Act
+    gate.check_safety_verdict(Some(bus_voltage_verdict(5_512)), true, 500);
+    // Assert
+    assert_eq!(
+        gate.maybe_unsafe_detail()
+            .and_then(|detail| detail.maybe_chip_temp_milli),
+        Some(76_000)
+    );
+}
+
+#[test]
+fn a_sample_without_a_fresh_chip_reading_records_none() {
+    // Arrange
+    let (gate, _generation) = active_gate();
+    gate.note_chip_temperature(Some(76_000));
+    gate.note_chip_temperature(None);
+    // Act
+    gate.check_safety_verdict(Some(bus_voltage_verdict(5_512)), true, 500);
+    // Assert
+    assert_eq!(
+        gate.maybe_unsafe_detail()
+            .and_then(|detail| detail.maybe_chip_temp_milli),
+        None
+    );
+}
+
+#[test]
+fn a_later_reading_never_replaces_the_revoking_samples_temperature() {
+    // Arrange: first wins, as for the rest of the detail.
+    let (gate, _generation) = active_gate();
+    gate.note_chip_temperature(Some(76_000));
+    gate.check_safety_verdict(Some(bus_voltage_verdict(5_512)), true, 500);
+    // Act
+    gate.note_chip_temperature(Some(40_000));
+    // Assert
+    assert_eq!(
+        gate.maybe_unsafe_detail()
+            .and_then(|detail| detail.maybe_chip_temp_milli),
+        Some(76_000)
+    );
+}
+
+#[test]
+fn a_safety_silence_revocation_records_no_chip_temperature() {
+    // Arrange: a hot reading noted earlier must not pass as the revoking sample's.
+    let (gate, generation) = active_gate();
+    gate.note_chip_temperature(Some(80_000));
+    gate.note_fan_proof(generation, 1_000);
+    // Act
+    gate.check_deadline(2_001);
+    // Assert
+    assert_eq!(
+        gate.maybe_unsafe_detail()
+            .and_then(|detail| detail.maybe_chip_temp_milli),
+        None
+    );
+}
+
+#[test]
+fn another_generations_detail_is_not_returned_for_this_one() {
+    // Arrange
+    let (gate, generation) = active_gate();
+    gate.check_safety_verdict(Some(bus_voltage_verdict(5_512)), true, 500);
+    gate.finish_shutdown(generation);
+    let next = gate.begin_link(600).expect("next link");
+    // Act / Assert
+    assert_eq!(gate.maybe_unsafe_detail_for(next), None);
+}
+
+#[test]
+fn a_generations_own_detail_is_returned_for_it() {
+    // Arrange
+    let (gate, generation) = active_gate();
+    // Act
+    gate.check_safety_verdict(Some(bus_voltage_verdict(5_512)), true, 500);
+    // Assert
+    assert!(gate.maybe_unsafe_detail_for(generation).is_some());
 }

@@ -50,6 +50,8 @@ pub enum FanControllerOwner {
     Campaign,
     /// One prepared Gate lease's generation.
     Lease(WorkerGeneration),
+    /// One prepared local mining generation (ADR-0038), under the same rule as a lease.
+    Local(WorkerGeneration),
     /// The idle device, while no lease is reserved, active or shutting down
     /// (ADR-0038). Valid only for the epoch the production owner granted.
     Idle(IdleFanEpoch),

@@ -48,6 +48,11 @@ pub struct UnsafeObservationDetail {
     /// Milliseconds since the last safe snapshot, saturated to `u32`.
     pub since_safe_ms: u32,
     pub closed_ms: u32,
+    /// The fresh chip temperature of the sample that revoked, for `UnsafeSample` and
+    /// `ZeroFan`; never for `NoSafeSample`, which has no sample and may run on another
+    /// thread. Local mining classifies an overheat from it (ADR-0038), since the
+    /// verdict names the first failing fact, which may be another one.
+    pub maybe_chip_temp_milli: Option<i32>,
 }
 
 impl UnsafeObservationDetail {
@@ -82,9 +87,12 @@ impl UnsafeObservationDetail {
 }
 
 // Packed word: trigger bits 0..2, fact bits 2..5, state bits 5..8,
-// value-present bit 8, age-present bit 9.
+// value-present bit 8, age-present bit 9, chip-temperature-present bit 10.
 const VALUE_PRESENT: u32 = 1 << 8;
 const AGE_PRESENT: u32 = 1 << 9;
+const CHIP_PRESENT: u32 = 1 << 10;
+/// `latest_chip_milli` holds this when the latest sample had no fresh chip reading.
+const NO_CHIP_READING: i32 = i32::MIN;
 
 pub(super) struct UnsafeDetailCell {
     /// Logical generation plus one; zero means no detail.
@@ -94,6 +102,9 @@ pub(super) struct UnsafeDetailCell {
     age_ms: AtomicU32,
     since_safe_ms: AtomicU32,
     closed_ms: AtomicU32,
+    chip_temp_milli: AtomicU32,
+    /// The latest sample's fresh chip temperature, noted before its safety check.
+    latest_chip_milli: AtomicU32,
 }
 
 impl UnsafeDetailCell {
@@ -105,7 +116,14 @@ impl UnsafeDetailCell {
             age_ms: AtomicU32::new(0),
             since_safe_ms: AtomicU32::new(0),
             closed_ms: AtomicU32::new(0),
+            chip_temp_milli: AtomicU32::new(0),
+            latest_chip_milli: AtomicU32::new(NO_CHIP_READING as u32),
         }
+    }
+
+    fn maybe_latest_chip_milli(&self) -> Option<i32> {
+        let latest = self.latest_chip_milli.load(Ordering::Acquire) as i32;
+        (latest != NO_CHIP_READING).then_some(latest)
     }
 
     /// Called only by the call that won the generation's revocation, so the
@@ -127,6 +145,9 @@ impl UnsafeDetailCell {
         if maybe_age.is_some() {
             packed |= AGE_PRESENT;
         }
+        if detail.maybe_chip_temp_milli.is_some() {
+            packed |= CHIP_PRESENT;
+        }
         // Readers see either the previous generation's complete detail or none
         // while this one is written; the generation word publishes it.
         self.generation.store(0, Ordering::Release);
@@ -136,6 +157,10 @@ impl UnsafeDetailCell {
         );
         self.age_ms.store(
             maybe_age.map_or(0, |age| u32::try_from(age).unwrap_or(u32::MAX)),
+            Ordering::Release,
+        );
+        self.chip_temp_milli.store(
+            detail.maybe_chip_temp_milli.unwrap_or(0) as u32,
             Ordering::Release,
         );
         self.packed.store(packed, Ordering::Release);
@@ -156,6 +181,7 @@ impl UnsafeDetailCell {
         let age_ms = self.age_ms.load(Ordering::Acquire);
         let since_safe_ms = self.since_safe_ms.load(Ordering::Acquire);
         let closed_ms = self.closed_ms.load(Ordering::Acquire);
+        let chip_temp_milli = self.chip_temp_milli.load(Ordering::Acquire) as i32;
         if self.generation.load(Ordering::Acquire) != published {
             return None;
         }
@@ -176,11 +202,23 @@ impl UnsafeDetailCell {
             maybe_verdict,
             since_safe_ms,
             closed_ms,
+            maybe_chip_temp_milli: (packed & CHIP_PRESENT != 0).then_some(chip_temp_milli),
         })
     }
 }
 
 impl GenerationGate {
+    /// Notes the next sample's fresh chip temperature before its safety check, so a
+    /// revocation by that sample records it.
+    pub fn note_chip_temperature(&self, maybe_chip_temp_milli: Option<i32>) {
+        let stored = maybe_chip_temp_milli
+            .filter(|milli| *milli != NO_CHIP_READING)
+            .unwrap_or(NO_CHIP_READING);
+        self.unsafe_detail
+            .latest_chip_milli
+            .store(stored as u32, Ordering::Release);
+    }
+
     pub fn check_safety(&self, safe: bool, nonzero_fan: bool, now_ms: u64) {
         self.check_safety_detail(safe, None, nonzero_fan, now_ms);
     }
@@ -241,12 +279,27 @@ impl GenerationGate {
             maybe_verdict,
             since_safe_ms,
             closed_ms: now_ms as u32,
+            maybe_chip_temp_milli: (trigger != UnsafeTrigger::NoSafeSample)
+                .then(|| self.unsafe_detail.maybe_latest_chip_milli())
+                .flatten(),
         });
     }
 
     /// The most recent generation's first unsafe-observation detail, if any.
     pub fn maybe_unsafe_detail(&self) -> Option<UnsafeObservationDetail> {
         self.unsafe_detail.maybe_read()
+    }
+
+    /// `generation`'s first unsafe-observation detail, once it is published. The
+    /// revoked state is published before the detail, so a caller that sees the
+    /// revocation retries while this is `None`.
+    pub fn maybe_unsafe_detail_for(
+        &self,
+        generation: WorkerGeneration,
+    ) -> Option<UnsafeObservationDetail> {
+        self.unsafe_detail
+            .maybe_read()
+            .filter(|detail| detail.generation == generation.raw())
     }
 }
 

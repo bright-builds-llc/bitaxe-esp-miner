@@ -17,6 +17,16 @@ pub(crate) use observation_store::observation_snapshot;
 
 pub(crate) fn replace_observations_from_producer(observations: bitaxe_api::TelemetryObservations) {
     let now_ms = crate::runtime_uptime::millis();
+    crate::production_mining_session::revocation::note_chip_temperature(
+        observations
+            .chip_temp_celsius
+            .is_fresh()
+            .then(|| observations.chip_temp_celsius.maybe_last_good())
+            .flatten()
+            .map(|sample| *sample.value())
+            .filter(|celsius| celsius.is_finite())
+            .map(|celsius| (celsius * 1_000.0).round() as i32),
+    );
     crate::production_mining_session::revocation::check_safety_verdict(
         observations.ultra_205_mining_safety_verdict_at(
             bitaxe_safety::observation::MonotonicMillis::new(now_ms),

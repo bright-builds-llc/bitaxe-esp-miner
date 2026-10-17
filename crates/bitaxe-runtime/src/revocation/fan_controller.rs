@@ -17,7 +17,9 @@ impl GenerationGate {
     /// campaign path keeps the rule that a duty below 100% needs no live lease.
     pub fn permits_controller_fan(&self, owner: FanControllerOwner, duty_percent: u8) -> bool {
         match owner {
-            FanControllerOwner::Lease(generation) => self.permits(Some(generation)),
+            FanControllerOwner::Lease(generation) | FanControllerOwner::Local(generation) => {
+                self.permits(Some(generation))
+            }
             FanControllerOwner::Campaign => duty_percent >= 100 || self.permits(None),
             FanControllerOwner::Idle(epoch) => {
                 epoch.0 & 1 == 1
@@ -241,6 +243,33 @@ mod campaign_tests {
         let epoch = gate.grant_idle_fan();
         // Act
         let permitted = gate.permits_controller_fan(FanControllerOwner::Idle(epoch), 30);
+        // Assert
+        assert!(!permitted);
+    }
+
+    #[test]
+    fn an_active_local_generation_may_set_any_duty() {
+        // Arrange
+        let gate = GenerationGate::new();
+        let local = gate.begin_local().expect("local generation");
+        assert!(gate.admit_budget(local, u64::MAX));
+        assert!(gate.activate_at(local, 0));
+        // Act
+        let permitted = gate.permits_controller_fan(FanControllerOwner::Local(local), 25);
+        // Assert
+        assert!(permitted);
+    }
+
+    #[test]
+    fn a_revoked_local_generation_can_no_longer_set_the_fan() {
+        // Arrange: its safe-stop revokes before the first fan command.
+        let gate = GenerationGate::new();
+        let local = gate.begin_local().expect("local generation");
+        assert!(gate.admit_budget(local, u64::MAX));
+        assert!(gate.activate_at(local, 0));
+        gate.revoke_at(local, 100);
+        // Act
+        let permitted = gate.permits_controller_fan(FanControllerOwner::Local(local), 100);
         // Assert
         assert!(!permitted);
     }

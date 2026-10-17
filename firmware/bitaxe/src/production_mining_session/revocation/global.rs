@@ -97,6 +97,10 @@ pub(crate) fn admit_budget(generation: WorkerGeneration, active_limit_ms: u64) -
 pub(crate) fn permits_controller_fan(owner: FanControllerOwner, duty_percent: u8) -> bool {
     GATE.permits_controller_fan(owner, duty_percent)
 }
+/// Notes the next sample's fresh chip temperature, so a revocation records it (ADR-0038).
+pub(crate) fn note_chip_temperature(maybe_chip_temp_milli: Option<i32>) {
+    GATE.note_chip_temperature(maybe_chip_temp_milli);
+}
 /// Grants idle fan control (ADR-0038); called only by the production owner.
 pub(crate) fn grant_idle_fan() -> IdleFanEpoch {
     GATE.grant_idle_fan()
