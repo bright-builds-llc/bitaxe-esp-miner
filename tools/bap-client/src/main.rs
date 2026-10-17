@@ -104,6 +104,9 @@ enum Command {
 }
 
 const ANSWER_MS: u64 = 3_000;
+/// The firmware acknowledges a setting only after saving it: up to 10 s to start the save
+/// job, then up to 30 s for it (`http_api/accessory_settings.rs`).
+const SET_ANSWER_MS: u64 = 45_000;
 const QUIET_MS: u64 = 500;
 
 fn main() {
@@ -159,7 +162,11 @@ fn execute(cli: Cli) -> Result<bool> {
     let (operation, listen_ms) = operation(cli.command)?;
     let mut link = AdapterLink::open(&port).context("adapter_open_failed")?;
     let timing = Timing {
-        answer_ms: ANSWER_MS,
+        answer_ms: if matches!(operation, Operation::Set { .. }) {
+            SET_ANSWER_MS
+        } else {
+            ANSWER_MS
+        },
         quiet_ms: QUIET_MS,
         listen_ms,
     };
@@ -167,7 +174,7 @@ fn execute(cli: Cli) -> Result<bool> {
     print(&report)?;
     Ok(matches!(
         report.outcome,
-        Outcome::Confirmed | Outcome::Answered
+        Outcome::Confirmed | Outcome::Answered | Outcome::SentSilently
     ))
 }
 
@@ -231,6 +238,7 @@ fn print(report: &Report) -> Result<()> {
         Outcome::Rejected(code) => ("rejected", Some(code.as_str())),
         Outcome::TimedOut => ("timed_out", None),
         Outcome::UnsubscribeUnconfirmed => ("unsubscribe_unconfirmed", None),
+        Outcome::SentSilently => ("sent_silently", None),
     };
     let summary = json!({
         "outcome": outcome,

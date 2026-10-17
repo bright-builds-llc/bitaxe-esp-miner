@@ -111,6 +111,10 @@ pub enum Outcome {
     TimedOut,
     /// The subscription ran, but its unsubscribe was not acknowledged.
     UnsubscribeUnconfirmed,
+    /// A `fan_speed` setting drew no refusal within the answer window. The reference
+    /// saves it without an acknowledgement, and the firmware refuses a failed save with
+    /// an error, so silence for the firmware's whole save window means it was taken.
+    SentSilently,
 }
 
 /// Every inbound frame, in arrival order, and how the operation ended.
@@ -156,9 +160,12 @@ pub fn run(operation: &Operation, link: &mut impl Link, timing: Timing) -> io::R
             session.send(operation)?;
             session.settle(operation, timing.answer_ms)?
         }
-        Operation::Set { .. } => {
+        Operation::Set { parameter, .. } => {
             session.send(operation)?;
-            let outcome = session.settle(operation, timing.answer_ms)?;
+            let outcome = match session.settle(operation, timing.answer_ms)? {
+                Outcome::TimedOut if *parameter == BapParameter::FanSpeed => Outcome::SentSilently,
+                other => other,
+            };
             // A credential change announces a restart right after its acknowledgement.
             session.listen(timing.quiet_ms)?;
             outcome

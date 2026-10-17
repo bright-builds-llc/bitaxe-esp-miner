@@ -9,13 +9,13 @@ import { admitTrust, BUNDLE, canonicalDirectory, cleanPushed, digest, fileDigest
 import { parseDetector } from "../hardware-operator/detector.mjs";
 import { requireSoakTask, SOAK_CONTEXT_SCHEMA, SOAK_RENEWALS, SOAK_SUGGESTED_DIFFICULTY } from "./contract.mjs";
 import { preflightProfile, profileSettings } from "./device-settings.mjs";
-import { SOAK_LIVE_CHANGES } from "./live-changes.mjs";
+import { frozenPlan, LIVE_PLANS, selectedPlan } from "./live-changes.mjs";
 
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 const DETECTOR_FRESH_MS = 60000;
 
-async function canonicalBinary(firmwareRoot, name) {
-  const path = await realpath(resolve(firmwareRoot, `bazel-bin/tools/http-transport/${name}`));
+async function canonicalBinary(firmwareRoot, target) {
+  const path = await realpath(resolve(firmwareRoot, `bazel-bin/tools/${target}`));
   const info = await stat(path);
   requireCondition(info.isFile() && (info.mode & 0o111) !== 0, "soak_binary_missing");
   return { path, sha256: await fileDigest(path) };
@@ -39,8 +39,9 @@ export async function inspectSoakSources(options, operations = {}) {
     gate_bundle_sha256: digest(bundle), gate_page_relative_path: PAGE, gate_page_sha256: await fileDigest(resolve(options.gateRoot, PAGE)),
     trust_sha256: await fileDigest(trustPath), authority_trust_sha256: digest(JSON.stringify(authorityTrust)),
     supervisor_client_sha256: await fileDigest(resolve(SCRIPT_ROOT, "client.mjs")),
-    soak_observer: await (operations.canonicalBinary ?? canonicalBinary)(options.firmwareRoot, "soak_observer"),
-    soak_judge: await (operations.canonicalBinary ?? canonicalBinary)(options.firmwareRoot, "soak_judge") };
+    soak_observer: await (operations.canonicalBinary ?? canonicalBinary)(options.firmwareRoot, "http-transport/soak_observer"),
+    soak_judge: await (operations.canonicalBinary ?? canonicalBinary)(options.firmwareRoot, "http-transport/soak_judge"),
+    bap_client: await (operations.canonicalBinary ?? canonicalBinary)(options.firmwareRoot, "bap-client/bap_client") };
 }
 
 async function freshDetector(path, now) {
@@ -55,12 +56,14 @@ export async function preflight(options, operations = {}) {
   await protectedPath(parent, true);
   await missing(root);
   ignored(options.firmwareRoot, root);
-  const profile = preflightProfile(options.profile, options.liveChanges);
+  const { maybePlan, refused } = selectedPlan(options);
+  requireCondition(!refused, "soak_live_plan_ambiguous");
+  const profile = preflightProfile(options.profile, maybePlan && LIVE_PLANS[maybePlan].profile);
   const detector = await freshDetector(resolve(options.detector), (operations.now ?? Date.now)());
   const snapshot = await inspectSoakSources(options, operations);
   const context = { schema: SOAK_CONTEXT_SCHEMA, ...snapshot, physical_identity_sha256: detector.physical,
     suggested_difficulty: SOAK_SUGGESTED_DIFFICULTY, renewals: SOAK_RENEWALS, hardware_profile: "device-settings", device_profile: profile, device_settings: profileSettings(profile),
-    live_changes: options.liveChanges === true ? SOAK_LIVE_CHANGES.map((change) => ({ atActiveMs: change.atActiveMs, settings: { ...change.settings } })) : [],
+    live_plan: maybePlan ?? null, live_changes: maybePlan ? frozenPlan(maybePlan) : [],
     firmware_root: options.firmwareRoot, gate_root: options.gateRoot, manifest: resolve(options.manifest) };
   await (operations.mkdir ?? mkdir)(root, { mode: 0o700 });
   await writeNew(resolve(root, "context.json"), { context, sha256: digest(JSON.stringify(context)) });

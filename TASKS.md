@@ -1125,6 +1125,16 @@ explicit non-claims.
       `task-parity-bap-live-accessory-verification`): electrical safety,
       allowed settings, restoration of changed settings, evidence and stop
       conditions. Each setting needs the owner's go-ahead.
+  - [x] Tooling for BAP settings during a soak's lease:
+    - soak samples record the saved fan settings and fan RPM;
+    - `bap-client` waits through the firmware's 40 s save window, and
+      reports a silent `fan_speed` as `sent_silently`;
+    - `preflight --bap-changes` and `serve --bap-port` run the frozen client
+      on the plan;
+    - the judge checks each operation and the fan segment;
+    - regressions cover all of it.
+  - [ ] Soak 010 attempt 001 (soak ledger v2, ordinal 5), with an
+        independent review.
 
 Started 2026-10-16. Software only; no hardware effect without a settings
 hardware contract.
@@ -1197,6 +1207,69 @@ Divergences, recorded:
 - **Checklist text:** the BAP-001 row's non-claims still say settings get
   `set_failed`. The row is `verified`, and the parity tool forbids
   `verified` → `verified` transitions, so the correction lives here.
+
+Soak 010 hardware contract (BAP settings during a lease). The owner gave
+the go-ahead on 2026-10-16 ("Let's close the bap settings gap, since the
+uart is still connected") for these settings over the adapter that is
+already connected. It is the soak 007 attempt 002 contract, unchanged except:
+- **Electrical:** the owner's CP2102 adapter stays as wired for BAP ordinals
+  006–009: J6 GND, RXD and TXD only. J6 pin 1 (5 V) and the adapter's 3V3
+  and +5V pins stay unconnected. No wiring change and no connection
+  instructions are part of this contract. If the adapter's node
+  (`/dev/cu.usbserial-*`) is absent, stop and record
+  `stop_hardware_blocker`.
+- **Package:** `just package` at the clean, pushed `HEAD` that records this
+  contract. It adds the BAP soak tooling and sample fields, and changes no
+  firmware behavior. Install it with the same state-preserving
+  `just flash-monitor ... --capture-timeout-seconds 360 --redact-evidence`.
+- **Parent and ledger:** `P = scratch/ultra205-soak-010`, with
+  `R = P/attempt-001`. Soak ledger v2 ordinal 5. The ledger must report next
+  ordinal 5 and total 2,400,000.
+- **Preflight:** add `--bap-changes`. The context must record the
+  `upstream-default-bap` profile (485 MHz, 1200 mV, automatic fan, manual
+  fan 100%), plan `bap`, and the frozen `bap_client` digest.
+- **Serve:** add `--bap-port /dev/cu.usbserial-0001`.
+- **Allowed effects:**
+  - The initial HTTP PATCH of the profile, while idle, before the page
+    reload.
+  - During the work gate, only these BAP frames, each sent once by
+    `bap-client`:
+    - at 100 s or later: `SET show_new_block 1`, `REQ show_new_block`,
+      `SET show_new_block 0`, `REQ show_new_block`, `SET found_block 0`,
+      `REQ found_block`;
+    - at 180 s or later: `SET frequency 400`, then `SET asic_voltage 1100`;
+    - at 280 s or later: `SET fan_speed 80`;
+    - at 420 s or later: `SET asic_voltage 1200`, `SET frequency 485`,
+      `SET fan_speed 100`, `SET auto_fan 1`.
+
+    A change stops at its first failed operation. Before every frame,
+    `serve` checks the newest Gate record: the soak must be mining,
+    unrevoked, on a record at most 5 s old, with at least 60 s left on the
+    work gate. Otherwise the change stops with `bap_gate_closed`. `serve`
+    re-hashes the frozen client before each change.
+  - If a change stopped part-way, or the judge found a change that did not
+    take, one HTTP restore PATCH of the profile at completion.
+- **Prohibited:** `SET ssid` and `SET password` (they restart the device and
+  carry credentials). Also any `CMD`, and any other `SET`, `REQ` or `SUB`.
+- **Safety:** every saved pair already has hardware evidence (485/1200,
+  400/1200 and 400/1100). Frequency goes down before voltage and voltage up
+  before frequency, so 485 MHz at 1100 mV is never saved. The manual fan at
+  80–100% only adds cooling. The live stop limits are unchanged.
+- **Judged:**
+  - every operation's acknowledgement or read-back value;
+  - `fan_speed` drawing no refusal within 45 s;
+  - in each settled segment, the saved frequency, voltage and fan settings
+    on every mining sample;
+  - the voltage step and hashrate ratio, against the first segment;
+  - under the manual fan, a median fan speed at least 1.3 times the
+    automatic fan's median before it.
+- **Stop conditions:** a failed operation or a live step that revokes the
+  lease seals `unverified`. Diagnose it before any retry; a recurrence after
+  a targeted fix is `stop_repeated_boundary`.
+
+Evidence to read: each operation's frames; segment medians; fan RPM under
+the manual and automatic fan.
+
 Verification: pending. Completion review: pending.
 
 ## Future

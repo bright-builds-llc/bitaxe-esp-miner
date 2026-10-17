@@ -15,6 +15,25 @@ Gate. The decisions behind it are
   `SOAK_PROFILES`: `catalog-maximum-frequency` is 575 MHz at 1200 mV with the
   automatic fan. `serve` writes only the settings of the profile the context
   names.
+- **BAP changes (optional):** `preflight --bap-changes` freezes
+  `SOAK_BAP_CHANGES` (`bap-changes.mjs`) with the `upstream-default-bap`
+  profile, which also stores the manual fan speed. `serve --bap-port
+  /dev/cu.usbserial-…` then drives the settings through the accessory port,
+  using the frozen `bap-client` binary, while the soak mines with its work
+  gate open:
+  - at 100 s: `show_new_block` 1 then 0, and `found_block` 0, each read back
+    over BAP;
+  - at 180 s: `frequency` 400, then `asic_voltage` 1100;
+  - at 280 s: `fan_speed` 80, which selects the manual fan;
+  - at 420 s: `asic_voltage` 1200, `frequency` 485, `fan_speed` 100, then
+    `auto_fan` 1.
+
+  Every operation must return its expected acknowledgement or read-back. The
+  reference sends no acknowledgement for `fan_speed`, so that one must draw
+  no refusal within the firmware's 40 s save window. The segments are judged
+  as for live changes, and they also check the saved fan settings. The
+  manual fan's median speed must be at least 1.3 times the automatic fan's
+  before it.
 - **Settings restore:** at completion, while the device is idle, `serve`
   sends one PATCH and records `settings-restore.json`:
   - a soak on another profile restores the upstream default, so later leases

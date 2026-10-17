@@ -14,14 +14,16 @@ export const SOAK_DEVICE_SETTINGS = Object.freeze({ frequency: 485, coreVoltage:
 export const SOAK_PROFILES = Object.freeze({
   "upstream-default": SOAK_DEVICE_SETTINGS,
   "catalog-maximum-frequency": Object.freeze({ frequency: 575, coreVoltage: 1200, autofanspeed: 1 }),
+  // A BAP soak changes the manual fan speed; storing it first keeps the settings fingerprint stable.
+  "upstream-default-bap": Object.freeze({ frequency: 485, coreVoltage: 1200, autofanspeed: 1, manualFanSpeed: 100 }),
 });
 export const DEFAULT_SOAK_PROFILE = "upstream-default";
 
-/** The profile a preflight freezes; live changes return to the upstream default, so they only run from it. */
-export function preflightProfile(maybeProfile, liveChanges) {
-  const profile = maybeProfile ?? DEFAULT_SOAK_PROFILE;
+/** The profile a preflight freezes: the named one, or the one a live plan needs, which must agree. */
+export function preflightProfile(maybeProfile, maybeRequiredProfile) {
+  const profile = maybeProfile ?? maybeRequiredProfile ?? DEFAULT_SOAK_PROFILE;
   profileSettings(profile);
-  requireCondition(liveChanges !== true || profile === DEFAULT_SOAK_PROFILE, "soak_live_changes_profile");
+  requireCondition(maybeRequiredProfile === undefined || profile === maybeRequiredProfile, "soak_live_changes_profile");
   return profile;
 }
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dueLiveChange, judgeLiveChanges, LIVE_SETTLE_MS, SOAK_LIVE_CHANGES } from "./live-changes.mjs";
+import { dueLiveChange, frozenPlan, judgeLiveChanges, LIVE_SETTLE_MS, selectedPlan, SOAK_LIVE_CHANGES } from "./live-changes.mjs";
+import { SOAK_BAP_CHANGES } from "./bap-changes.mjs";
 
 const initial = { frequency: 485, coreVoltage: 1200, autofanspeed: 1 };
 const running = (activeMs, overrides = {}) => ({ running: true, qualification: { soak: { ordinal: 1 }, revocation_reason: "none",
@@ -12,7 +13,8 @@ function journal({ startMs = 0, endMs = 600000, pairAt = () => initial, measured
   for (let t = startMs; t < endMs; t += 1000) {
     const pair = pairAt(t);
     lines.push({ event: "sample", transport: "http", hostUnixMs: t, sample: { miningActive: true, frequencyMhz: pair.frequency,
-      coreVoltageMv: pair.coreVoltage, maybeCoreVoltageActualMv: measuredFor(pair), powerWatts: pair.frequency / 40, hashRateGhs: pair.frequency } });
+      coreVoltageMv: pair.coreVoltage, maybeCoreVoltageActualMv: measuredFor(pair), powerWatts: pair.frequency / 40, hashRateGhs: pair.frequency,
+      autoFanSpeed: pair.autofanspeed ?? 1, manualFanSpeed: pair.manualFanSpeed ?? 100, fanRpm: pair.autofanspeed === 0 ? 5900 : 3000 } });
   }
   return lines;
 }
@@ -132,4 +134,52 @@ test("a soak without planned changes has nothing to judge", () => {
   const result = judgeLiveChanges({ initial, planned: [], recorded: [], lines: [], maybeGateOpenUntilUnixMs: undefined });
   // Assert
   assert.deepEqual(result, { failures: [], segments: [] });
+});
+
+const bapPlanned = SOAK_BAP_CHANGES.filter((change) => change.settings);
+const bapRecorded = [180000, 280000, 420000].map((at, index) => ({ index, requested_at_unix_ms: at, completed_at_unix_ms: at + 2000 }));
+const bapInitial = { frequency: 485, coreVoltage: 1200, autofanspeed: 1, manualFanSpeed: 100 };
+const bapFollowed = (t) => (t < 182000 ? bapInitial : t < 282000 ? bapPlanned[0].settings : t < 422000 ? bapPlanned[1].settings : bapPlanned[2].settings);
+const bapJudged = (lines) => judgeLiveChanges({ initial: bapInitial, planned: bapPlanned, recorded: bapRecorded, lines, maybeGateOpenUntilUnixMs: 600000 });
+
+test("a manual fan that spins up and settings that follow pass the BAP plan", () => {
+  // Arrange
+  const lines = journal({ pairAt: bapFollowed });
+  // Act
+  const result = bapJudged(lines);
+  // Assert
+  assert.deepEqual(result.failures, []);
+  assert.deepEqual(result.segments.map((segment) => [segment.target.autofanspeed, segment.median_fan_rpm]), [[1, 3000], [1, 3000], [0, 5900], [1, 3000]]);
+});
+
+test("a manual fan setting that never changes the fan speed is not confirmed", () => {
+  // Arrange
+  const lines = journal({ pairAt: bapFollowed }).map((line) => ({ ...line, sample: { ...line.sample, fanRpm: 3000 } }));
+  // Act
+  const result = bapJudged(lines);
+  // Assert
+  assert.deepEqual(result.failures, ["live_change_fan_unconfirmed"]);
+});
+
+test("saved fan settings that never change are unobserved", () => {
+  // Arrange
+  const lines = journal({ pairAt: bapFollowed }).map((line) => ({ ...line, sample: { ...line.sample, autoFanSpeed: 1, manualFanSpeed: 100 } }));
+  // Act
+  const result = bapJudged(lines);
+  // Assert
+  assert.ok(result.failures.includes("live_change_unobserved"));
+});
+
+test("the preflight flags select the HTTP or BAP plan, and never both", () => {
+  // Arrange / Act / Assert
+  assert.deepEqual(
+    [selectedPlan({}), selectedPlan({ liveChanges: true }), selectedPlan({ bapChanges: true }), selectedPlan({ liveChanges: true, bapChanges: true })],
+    [{ maybePlan: undefined, refused: false }, { maybePlan: "http", refused: false }, { maybePlan: "bap", refused: false }, { maybePlan: undefined, refused: true }]);
+});
+
+test("a frozen BAP plan keeps a silent fan setting's null acknowledgement", () => {
+  // Arrange / Act
+  const plan = frozenPlan("bap");
+  // Assert
+  assert.equal(plan[2].ops[0].expected, null);
 });

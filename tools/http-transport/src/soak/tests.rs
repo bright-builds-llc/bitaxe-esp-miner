@@ -45,6 +45,9 @@ fn sample(active_ms: i64, sequence: u64) -> SoakSample {
         maybe_core_voltage_actual_mv: Some(1_198.0),
         power_watts: 12.0,
         hash_rate_ghs: 500.0,
+        auto_fan_speed: 1,
+        manual_fan_speed: 100,
+        fan_rpm: 3_000,
         revision: sequence,
         maybe_pool_matches_initial: None,
     }

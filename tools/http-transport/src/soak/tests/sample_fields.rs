@@ -81,6 +81,9 @@ fn a_journal_sample_from_before_the_new_fields_still_parses() {
         "maybeCoreVoltageActualMv",
         "powerWatts",
         "hashRateGhs",
+        "autoFanSpeed",
+        "manualFanSpeed",
+        "fanRpm",
     ] {
         object.remove(key).expect("field present");
     }
@@ -151,4 +154,24 @@ fn a_stale_core_voltage_reading_is_not_recorded() {
     let sample = SoakSample::from_wire(&wire, None);
     // Assert
     assert_eq!(sample.maybe_core_voltage_actual_mv, None);
+}
+
+#[test]
+fn a_sample_records_the_fan_settings_and_reading() {
+    // Arrange
+    let mut wire = wire();
+    wire.auto_fan_speed = 0;
+    wire.manual_fan_speed = 80;
+    wire.fan_rpm = 5_900;
+    // Act
+    let sample = SoakSample::from_wire(&wire, None);
+    // Assert
+    assert_eq!(
+        (
+            sample.auto_fan_speed,
+            sample.manual_fan_speed,
+            sample.fan_rpm
+        ),
+        (0, 80, 5_900)
+    );
 }

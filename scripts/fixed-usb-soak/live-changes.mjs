@@ -3,11 +3,33 @@
 // that the saved settings, the measured core voltage and the counter hashrate followed. Ending on the
 // starting pair keeps the settings fingerprint equal to the page's baseline.
 
+import { BAP_PROFILE, SOAK_BAP_CHANGES } from "./bap-changes.mjs";
+
 /** Opted into at preflight with `--live-changes`; both pairs already have hardware evidence. */
 export const SOAK_LIVE_CHANGES = Object.freeze([
   Object.freeze({ atActiveMs: 200000, settings: Object.freeze({ frequency: 400, coreVoltage: 1100 }) }),
   Object.freeze({ atActiveMs: 400000, settings: Object.freeze({ frequency: 485, coreVoltage: 1200 }) }),
 ]);
+/**
+ * The live plans a context may freeze, each with the profile it starts and ends on: HTTP PATCHes
+ * (`--live-changes`) or BAP settings over the accessory port (`--bap-changes`).
+ */
+export const LIVE_PLANS = Object.freeze({
+  http: Object.freeze({ profile: "upstream-default", changes: SOAK_LIVE_CHANGES }),
+  bap: Object.freeze({ profile: BAP_PROFILE, changes: SOAK_BAP_CHANGES }),
+});
+
+/** The plan a preflight's flags select, if any; both flags at once are refused. */
+export function selectedPlan({ liveChanges, bapChanges }) {
+  if (liveChanges === true && bapChanges === true) return { maybePlan: undefined, refused: true };
+  return { maybePlan: bapChanges === true ? "bap" : liveChanges === true ? "http" : undefined, refused: false };
+}
+
+/** A plan as a context freezes it: plain JSON data. */
+export function frozenPlan(name) {
+  return JSON.parse(JSON.stringify(LIVE_PLANS[name].changes));
+}
+
 /** Samples this long after a change's read-back count toward its segment; the owner steps once a second. */
 export const LIVE_SETTLE_MS = 20000;
 /**
@@ -18,6 +40,8 @@ export const LIVE_SETTLE_MS = 20000;
 export const LIVE_VOLTAGE_STEP_TOLERANCE_MV = 30;
 export const LIVE_HASH_RATIO_TOLERANCE = 0.12;
 export const LIVE_MINIMUM_SAMPLES = 5;
+/** A change to the manual fan must at least raise the median fan speed by this factor over the automatic fan before it. */
+export const LIVE_FAN_RPM_RATIO = 1.3;
 
 /**
  * The index of the next planned change once the work gate has run long enough, or undefined. Changes
@@ -37,19 +61,38 @@ function median(values) {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+/** Whether a sample carries every setting the target names; fan settings count only when the target has them. */
+function carries(sample, target) {
+  return sample.frequencyMhz === target.frequency && sample.coreVoltageMv === target.coreVoltage &&
+    (target.autofanspeed === undefined || sample.autoFanSpeed === target.autofanspeed) &&
+    (target.manualFanSpeed === undefined || sample.manualFanSpeed === target.manualFanSpeed);
+}
+
 function segmentSummary(target, samples) {
   const measured = samples.map((sample) => sample.maybeCoreVoltageActualMv).filter(Number.isFinite);
   const hashRates = samples.map((sample) => sample.hashRateGhs).filter((value) => Number.isFinite(value) && value > 0);
+  const fanRpms = samples.map((sample) => sample.fanRpm).filter((value) => Number.isFinite(value) && value > 0);
+  const fan = target.autofanspeed === undefined ? {} : { autofanspeed: target.autofanspeed, manualFanSpeed: target.manualFanSpeed };
   return {
-    target: { frequency: target.frequency, coreVoltage: target.coreVoltage },
+    target: { frequency: target.frequency, coreVoltage: target.coreVoltage, ...fan },
     samples: samples.length,
-    settings_match: samples.length > 0 && samples.every((sample) => sample.frequencyMhz === target.frequency && sample.coreVoltageMv === target.coreVoltage),
+    settings_match: samples.length > 0 && samples.every((sample) => carries(sample, target)),
     measured_samples: measured.length,
     measured_core_mv: measured.length ? { min: Math.min(...measured), median: median(measured), max: Math.max(...measured) } : null,
     hash_rate_samples: hashRates.length,
     median_hash_rate_ghs: median(hashRates),
     median_power_watts: median(samples.map((sample) => sample.powerWatts).filter(Number.isFinite)),
+    fan_samples: fanRpms.length,
+    median_fan_rpm: median(fanRpms),
   };
+}
+
+/** A segment that switched to the manual fan must spin faster than the automatic fan before it. */
+function fanFailures(previous, segment) {
+  if (segment.target.autofanspeed !== 0 || previous.target.autofanspeed !== 1) return [];
+  const raised = segment.fan_samples >= LIVE_MINIMUM_SAMPLES && previous.fan_samples >= LIVE_MINIMUM_SAMPLES &&
+    segment.median_fan_rpm >= LIVE_FAN_RPM_RATIO * previous.median_fan_rpm;
+  return raised ? [] : ["live_change_fan_unconfirmed"];
 }
 
 /** Observation only: from a change's read-back to the first sample measuring within tolerance of its expected voltage. */
@@ -99,6 +142,7 @@ export function judgeLiveChanges({ initial, planned, recorded, lines, maybeGateO
   if (failures.length > 0) return { failures: [...new Set(failures)], segments };
   const [first, ...later] = segments;
   for (const segment of later) failures.push(...stepFailures(first, segment));
+  segments.forEach((segment, index) => { if (index > 0) failures.push(...fanFailures(segments[index - 1], segment)); });
   indices.forEach((index) => {
     segments[index + 1].settle_ms = settleMs(mining, recorded[index],
       first.measured_core_mv.median + segments[index + 1].target.coreVoltage - first.target.coreVoltage);

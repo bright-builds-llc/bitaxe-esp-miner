@@ -16,7 +16,8 @@ import { signSoak } from "./authority.mjs";
 import { requireIdleSoakLedger, requireQualificationIdle, soakAllowance, SOAK_WORK_GATE_MS } from "./contract.mjs";
 import { clockObservations, judgeSoak } from "./judge.mjs";
 import { applyDeviceSettings, DEFAULT_SOAK_PROFILE, profileSettings } from "./device-settings.mjs";
-import { dueLiveChange, judgeLiveChanges, SOAK_LIVE_CHANGES } from "./live-changes.mjs";
+import { gateAllowsOperation, runBapChange } from "./bap-changes.mjs";
+import { dueLiveChange, frozenPlan, judgeLiveChanges, LIVE_PLANS } from "./live-changes.mjs";
 import { createSoakObserver, journalLines } from "./observer.mjs";
 import { verifyFrozenSoak } from "./preflight.mjs";
 
@@ -46,10 +47,16 @@ export async function createSoakSupervisor(options, operations = {}) {
   const profileTarget = profileSettings(profile);
   requireCondition(isDeepStrictEqual(context.device_settings, profileTarget), "soak_profile_contract");
   const plannedLive = context.live_changes ?? [];
-  requireCondition(plannedLive.length === 0 || profile === DEFAULT_SOAK_PROFILE, "soak_live_changes_profile");
+  // Contexts before BAP plans froze HTTP changes only.
+  const maybePlan = plannedLive.length === 0 ? undefined : context.live_plan ?? "http";
+  requireCondition(maybePlan === undefined || (Object.hasOwn(LIVE_PLANS, maybePlan) && profile === LIVE_PLANS[maybePlan].profile),
+    "soak_live_changes_profile");
   // The context is only self-hashed, so no PATCH value comes from it unless it is exactly the code's plan.
-  requireCondition(plannedLive.length === 0 || isDeepStrictEqual(plannedLive, SOAK_LIVE_CHANGES.map((change) =>
-    ({ atActiveMs: change.atActiveMs, settings: { ...change.settings } }))), "soak_live_changes_contract");
+  requireCondition(maybePlan === undefined || isDeepStrictEqual(plannedLive, frozenPlan(maybePlan)), "soak_live_changes_contract");
+  // A BAP plan writes through the accessory adapter with the frozen client binary only.
+  requireCondition(maybePlan !== "bap" || (typeof options.bapPort === "string" && options.bapPort.startsWith("/dev/cu.usbserial") &&
+    typeof context.bap_client?.path === "string"), "soak_bap_port");
+  const runChange = operations.runBapChange ?? runBapChange;
   let maybeDeviceEndpoint, liveSent = 0, liveInFlight = Promise.resolve();
   const liveRecords = [];
 
@@ -122,8 +129,17 @@ export async function createSoakSupervisor(options, operations = {}) {
     const base = { schema: "fixed-usb-soak-live-change-v1", index, active_ms: activeMs, requested_at_unix_ms: now() };
     let record;
     try {
-      const settings = await apply(maybeDeviceEndpoint, plannedLive[index].settings);
-      record = { ...base, requested: settings.requested, observed: settings.observed, completed_at_unix_ms: now() };
+      const change = plannedLive[index];
+      if (change.ops) {
+        // The client may have been rebuilt since preflight; run only the frozen binary.
+        requireCondition(await fileDigest(context.bap_client.path).catch(() => null) === context.bap_client.sha256, "bap_client_drift");
+        const { results, maybeFailure } = await runChange(context.bap_client.path, options.bapPort, change.ops,
+          { allowed: () => gateAllowsOperation(records.at(-1), now()) });
+        record = { ...base, operations: results, ...(maybeFailure ? { failure: maybeFailure } : { completed_at_unix_ms: now() }) };
+      } else {
+        const settings = await apply(maybeDeviceEndpoint, change.settings);
+        record = { ...base, requested: settings.requested, observed: settings.observed, completed_at_unix_ms: now() };
+      }
     } catch (error) {
       record = { ...base, failure: error instanceof QualificationError ? error.code : "live_change_request_failed" };
     }
@@ -144,9 +160,15 @@ export async function createSoakSupervisor(options, operations = {}) {
   async function judgeLive() {
     if (plannedLive.length === 0) return undefined;
     await liveInFlight;
+    const indices = plannedLive.map((_, index) => index);
+    if (indices.some((index) => !liveRecords[index])) return { failures: ["live_change_missing"], segments: [] };
+    if (indices.some((index) => liveRecords[index].failure)) return { failures: ["live_change_failed"], segments: [] };
     let lines;
     try { lines = journalLines(await readFile(observer.journalPath, "utf8")); } catch { return { failures: ["live_change_journal_unreadable"], segments: [] }; }
-    return judgeLiveChanges({ initial: profileTarget, planned: plannedLive, recorded: liveRecords, lines,
+    // Only changes that set hardware make segments; a BAP plan's block-flag change has none.
+    const hardware = indices.filter((index) => plannedLive[index].settings);
+    return judgeLiveChanges({ initial: profileTarget, planned: hardware.map((index) => plannedLive[index]),
+      recorded: hardware.map((index) => liveRecords[index]), lines,
       maybeGateOpenUntilUnixMs: gateOpenUntil() });
   }
 
@@ -156,11 +178,16 @@ export async function createSoakSupervisor(options, operations = {}) {
    *   restores its own profile and stays unverified;
    * - a soak on another profile restores the upstream default, so later leases never inherit it.
    */
-  async function restoreSettings() {
+  async function restoreSettings(maybeLiveChanges) {
     const incompleteLive = liveSent > 0 && !(liveSent === plannedLive.length && liveRecords.every((record) => record && !record.failure));
-    const maybeReason = incompleteLive ? "incomplete_live_changes" : profile !== DEFAULT_SOAK_PROFILE ? "profile_completed" : undefined;
+    // Every operation can pass while a setting still did not take; the judge's failures say so.
+    const unconfirmedLive = (maybeLiveChanges?.failures.length ?? 0) > 0 && liveSent > 0;
+    const defaults = profileSettings(DEFAULT_SOAK_PROFILE);
+    const leavesOtherSettings = Object.entries(defaults).some(([key, value]) => profileTarget[key] !== value);
+    const maybeReason = incompleteLive ? "incomplete_live_changes" : unconfirmedLive ? "unconfirmed_live_changes" :
+      leavesOtherSettings ? "profile_completed" : undefined;
     if (!maybeReason || !maybeDeviceEndpoint) return undefined;
-    const target = incompleteLive ? profileTarget : profileSettings(DEFAULT_SOAK_PROFILE);
+    const target = incompleteLive || unconfirmedLive ? profileTarget : defaults;
     const base = { schema: "fixed-usb-soak-settings-restore-v1", reason: maybeReason, requested_at_unix_ms: now() };
     let record;
     try {
@@ -201,7 +228,7 @@ export async function createSoakSupervisor(options, operations = {}) {
     const windowJudgement = await runWindowJudge();
     const deviceSettings = await readJson(resolve(root, "device-settings.json")).catch(() => null);
     const maybeLiveChanges = await judgeLive();
-    const maybeRestore = await restoreSettings();
+    const maybeRestore = await restoreSettings(maybeLiveChanges);
     const result = judgeSoak({ context, records, issuance, ledgerAfter: input.ledger_after, finalState: input.final_state, windowJudgement, observerClean,
       deviceSettings, maybeLiveChanges, maybeRestore });
     await writeNew(resolve(root, "result.json"), { result, sha256: digest(JSON.stringify(result)) });

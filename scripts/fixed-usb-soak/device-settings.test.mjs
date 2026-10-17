@@ -60,15 +60,20 @@ test("an unknown profile is refused", () => {
 
 test("preflight defaults to the upstream-default profile", () => {
   // Arrange / Act / Assert
-  assert.equal(preflightProfile(undefined, false), "upstream-default");
+  assert.equal(preflightProfile(undefined, undefined), "upstream-default");
 });
 
 test("preflight refuses live changes from the catalog-maximum profile", () => {
   // Arrange / Act / Assert
-  assert.throws(() => preflightProfile("catalog-maximum-frequency", true), /soak_live_changes_profile/u);
+  assert.throws(() => preflightProfile("catalog-maximum-frequency", "upstream-default"), /soak_live_changes_profile/u);
 });
 
 test("preflight refuses an unknown profile", () => {
   // Arrange / Act / Assert
-  assert.throws(() => preflightProfile("overclock", false), /soak_profile_unknown/u);
+  assert.throws(() => preflightProfile("overclock", undefined), /soak_profile_unknown/u);
+});
+
+test("a live plan supplies its own profile when none is named", () => {
+  // Arrange / Act / Assert
+  assert.equal(preflightProfile(undefined, "upstream-default-bap"), "upstream-default-bap");
 });

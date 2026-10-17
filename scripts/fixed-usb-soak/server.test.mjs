@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { once } from "node:events";
 import { mkdir, mkdtemp, readFile, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { SOAK_CONTEXT_SCHEMA } from "./contract.mjs";
-import { SOAK_LIVE_CHANGES } from "./live-changes.mjs";
+import { frozenPlan, SOAK_LIVE_CHANGES } from "./live-changes.mjs";
 import { createSoakSupervisor } from "./server.mjs";
 import { QualificationError } from "../fixed-usb-qualification/contract.mjs";
 
@@ -33,17 +34,27 @@ async function eventually(predicate) {
 }
 
 const PROFILES = { "upstream-default": { frequency: 485, coreVoltage: 1200, autofanspeed: 1 },
-  "catalog-maximum-frequency": { frequency: 575, coreVoltage: 1200, autofanspeed: 1 } };
+  "catalog-maximum-frequency": { frequency: 575, coreVoltage: 1200, autofanspeed: 1 },
+  "upstream-default-bap": { frequency: 485, coreVoltage: 1200, autofanspeed: 1, manualFanSpeed: 100 } };
 
-async function supervisor({ idlePassed = true, liveChanges = [], failLive = false, profile = "upstream-default", settings = PROFILES[profile] } = {}) {
+async function supervisor({ idlePassed = true, liveChanges = [], failLive = false, profile = "upstream-default", settings = PROFILES[profile],
+  livePlan = null, bapPort = undefined, failBap = false, clientDrift = false } = {}) {
   const root = await realpath(await mkdtemp(resolve(process.env.TEST_TMPDIR ?? tmpdir(), "soak-server-")));
   const firmware = resolve(root, "firmware");
   await mkdir(resolve(firmware, "firmware/bitaxe/bwg"), { recursive: true });
   await writeFile(resolve(firmware, "firmware/bitaxe/bwg/deployment-trust.json"), "{}");
-  const signed = [], patches = [];
+  const client = resolve(root, "bap_client");
+  await writeFile(client, "frozen client");
+  const clientSha256 = createHash("sha256").update(clientDrift ? "rebuilt client" : "frozen client").digest("hex");
+  const signed = [], patches = [], bapChanges = [];
   // Completion waits for terminal samples on the clock; tests fast-forward it once the window is done.
   const clock = { now: Date.now(), fastForward: false };
-  const server = await createSoakSupervisor({ privateRoot: root, context: { ...context, firmware_root: firmware, live_changes: liveChanges, device_profile: profile, device_settings: settings } }, {
+  const server = await createSoakSupervisor({ privateRoot: root, context: { ...context, firmware_root: firmware, live_changes: liveChanges, live_plan: livePlan, device_profile: profile, device_settings: settings,
+    bap_client: { path: client, sha256: clientSha256 } }, bapPort }, {
+    runBapChange: async (binary, port, ops, { allowed }) => {
+      bapChanges.push({ binary: binary === client ? "frozen" : binary, port, parameters: ops.map((op) => op.parameter), allowed: allowed() });
+      return { results: ops.map((op) => ({ parameter: op.parameter, passed: !failBap })), maybeFailure: failBap ? "bap_operation_failed" : undefined };
+    },
     verifyFrozen: async () => undefined,
     readPool: async () => ({ endpoint: "stratum+tcp://pool.invalid:3333/", username: "u", password: "p" }),
     sign: async (operation, input) => { signed.push(input); return { profile: "bwg-worker-lease-authorization-artifact/0.1", operation, authorization: "signed" }; },
@@ -63,7 +74,7 @@ async function supervisor({ idlePassed = true, liveChanges = [], failLive = fals
       : { method: "POST", headers: { "content-type": "application/json", origin }, body: JSON.stringify(maybeBody) });
     return { status: response.status, value: await response.json() };
   };
-  return { root, server, call, signed, patches, clock };
+  return { root, server, call, signed, patches, clock, bapChanges };
 }
 
 async function budgetReview(call, reviewState) {
@@ -239,7 +250,7 @@ test("a soak that stops between its changes restores its settings and stays unve
   assert.equal(completed.value.result, "unverified", JSON.stringify(completed.value));
   assert.deepEqual(patches.at(-1).settings, context.device_settings);
   const { result } = JSON.parse(await readFile(resolve(root, "result.json"), "utf8"));
-  assert.ok(result.failures.includes("live_change_restored") && result.failures.includes("live_change_journal_unreadable"));
+  assert.ok(result.failures.includes("live_change_restored") && result.failures.includes("live_change_missing"));
   assert.deepEqual(result.settings_restore, { reason: "incomplete_live_changes", outcome: "restored" });
 });
 
@@ -338,4 +349,76 @@ test("a catalog-maximum soak restores the upstream default once it completes", a
   assert.deepEqual(patches.map((patch) => patch.settings.frequency), [575, 485]);
   const { result } = JSON.parse(await readFile(resolve(root, "result.json"), "utf8"));
   assert.deepEqual(result.settings_restore, { reason: "profile_completed", outcome: "restored" });
+});
+
+const bapSoak = { profile: "upstream-default-bap", liveChanges: frozenPlan("bap"), livePlan: "bap", bapPort: "/dev/cu.usbserial-0001" };
+
+test("a BAP plan needs the accessory adapter's port", async () => {
+  // Arrange / Act / Assert
+  await assert.rejects(supervisor({ ...bapSoak, bapPort: undefined }), /soak_bap_port/u);
+});
+
+test("a BAP plan runs only from its own profile", async () => {
+  // Arrange / Act / Assert
+  await assert.rejects(supervisor({ ...bapSoak, profile: "upstream-default" }), /soak_live_changes_profile/u);
+});
+
+test("a due BAP change runs its settings through the frozen client on the adapter port", async (t) => {
+  // Arrange
+  const { root, server, call, bapChanges, patches } = await supervisor(bapSoak);
+  t.after(() => server.close());
+  await reviewed(call);
+  // Act
+  await call("/record", { state: mining(180000) });
+  await eventually(() => readFile(resolve(root, "live-change-1.json")).then(() => true, () => false));
+  // Assert: the block-flag change was due first, and no HTTP PATCH followed the profile write.
+  assert.deepEqual(bapChanges[0], { binary: "frozen", port: "/dev/cu.usbserial-0001",
+    parameters: ["show_new_block", "show_new_block", "show_new_block", "show_new_block", "found_block", "found_block"], allowed: true });
+  assert.equal(patches.length, 1);
+  const recorded = JSON.parse(await readFile(resolve(root, "live-change-1.json"), "utf8"));
+  assert.equal(recorded.operations.length, 6);
+});
+
+test("a failed BAP change is recorded with its failure", async (t) => {
+  // Arrange
+  const { root, server, call } = await supervisor({ ...bapSoak, failBap: true });
+  t.after(() => server.close());
+  await reviewed(call);
+  // Act
+  await call("/record", { state: mining(100000) });
+  await eventually(() => readFile(resolve(root, "live-change-1.json")).then(() => true, () => false));
+  // Assert
+  const recorded = JSON.parse(await readFile(resolve(root, "live-change-1.json"), "utf8"));
+  assert.equal(recorded.failure, "bap_operation_failed");
+});
+
+test("a BAP soak whose plan never ran needs no settings restore", async (t) => {
+  // Arrange
+  const { root, server, call, patches, clock } = await supervisor({ ...bapSoak, liveChanges: frozenPlan("bap") });
+  t.after(() => server.close());
+  await reviewed(call);
+  await call("/authorization-context", { controlSessionBindingSha256: binding });
+  await call("/window-artifacts");
+  const { value: completion } = await call("/completion-context", {});
+  clock.fastForward = true;
+  // Act
+  await call("/completion-review", { nonce: completion.nonce, ledger_after: soakLedger, final_state: afterSettings });
+  // Assert: the plan never ran, so only the profile write was sent, and nothing was restored.
+  assert.equal(patches.length, 1);
+  const { result } = JSON.parse(await readFile(resolve(root, "result.json"), "utf8"));
+  assert.equal(result.settings_restore, undefined);
+  assert.ok(result.failures.includes("live_change_missing"));
+});
+
+test("a BAP change never runs a client rebuilt after preflight", async (t) => {
+  // Arrange
+  const { root, server, call, bapChanges } = await supervisor({ ...bapSoak, clientDrift: true });
+  t.after(() => server.close());
+  await reviewed(call);
+  // Act
+  await call("/record", { state: mining(100000) });
+  await eventually(() => readFile(resolve(root, "live-change-1.json")).then(() => true, () => false));
+  // Assert
+  const recorded = JSON.parse(await readFile(resolve(root, "live-change-1.json"), "utf8"));
+  assert.deepEqual([recorded.failure, bapChanges.length], ["bap_client_drift", 0]);
 });

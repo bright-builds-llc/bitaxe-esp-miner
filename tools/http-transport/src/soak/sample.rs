@@ -66,6 +66,13 @@ pub struct SoakSample {
     pub power_watts: f64,
     #[serde(default)]
     pub hash_rate_ghs: f64,
+    /// The saved fan settings and the fan's reading, so a soak can judge a live fan change.
+    #[serde(default)]
+    pub auto_fan_speed: u8,
+    #[serde(default)]
+    pub manual_fan_speed: u16,
+    #[serde(default)]
+    pub fan_rpm: u16,
     pub revision: u64,
     /// HTTP only: whether the configured pool settings still equal the first HTTP sample's.
     pub maybe_pool_matches_initial: Option<bool>,
@@ -107,6 +114,9 @@ impl SoakSample {
                 .then_some(wire.core_voltage_actual),
             power_watts: wire.power,
             hash_rate_ghs: wire.hash_rate,
+            auto_fan_speed: wire.auto_fan_speed,
+            manual_fan_speed: wire.manual_fan_speed,
+            fan_rpm: wire.fan_rpm,
             revision: wire.operator_snapshot_revision.get(),
             maybe_pool_matches_initial,
         }

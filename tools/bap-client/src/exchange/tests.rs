@@ -157,3 +157,46 @@ fn an_oversized_line_is_discarded_whole() {
     assert_eq!(report.malformed_lines, 1);
     assert_eq!(report.frames.len(), 1);
 }
+
+#[test]
+fn a_fan_speed_setting_without_a_refusal_is_sent_silently() {
+    // Arrange: the reference saves fan_speed without an acknowledgement.
+    let mut link = Scripted::new(&[]);
+    let operation = Operation::Set {
+        parameter: BapParameter::FanSpeed,
+        value: "80".into(),
+    };
+    // Act
+    let report = run(&operation, &mut link, TIMING).expect("run");
+    // Assert
+    assert_eq!(report.outcome, Outcome::SentSilently);
+}
+
+#[test]
+fn a_refused_fan_speed_setting_is_rejected() {
+    // Arrange
+    let refused = frame(BapCommand::Error, "fan_speed", "set_failed");
+    let mut link = Scripted::new(&[(10, &refused)]);
+    let operation = Operation::Set {
+        parameter: BapParameter::FanSpeed,
+        value: "80".into(),
+    };
+    // Act
+    let report = run(&operation, &mut link, TIMING).expect("run");
+    // Assert
+    assert_eq!(report.outcome, Outcome::Rejected("set_failed".into()));
+}
+
+#[test]
+fn another_unanswered_setting_still_times_out() {
+    // Arrange
+    let mut link = Scripted::new(&[]);
+    let operation = Operation::Set {
+        parameter: BapParameter::AutoFan,
+        value: "1".into(),
+    };
+    // Act
+    let report = run(&operation, &mut link, TIMING).expect("run");
+    // Assert
+    assert_eq!(report.outcome, Outcome::TimedOut);
+}
