@@ -95,6 +95,10 @@ pub(crate) struct TransitionItemArgs {
 
     #[arg(long = "migration-ledger", value_parser = parse_utf8_path)]
     pub(crate) maybe_migration_ledger: Option<Utf8PathBuf>,
+
+    /// An owner's verified-revision authority under `docs/parity/verified-revisions/`.
+    #[arg(long = "verified-revision-authority", value_parser = parse_utf8_path)]
+    pub(crate) maybe_verified_revision_authority: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

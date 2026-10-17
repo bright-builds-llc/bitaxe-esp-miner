@@ -104,7 +104,7 @@ pub(super) fn require_policy(
     ))
 }
 
-fn parse_ledger(document: &str) -> Result<Ledger, String> {
+pub(super) fn parse_ledger(document: &str) -> Result<Ledger, String> {
     let ledger: Ledger = serde_json::from_str(document)
         .map_err(|error| format!("invalid automation migration ledger: {error}"))?;
     if ledger.schema_version != "bitaxe-automation-migration-v1"

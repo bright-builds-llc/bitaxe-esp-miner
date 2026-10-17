@@ -9,8 +9,11 @@ use crate::phase35_evidence::sha256_hex;
 use crate::{parity_work, LocalEnvironment, ReportEnvironment, TransitionItemArgs};
 
 mod migration;
+mod verified_revision;
 
-use migration::{read_binding, require_policy, validate_receipt_binding};
+#[cfg(test)]
+use migration::parse_ledger;
+use migration::{read_binding, require_policy, validate_receipt_binding, Ledger};
 
 const TRANSITIONS_ROOT: &str = "docs/parity/checklist-transitions";
 const BASELINE_FILE: &str = "baseline.md";
@@ -33,6 +36,10 @@ struct TransitionReceipt {
     migration_ledger_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     migration_ledger_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    verified_revision_authority_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    verified_revision_authority_sha256: Option<String>,
     before_rust_owned_target: String,
     after_rust_owned_target: String,
     before_status: String,
@@ -133,6 +140,10 @@ pub(crate) fn transition_item(
         &environment.workspace_dir,
         args.maybe_migration_ledger.as_deref(),
     )?;
+    let revision_binding = verified_revision::read_binding(
+        &environment.workspace_dir,
+        args.maybe_verified_revision_authority.as_deref(),
+    )?;
 
     let current = super::read_authoritative_checklist(&environment.workspace_dir)?;
     let rows = parse_rows(&current)?;
@@ -141,12 +152,6 @@ pub(crate) fn transition_item(
         .ok_or_else(|| format!("parity row {} is missing", args.row_id))?;
     let before_status = normalize_status(&row.cells[4])?;
     let after_status = normalize_status(&args.to)?;
-    require_policy(
-        &before_status,
-        &after_status,
-        &args.row_id,
-        migration_binding.as_ref().map(|binding| &binding.ledger),
-    )?;
     if after_status == "verified" {
         if args.evidence.trim().eq_ignore_ascii_case("pending") || args.evidence.trim().is_empty() {
             return Err("verified parity transitions require non-pending evidence".to_owned());
@@ -182,7 +187,15 @@ pub(crate) fn transition_item(
         migration_ledger_path: migration_binding
             .as_ref()
             .map(|binding| binding.path.clone()),
-        migration_ledger_sha256: migration_binding.map(|binding| binding.digest),
+        migration_ledger_sha256: migration_binding
+            .as_ref()
+            .map(|binding| binding.digest.clone()),
+        verified_revision_authority_path: revision_binding
+            .as_ref()
+            .map(|binding| binding.path.clone()),
+        verified_revision_authority_sha256: revision_binding
+            .as_ref()
+            .map(|binding| binding.digest.clone()),
         before_rust_owned_target: row.cells[3].clone(),
         after_rust_owned_target: after_target,
         before_status,
@@ -192,6 +205,11 @@ pub(crate) fn transition_item(
         before_notes: notes_binding.as_ref().map(|(before, _)| before.clone()),
         after_notes: notes_binding.map(|(_, after)| after),
     };
+    require_receipt_policy(
+        &receipt,
+        migration_binding.as_ref().map(|binding| &binding.ledger),
+        revision_binding.as_ref().map(|binding| &binding.authority),
+    )?;
     require_changed_mutable_cell(&receipt)?;
     let projected = apply_receipt(&current, &receipt)?;
     receipt.result_sha256 = sha256_hex(projected.as_bytes());
@@ -243,6 +261,7 @@ fn validate_receipt(
         return Err(format!("parity transition binding mismatch for {path}"));
     }
     require_full_commit(&receipt.reference_commit)?;
+    require_single_line_cells(receipt)?;
     let plan_path = Utf8Path::new(&receipt.plan_path);
     parity_work::validate_audit_path(plan_path, "PLAN.md").map_err(|error| error.to_string())?;
     let plan = read(&workspace.join(plan_path), "parity transition work plan")?;
@@ -267,11 +286,17 @@ fn validate_receipt(
         receipt.migration_ledger_path.as_deref(),
         receipt.migration_ledger_sha256.as_deref(),
     )?;
-    require_policy(
-        &normalize_status(&receipt.before_status)?,
-        &normalize_status(&receipt.after_status)?,
-        &receipt.row_id,
+    let revision_authority = verified_revision::validate_receipt_binding(
+        workspace,
+        receipt.verified_revision_authority_path.as_deref(),
+        receipt.verified_revision_authority_sha256.as_deref(),
+    )?;
+    normalize_status(&receipt.before_status)?;
+    normalize_status(&receipt.after_status)?;
+    require_receipt_policy(
+        receipt,
         migration_ledger.as_ref(),
+        revision_authority.as_ref(),
     )?;
     require_changed_mutable_cell(receipt)?;
     if receipt.after_status == "verified"
@@ -329,6 +354,55 @@ fn apply_receipt(predecessor: &str, receipt: &TransitionReceipt) -> Result<Strin
         projected.push('\n');
     }
     Ok(projected)
+}
+
+/// Replayed receipts are hand-editable, so every written cell must stay one table cell.
+fn require_single_line_cells(receipt: &TransitionReceipt) -> Result<(), String> {
+    let cells = [&receipt.after_rust_owned_target, &receipt.after_evidence]
+        .into_iter()
+        .chain(receipt.after_notes.as_ref());
+    for cell in cells {
+        if cell.contains(['|', '\n', '\r']) {
+            return Err(format!(
+                "parity transition cells for {} must be single-line Markdown without pipes",
+                receipt.row_id
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The status policy, or an owner's verified-revision authority instead of it; never both.
+fn require_receipt_policy(
+    receipt: &TransitionReceipt,
+    maybe_migration: Option<&Ledger>,
+    maybe_revision: Option<&verified_revision::Authority>,
+) -> Result<(), String> {
+    let Some(authority) = maybe_revision else {
+        return require_policy(
+            &receipt.before_status,
+            &receipt.after_status,
+            &receipt.row_id,
+            maybe_migration,
+        );
+    };
+    if maybe_migration.is_some() {
+        return Err("a parity transition binds at most one authority".to_owned());
+    }
+    verified_revision::require_authorized(
+        authority,
+        &verified_revision::Revision {
+            row_id: &receipt.row_id,
+            before_status: &receipt.before_status,
+            after_status: &receipt.after_status,
+            before_target: &receipt.before_rust_owned_target,
+            after_target: &receipt.after_rust_owned_target,
+            before_evidence: &receipt.before_evidence,
+            after_evidence: &receipt.after_evidence,
+            maybe_before_notes: receipt.before_notes.as_deref(),
+            maybe_after_notes: receipt.after_notes.as_deref(),
+        },
+    )
 }
 
 fn require_changed_mutable_cell(receipt: &TransitionReceipt) -> Result<(), String> {
@@ -397,214 +471,4 @@ fn require_same_document(expected: &str, actual: &str) -> Result<(), String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const CHECKLIST: &str = "\
-| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |\n\
-| --- | --- | --- | --- | --- | --- | --- |\n\
-| STR-001 | Socket | reference/source.c | crate/src/lib.rs | implemented | pending | Note. |\n";
-
-    fn receipt() -> TransitionReceipt {
-        TransitionReceipt {
-            schema_version: SCHEMA.to_owned(),
-            transition_id: "20260802T120000Z-STR-001".to_owned(),
-            predecessor_sha256: sha256_hex(CHECKLIST.as_bytes()),
-            result_sha256: String::new(),
-            row_id: "STR-001".to_owned(),
-            reference_commit: "a".repeat(40),
-            plan_path: "docs/parity/work-plans/run/PLAN.md".to_owned(),
-            plan_sha256: "b".repeat(64),
-            result_path: Some("docs/parity/work-plans/run/RESULT.md".to_owned()),
-            result_document_sha256: Some("c".repeat(64)),
-            migration_ledger_path: None,
-            migration_ledger_sha256: None,
-            before_rust_owned_target: "crate/src/lib.rs".to_owned(),
-            after_rust_owned_target: "crate/src/lib.rs".to_owned(),
-            before_status: "implemented".to_owned(),
-            after_status: "verified".to_owned(),
-            before_evidence: "pending".to_owned(),
-            after_evidence: "unit".to_owned(),
-            before_notes: None,
-            after_notes: None,
-        }
-    }
-
-    fn valid_chain(label: &str) -> (Utf8PathBuf, String) {
-        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
-            "bitaxe-parity-transition-{label}-{}",
-            std::process::id()
-        )))
-        .expect("temporary path must be UTF-8");
-        let _ = fs::remove_dir_all(workspace.as_std_path());
-        let plan_root = workspace.join("docs/parity/work-plans/run");
-        let ledger_root = workspace.join(TRANSITIONS_ROOT);
-        fs::create_dir_all(plan_root.as_std_path()).expect("plan root");
-        fs::create_dir_all(ledger_root.as_std_path()).expect("ledger root");
-        fs::write(plan_root.join("PLAN.md").as_std_path(), "plan\n").expect("plan");
-        fs::write(plan_root.join("RESULT.md").as_std_path(), "result\n").expect("result");
-        fs::write(ledger_root.join(BASELINE_FILE).as_std_path(), CHECKLIST).expect("baseline");
-
-        let mut receipt = receipt();
-        receipt.plan_sha256 = sha256_hex(b"plan\n");
-        receipt.result_document_sha256 = Some(sha256_hex(b"result\n"));
-        let projected = apply_receipt(CHECKLIST, &receipt).expect("projected checklist");
-        receipt.result_sha256 = sha256_hex(projected.as_bytes());
-        let receipt_document =
-            serde_json::to_string_pretty(&receipt).expect("transition receipt JSON");
-        fs::write(
-            ledger_root
-                .join(format!("{}.json", receipt.transition_id))
-                .as_std_path(),
-            receipt_document,
-        )
-        .expect("receipt");
-        (workspace, projected)
-    }
-
-    #[test]
-    fn receipt_changes_only_the_selected_mutable_cells() {
-        // Arrange
-        let receipt = receipt();
-
-        // Act
-        let projected = apply_receipt(CHECKLIST, &receipt).expect("transition should apply");
-
-        // Assert
-        assert!(projected.contains("| verified | unit | Note. |"));
-        assert!(projected.contains("| STR-001 | Socket | reference/source.c |"));
-    }
-
-    #[test]
-    fn receipt_projects_hash_bound_notes_when_requested() {
-        // Arrange
-        let mut receipt = receipt();
-        receipt.before_notes = Some("Note.".to_owned());
-        receipt.after_notes = Some("Verified evidence.".to_owned());
-
-        // Act
-        let projected = apply_receipt(CHECKLIST, &receipt).expect("transition should apply");
-
-        // Assert
-        assert!(projected.contains("| verified | unit | Verified evidence. |"));
-        assert!(!projected.contains("| verified | unit | Note. |"));
-    }
-
-    #[test]
-    fn receipt_rejects_incomplete_notes_binding() {
-        // Arrange
-        let mut receipt = receipt();
-        receipt.after_notes = Some("Verified evidence.".to_owned());
-
-        // Act
-        let error = apply_receipt(CHECKLIST, &receipt)
-            .expect_err("incomplete notes binding must fail closed");
-
-        // Assert
-        assert!(error.contains("notes binding is incomplete"));
-    }
-
-    #[test]
-    fn transition_rejects_status_regression() {
-        // Arrange
-        let before = "implemented";
-        let after = "in-progress";
-
-        // Act
-        let error = require_policy(before, after, "STR-001", None)
-            .expect_err("regression must be rejected");
-
-        // Assert
-        assert!(error.contains("monotonically"));
-    }
-
-    #[test]
-    fn transition_accepts_same_status_for_a_metadata_revision() {
-        // Arrange
-        let status = "implemented";
-
-        // Act
-        let result = require_policy(status, status, "STR-001", None);
-
-        // Assert
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn receipt_requires_at_least_one_mutable_cell_change() {
-        // Arrange
-        let mut receipt = receipt();
-        receipt.after_status = receipt.before_status.clone();
-        receipt.after_evidence = receipt.before_evidence.clone();
-
-        // Act
-        let error = require_changed_mutable_cell(&receipt)
-            .expect_err("an exact no-op transition must be rejected");
-
-        // Assert
-        assert!(error.contains("at least one mutable checklist cell"));
-    }
-
-    #[test]
-    fn receipt_accepts_same_status_when_the_target_changes() {
-        // Arrange
-        let mut receipt = receipt();
-        receipt.after_status = receipt.before_status.clone();
-        receipt.after_evidence = receipt.before_evidence.clone();
-        receipt.after_rust_owned_target = "crate/src/new_owner.rs".to_owned();
-
-        // Act
-        let result = require_changed_mutable_cell(&receipt);
-
-        // Assert
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn transition_rejects_verified_source_rows() {
-        // Arrange
-        let before = "verified";
-        let after = "verified";
-
-        // Act
-        let error = require_policy(before, after, "STR-001", None)
-            .expect_err("verified source must be terminal");
-
-        // Assert
-        assert!(error.contains("forbidden"));
-    }
-
-    #[test]
-    fn transition_chain_accepts_hash_bound_plan_and_result() {
-        // Arrange
-        let (workspace, projected) = valid_chain("accepted");
-
-        // Act
-        let result = validate_chain(&workspace, CHECKLIST, &projected);
-
-        // Assert
-        assert!(result.is_ok());
-        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
-    }
-
-    #[test]
-    fn transition_chain_rejects_result_document_tampering() {
-        // Arrange
-        let (workspace, projected) = valid_chain("tampered-result");
-        fs::write(
-            workspace
-                .join("docs/parity/work-plans/run/RESULT.md")
-                .as_std_path(),
-            "tampered\n",
-        )
-        .expect("tamper result");
-
-        // Act
-        let error =
-            validate_chain(&workspace, CHECKLIST, &projected).expect_err("tampering must fail");
-
-        // Assert
-        assert!(error.contains("result digest mismatch"));
-        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
-    }
-}
+mod tests;
