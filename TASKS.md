@@ -1106,8 +1106,11 @@ Owner decision needed; not decided by ADR-0037. In the Gate's design the
 Worker returns to ordinary local mining (its Mining Baseline) after a lease.
 This firmware returns to a paused baseline and mines only under a lease.
 
-- [ ] Present the options and safety implications, including a heartbeat
-      replacement for local mining, and record the owner's decision in an ADR.
+- [x] Present the options and safety implications, including a heartbeat
+      replacement for local mining. Done in
+      `docs/adr/0038-mining-after-a-lease.md` (Proposed, 2026-10-16).
+- [ ] Record the owner's decision in ADR-0038, plus its sub-decisions if
+      option B is chosen, and plan the follow-up tasks.
 
 Verification: pending. Completion review: pending.
 
