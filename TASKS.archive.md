@@ -32031,3 +32031,143 @@ Residual risks:
   the chip cools.
 - Verified in software only; the task 6 soaks include a hardware check
   that a lease interrupts and restores local mining.
+
+### task-boot-resume-and-crash-loop-guard | 2026-10-16 | Resume mining on boot, with a crash-loop guard
+
+ADR-0038 step 5.
+
+- [x] Resume mining on boot when `startMiningOnBoot` is true (its default).
+- [x] Start paused when the reset-retained boot record shows repeated
+      abnormal resets (panic, watchdog, brownout) within a short window.
+      Report why.
+- [x] Keep test and evidence provisioning writing `mineonboot=0`.
+- [x] Turn on `LOCAL_MINING_ENABLED` (owner decision 2026-10-17). First
+      address the residual risks recorded in the archived
+      `task-local-mining-owner`: give the firmware shell behavior tests, and
+      decide the idle fan while a run probes.
+- [x] Show why the device started paused in the web UIs and on the LCD
+      (owner request 2026-10-17).
+
+Started 2026-10-17 at the owner's request. Software only; turning the
+switch on changes device behavior only where `startMiningOnBoot` is true.
+Test and evidence provisioning keeps writing false.
+
+Owner decisions (2026-10-17):
+- Start paused after 3 consecutive abnormal resets (panic, watchdog or
+  brownout), each before the boot reached 10 minutes of uptime.
+- A boot that runs 10 minutes, a power-on, a normal restart or the
+  operator's resume clears the streak.
+- The streak lives in NVS: it counts brownouts and survives power loss.
+  It is written only on an abnormal boot and once when a boot becomes
+  stable.
+- Indicate it in the UI and on the LCD.
+
+Plan (pure core first, the full gate after each commit):
+1. **Runtime (pure):** the crash-loop streak.
+   - `next_streak(previous, reset)`, `starts_paused(streak)`, and the
+     10-minute stability rule.
+   - Its device-internal NVS key `crashstreak` joins the device-owned
+     allowlist. It stays outside the REST schema and the preservation
+     fingerprint.
+2. **Firmware boot:** after boot identity and settings load, and before the
+   boot mining preference:
+   - read and update the streak;
+   - start paused when it reaches 3, recording why.
+   The owner loop clears it at 10 minutes of uptime and on the operator's
+   resume.
+3. **Indication:**
+   - a `pauseReason` project field in `/api/system/info`: `crash_loop`,
+     or the local owner's `overheat` or `restart_guard` device pauses;
+   - an LCD priority page, "MINING PAUSED / Repeated resets";
+   - a dashboard notice in both web UIs.
+4. **Shell behavior tests:** move the local owner shell's remaining
+   decisions into tested pure functions. These are run end and adoption
+   detection, the resume edge, and which hold the API shows.
+   - The idle fan while a run probes is upstream's behavior: the
+     safe-stop leaves 30%, as upstream runs 30% while paused or without a
+     pool. Overheat cooling runs the idle fan controller at 100% from
+     `overheat_mode`.
+5. **Switch:** `LOCAL_MINING_ENABLED = true`; the source guard flips to
+   pin it on.
+
+Implementation notes (steps 1 to 4):
+- Pure pieces:
+  - `bitaxe_runtime::boot_guard`: `next_streak`, `starts_paused`,
+    `boot_is_stable`;
+  - `CRASH_STREAK_KEY` joins the device-owned allowlist;
+  - `bitaxe_core::device_pause::DevicePauseReason` (labels, screen lines,
+    codes);
+  - the local shell decisions in `local_mining::shell`: `run_tick`,
+    `ResumeEdge` and `api_hold`, all tested. The firmware shell now
+    delegates to them.
+- Firmware:
+  - `boot_guard.rs` adjusts the boot mining preference before it is
+    applied. A failed read counts from zero and a failed save is logged;
+    the guard never blocks boot.
+  - The owner loop's `BootGuardShell` ends the indication whenever the
+    requested intent is Run. The operator's resume edge, and 10 minutes of
+    uptime, clear the streak. A failed save retries every 30 s.
+  - It does nothing while no pause is held and the streak is zero.
+  - `requested_mining_operator_intent` now reads the intent under the
+    lock, without cloning the command state.
+  - A campaign's run bootstrap ends the indication but leaves the streak
+    for the 10-minute clear.
+  - `Other` resets (external pin, USB, JTAG) clear the streak, like a
+    power-on.
+  - Crash loops before the boot preference is applied are not counted.
+  - `device_pause.rs` stores the reason lock-free. The local owner sets
+    `Overheat` or `RestartGuard` when it pauses itself.
+  - The indication is hidden while a Gate lease or a campaign owns
+    mining, because the device mines for that owner.
+  - `device_settings_store.rs` is shared with the overheat store.
+- Indication:
+  - `pauseReason` in `/api/system/info`, absent unless paused by the
+    device. `ApiSnapshot` stores the typed reason (one byte), so its
+    1,920-byte inline bound holds.
+  - The LCD's `DevicePaused` priority page shows "MINING PAUSED / <reason>
+    / Resume to mine / <IP>". It ranks after the Welcome and Connection
+    setup pages, which the operator needs to reach the UI. It stays out
+    of upstream's manual page order.
+  - Both web UIs show a dashboard notice through a shared `pauseNotice`
+    core function, covered by the cross-variant contract test. The notice
+    is a permanent polite live region whose text changes, so screen
+    readers announce it. Both stay within their size budgets.
+- Recorded behavior change: `run_tick` keeps a consumed lease whose
+  hardware is still stopping as `Running`. The old shell retired it as not
+  adopted. Waiting for the stop is the safer reading, and a test pins it.
+6. **Records:** README, ADR-0038 and TASKS.
+
+Verification (2026-10-17, software only, no hardware effects):
+- the full gate passed on the final tree: fmt, clippy, build, cargo tests,
+  `just build`, `just test` (341 targets), Bright Builds, redaction and
+  parity;
+- the BAP, HTTP, owner-stack, realignment and link-stack audits passed;
+- the Solid typechecks, the cross-variant UI contract test and the web UI
+  budget passed;
+- an independent review, then a re-review of its fixes; its last two Low
+  items were fixed (an unauthorized campaign no longer hides the notice,
+  and an unchanged notice stays quiet).
+- Final stack headroom: BAP 656 bytes, HTTP 1,040, link 928. The owner
+  entry frame is 3,392 of 8,192 bytes.
+
+Completion review:
+- Local mining is on. With `startMiningOnBoot` true (its default), a
+  device boots mining its saved pool. Provisioned test and evidence
+  devices keep writing false and boot paused, so their workflows are
+  unchanged.
+- The crash-loop guard starts the device paused after three abnormal
+  resets in a row, each under 10 minutes of uptime, and says why in the
+  API, both web UIs and on the LCD.
+- The local owner shell's remaining decisions are pure and tested, which
+  closes the main residual risk of `task-local-mining-owner`.
+- The idle fan while a run probes matches upstream's 30% while paused or
+  without a pool, so no change was needed.
+
+Residual risks:
+- Local mining has software evidence only. The task 6 soaks are the
+  hardware proof, and "unbounded mining" stays a non-claim until then.
+- BAP stack headroom has shrunk over these tasks to 656 bytes.
+- Crash loops before the boot preference is applied are not counted.
+  `Other` resets clear the streak.
+- The 5-minute hold after a refused Hello (task 4) awaits the owner's
+  confirmation.

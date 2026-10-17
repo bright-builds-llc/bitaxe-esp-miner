@@ -204,13 +204,19 @@ These tasks follow, in dependency order. Each hardware effect needs its own
    "Unbounded mining" stays a non-claim until these soaks exist.
 
 Implementation status (2026-10-17):
-- Tasks 1 to 3 have landed in software.
+- Tasks 1 to 5 have landed in software. Local mining is on.
 - The local owner (`firmware/bitaxe/src/production_mining_session/local_owner.rs`,
   with its pure core in `crates/bitaxe-runtime/src/local_mining/`) is complete.
   It probes the pool before power, recovers from overheats, keeps a restart
   guard and latches hardware faults.
-- `LOCAL_MINING_ENABLED` stays false until task 5 turns it on (owner decision
-  2026-10-17).
+- Task 5 turned `LOCAL_MINING_ENABLED` on with the crash-loop guard (owner
+  decision 2026-10-17). The guard starts the device paused after three
+  abnormal resets in a row (panic, watchdog or brownout), each before 10
+  minutes of uptime. The streak lives in NVS.
+- A device that paused itself (crash loop, an overheat it could not recover
+  from, or the restart guard) says why: `pauseReason` in `/api/system/info`,
+  a dashboard notice in both web UIs, and a "MINING PAUSED" screen page.
+- Devices provisioned with `startMiningOnBoot` false still boot paused.
 - The restart guard is the owner's divergence from upstream. After a run
   fails, it backs off from 30 s, doubling. After five failures in a row it
   holds until resumed. Ten minutes of hashing resets it.

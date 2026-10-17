@@ -67,9 +67,13 @@ The current firmware is not qualified for production mining.
 - The ordinary ESP adapter mines only under a signed Gate Work Lease, within
   device-local protection. Each surface's evidence status is in
   `docs/parity`.
-- Local mining without a lease (ADR-0038) is implemented: probe before
-  power, overheat recovery, a restart guard and a hardware fault latch. It
-  stays off behind `LOCAL_MINING_ENABLED` until the crash-loop guard lands.
+- With no lease, the device mines its saved pool when it is not paused
+  (ADR-0038). It probes the pool before power, recovers from overheats,
+  keeps a restart guard and a crash-loop guard, and latches hardware
+  faults.
+- A Gate link takes over: Connect fails until local mining has stopped.
+- A device provisioned with `startMiningOnBoot` false, as test and evidence
+  provisioning writes it, boots paused.
 - Unbounded mining remains a non-claim until the local mining soaks exist.
 
 Deterministic-session outcomes are not hardware evidence or a
