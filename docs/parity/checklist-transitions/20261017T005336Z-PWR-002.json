@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261017T005336Z-PWR-002",
+  "predecessor_sha256": "9a88eee013b50f5bc3c3aaafc9ba79d805e611d2b791d9fb86414f51d7935e67",
+  "result_sha256": "01ad03a9b432ed96075eb8c633b3e2f8c6a9c0ad4b8ce1e8fe6e62dd1ceeb5a2",
+  "row_id": "PWR-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261017T005336Z-PWR-002/PLAN.md",
+  "plan_sha256": "5c6e2023bee1ee5c18497fd40d0fa78840253ad90f4fde0b0b4518b8f2756318",
+  "result_path": "docs/parity/work-plans/20261017T005336Z-PWR-002/RESULT.md",
+  "result_document_sha256": "c79be3a5b99736b72e80a96f085a2b3e58dffd9a09c1b92fe8bb86fca330ac5b",
+  "verified_revision_authority_path": "docs/parity/verified-revisions/2026-10-16-device-config-soaks.json",
+  "verified_revision_authority_sha256": "1185f7f07019d28331578b1fbdeb6ecc8448baed1cb469e1aed79e8dac17a6d9",
+  "before_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/init_plan.rs`, `crates/bitaxe-safety`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `firmware/bitaxe/src/asic_adapter/reset.rs`, `firmware/bitaxe/src/safety_adapter.rs`, `crates/bitaxe-automation-contracts/src/asic_power_initialization_evidence.rs`, `tools/automation/src/asic-power-initialization-evidence.ts`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/init_plan.rs`, `crates/bitaxe-safety`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `firmware/bitaxe/src/asic_adapter/reset.rs`, `firmware/bitaxe/src/safety_adapter.rs`, `crates/bitaxe-automation-contracts/src/asic_power_initialization_evidence.rs`, `tools/automation/src/asic-power-initialization-evidence.ts`",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression,soak",
+  "before_notes": "Sealed exact-package Ultra 205 evidence binds the conservative 400 MHz, 1100 mV, and 100% fan profile; all nine ordered preparation steps; fresh safety and post-command RPM admission; 500 ms stabilization; active-low ASIC enable; exactly one BM1366; mining-ready completion; retained production UART; accepted work; eight-step rollback semantics; safe stop; cleanup; source compatibility; independent validation; redaction; and no hardware rerun. See [PWR-002 result](work-plans/20260812T193941Z-PWR-002/RESULT.md) and [power-initialization projection](evidence/pwr002-asic-power-initialization/power-initialization-projection.json). Analog accuracy, electrical waveforms, arbitrary profiles, automatic fan behavior, injected physical faults, thermal response, soak stability, other ASICs or boards, updates, recovery, and release readiness remain non-claims.",
+  "after_notes": "Sealed exact-package Ultra 205 evidence binds the conservative 400 MHz, 1100 mV, and 100% fan profile; all nine ordered preparation steps; fresh safety and post-command RPM admission; 500 ms stabilization; active-low ASIC enable; exactly one BM1366; mining-ready completion; retained production UART; accepted work; eight-step rollback semantics; safe stop; cleanup; source compatibility; independent validation; redaction; and no hardware rerun. See [PWR-002 result](work-plans/20260812T193941Z-PWR-002/RESULT.md) and [power-initialization projection](evidence/pwr002-asic-power-initialization/power-initialization-projection.json). Analog accuracy, electrical waveforms, arbitrary profiles, automatic fan behavior, injected physical faults, thermal response, soak stability, other ASICs or boards, updates, recovery, and release readiness remain non-claims. Later soak evidence (ADR-0037), outside the projection above, narrows the arbitrary-profile, automatic-fan and soak-stability non-claims for these cases only: the device-settings profiles 485 MHz / 1200 mV ([soak 007](evidence/20261016-ultra205-soak-007.md)) and 575 MHz / 1200 mV ([soak 009](evidence/20261016-ultra205-soak-009.md)) each prepared with the fan at 100% and then mined 600 s under the automatic fan; a third soak mined 485/1200 with 200 s at 400/1100 ([soak 008](evidence/20261016-ultra205-soak-008.md)). The 1300 mV corner, other profiles and fan settings, and the remaining non-claims above still apply."
+}

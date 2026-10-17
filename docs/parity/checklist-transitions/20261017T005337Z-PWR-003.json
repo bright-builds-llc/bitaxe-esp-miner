@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261017T005337Z-PWR-003",
+  "predecessor_sha256": "01ad03a9b432ed96075eb8c633b3e2f8c6a9c0ad4b8ce1e8fe6e62dd1ceeb5a2",
+  "result_sha256": "de0a79a465882e25755ce6db6eeaab91a668e0b2dbf1df732fe14fcf5f969642",
+  "row_id": "PWR-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261017T005337Z-PWR-003/PLAN.md",
+  "plan_sha256": "53d447f16be93b3216d67518d2250b3b12a151406e79cb60884e4ea290008ef8",
+  "result_path": "docs/parity/work-plans/20261017T005337Z-PWR-003/RESULT.md",
+  "result_document_sha256": "1a4268e617789439df792528a463a6126cfbb5d6a00b27a32996086c4dbf4984",
+  "verified_revision_authority_path": "docs/parity/verified-revisions/2026-10-16-device-config-soaks.json",
+  "verified_revision_authority_sha256": "1185f7f07019d28331578b1fbdeb6ecc8448baed1cb469e1aed79e8dac17a6d9",
+  "before_rust_owned_target": "`firmware/bitaxe/src/safety_adapter/ds4432u.rs`, `firmware/bitaxe/src/safety_adapter/i2c_bus.rs`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `tools/automation/src/core-voltage-control-evidence.ts`, `crates/bitaxe-automation-contracts/src/core_voltage_control_evidence.rs`",
+  "after_rust_owned_target": "`firmware/bitaxe/src/safety_adapter/ds4432u.rs`, `firmware/bitaxe/src/safety_adapter/i2c_bus.rs`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `tools/automation/src/core-voltage-control-evidence.ts`, `crates/bitaxe-automation-contracts/src/core_voltage_control_evidence.rs`",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression,soak",
+  "before_notes": "The closed source-bound projection joins the accepted Ultra 205 PWR-002 hardware campaign to the exact DS4432U address/register/code and single-write route, 500 ms stabilization before active-low ASIC enable, accepted downstream work, safe stop, cleanup, no hardware rerun, independent validation, and redaction; see [RESULT.md](work-plans/20260812T212218Z-PWR-003/RESULT.md) and [core-voltage-control-projection.json](evidence/pwr003-core-voltage-control/core-voltage-control-projection.json). Direct analog voltage measurement, setpoint accuracy, rail timing or waveform, arbitrary targets, INA260 correlation, injected faults, other profiles, boards, and ASIC families remain non-claims.",
+  "after_notes": "The closed source-bound projection joins the accepted Ultra 205 PWR-002 hardware campaign to the exact DS4432U address/register/code and single-write route, 500 ms stabilization before active-low ASIC enable, accepted downstream work, safe stop, cleanup, no hardware rerun, independent validation, and redaction; see [RESULT.md](work-plans/20260812T212218Z-PWR-003/RESULT.md) and [core-voltage-control-projection.json](evidence/pwr003-core-voltage-control/core-voltage-control-projection.json). Direct analog voltage measurement, setpoint accuracy, rail timing or waveform, arbitrary targets, INA260 correlation, injected faults, other profiles, boards, and ASIC families remain non-claims. Later soak evidence (ADR-0037), outside the projection above, narrows the other-profiles and arbitrary-targets non-claims for 1100 and 1200 mV only: during a lease, live core-voltage changes from 1200 to 1100 mV and back moved the board's ADC core-voltage reading by -107 mV and +108 mV ([soak 008](evidence/20261016-ultra205-soak-008.md)). That reading is not a calibrated analog measurement; setpoint accuracy, waveforms, other targets and the remaining non-claims above still apply."
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261017T005335Z-ASIC-007",
+  "predecessor_sha256": "218c485621aca504706ab0e13d5d4a5b3fa113bc8876ac06ff7dcc0c6b8d02df",
+  "result_sha256": "9a88eee013b50f5bc3c3aaafc9ba79d805e611d2b791d9fb86414f51d7935e67",
+  "row_id": "ASIC-007",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261017T005335Z-ASIC-007/PLAN.md",
+  "plan_sha256": "6977b2249eac1c128a4720cacd442d358fce2f55ef3b76b34da7b1cb2aa9bd9e",
+  "result_path": "docs/parity/work-plans/20261017T005335Z-ASIC-007/RESULT.md",
+  "result_document_sha256": "edcb1dfc7652b4a7b7903356a0357d74bc192646b3ef8ef74b73d490470f674b",
+  "verified_revision_authority_path": "docs/parity/verified-revisions/2026-10-16-device-config-soaks.json",
+  "verified_revision_authority_sha256": "1185f7f07019d28331578b1fbdeb6ecc8448baed1cb469e1aed79e8dac17a6d9",
+  "before_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/frequency_voltage.rs`, `crates/bitaxe-asic/src/bm1366/mining_ready.rs`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `firmware/bitaxe/src/asic_adapter/production.rs`, `crates/bitaxe-automation-contracts/src/asic_frequency_transition_evidence.rs`, `tools/automation/src/asic-frequency-transition-evidence.ts`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/frequency_voltage.rs`, `crates/bitaxe-asic/src/bm1366/mining_ready.rs`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `firmware/bitaxe/src/asic_adapter/production.rs`, `crates/bitaxe-automation-contracts/src/asic_frequency_transition_evidence.rs`, `tools/automation/src/asic-frequency-transition-evidence.ts`",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression",
+  "after_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression,soak",
+  "before_notes": "Sealed exact-package Ultra 205 evidence proves the bounded conservative 50-to-400-MHz BM1366 frequency ramp completed through 56 typed writes and 56 inter-step delays before live initialized work and an accepted response; current planning, actuation, UART, and executor paths remain compatible, with confirmed safe stop, cleanup, independent validation, and redaction. See `docs/parity/work-plans/20260812T104903Z-ASIC-007/RESULT.md` and `docs/parity/evidence/asic007-frequency-transition/asic-frequency-transition-projection.json`. Arbitrary targets, dynamic retuning, default-profile or overclock behavior, voltage/fan/power/thermal parity, other ASICs or boards, soak stability, updates, recovery, and release readiness remain non-claims.",
+  "after_notes": "Sealed exact-package Ultra 205 evidence proves the bounded conservative 50-to-400-MHz BM1366 frequency ramp completed through 56 typed writes and 56 inter-step delays before live initialized work and an accepted response; current planning, actuation, UART, and executor paths remain compatible, with confirmed safe stop, cleanup, independent validation, and redaction. See `docs/parity/work-plans/20260812T104903Z-ASIC-007/RESULT.md` and `docs/parity/evidence/asic007-frequency-transition/asic-frequency-transition-projection.json`. Arbitrary targets, dynamic retuning, default-profile or overclock behavior, voltage/fan/power/thermal parity, other ASICs or boards, soak stability, updates, recovery, and release readiness remain non-claims. Later soak evidence (ADR-0037), outside the projection above, narrows the default-profile, dynamic-retuning and soak-stability non-claims for these cases only: 600 s soaks prepared through the BM1366 ramp to 485 MHz ([soak 007](evidence/20261016-ultra205-soak-007.md)) and to 575 MHz, whose ordered shutdown completed in about 9.3 s against the 22,550 ms bound ([soak 009](evidence/20261016-ultra205-soak-009.md)); during a lease, live retuning from 485 to 400 MHz and back applied without revocation, with the counter hashrate following each frequency ratio ([soak 008](evidence/20261016-ultra205-soak-008.md)). Other targets, overclock behavior and the remaining non-claims above still apply."
+}

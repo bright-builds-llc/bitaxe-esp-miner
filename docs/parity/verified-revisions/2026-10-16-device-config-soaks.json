@@ -1,0 +1,58 @@
+{
+  "schema_version": "parity-verified-revision-authority-v1",
+  "authority_id": "2026-10-16-device-config-soaks",
+  "authorized_by": "owner",
+  "authorized_on": "2026-10-16",
+  "rationale": "ADR-0037 moved the hardware profile to device settings and added live settings changes. Soaks 007-009 gathered hardware evidence that narrows named non-claims on these verified rows. The owner authorized appending that evidence, once per row, with the status and the original notes unchanged.",
+  "evidence": [
+    {
+      "path": "docs/parity/evidence/20261016-ultra205-soak-007.md",
+      "sha256": "a2bb61efadc7e7eccee66ad43c72d5cacffcca514f54e7e690834d7a50a4bc2b"
+    },
+    {
+      "path": "docs/parity/evidence/20261016-ultra205-soak-008.md",
+      "sha256": "963b9cddcaca7cfb6d4419c6b5fbcad820ff9aff50775742f2c9be426ac53b12"
+    },
+    {
+      "path": "docs/parity/evidence/20261016-ultra205-soak-009.md",
+      "sha256": "63fbd89d1459a7d302fcae7211bebeed1355172a14d467445c71e3f162741f70"
+    }
+  ],
+  "rows": [
+    {
+      "row_id": "ASIC-007",
+      "added_evidence": [
+        "soak"
+      ],
+      "after_notes_sha256": "bf2638db54f5a8069cf5652242fb0ebb31916808ea3472ca978d402ebad502f4"
+    },
+    {
+      "row_id": "PWR-002",
+      "added_evidence": [
+        "soak"
+      ],
+      "after_notes_sha256": "5fd3dbbe9f43f0ee3b221bebce1b15b6f15f4f54a7078d968a695e7a2cc48403"
+    },
+    {
+      "row_id": "PWR-003",
+      "added_evidence": [
+        "soak"
+      ],
+      "after_notes_sha256": "ae74d46be9994740b24217c8cbb1e7a49e9438618416bf536070f0e0a4c9f467"
+    },
+    {
+      "row_id": "PWR-005",
+      "added_evidence": [
+        "soak"
+      ],
+      "after_notes_sha256": "3a0cc6da72ef24b9b3482f63f6cce5d086e1ac8d6c793a90cb2167daf9db7099"
+    },
+    {
+      "row_id": "THR-002",
+      "added_evidence": [
+        "soak"
+      ],
+      "after_notes_sha256": "3b7e379f6030899a76da2aee8c961049fbe901a16a5adc30a612e669b8c4f5f5"
+    }
+  ]
+}

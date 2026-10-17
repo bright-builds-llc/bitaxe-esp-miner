@@ -122,6 +122,12 @@ lease, and every hardware run still needs an active `TASKS.md` contract.
     instead of signing a profile.
 - Soak and qualification evidence must record the device configuration that
   ran.
+- Evidence (2026-10-16): soaks 007, 008 and 009 cover the device-settings
+  profiles 485/1200 and 575/1200 with the automatic fan, and a live change
+  from 485/1200 to 400/1100 and back during a lease. The owner authorized
+  appending that evidence to five verified parity rows through
+  `docs/parity/verified-revisions/2026-10-16-device-config-soaks.json`. The
+  parity tool accepts such a revision only if it is additive.
 
 ## Not decided here
 

@@ -30919,3 +30919,334 @@ Residual risks:
   voltage, as on upstream.
 - A resumable re-prepare returns to the Start profile, then the live owner
   re-applies the saved settings.
+
+### task-device-config-profile-evidence-soaks | 2026-10-16 | Soak the device-configured profiles on hardware
+
+ADR-0037 step 5. Depends on `task-live-hardware-settings-owner`. Hardware;
+each soak needs its own `TASKS.md` contract.
+
+- [x] Soak at least:
+  - upstream default (485 MHz, 1200 mV) with the automatic fan;
+  - one live frequency change during a lease;
+  - the catalog-maximum shutdown tail.
+  Record the device configuration in evidence.
+- [x] Update the PWR and ASIC parity rows whose non-claims name "arbitrary
+      profiles", within what the evidence shows. The owner authorized it on
+      2026-10-16 ("add the revision authority and update the five rows").
+      - `tools/parity` gained an owner verified-revision authority
+        (`--verified-revision-authority`, schema
+        `parity-verified-revision-authority-v1`).
+      - The authority pins each row's added evidence tokens and the digest
+        of its new notes, and binds its evidence files by digest.
+      - A revision is accepted only if it matches that grant and is
+        additive: the status and owned target stay the same, and the old
+        notes stay verbatim with a separated, printable suffix. Each grant
+        therefore applies once.
+      - Replays re-check the authority and the evidence digests. They also
+        refuse multi-line or pipe-containing cells in any receipt.
+      - A verified revision without the authority is still refused.
+        Regressions cover each refusal.
+      - The first set of notes was rewritten after review, which found that
+        THR-002 overclaimed. Each appended sentence now names the non-claims
+        it narrows and says that the rest still apply.
+      - Five transitions under
+        `docs/parity/verified-revisions/2026-10-16-device-config-soaks.json`
+        append the soak 007–009 evidence and add `soak` evidence to
+        ASIC-007, PWR-002, PWR-003, PWR-005 and THR-002. All five stay
+        `verified`, and parity remains 94 of 96.
+
+Started 2026-10-16 at the owner's request ("do step 4 and 5").
+
+Ultra 205 upstream-default soak hardware: enabled.
+
+- [x] Point `SOAK_TASK` at this task.
+- [x] Soak 007 attempt 001: the first soak on device settings, at 485 MHz,
+      1200 mV and the automatic fan (soak ledger v2, ordinal 1). It was
+      `unverified` on a tooling-order fault; the result is below.
+- [x] Fix the soak tooling so the page baseline follows the settings write,
+      with regressions.
+- [x] Soak 007 attempt 002 (ordinal 2), with an independent review: `complete`.
+- [x] Live-change soak tooling:
+  - soak samples record the saved frequency and core voltage, the fresh
+    measured core voltage, power and hashrate;
+  - `preflight --live-changes` freezes two changes that `serve` sends during
+    the work gate;
+  - the judge requires each change and its settled segment;
+  - regressions cover all of it.
+- [x] Soak 008 attempt 001: one live change down and back during a lease
+      (ordinal 3), with an independent review: `complete`.
+- [x] Selectable soak profiles: `preflight --profile`, and `serve` writes
+      only the named profile's settings, with regressions.
+- [x] Soak 009 attempt 001: the catalog-maximum frequency, 575 MHz at
+      1200 mV (ordinal 4), with an independent review: `complete`.
+
+Soak 007 hardware contract (owner-authorized 2026-10-16). It is the archived
+`task-ultra205-default-profile-soak-006` contract, unchanged except:
+- **Package:** `just package` at the clean, pushed `HEAD` that records this
+  contract. It carries ADR-0037 steps 1–4: device-settings profiles, mining
+  time as the budget, the fan following settings, and live settings. Install
+  it with that contract's state-preserving `just flash-monitor ...
+  --capture-timeout-seconds 360 --redact-evidence`.
+- **Parent and ledger:** `P = scratch/ultra205-soak-007`, with
+  `R = P/attempt-001`. Soak ledger v2 (`soak_ledger2`), ordinal 1; its fresh
+  ledger must report next ordinal 1 and total 0.
+- **Gate:** `eacd8147ead746711be6a03341a32e3cfed41a3e` (preflight
+  `--gate-commit`).
+- **New allowed effect:** at `/observer/start`, while the device is idle,
+  `serve` sends one HTTP PATCH to the device's private address:
+  `frequency` 485, `coreVoltage` 1200, `autofanspeed` 1. It reads them back
+  and records `device-settings.json`; a mismatch refuses the soak. These
+  values equal the device defaults, so nothing needs restoring.
+- **Budget:** 600,000 ms of mining, charged once. The ordered shutdown runs
+  after it, bounded at 22,550 ms.
+- **Fan:** after preparation's 100% and live-RPM proof, the automatic fan
+  controller drives the fan (`temptarget` 60 C, `minFanSpeed` 25%).
+- **Unchanged:** live stop limits (input 4.5–5.5 V, at most 15 W, ASIC below
+  75 C, fresh nonzero fan, watchdog alive, 2.8 s heartbeat), the seal path
+  (named-port detector, then `just ultra205-soak finish`), retry bound and
+  outcomes. No BAP traffic. Parity promotion is prohibited.
+
+Evidence to read (observations, not pass criteria):
+- `device-settings.json` requested and observed values;
+- fan RPM range under the automatic fan versus soaks 002–006 at 100%;
+- chip temperature range;
+- `active_ms` ending at 600,000;
+- the shutdown completing to `fan_paused` within the 22,550 ms bound plus
+  cooling.
+
+Soak 007 attempt 001 result (2026-10-16): `unverified`. Its single failure,
+`cleanup_unconfirmed`, is a tooling-order fault, not a device fault.
+- Package `2f65509c`, installed `observed_exact_package`; Gate `eacd8147`.
+  Device settings were read back as requested: 485 MHz, 1200 mV, automatic
+  fan, `temptarget` 60, `minFanSpeed` 25.
+- The device side passed every other criterion.
+  - Mining: 600,000 active ms, ended by the budget.
+  - Ledger: v2 ordinal 1, charged once.
+  - Shares: 26 accepted, 0 rejected.
+  - Windows: 20/20 credited, with zero reconnects. Maximum gaps were 836 ms
+    on the WebSocket and 2,231 ms on HTTP.
+  - Shutdown: about 7.7 s on the device from revocation to the end of the
+    pre-reset shutdown, within the 19,050 ms bound for 485 MHz. That is
+    generation elapsed 617,400 ms, minus 600,000 ms of mining, minus about
+    9.7 s of preparation. Safe-stop reached `fan_paused`.
+  - Boot preference: `mineonboot=false`.
+  - Work-gate samples stayed within 5.23–5.27 V, 10.4–12.5 W and 35–61 C,
+    with the watchdog alive.
+  - The automatic fan ran at 2,433–3,938 RPM, against about 7,300 RPM at
+    100% in soaks 002–006.
+- Cause: the Gate page takes its preservation baseline from the first device
+  status after Connect. `startObserver()` then wrote the settings from that
+  same page, so the final comparison reported `settings_match: false`.
+  Soaks 002–006 wrote no settings.
+- Fix: `serve` records the page's baseline id when it writes the settings. The
+  budget review then refuses (`soak_settings_baseline_stale`) unless a page
+  reloaded after the write reports a different baseline with
+  `settings_match: true`. The issuance records the reviewed baseline id. The
+  judge adds `preservation_baseline_changed` when the final state comes from
+  any other page, so cleanup is only judged against the page that signed.
+  Regressions cover each refusal: no settings written, the writing page's
+  baseline, a changed setting, an unobserved preservation (with no PATCH
+  sent), and a final state from another page. The README adds the reload
+  step.
+- Risk accepted: the idle proof needs one unbroken WebSocket across the page
+  reload. If the reload breaks it, the attempt fails closed before signing,
+  and nothing is charged.
+
+Soak 007 attempt 002 contract (the verified-fix continuation, under the
+standing authorization). Same as attempt 001 except:
+- **Package:** at the clean, pushed fix commit, installed by the same
+  state-preserving `just flash-monitor ... --capture-timeout-seconds 360
+  --redact-evidence`.
+- **Parent:** `P = scratch/ultra205-soak-007-attempt-002`, with
+  `R = P/attempt-002`.
+- **Ledger:** soak ledger v2 ordinal 2. The ledger must report next ordinal 2
+  and total 600,000.
+- **Page sequence:** Connect, `startObserver()`, then reload and Connect
+  again before the idle proof and reviews.
+- **Settings write:** it writes the same values. The device already holds
+  them.
+- **Repeated boundary:** if attempt 002 again fails `cleanup_unconfirmed`
+  with `settings_match: false`, the outcome is `stop_repeated_boundary`.
+
+Soak 007 attempt 002 result (2026-10-16): `complete`. Redacted summary:
+`docs/parity/evidence/20261016-ultra205-soak-007.md`.
+- Package `6b3e567a`, installed `observed_exact_package`; Gate `eacd8147`.
+  Device settings were read back as requested.
+- `result.json`: `passed`, with no failures.
+  - Mining: 600,000 active ms, ended by the budget.
+  - Shutdown: about 7.7 s on the device, then `fan_paused`.
+  - Ledger: v2 ordinal 2, charged once (total 1,200,000 ms, next 3).
+  - Shares: 33 accepted, 0 rejected.
+  - Windows: 20/20 credited, with zero reconnects. Maximum gaps were 961 ms
+    on the WebSocket and 2,493 ms on HTTP.
+  - Preservation: final `settings_match` true, from the page that signed.
+    `mineonboot=false`, and pool settings retained.
+- Work-gate samples stayed within 5.24–5.29 V, 10.36–12.42 W and 35–61 C.
+  The automatic fan ran at 2,433–3,950 RPM, against 7,267–7,427 at 100%.
+- The observer kept one unbroken WebSocket across the page reload.
+- The independent review agrees `complete`. It recomputed every criterion
+  from the raw files and checked the sealed inventory, the self-digests and
+  the baseline binding. It noted one observation that is not a criterion:
+  cooling proof read 3,680 RPM at 100%, an early spin-up snapshot.
+
+Soak 008 hardware contract (live changes during a lease, under the standing
+authorization). It is the soak 007 attempt 002 contract, unchanged except:
+- **Package:** `just package` at the clean, pushed `HEAD` that records this
+  contract. It adds the observer's hardware fields and the live-change
+  tooling, and changes no firmware behavior. Install it with the same
+  state-preserving `just flash-monitor ... --capture-timeout-seconds 360
+  --redact-evidence`.
+- **Parent and ledger:** `P = scratch/ultra205-soak-008`, with
+  `R = P/attempt-001`. Soak ledger v2 ordinal 3. The ledger must report next
+  ordinal 3 and total 1,200,000.
+- **Preflight:** add `--live-changes`. The context must record the two
+  planned changes.
+- **New allowed effects:** while the soak mines unrevoked with its work gate
+  open, `serve` sends at most two HTTP PATCHes to the device's private
+  address:
+  - at 200,000 active ms or later: `frequency` 400, `coreVoltage` 1100;
+  - at 400,000 active ms or later: `frequency` 485, `coreVoltage` 1200.
+
+  Each is sent once, read back and recorded. Neither is sent after
+  revocation or the gate closes. Both pairs already have hardware evidence.
+  The firmware's live owner applies them in its safe order: frequency before
+  voltage going down, voltage before frequency going up.
+- **Unchanged:** the initial settings write and the page reload; the live
+  stop limits; the 22,550 ms shutdown bound; the seal path; no BAP traffic.
+  Parity promotion is prohibited.
+- **Judged:** each change is recorded with a matching read-back. In every
+  settled segment, the saved settings follow. The median measured core
+  voltage steps by the settings' step, within 30 mV. The median counter
+  hashrate changes by the frequency ratio, within 0.12. Segment medians and
+  settle times are reported.
+- **Recovery:** a run that sent the first change but not the whole plan may
+  leave 400 MHz / 1100 mV saved. That pair already has hardware evidence.
+  At completion, `serve` sends one restore PATCH of 485/1200 with the
+  automatic fan, while the device is idle, and records
+  `settings-restore.json`.
+  The attempt then stays `unverified`. If completion never runs, the next
+  soak's initial settings write restores the pair before its page baseline.
+- **Stop conditions:** a failed live step revokes the lease with
+  `ControlFailed`, and the ordered shutdown follows. The attempt then seals
+  `unverified`. Diagnose it before any retry, and treat a recurrence after a
+  targeted fix as `stop_repeated_boundary`.
+
+Evidence to read (observations, not pass criteria): each segment's median
+measured core voltage, power and hashrate, and how long each change took to
+settle.
+
+Soak 008 attempt 001 result (2026-10-16): `complete`. Redacted summary:
+`docs/parity/evidence/20261016-ultra205-soak-008.md`.
+- Package `fbcf38a6`, installed `observed_exact_package`; Gate `eacd8147`.
+- `result.json`: `passed`, with no failures.
+  - Mining: 600,000 active ms, ended by the budget.
+  - Shutdown: about 7.7 s on the device, then `fan_paused`.
+  - Ledger: v2 ordinal 3, charged once (total 1,800,000 ms, next 4).
+  - Shares: 34 accepted, 0 rejected.
+  - Windows: 20/20 credited, with zero reconnects.
+  - Preservation: final `settings_match` true, from the signing page.
+- Live changes were sent at 200,069 and 400,074 active ms and read back as
+  sent, with no revocation and no restore.
+- Segments (medians):
+  - 485/1200: 1,198 mV, 431.1 GH/s, 11.64 W.
+  - 400/1100: 1,091 mV, 356.3 GH/s, 8.35 W. Voltage settled in 6.0 s.
+  - Back to 485/1200: 1,199 mV, 431.8 GH/s, 11.85 W. Settled in 2.0 s.
+  - The voltage step was −107 mV for −100. The hashrate ratio was 0.826 for
+    0.825.
+- The largest gaps (4,052 ms HTTP, 3,098 ms WebSocket) came about 16–20 s
+  after the second change. The review traced them to Wi-Fi delivery: RSSI
+  dipped, and the device's own send times stayed under 25 ms.
+- The independent review agrees `complete`. It recomputed every criterion
+  and segment from the raw files. It noted that the median takes the upper
+  middle value for an even count; that changes no outcome.
+
+Soak 009 hardware contract (the catalog-maximum shutdown tail, under the
+standing authorization). The owner decided on 2026-10-16 to run 575 MHz at
+1200 mV, because 575 MHz at 1300 mV is estimated at about 16 W, over the
+15 W live stop limit. It is the soak 007 attempt 002 contract, unchanged
+except:
+- **Package:** `just package` at the clean, pushed `HEAD` that records this
+  contract. It adds selectable soak profiles and changes no firmware
+  behavior. Install it with the same state-preserving `just flash-monitor
+  ... --capture-timeout-seconds 360 --redact-evidence`.
+- **Parent and ledger:** `P = scratch/ultra205-soak-009`, with
+  `R = P/attempt-001`. Soak ledger v2 ordinal 4. The ledger must report next
+  ordinal 4 and total 1,800,000.
+- **Preflight:** add `--profile catalog-maximum-frequency`, with no live
+  changes. The context must record 575 MHz, 1200 mV and `autofanspeed` 1.
+- **Changed allowed effect:** at `/observer/start`, while the device is idle,
+  `serve` sends one PATCH: `frequency` 575, `coreVoltage` 1200,
+  `autofanspeed` 1. The firmware admits the pair (catalog 400–575 MHz,
+  1100–1300 mV). Preparation then ramps to 575 MHz, and the closed shutdown
+  tail at 575 MHz is the 22,550 ms bound.
+- **Expected load:** a median of about 14 W, estimated from soaks 007 and 008
+  as proportional to frequency times voltage squared. Scaled single-sample
+  peaks reach about 14.8–14.9 W. The firmware stops on one sample over 15 W,
+  so the margin is only 0.1–0.5 W, and a trip is a realistic outcome. The
+  live stop limits are unchanged. A trip revokes the lease
+  (`unsafe_observation`), and the ordered shutdown follows from 575 MHz, so
+  it still exercises the tail this soak is for. The attempt then seals
+  `unverified` with outcome `stop_hardware_blocker`. There is no retry
+  without a new owner decision, such as a lower voltage.
+- **Afterwards:** at completion, while the device is idle, `serve` restores
+  485 MHz, 1200 mV and the automatic fan (`settings-restore.json`, reason
+  `profile_completed`), so later leases never inherit 575 MHz. A failed
+  restore fails the soak. If completion never runs, the next soak's initial
+  write sets its own profile.
+
+Evidence to read (observations, not pass criteria):
+- the device-side shutdown duration against the 22,550 ms bound;
+- power, chip temperature and fan RPM against soak 007;
+- shares;
+- the counter hashrate against soak 007's 485 MHz (expected ratio about
+  575/485 = 1.19).
+
+Soak 009 attempt 001 result (2026-10-16): `complete`. Redacted summary:
+`docs/parity/evidence/20261016-ultra205-soak-009.md`.
+- Package `6b6162af`, installed `observed_exact_package`; Gate `eacd8147`.
+  Device settings 575 MHz, 1200 mV and the automatic fan were read back as
+  requested.
+- `result.json`: `passed`, with no failures.
+  - Mining: 600,000 active ms, ended by the budget.
+  - Shutdown: about 9.3 s on the device, against the 22,550 ms bound at
+    575 MHz, then `fan_paused`.
+  - Ledger: v2 ordinal 4, charged once (total 2,400,000 ms, next 5).
+  - Shares: 31 accepted, 0 rejected.
+  - Windows: 20/20 credited, with zero reconnects. Maximum gaps were 897 ms
+    on the WebSocket and 2,302 ms on HTTP.
+  - Preservation: final `settings_match` true, from the signing page.
+- Work-gate samples stayed within 5.19–5.25 V, 12.24–14.34 W (median
+  13.75 W) and 37–61 C, at 2,420–5,775 RPM.
+- The counter hashrate was 1.179 times 485 MHz, against 1.186 expected.
+- After completion, the restore wrote 485/1200 with the automatic fan and
+  read it back (`profile_completed`).
+- The independent review agrees `complete`. It recomputed every criterion
+  from the raw files.
+  - It corrected the hashrate ratio to a like-for-like segment.
+  - It noted that `miningActive` stays true through the shutdown with a
+    stale hashrate.
+  - The shutdown took about 110 ms per ramp step (84 steps at 575 MHz),
+    against 250 ms in the bound.
+
+Verification:
+- soaks 007, 008 and 009 `complete`, each with an independent review;
+- the parity tool: 348 tests, clippy, and `just parity` with no validation
+  errors;
+- five transitions replayed by `just parity`, plus a progress record.
+
+Completion review: ADR-0037 now has hardware evidence for its central
+claims:
+- device settings choose the profile;
+- the budget is mining time, with the shutdown bounded separately (measured
+  at about 7.7 s at 485 MHz and 9.3 s at 575 MHz, against 19,050 and
+  22,550 ms);
+- the automatic fan follows device settings, holding the chip near 60 C;
+- live frequency and voltage changes apply in safe order during a lease.
+
+Residual risks:
+- 575 MHz at 1200 mV peaked at 14.34 W, leaving 0.66 W under the 15 W stop.
+- 1300 mV and other pairs inside the catalog have no evidence.
+- BAP writes of `frequency` and `asic_voltage` reach the same owner, but
+  they still need their hardware contract
+  (`task-parity-bap-settings-effects`).
+- The soak's largest gaps traced to Wi-Fi delivery, not to the device.
