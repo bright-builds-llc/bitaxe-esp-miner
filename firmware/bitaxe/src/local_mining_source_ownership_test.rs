@@ -1,4 +1,4 @@
-//! Source guards for the local mining owner (ADR-0038) while it stays switched off.
+//! Source guards for the local mining owner (ADR-0038).
 const LOCAL_OWNER_SOURCE: &str = include_str!("production_mining_session/local_owner.rs");
 const OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_loop.rs");
 const BWG_SOURCE: &str = include_str!("production_mining_session/bwg.rs");
@@ -8,13 +8,14 @@ const OVERHEAT_SOURCE: &str = include_str!("production_mining_session/local_owne
 const LINK_SOURCE: &str = include_str!("bwg_worker_usb/link.rs");
 
 #[test]
-fn local_mining_stays_off_until_the_crash_loop_guard_lands() {
+fn local_mining_is_on_with_the_crash_loop_guard() {
     // Arrange / Act / Assert
-    assert!(LOCAL_OWNER_SOURCE.contains("pub(crate) const LOCAL_MINING_ENABLED: bool = false;"));
+    assert!(LOCAL_OWNER_SOURCE.contains("pub(crate) const LOCAL_MINING_ENABLED: bool = true;"));
+    assert!(include_str!("startup.rs").contains("crate::boot_guard::boot_preference("));
 }
 
 #[test]
-fn the_local_tick_returns_before_any_effect_while_switched_off() {
+fn the_local_tick_checks_the_switch_before_any_effect() {
     // Arrange
     let (_, tick) = LOCAL_OWNER_SOURCE
         .split_once("pub(super) fn service_local_mining(")

@@ -1,6 +1,7 @@
 //! The local mining owner (ADR-0038): the device mines on its own, as upstream does,
-//! under a local revocation generation. Off until the crash-loop guard lands
-//! (`task-boot-resume-and-crash-loop-guard`), so `LOCAL_MINING_ENABLED` is false.
+//! under a local revocation generation. `LOCAL_MINING_ENABLED` turned on with the
+//! crash-loop guard (`task-boot-resume-and-crash-loop-guard`); a device whose
+//! `startMiningOnBoot` is false, as test provisioning writes it, boots paused.
 //!
 //! Each owner tick, with no run, the pure `LocalOwnerCore` decides whether one may
 //! begin. A run is a `Local` campaign lease: the session probes the pool with the
@@ -37,8 +38,8 @@ use bitaxe_stratum::v1::production_session::{
 use bitaxe_stratum::v1::state::MiningOperatorIntent;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// Local mining stays off until the crash-loop guard lands (owner decision 2026-10-17).
-pub(crate) const LOCAL_MINING_ENABLED: bool = false;
+/// On since the crash-loop guard landed (owner decision 2026-10-17).
+pub(crate) const LOCAL_MINING_ENABLED: bool = true;
 
 /// Set at boot when a stimulus owns the hardware, so local mining stays off.
 static BOOT_OWNED_ELSEWHERE: AtomicBool = AtomicBool::new(false);
