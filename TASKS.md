@@ -1098,8 +1098,6 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-## Future
-
 ### task-lease-handover-and-baseline-restore | 2026-10-16 | Leases take over local mining and restore it
 
 ADR-0038 step 4. Depends on `task-local-mining-owner`.
@@ -1111,6 +1109,36 @@ ADR-0038 step 4. Depends on `task-local-mining-owner`.
       paused: the Mining Baseline (Gate ADR-0017). Grant credentials are
       never saved, and the preservation fingerprint keeps proving it.
 - [ ] Regressions across Start, Stop, expiry, heartbeat loss and reboot.
+
+Started 2026-10-17 at the owner's request. Software only, no hardware
+effects. Local mining stays switched off until task 5 turns it on.
+
+Owner decisions (2026-10-17):
+- Handover: stop, then reconnect. A Gate Hello while a local generation
+  exists is refused, as the gate already does. It also stops local mining
+  through its ordered safe-stop. The Gate's first Connect fails once, and a
+  later one succeeds once the ASIC is stopped. The revocation gate keeps its
+  one-generation design.
+- Resume: local mining stays off while the Gate link is active, meaning any
+  received link frame or Hello within 15 s, so one Gate session can run
+  several leases. It resumes once the link has been quiet that long. The
+  requested operator intent survives a lease in RAM, so a pause is
+  restored too.
+
+Plan (pure core first, the full gate after each commit):
+1. **Runtime (pure):** link presence, active within 15 s of the last frame
+   or Hello. The owner core records a handover as a requested stop, so it
+   never spends the restart guard.
+2. **Firmware:** the serial link thread notes link activity on every
+   received envelope, including a refused Hello. Within that window the
+   local owner stops a run once with `RestorationRequested`, and holds
+   with `GateLink` while idle.
+3. **Regressions:**
+   - pure presence and classification tests;
+   - source guards for the link hook and the stop;
+   - a host test that a Hello is refused beside a local generation and
+     admitted after it finishes.
+4. **Records:** ADR-0038 (the first Connect fails once) and TASKS.
 
 Verification: pending. Completion review: pending.
 
@@ -1127,8 +1155,55 @@ ADR-0038 step 5.
       address the residual risks recorded in the archived
       `task-local-mining-owner`: give the firmware shell behavior tests, and
       decide the idle fan while a run probes.
+- [ ] Show why the device started paused in the web UIs and on the LCD
+      (owner request 2026-10-17).
+
+Started 2026-10-17 at the owner's request. Software only; turning the
+switch on changes device behavior only where `startMiningOnBoot` is true.
+Test and evidence provisioning keeps writing false.
+
+Owner decisions (2026-10-17):
+- Start paused after 3 consecutive abnormal resets (panic, watchdog or
+  brownout), each before the boot reached 10 minutes of uptime.
+- A boot that runs 10 minutes, a power-on, a normal restart or the
+  operator's resume clears the streak.
+- The streak lives in NVS: it counts brownouts and survives power loss.
+  It is written only on an abnormal boot and once when a boot becomes
+  stable.
+- Indicate it in the UI and on the LCD.
+
+Plan (pure core first, the full gate after each commit):
+1. **Runtime (pure):** the crash-loop streak.
+   - `next_streak(previous, reset)`, `starts_paused(streak)`, and the
+     10-minute stability rule.
+   - Its device-internal NVS key `crashstreak` joins the device-owned
+     allowlist. It stays outside the REST schema and the preservation
+     fingerprint.
+2. **Firmware boot:** after boot identity and settings load, and before the
+   boot mining preference:
+   - read and update the streak;
+   - start paused when it reaches 3, recording why.
+   The owner loop clears it at 10 minutes of uptime and on the operator's
+   resume.
+3. **Indication:**
+   - a `pauseReason` project field in `/api/system/info`: `crash_loop`,
+     or the local owner's `overheat` or `restart_guard` device pauses;
+   - an LCD priority page, "MINING PAUSED / Repeated resets";
+   - a dashboard notice in both web UIs.
+4. **Shell behavior tests:** move the local owner shell's remaining
+   decisions into tested pure functions. These are run end and adoption
+   detection, the resume edge, and which hold the API shows.
+   - The idle fan while a run probes is upstream's behavior: the
+     safe-stop leaves 30%, as upstream runs 30% while paused or without a
+     pool. Overheat cooling runs the idle fan controller at 100% from
+     `overheat_mode`.
+5. **Switch:** `LOCAL_MINING_ENABLED = true`; the source guard flips to
+   pin it on.
+6. **Records:** README, ADR-0038 and TASKS.
 
 Verification: pending. Completion review: pending.
+
+## Future
 
 ### task-local-mining-evidence-soaks | 2026-10-16 | Soak local mining on hardware
 
