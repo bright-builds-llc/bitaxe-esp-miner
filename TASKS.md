@@ -1181,6 +1181,26 @@ Plan (small commits, pure core first, the full gate after each):
 6. **Firmware persistence:** the overheat entry, the lowered pair, clearing
    `overheat_mode`, and the overheat stop marker. `Refused` is split from
    `HardwareWriteFailed`.
+   - Landed as the pure write sets (`local_mining::persistence`), built
+     through the settings validator. The stop marker `ovh_stopped` is
+     device-internal: it is not in the REST schema or the preservation
+     fingerprint, because adding it would change the fingerprint across an
+     update.
+   - The write sets commit through
+     `SettingsPersistencePlan::device_owned` and the existing verified
+     transaction. That constructor admits only the overheat keys (an
+     allowlist), so a device-owned plan cannot reach pool, network or
+     secret keys.
+   - The marker is written first and `overheat_mode` last, because NVS
+     stores each key as it is set. Clearing `overheat_mode` also clears
+     the marker.
+   - Only controller fan writes are ever refused (the authority rule).
+     They now report `refused` rather than `hardware_write_failed`, so
+     commit 8 can latch real write failures only. The preparation adapter's
+     `Refused` arms exist for exhaustiveness: its voltage and fan writes
+     never return it, so preparation receipts are unchanged.
+   - The firmware NVS adapter that calls these moves to commit 9, its first
+     user, because firmware clippy denies dead code.
 7. **Firmware:** the local owner behind `LOCAL_MINING_ENABLED = false`.
    - begin, activate and prepare a local generation;
    - the `Local` fan owner and live hardware;

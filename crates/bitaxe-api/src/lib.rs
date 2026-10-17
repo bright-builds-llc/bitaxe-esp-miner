@@ -123,11 +123,13 @@ pub use scoreboard::{
 };
 pub use settings::{
     execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,
-    AcceptedSettingsPatch, ReloadedSettings, SettingsAdapterFailure, SettingsPatchFailure,
-    SettingsPatchFailureReason, SettingsPatchPublicError, SettingsPersistenceAdapter,
-    SettingsPersistenceEffect, SettingsPersistenceFailure, SettingsPersistenceFailureDisposition,
-    SettingsPersistenceFailureReport, SettingsPersistencePlan, SettingsPersistenceStep,
-    SettingsPersistenceSuccess, SettingsPersistenceTransaction, SettingsPublicResponse,
+    AcceptedSettingsPatch, DeviceOwnedKeyRefused, ReloadedSettings, SettingsAdapterFailure,
+    SettingsPatchFailure, SettingsPatchFailureReason, SettingsPatchPublicError,
+    SettingsPersistenceAdapter, SettingsPersistenceEffect, SettingsPersistenceFailure,
+    SettingsPersistenceFailureDisposition, SettingsPersistenceFailureReport,
+    SettingsPersistencePlan, SettingsPersistenceStep, SettingsPersistenceSuccess,
+    SettingsPersistenceTransaction, SettingsPublicResponse, DEVICE_OWNED_SETTING_KEYS,
+    OVERHEAT_STOP_MARKER_KEY,
 };
 pub use snapshot::{
     ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, ProjectSettingsSnapshot,

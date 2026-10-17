@@ -14,6 +14,30 @@ pub enum SettingsPublicResponse {
     Error(SettingsPatchPublicError),
 }
 
+/// The device-internal overheat stop marker (ADR-0038). It is outside the REST
+/// schema and the update-preservation fingerprint.
+pub const OVERHEAT_STOP_MARKER_KEY: &str = "ovh_stopped";
+
+/// The only keys a device-owned plan may write: the overheat fan, pair and mode
+/// settings with their legacy keys, and the stop marker.
+pub const DEVICE_OWNED_SETTING_KEYS: &[&str] = &[
+    "autofanspeed",
+    "manualfanspeed",
+    "fanspeed",
+    "overheat_mode",
+    OVERHEAT_STOP_MARKER_KEY,
+    "asicfrequency_f",
+    "asicfrequency",
+    "asicvoltage",
+];
+
+/// A device-owned plan named a key outside [`DEVICE_OWNED_SETTING_KEYS`].
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("device-owned settings plan refused key {key}")]
+pub struct DeviceOwnedKeyRefused {
+    pub key: String,
+}
+
 /// Closed validated settings persistence plan for a firmware adapter.
 #[derive(Clone, PartialEq, Eq)]
 pub struct SettingsPersistencePlan {
@@ -29,6 +53,28 @@ impl SettingsPersistencePlan {
             writes: accepted.writes().to_vec(),
             maybe_hostname: accepted.maybe_hostname().map(str::to_owned),
         }
+    }
+
+    /// Builds a plan for writes the device makes on its own behalf, such as saving
+    /// an overheat (ADR-0038), outside any PATCH. They get the same verified
+    /// write, commit, reload and reconcile as a PATCH, and no follow-up effects.
+    ///
+    /// # Errors
+    /// Returns the first key outside [`DEVICE_OWNED_SETTING_KEYS`]; such a plan
+    /// could otherwise reach pool, network or secret keys.
+    pub fn device_owned(writes: Vec<NvsWrite>) -> Result<Self, DeviceOwnedKeyRefused> {
+        if let Some(write) = writes
+            .iter()
+            .find(|write| !DEVICE_OWNED_SETTING_KEYS.contains(&write_key(write)))
+        {
+            return Err(DeviceOwnedKeyRefused {
+                key: write_key(write).to_owned(),
+            });
+        }
+        Ok(Self {
+            writes,
+            maybe_hostname: None,
+        })
     }
 
     /// Returns the complete validated write set.

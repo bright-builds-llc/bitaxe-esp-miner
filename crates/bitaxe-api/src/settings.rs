@@ -14,11 +14,12 @@ pub use patch::{
     SettingsPatchPublicError,
 };
 pub use persistence::{
-    execute_settings_persistence_plan, ReloadedSettings, SettingsAdapterFailure,
-    SettingsPersistenceAdapter, SettingsPersistenceEffect, SettingsPersistenceFailure,
-    SettingsPersistenceFailureDisposition, SettingsPersistenceFailureReport,
-    SettingsPersistencePlan, SettingsPersistenceStep, SettingsPersistenceSuccess,
-    SettingsPersistenceTransaction, SettingsPublicResponse,
+    execute_settings_persistence_plan, DeviceOwnedKeyRefused, ReloadedSettings,
+    SettingsAdapterFailure, SettingsPersistenceAdapter, SettingsPersistenceEffect,
+    SettingsPersistenceFailure, SettingsPersistenceFailureDisposition,
+    SettingsPersistenceFailureReport, SettingsPersistencePlan, SettingsPersistenceStep,
+    SettingsPersistenceSuccess, SettingsPersistenceTransaction, SettingsPublicResponse,
+    DEVICE_OWNED_SETTING_KEYS, OVERHEAT_STOP_MARKER_KEY,
 };
 
 #[cfg(test)]

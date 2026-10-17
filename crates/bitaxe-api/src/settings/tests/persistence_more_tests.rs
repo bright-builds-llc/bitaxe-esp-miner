@@ -1,4 +1,5 @@
 use super::*;
+use crate::settings::persistence::{DeviceOwnedKeyRefused, OVERHEAT_STOP_MARKER_KEY};
 
 #[test]
 fn settings_persistence_exhaustive_patch_writes_once_then_confirms_before_publication() {
@@ -77,5 +78,44 @@ fn settings_persistence_serializes_two_writers_through_publication() {
             ("writer-1", "writer-one".to_owned()),
             ("writer-2", "writer-two".to_owned()),
         ]
+    );
+}
+
+#[test]
+fn device_owned_writes_persist_and_confirm_without_effects() {
+    // Arrange
+    let plan =
+        SettingsPersistencePlan::device_owned(vec![NvsWrite::u16(OVERHEAT_STOP_MARKER_KEY, 1)])
+            .expect("the stop marker is device-owned");
+    let shared = Rc::new(RefCell::new(SharedAdapterState::new("bitaxe")));
+    let mut adapter = RecordingAdapter::new("device", Rc::clone(&shared));
+
+    // Act
+    let success = execute_settings_persistence_plan(&plan, &mut adapter)
+        .expect("a device-owned write must persist and reconcile");
+
+    // Assert
+    assert!(success.effects().is_empty());
+    assert_eq!(
+        success.steps().last(),
+        Some(&SettingsPersistenceStep::PublicSuccess)
+    );
+}
+
+#[test]
+fn a_device_owned_plan_refuses_keys_outside_its_allowlist() {
+    // Arrange
+    let writes = vec![
+        NvsWrite::u16("overheat_mode", 1),
+        NvsWrite::string("stratumURL", "pool.invalid"),
+    ];
+    // Act
+    let refused = SettingsPersistencePlan::device_owned(writes);
+    // Assert
+    assert_eq!(
+        refused,
+        Err(DeviceOwnedKeyRefused {
+            key: "stratumURL".to_owned()
+        })
     );
 }
