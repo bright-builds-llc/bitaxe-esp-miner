@@ -31484,3 +31484,30 @@ Residual risks and non-claims:
   soak 007–009 rows.
 - Outside a lease, saved settings take effect only when the next lease
   starts (`task-mining-baseline-after-lease`).
+
+### task-mining-baseline-after-lease | 2026-10-16 | Decide whether the Worker mines on its own after a lease
+
+Owner decision needed; not decided by ADR-0037. In the Gate's design the
+Worker returns to ordinary local mining (its Mining Baseline) after a lease.
+This firmware returns to a paused baseline and mines only under a lease.
+
+- [x] Present the options and safety implications, including a heartbeat
+      replacement for local mining. Done in
+      `docs/adr/0038-mining-after-a-lease.md` (Proposed, 2026-10-16).
+- [x] Record the owner's decision in ADR-0038, plus its sub-decisions if
+      option B is chosen, and plan the follow-up tasks. The owner chose
+      option B on 2026-10-16:
+      - local mining as upstream, with leases taking over;
+      - upstream overheat recovery inside the catalog range;
+      - resume after resets, with a crash-loop guard;
+      - mine by default.
+
+      ADR-0038 is Accepted. Six follow-up tasks are under `## Future`.
+
+Verification: ADR-0038 records the options, the safety implications and the
+owner's decisions; Bright Builds and redaction checks pass.
+
+Completion review: the firmware will mine locally like upstream once the
+follow-up tasks land. It stays lease-only until then. The main risk is
+unbounded mining with no heartbeat, so device-local protection for every
+owner comes first. Every claim waits on long soaks.

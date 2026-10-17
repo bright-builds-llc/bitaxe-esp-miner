@@ -2,10 +2,30 @@
 
 ## Status
 
-Proposed on 2026-10-16 for the owner's decision
-(`task-mining-baseline-after-lease`). Nothing here is decided yet. The options
-and their safety implications are below. The owner's choices will replace this
-section.
+Accepted on 2026-10-16 by the owner (`task-mining-baseline-after-lease`).
+
+## Decision
+
+The owner chose **option B** and the three recommended sub-decisions:
+1. **Local mining as upstream.** With no lease, the device mines its saved
+   pool whenever it is not paused. A Gate Work Lease interrupts local mining,
+   and the device restores it afterwards: the Mining Baseline. Device-local
+   protection bounds local mining instead of a heartbeat.
+2. **Overheat recovery as upstream, inside the catalog range.** After at least
+   30 s and a chip reading of 45 C or less, mining restarts 100 mV and
+   100 MHz lower. If that pair would leave the catalog range, the device stays
+   stopped until resumed.
+3. **Resume after resets, with a crash-loop guard.** Mining resumes on boot,
+   but the device starts paused when the reset-retained boot record shows
+   repeated abnormal resets in a short time.
+4. **Mine by default.** A freshly configured device mines once Wi-Fi and a
+   pool are set, with `startMiningOnBoot` defaulting to true. Test and
+   evidence provisioning keeps writing false.
+
+ADR-0016/0017's rule that a lease is a readiness requirement, and ADR-0033
+and ADR-0037's "work starts only from a signed lease", are replaced for local
+mining. They still govern every Work Lease. Until the implementation tasks
+below land, the firmware stays lease-only.
 
 ## Context
 
@@ -136,7 +156,7 @@ signal, such as an open AxeOS page.
   - The bound adds little safety beyond B's device-local limits, which are
     what protect upstream devices.
 
-## Sub-decisions if B is chosen
+## Sub-decisions (chosen as recommended)
 
 1. **Overheat recovery.**
    - Upstream restarts on its own at 100 mV and 100 MHz lower once the chip
@@ -157,17 +177,27 @@ signal, such as an open AxeOS page.
 
 ## Consequences
 
-- **A:** close the task with the divergence recorded. Note in ADR-0037 that
-  the heartbeat is lease-bound.
-- **B:** new tasks, in dependency order:
-  1. device-local protection and the local fan owner;
-  2. power-down conditions;
-  3. the local owner;
-  4. lease handover;
-  5. boot and reset behavior;
-  6. evidence soaks, each under its own `TASKS.md` hardware contract.
+These tasks follow, in dependency order. Each hardware effect needs its own
+`TASKS.md` contract.
+1. `task-local-protection-every-owner`: device-local revocation (unsafe
+   reading, zero fan) for every mining owner, and a local fan owner with
+   upstream's 30% while paused or without a pool.
+2. `task-local-power-down-conditions`: power the ASIC down while paused,
+   after a pool failure, and on a fan or sensor fault, as upstream does. Add
+   the overheat recovery above.
+3. `task-local-mining-owner`: the production session mines the saved pool
+   and profile with no lease.
+4. `task-lease-handover-and-baseline-restore`: an ordered stop of local
+   mining before a lease prepares, then restoration of local mining or the
+   paused state afterwards.
+5. `task-boot-resume-and-crash-loop-guard`: resume on boot and the
+   crash-loop guard.
+6. `task-local-mining-evidence-soaks`:
+   - soaks of local mining from 30 minutes to several hours;
+   - a hardware check that a lease interrupts local mining and restores it;
+   - an overheat recovery check only if a safe, contracted stimulus exists.
 
-  The Gate needs no change: its protocol already expects a Mining Baseline.
-  Its tooling's `mine_on_boot=false` checks keep working for test contracts.
-- **C:** like B, plus the bound and its re-arm surface. That surface has no
-  upstream counterpart to compare against.
+   "Unbounded mining" stays a non-claim until these soaks exist.
+
+The Gate needs no protocol change: it already expects a Mining Baseline. Its
+tooling's `mine_on_boot=false` checks keep working for test contracts.

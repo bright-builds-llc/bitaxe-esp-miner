@@ -1100,17 +1100,88 @@ named-phase allocation profile item stays open. Qualification stays false.
 
 ## Future
 
-### task-mining-baseline-after-lease | 2026-10-16 | Decide whether the Worker mines on its own after a lease
+### task-local-protection-every-owner | 2026-10-16 | Device-local protection and fan control for every mining owner
 
-Owner decision needed; not decided by ADR-0037. In the Gate's design the
-Worker returns to ordinary local mining (its Mining Baseline) after a lease.
-This firmware returns to a paused baseline and mines only under a lease.
+ADR-0038 step 1. Software first.
 
-- [x] Present the options and safety implications, including a heartbeat
-      replacement for local mining. Done in
-      `docs/adr/0038-mining-after-a-lease.md` (Proposed, 2026-10-16).
-- [ ] Record the owner's decision in ADR-0038, plus its sub-decisions if
-      option B is chosen, and plan the follow-up tasks.
+- [ ] Apply the per-sample unsafe-reading and zero-fan revocation to every
+      mining owner, not only an active lease
+      (`crates/bitaxe-runtime/src/revocation/unsafe_detail.rs`).
+- [ ] Add a local fan owner that runs the automatic or manual fan while
+      mining, and 30% while paused or without a pool, as upstream's
+      `fan_controller_task.c` does.
+- [ ] Keep the stricter limits: 15 W, input 4.5–5.5 V, ASIC below 75 C, and
+      the catalog range. Add regressions for each.
+
+Verification: pending. Completion review: pending.
+
+### task-local-power-down-conditions | 2026-10-16 | Upstream power-down conditions and overheat recovery
+
+ADR-0038 step 2. Depends on `task-local-protection-every-owner`.
+
+- [ ] Power the ASIC down while paused, after a pool failure (retries, then a
+      30 s probe), and on a fan or sensor fault. Power it up again when the
+      condition clears (`power_management_task.c`,
+      `protocol_coordinator.c`).
+- [ ] Overheat recovery (ADR-0038 sub-decision 1):
+  - stop at 75 C;
+  - after at least 30 s and a chip reading of 45 C or less, restart
+    100 mV and 100 MHz lower;
+  - stay stopped if the lowered pair would leave the catalog range.
+- [ ] Regressions for each condition and for the recovery's range check.
+
+Verification: pending. Completion review: pending.
+
+### task-local-mining-owner | 2026-10-16 | Mine the saved pool with no lease
+
+ADR-0038 step 3. Depends on the two tasks above.
+
+- [ ] A local owner of the production session mines the saved primary or
+      fallback pool with the saved profile when no lease is active and the
+      device is not paused. Reuse the campaign path's pool reading, without
+      its one-time budget.
+- [ ] Pause and resume, and `startMiningOnBoot`, take real effect.
+- [ ] Update README text that still says the adapter is fail-closed before
+      pool effects.
+
+Verification: pending. Completion review: pending.
+
+### task-lease-handover-and-baseline-restore | 2026-10-16 | Leases take over local mining and restore it
+
+ADR-0038 step 4. Depends on `task-local-mining-owner`.
+
+- [ ] Lease admission while mining locally runs an ordered stop of local
+      mining before the lease prepares. Today Start is refused unless the
+      session is idle (`production_mining_session/bwg.rs`).
+- [ ] After the lease, restore local mining, or the paused state if it was
+      paused: the Mining Baseline (Gate ADR-0017). Grant credentials are
+      never saved, and the preservation fingerprint keeps proving it.
+- [ ] Regressions across Start, Stop, expiry, heartbeat loss and reboot.
+
+Verification: pending. Completion review: pending.
+
+### task-boot-resume-and-crash-loop-guard | 2026-10-16 | Resume mining on boot, with a crash-loop guard
+
+ADR-0038 step 5.
+
+- [ ] Resume mining on boot when `startMiningOnBoot` is true (its default).
+- [ ] Start paused when the reset-retained boot record shows repeated
+      abnormal resets (panic, watchdog, brownout) within a short window.
+      Report why.
+- [ ] Keep test and evidence provisioning writing `mineonboot=0`.
+
+Verification: pending. Completion review: pending.
+
+### task-local-mining-evidence-soaks | 2026-10-16 | Soak local mining on hardware
+
+ADR-0038 step 6. Hardware. Each soak needs its own `TASKS.md` contract.
+
+- [ ] Local mining soaks growing from 30 minutes to several hours, recording
+      the device configuration.
+- [ ] A hardware check that a lease interrupts local mining and restores it.
+- [ ] An overheat recovery check, only with a safe, contracted stimulus.
+- [ ] Update the parity rows within what the evidence shows. "Unbounded
+      mining" stays a non-claim until these soaks exist.
 
 Verification: pending. Completion review: pending.
 
