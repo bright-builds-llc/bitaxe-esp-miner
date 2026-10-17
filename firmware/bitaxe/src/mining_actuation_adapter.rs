@@ -221,6 +221,9 @@ impl Ultra205MiningActuationAdapter {
                 SafetyActuationPollOutcome::HardwareWriteFailed => {
                     return Err(MiningActuationAdapterError::SafetyHardwareWriteFailed)
                 }
+                SafetyActuationPollOutcome::Refused => {
+                    return Err(MiningActuationAdapterError::WorkerGenerationRevoked)
+                }
                 SafetyActuationPollOutcome::Pending => {}
             }
             if crate::runtime_uptime::millis() >= deadline {
@@ -258,6 +261,9 @@ impl Ultra205MiningActuationAdapter {
             }
             SafetyActuationRequestOutcome::HardwareWriteFailed => {
                 Err(MiningActuationAdapterError::SafetyHardwareWriteFailed)
+            }
+            SafetyActuationRequestOutcome::Refused => {
+                Err(MiningActuationAdapterError::WorkerGenerationRevoked)
             }
         }
     }
@@ -316,6 +322,10 @@ impl Ultra205MiningActuationAdapter {
                     SafetyActuationPollOutcome::HardwareWriteFailed => {
                         self.maybe_pending_fan_actuation = None;
                         return Err(MiningActuationAdapterError::SafetyHardwareWriteFailed);
+                    }
+                    SafetyActuationPollOutcome::Refused => {
+                        self.maybe_pending_fan_actuation = None;
+                        return Err(MiningActuationAdapterError::WorkerGenerationRevoked);
                     }
                 }
             }

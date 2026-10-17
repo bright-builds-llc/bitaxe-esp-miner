@@ -117,6 +117,8 @@ pub(crate) enum SafetyActuationRequestOutcome {
     OwnerUnavailable,
     ReplyTimedOut,
     HardwareWriteFailed,
+    /// The command's authority no longer held, so nothing was written; not a fault.
+    Refused,
 }
 
 pub(crate) enum SafetyActuationQueueOutcome {
@@ -135,15 +137,18 @@ pub(crate) enum SafetyActuationPollOutcome {
     Applied,
     OwnerUnavailable,
     HardwareWriteFailed,
+    /// The command's authority no longer held, so nothing was written; not a fault.
+    Refused,
 }
 
 impl PendingSafetyActuation {
     pub(crate) fn poll(&self) -> SafetyActuationPollOutcome {
         match self.reply_receiver.try_recv() {
             Ok(SafetyActuationReply::Applied) => SafetyActuationPollOutcome::Applied,
-            Ok(SafetyActuationReply::HardwareWriteFailed | SafetyActuationReply::Refused) => {
+            Ok(SafetyActuationReply::HardwareWriteFailed) => {
                 SafetyActuationPollOutcome::HardwareWriteFailed
             }
+            Ok(SafetyActuationReply::Refused) => SafetyActuationPollOutcome::Refused,
             Err(TryRecvError::Empty) => SafetyActuationPollOutcome::Pending,
             Err(TryRecvError::Disconnected) => {
                 ACTUATION_OWNER_AVAILABLE.store(false, Ordering::Release);
@@ -229,9 +234,10 @@ pub(crate) fn request_safety_actuation(
 
     match reply_receiver.recv_timeout(ACTUATION_REPLY_TIMEOUT) {
         Ok(SafetyActuationReply::Applied) => SafetyActuationRequestOutcome::Applied,
-        Ok(SafetyActuationReply::HardwareWriteFailed | SafetyActuationReply::Refused) => {
+        Ok(SafetyActuationReply::HardwareWriteFailed) => {
             SafetyActuationRequestOutcome::HardwareWriteFailed
         }
+        Ok(SafetyActuationReply::Refused) => SafetyActuationRequestOutcome::Refused,
         Err(mpsc::RecvTimeoutError::Timeout) => SafetyActuationRequestOutcome::ReplyTimedOut,
         Err(mpsc::RecvTimeoutError::Disconnected) => {
             ACTUATION_OWNER_AVAILABLE.store(false, Ordering::Release);

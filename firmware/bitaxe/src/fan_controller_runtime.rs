@@ -204,6 +204,7 @@ const fn actuation_failure_category(outcome: SafetyActuationRequestOutcome) -> &
         SafetyActuationRequestOutcome::OwnerUnavailable => "owner_unavailable",
         SafetyActuationRequestOutcome::ReplyTimedOut => "reply_timed_out",
         SafetyActuationRequestOutcome::HardwareWriteFailed => "hardware_write_failed",
+        SafetyActuationRequestOutcome::Refused => "refused",
     }
 }
 
