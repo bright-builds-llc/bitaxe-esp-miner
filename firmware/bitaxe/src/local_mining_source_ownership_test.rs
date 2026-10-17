@@ -3,6 +3,7 @@ const LOCAL_OWNER_SOURCE: &str = include_str!("production_mining_session/local_o
 const OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_loop.rs");
 const BWG_SOURCE: &str = include_str!("production_mining_session/bwg.rs");
 const SESSION_SOURCE: &str = include_str!("production_mining_session.rs");
+const FAN_RUNTIME_SOURCE: &str = include_str!("fan_controller_runtime.rs");
 
 #[test]
 fn local_mining_stays_off_until_the_crash_loop_guard_lands() {
@@ -43,4 +44,25 @@ fn a_lease_start_is_refused_beside_a_local_run() {
 fn a_prepared_local_run_owns_the_fan_controller() {
     // Arrange / Act / Assert
     assert!(SESSION_SOURCE.contains("revocation::FanControllerOwner::Local("));
+}
+
+#[test]
+fn only_a_real_fan_write_failure_latches_the_hardware_fault() {
+    // Arrange
+    let (_, failure_arm) = FAN_RUNTIME_SOURCE
+        .split_once("state.controller.record_apply_failure(now_ms);")
+        .expect("failure arm");
+    // Act
+    let latch = failure_arm.find("local_owner::note_fan_control_failure(");
+    let gate = failure_arm.find("if outcome == SafetyActuationRequestOutcome::HardwareWriteFailed {");
+    // Assert: a refusal, timeout or full queue is not a hardware fault.
+    assert!(gate.is_some() && latch.is_some() && gate < latch);
+}
+
+#[test]
+fn the_latch_covers_local_runs_only_and_holds_until_reboot() {
+    // Arrange / Act / Assert
+    assert!(LOCAL_OWNER_SOURCE
+        .contains("let Some(generation) = faulted_local_generation(owner) else {"));
+    assert!(LOCAL_OWNER_SOURCE.contains("hardware_fault: maybe_hardware_fault_context().is_some(),"));
 }

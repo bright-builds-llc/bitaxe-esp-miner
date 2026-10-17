@@ -1247,7 +1247,16 @@ Plan (small commits, pure core first, the full gate after each):
      9.
    - Host source guards pin the switch off and check the tick order, the
      Start refusal and the `Local` fan owner.
-8. **Hardware fault latch:** a real failed controller fan write under
+8. **Hardware fault latch (landed):** the first `HardwareWriteFailed`
+   controller fan write under `Local` latches upstream's
+   `hardware_fault` until reboot. It revokes the run with
+   `ControlFailed`, holds local mining with `HardwareFault`, and the API
+   reports upstream's `Fan Control Failed (<context>)`. A refusal,
+   timeout or full queue never latches. Lease writes do not latch (owner
+   default). Like upstream, the message names the latest failed context.
+   Upstream's `Startup` context has no counterpart here, because this
+   firmware holds the fan at boot instead of applying 70%.
+   Original plan: a real failed controller fan write under
    `Local` revokes with `ControlFailed` and holds until reboot.
 9. **Overheat wiring:** enter, cool, save the lowered pair, and clear
    `overheat_mode` after preparation. `StayStopped` forces Paused and saves

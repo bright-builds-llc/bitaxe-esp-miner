@@ -18,6 +18,8 @@ use bitaxe_stratum::v1::production_session::MiningHardwareProfile;
 
 use crate::revocation::RevocationReason;
 
+#[path = "local_mining/hardware_fault.rs"]
+pub mod hardware_fault;
 #[path = "local_mining/owner.rs"]
 pub mod owner;
 #[path = "local_mining/persistence.rs"]

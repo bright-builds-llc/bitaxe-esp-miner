@@ -67,6 +67,17 @@ impl FanControllerModeLabel {
             Self::Manual => "manual",
         }
     }
+
+    /// Upstream's fan controller context, as its hardware fault message names it.
+    pub(crate) const fn upstream_context(self) -> &'static str {
+        match self {
+            Self::Overheat => "Overheat",
+            Self::Paused => "Paused",
+            Self::NoPool => "No pool",
+            Self::Auto => "Auto",
+            Self::Manual => "Manual",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -263,6 +274,25 @@ mod tests {
             FanControllerPlan::Deferred {
                 reason: "hardware_control_not_qualified"
             }
+        );
+    }
+
+    #[test]
+    fn upstream_contexts_match_its_fan_controller() {
+        // Arrange
+        let modes = [
+            FanControllerModeLabel::Overheat,
+            FanControllerModeLabel::Paused,
+            FanControllerModeLabel::NoPool,
+            FanControllerModeLabel::Auto,
+            FanControllerModeLabel::Manual,
+        ];
+        // Act
+        let contexts = modes.map(FanControllerModeLabel::upstream_context);
+        // Assert
+        assert_eq!(
+            contexts,
+            ["Overheat", "Paused", "No pool", "Auto", "Manual"]
         );
     }
 

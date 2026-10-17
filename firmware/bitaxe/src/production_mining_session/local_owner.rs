@@ -11,6 +11,9 @@
 //! adopted (readiness changed between the decision and the session's wake) is
 //! retired at once, before any hardware effect, and counts as failed.
 use super::*;
+use bitaxe_runtime::local_mining::hardware_fault::{
+    faulted_local_generation, hardware_fault_message,
+};
 use bitaxe_runtime::local_mining::owner::{LocalOwnerCore, UnsafeStop};
 use bitaxe_runtime::local_mining::policy::{LocalDecision, LocalHoldReason, LocalInputs};
 use bitaxe_stratum::v1::production_session::{
@@ -26,6 +29,43 @@ pub(crate) const LOCAL_MINING_ENABLED: bool = false;
 
 /// Set at boot when a stimulus owns the hardware, so local mining stays off.
 static BOOT_OWNED_ELSEWHERE: AtomicBool = AtomicBool::new(false);
+
+/// Upstream's `hardware_fault`: latched by a failed fan write under a local run and
+/// held until reboot. Like upstream's message, it names the latest failed context.
+static HARDWARE_FAULT_CONTEXT: Mutex<Option<&'static str>> = Mutex::new(None);
+
+/// A real fan write failed. Under a local run this latches the hardware fault and
+/// revokes the run, as upstream stops mining on `hardware_fault`.
+pub(crate) fn note_fan_control_failure(
+    owner: revocation::FanControllerOwner,
+    context: &'static str,
+    now_ms: u64,
+) {
+    let Some(generation) = faulted_local_generation(owner) else {
+        return;
+    };
+    *HARDWARE_FAULT_CONTEXT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(context);
+    log::error!("local_mining=hardware_fault context={context}");
+    // `false` means the run was already revoked; the latch still holds it off.
+    let _already_revoked = !revocation::revoke_reason_at(
+        generation,
+        now_ms,
+        revocation::RevocationReason::ControlFailed,
+    );
+}
+
+fn maybe_hardware_fault_context() -> Option<&'static str> {
+    *HARDWARE_FAULT_CONTEXT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Upstream's `hardware_fault` message, while the latch holds.
+pub(crate) fn maybe_hardware_fault_message() -> Option<String> {
+    maybe_hardware_fault_context().map(hardware_fault_message)
+}
 
 /// A boot-time owner other than the production owner holds the hardware.
 pub(crate) fn note_other_boot_owner() {
@@ -140,7 +180,7 @@ impl OrdinaryEspProductionSessionAdapter {
             gate_link: self.maybe_bwg_session.is_some() || revocation::holds_link(),
             operator_paused: crate::runtime_snapshot::requested_mining_operator_intent()
                 == MiningOperatorIntent::Paused,
-            hardware_fault: false,
+            hardware_fault: maybe_hardware_fault_context().is_some(),
             overheat_holds: false,
             network_ready: crate::wifi_adapter::current_wifi_snapshot().wifi_status == "connected",
             stratum_v1_supported: self.protocol_gate.is_ready(),

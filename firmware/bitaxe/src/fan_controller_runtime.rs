@@ -136,6 +136,13 @@ fn service_iteration(state: &mut RuntimeState, now_ms: u64) {
         outcome => {
             state.controller.record_apply_failure(now_ms);
             state.warn_once(actuation_failure_category(outcome));
+            if outcome == SafetyActuationRequestOutcome::HardwareWriteFailed {
+                crate::production_mining_session::local_owner::note_fan_control_failure(
+                    owner,
+                    mode.upstream_context(),
+                    now_ms,
+                );
+            }
         }
     }
 }
