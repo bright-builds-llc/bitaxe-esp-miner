@@ -229,3 +229,58 @@ fn observing_with_no_overheat_reports_clear() {
     // Assert
     assert_eq!(step, OverheatStep::Clear);
 }
+
+#[test]
+fn after_a_reboot_recovery_restarts_at_the_saved_pair_without_lowering_it() {
+    // Arrange: the pair may already be the lowered one.
+    let mut overheat = OverheatRecovery::default();
+    overheat.enter_after_boot(profile(475.0, 1200), false, 0);
+    // Act
+    let step = cool_until(&mut overheat, 1_000, 31_000);
+    // Assert
+    assert_eq!(step, OverheatStep::Recover(profile(475.0, 1200)));
+}
+
+#[test]
+fn after_a_reboot_recovery_still_waits_for_cooling() {
+    // Arrange
+    let mut overheat = OverheatRecovery::default();
+    overheat.enter_after_boot(profile(485.0, 1200), false, 0);
+    // Act
+    let step = overheat.observe(reading(60.0, 1_000), 1_000);
+    // Assert
+    assert_eq!(step, OverheatStep::Cooling);
+}
+
+#[test]
+fn after_a_reboot_a_saved_stop_keeps_holding() {
+    // Arrange: the last recovery stayed stopped at the pair that overheated.
+    let mut overheat = OverheatRecovery::default();
+    overheat.enter_after_boot(profile(485.0, 1200), true, 0);
+    // Act
+    let step = cool_until(&mut overheat, 1_000, 31_000);
+    // Assert
+    assert_eq!(step, OverheatStep::StayStopped);
+}
+
+#[test]
+fn after_a_reboot_a_saved_stop_ends_only_on_resume() {
+    // Arrange
+    let mut overheat = OverheatRecovery::default();
+    overheat.enter_after_boot(profile(485.0, 1200), true, 0);
+    // Act
+    overheat.resume();
+    // Assert
+    assert!(!overheat.holds_power_down());
+}
+
+#[test]
+fn resuming_never_cancels_cooling_after_a_reboot() {
+    // Arrange
+    let mut overheat = OverheatRecovery::default();
+    overheat.enter_after_boot(profile(485.0, 1200), false, 0);
+    // Act
+    overheat.resume();
+    // Assert
+    assert!(overheat.holds_power_down());
+}

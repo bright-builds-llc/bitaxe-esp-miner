@@ -18,6 +18,9 @@ use bitaxe_stratum::v1::production_session::MiningHardwareProfile;
 
 use crate::revocation::RevocationReason;
 
+#[path = "local_mining/policy.rs"]
+pub mod policy;
+
 /// How long readings must stay at or below the restart temperature (upstream's six
 /// 5 s cooling cycles).
 pub const OVERHEAT_COOLING_MS: u64 = 30_000;
@@ -89,6 +92,9 @@ enum Phase {
     Clear,
     Cooling {
         profile: MiningHardwareProfile,
+        /// Whether recovery lowers the pair; not after a reboot, which may follow a
+        /// recovery that already lowered it.
+        lower: bool,
         entered_at_ms: u64,
         maybe_cool_since_ms: Option<u64>,
         maybe_last_cool_ms: Option<u64>,
@@ -108,6 +114,31 @@ impl OverheatRecovery {
     pub fn enter(&mut self, profile: MiningHardwareProfile, now_ms: u64) {
         self.phase = Phase::Cooling {
             profile,
+            lower: true,
+            entered_at_ms: now_ms,
+            maybe_cool_since_ms: None,
+            maybe_last_cool_ms: None,
+        };
+    }
+
+    /// The device booted with `overheat_mode` saved. A saved stop marker means the
+    /// last recovery stayed stopped, which only an operator resume ends, so the
+    /// stop holds. Otherwise the reboot interrupted a recovery (owner decision
+    /// 2026-10-17): cool for 30 s, then restart at the saved pair without lowering
+    /// it again, since it may already be lowered.
+    pub fn enter_after_boot(
+        &mut self,
+        saved: MiningHardwareProfile,
+        stopped_marker: bool,
+        now_ms: u64,
+    ) {
+        if stopped_marker {
+            self.phase = Phase::Stopped;
+            return;
+        }
+        self.phase = Phase::Cooling {
+            profile: saved,
+            lower: false,
             entered_at_ms: now_ms,
             maybe_cool_since_ms: None,
             maybe_last_cool_ms: None,
@@ -120,6 +151,7 @@ impl OverheatRecovery {
     pub fn observe(&mut self, maybe_reading: Option<ChipReading>, now_ms: u64) -> OverheatStep {
         let Phase::Cooling {
             profile,
+            lower,
             entered_at_ms,
             maybe_cool_since_ms,
             maybe_last_cool_ms,
@@ -140,6 +172,7 @@ impl OverheatRecovery {
         let Some(cool_at_ms) = maybe_cool_at_ms else {
             self.phase = Phase::Cooling {
                 profile,
+                lower,
                 entered_at_ms,
                 maybe_cool_since_ms: None,
                 maybe_last_cool_ms: None,
@@ -154,6 +187,7 @@ impl OverheatRecovery {
         };
         self.phase = Phase::Cooling {
             profile,
+            lower,
             entered_at_ms,
             maybe_cool_since_ms: Some(cool_since_ms),
             maybe_last_cool_ms: Some(cool_at_ms),
@@ -161,7 +195,12 @@ impl OverheatRecovery {
         if cool_at_ms.saturating_sub(cool_since_ms) < OVERHEAT_COOLING_MS {
             return OverheatStep::Cooling;
         }
-        match reduced_profile(profile) {
+        let maybe_restart = if lower {
+            reduced_profile(profile)
+        } else {
+            Some(profile)
+        };
+        match maybe_restart {
             Some(reduced) => {
                 self.phase = Phase::Clear;
                 OverheatStep::Recover(reduced)

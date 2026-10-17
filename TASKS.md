@@ -1166,10 +1166,21 @@ Plan (small commits, pure core first, the full gate after each):
    - Reconnect after `HardwarePrepared`.
    - Exhausted pools probe every 30 s with no hardware effect.
    - No dispatch unless `Ready`.
+   - "Hashed" means work reached the ASIC since this power-up. Exhausted
+     pools after one end the run, so the restart guard paces a pool that
+     authorizes and then drops. A local run is never renewed.
+   - Accepted low residuals, for the shell in commit 7 to label or fix:
+     - after the probe, the reconnect starts at the primary even when the
+       fallback authorized;
+     - the first probe shows the campaign as `Preparing`;
+     - an unreachable V2 pool ends a local run at its first failure, where
+       V1 retries with the ASIC off, so the restart guard paces it;
+     - with no pool configured, a run stays `Preparing` with the ASIC off.
 5. **Firmware refactor, no behavior change:** an owner-generation accessor,
    and an extensible revoked branch in `owner_loop`.
-6. **Firmware persistence:** the overheat entry, the lowered pair, and
-   clearing `overheat_mode`. `Refused` is split from `HardwareWriteFailed`.
+6. **Firmware persistence:** the overheat entry, the lowered pair, clearing
+   `overheat_mode`, and the overheat stop marker. `Refused` is split from
+   `HardwareWriteFailed`.
 7. **Firmware:** the local owner behind `LOCAL_MINING_ENABLED = false`.
    - begin, activate and prepare a local generation;
    - the `Local` fan owner and live hardware;
@@ -1180,8 +1191,21 @@ Plan (small commits, pure core first, the full gate after each):
 8. **Hardware fault latch:** a real failed controller fan write under
    `Local` revokes with `ControlFailed` and holds until reboot.
 9. **Overheat wiring:** enter, cool, save the lowered pair, and clear
-   `overheat_mode` after preparation. `StayStopped` forces Paused. The
-   boot-time path is above.
+   `overheat_mode` after preparation. `StayStopped` forces Paused and saves
+   a stop marker.
+   - At boot with `overheat_mode` saved, a stop marker holds until resumed.
+     Without one, the reboot interrupted a recovery, so the device cools
+     and restarts at the saved pair. This keeps both owner decisions:
+     pause is not saved, and without the marker a reboot would end the stop
+     at the pair that overheated.
+   - A resume clears the marker.
+   - The restart guard's hold also forces Paused, so there is something to
+     resume.
+   - The shell classifies run endings explicitly. `Failed` means a failed
+     preparation, a non-overheat unsafe stop, or a fault. `Requested` means
+     a pause, a link or a settings change.
+   - A saved pair outside the catalog at boot holds with `ProfileRefused`.
+     The ASIC has been off since boot.
 10. **Records:** README, ADR-0038 and TASKS. The switch itself is turned on
     by task 5.
 
