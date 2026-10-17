@@ -15,7 +15,7 @@ import { validateState } from "../fixed-usb-qualification/judge.mjs";
 import { signSoak } from "./authority.mjs";
 import { requireIdleSoakLedger, requireQualificationIdle, soakAllowance, SOAK_WORK_GATE_MS } from "./contract.mjs";
 import { clockObservations, judgeSoak } from "./judge.mjs";
-import { applyDeviceSettings } from "./device-settings.mjs";
+import { applyDeviceSettings, DEFAULT_SOAK_PROFILE, profileSettings } from "./device-settings.mjs";
 import { dueLiveChange, judgeLiveChanges, SOAK_LIVE_CHANGES } from "./live-changes.mjs";
 import { createSoakObserver, journalLines } from "./observer.mjs";
 import { verifyFrozenSoak } from "./preflight.mjs";
@@ -40,11 +40,17 @@ export async function createSoakSupervisor(options, operations = {}) {
   const recordsPath = resolve(root, "soak.samples.jsonl");
   let scope, challenge, review, pending, cooling, lastState, settingsBaselineId, records = [], queue = Promise.resolve();
   const apply = operations.applyDeviceSettings ?? applyDeviceSettings;
+  // Contexts before profiles carry the upstream default; no settings come from the context unchecked.
+  const profile = context.device_profile ?? DEFAULT_SOAK_PROFILE;
+  requireCondition(typeof profile === "string", "soak_profile_unknown");
+  const profileTarget = profileSettings(profile);
+  requireCondition(isDeepStrictEqual(context.device_settings, profileTarget), "soak_profile_contract");
   const plannedLive = context.live_changes ?? [];
+  requireCondition(plannedLive.length === 0 || profile === DEFAULT_SOAK_PROFILE, "soak_live_changes_profile");
   // The context is only self-hashed, so no PATCH value comes from it unless it is exactly the code's plan.
   requireCondition(plannedLive.length === 0 || isDeepStrictEqual(plannedLive, SOAK_LIVE_CHANGES.map((change) =>
     ({ atActiveMs: change.atActiveMs, settings: { ...change.settings } }))), "soak_live_changes_contract");
-  let maybeLiveEndpoint, liveSent = 0, liveInFlight = Promise.resolve();
+  let maybeDeviceEndpoint, liveSent = 0, liveInFlight = Promise.resolve();
   const liveRecords = [];
 
   function challengeFor(kind) {
@@ -102,7 +108,7 @@ export async function createSoakSupervisor(options, operations = {}) {
     const entry = { sequence: records.length + 1, receivedAtUnixMs: now(), state: lastState };
     records.push(entry);
     await appendFile(recordsPath, JSON.stringify(entry) + "\n", { mode: 0o600 });
-    const maybeDue = maybeLiveEndpoint ? dueLiveChange(plannedLive, liveSent, lastState) : undefined;
+    const maybeDue = maybeDeviceEndpoint ? dueLiveChange(plannedLive, liveSent, lastState) : undefined;
     if (maybeDue !== undefined) {
       const activeMs = lastState.qualification.active_ms;
       liveSent += 1;
@@ -116,7 +122,7 @@ export async function createSoakSupervisor(options, operations = {}) {
     const base = { schema: "fixed-usb-soak-live-change-v1", index, active_ms: activeMs, requested_at_unix_ms: now() };
     let record;
     try {
-      const settings = await apply(maybeLiveEndpoint, plannedLive[index].settings);
+      const settings = await apply(maybeDeviceEndpoint, plannedLive[index].settings);
       record = { ...base, requested: settings.requested, observed: settings.observed, completed_at_unix_ms: now() };
     } catch (error) {
       record = { ...base, failure: error instanceof QualificationError ? error.code : "live_change_request_failed" };
@@ -140,26 +146,30 @@ export async function createSoakSupervisor(options, operations = {}) {
     await liveInFlight;
     let lines;
     try { lines = journalLines(await readFile(observer.journalPath, "utf8")); } catch { return { failures: ["live_change_journal_unreadable"], segments: [] }; }
-    return judgeLiveChanges({ initial: context.device_settings, planned: plannedLive, recorded: liveRecords, lines,
+    return judgeLiveChanges({ initial: profileTarget, planned: plannedLive, recorded: liveRecords, lines,
       maybeGateOpenUntilUnixMs: gateOpenUntil() });
   }
 
   /**
-   * A soak that sent a change but not the whole plan may have left the conservative pair saved. Restore
-   * the soak's settings once while the device is idle after restoration; the result stays unverified.
+   * Restore settings once, while the device is idle after restoration (its final state is already taken):
+   * - a soak that sent a change but not the whole plan may have left the conservative pair saved, so it
+   *   restores its own profile and stays unverified;
+   * - a soak on another profile restores the upstream default, so later leases never inherit it.
    */
-  async function restoreAfterIncompleteLive() {
-    const complete = liveSent === plannedLive.length && liveRecords.every((record) => record && !record.failure);
-    if (liveSent === 0 || complete || !maybeLiveEndpoint) return undefined;
-    const base = { schema: "fixed-usb-soak-live-restore-v1", requested_at_unix_ms: now() };
+  async function restoreSettings() {
+    const incompleteLive = liveSent > 0 && !(liveSent === plannedLive.length && liveRecords.every((record) => record && !record.failure));
+    const maybeReason = incompleteLive ? "incomplete_live_changes" : profile !== DEFAULT_SOAK_PROFILE ? "profile_completed" : undefined;
+    if (!maybeReason || !maybeDeviceEndpoint) return undefined;
+    const target = incompleteLive ? profileTarget : profileSettings(DEFAULT_SOAK_PROFILE);
+    const base = { schema: "fixed-usb-soak-settings-restore-v1", reason: maybeReason, requested_at_unix_ms: now() };
     let record;
     try {
-      const settings = await apply(maybeLiveEndpoint, context.device_settings);
+      const settings = await apply(maybeDeviceEndpoint, target);
       record = { ...base, requested: settings.requested, observed: settings.observed };
     } catch (error) {
-      record = { ...base, failure: error instanceof QualificationError ? error.code : "live_restore_failed" };
+      record = { ...base, failure: error instanceof QualificationError ? error.code : "settings_restore_request_failed" };
     }
-    await writeNew(resolve(root, "live-restore.json"), record);
+    await writeNew(resolve(root, "settings-restore.json"), record);
     return record;
   }
 
@@ -191,7 +201,7 @@ export async function createSoakSupervisor(options, operations = {}) {
     const windowJudgement = await runWindowJudge();
     const deviceSettings = await readJson(resolve(root, "device-settings.json")).catch(() => null);
     const maybeLiveChanges = await judgeLive();
-    const maybeRestore = await restoreAfterIncompleteLive();
+    const maybeRestore = await restoreSettings();
     const result = judgeSoak({ context, records, issuance, ledgerAfter: input.ledger_after, finalState: input.final_state, windowJudgement, observerClean,
       deviceSettings, maybeLiveChanges, maybeRestore });
     await writeNew(resolve(root, "result.json"), { result, sha256: digest(JSON.stringify(result)) });
@@ -229,10 +239,10 @@ export async function createSoakSupervisor(options, operations = {}) {
       // ADR-0037: the device's settings are the mining profile; set and record them while idle.
       // One PATCH per attempt: a retry after an observer failure never writes again.
       await missing(resolve(root, "device-settings.json"));
-      const settings = await apply({ ipv4: endpoint.ipv4, httpPort: endpoint.httpPort });
+      const settings = await apply({ ipv4: endpoint.ipv4, httpPort: endpoint.httpPort }, profileTarget);
       await writeNew(resolve(root, "device-settings.json"), { ...settings, context_sha256: digest(JSON.stringify(context)) });
       settingsBaselineId = baselineId;
-      maybeLiveEndpoint = { ipv4: endpoint.ipv4, httpPort: endpoint.httpPort };
+      maybeDeviceEndpoint = { ipv4: endpoint.ipv4, httpPort: endpoint.httpPort };
       return observer.start({ ipv4: endpoint.ipv4, httpPort: endpoint.httpPort });
     },
     "GET /observer/idle-proof": async () => observer.idle(),

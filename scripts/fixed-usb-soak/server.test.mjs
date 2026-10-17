@@ -32,7 +32,10 @@ async function eventually(predicate) {
   assert.ok(await predicate(), "condition never held");
 }
 
-async function supervisor({ idlePassed = true, liveChanges = [], failLive = false } = {}) {
+const PROFILES = { "upstream-default": { frequency: 485, coreVoltage: 1200, autofanspeed: 1 },
+  "catalog-maximum-frequency": { frequency: 575, coreVoltage: 1200, autofanspeed: 1 } };
+
+async function supervisor({ idlePassed = true, liveChanges = [], failLive = false, profile = "upstream-default", settings = PROFILES[profile] } = {}) {
   const root = await realpath(await mkdtemp(resolve(process.env.TEST_TMPDIR ?? tmpdir(), "soak-server-")));
   const firmware = resolve(root, "firmware");
   await mkdir(resolve(firmware, "firmware/bitaxe/bwg"), { recursive: true });
@@ -40,7 +43,7 @@ async function supervisor({ idlePassed = true, liveChanges = [], failLive = fals
   const signed = [], patches = [];
   // Completion waits for terminal samples on the clock; tests fast-forward it once the window is done.
   const clock = { now: Date.now(), fastForward: false };
-  const server = await createSoakSupervisor({ privateRoot: root, context: { ...context, firmware_root: firmware, live_changes: liveChanges } }, {
+  const server = await createSoakSupervisor({ privateRoot: root, context: { ...context, firmware_root: firmware, live_changes: liveChanges, device_profile: profile, device_settings: settings } }, {
     verifyFrozen: async () => undefined,
     readPool: async () => ({ endpoint: "stratum+tcp://pool.invalid:3333/", username: "u", password: "p" }),
     sign: async (operation, input) => { signed.push(input); return { profile: "bwg-worker-lease-authorization-artifact/0.1", operation, authorization: "signed" }; },
@@ -182,7 +185,7 @@ test("a planned live change is sent once, when the work gate reaches it, and rec
   for (const activeMs of [199000, 200000, 201000]) await call("/record", { state: mining(activeMs) });
   await eventually(() => readFile(resolve(root, "live-change-1.json")).then(() => true, () => false));
   // Assert
-  assert.deepEqual(patches.map((target) => [target.ipv4, target.settings]), [[endpoint.ipv4, undefined], [endpoint.ipv4, SOAK_LIVE_CHANGES[0].settings]]);
+  assert.deepEqual(patches.map((target) => [target.ipv4, target.settings]), [[endpoint.ipv4, context.device_settings], [endpoint.ipv4, SOAK_LIVE_CHANGES[0].settings]]);
   const recorded = JSON.parse(await readFile(resolve(root, "live-change-1.json"), "utf8"));
   assert.deepEqual([recorded.index, recorded.active_ms, recorded.failure], [0, 200000, undefined]);
 });
@@ -237,7 +240,7 @@ test("a soak that stops between its changes restores its settings and stays unve
   assert.deepEqual(patches.at(-1).settings, context.device_settings);
   const { result } = JSON.parse(await readFile(resolve(root, "result.json"), "utf8"));
   assert.ok(result.failures.includes("live_change_restored") && result.failures.includes("live_change_journal_unreadable"));
-  assert.equal(result.live_restore, "restored");
+  assert.deepEqual(result.settings_restore, { reason: "incomplete_live_changes", outcome: "restored" });
 });
 
 test("signing is refused until the idle WebSocket pre-phase passes", async (t) => {
@@ -296,4 +299,43 @@ test("the page is configured for soak mode only", async (t) => {
   const { value } = await call("/context");
   // Assert
   assert.deepEqual(Object.keys(value).sort(), ["expectedAppElfSha256", "expectedFirmwareSourceCommit", "expectedGateCommit", "soakQualification", "trust"]);
+});
+
+test("the catalog-maximum profile writes 575 MHz at 1200 mV with the automatic fan", async (t) => {
+  // Arrange
+  const { server, call, patches } = await supervisor({ profile: "catalog-maximum-frequency" });
+  t.after(() => server.close());
+  await call("/activate", {});
+  // Act
+  await call("/observer/start", { endpoint, state: beforeSettings });
+  // Assert
+  assert.deepEqual(patches[0].settings, { frequency: 575, coreVoltage: 1200, autofanspeed: 1 });
+});
+
+test("settings in the context that differ from their named profile are refused", async () => {
+  // Arrange / Act / Assert
+  await assert.rejects(supervisor({ profile: "catalog-maximum-frequency", settings: { frequency: 575, coreVoltage: 1300, autofanspeed: 1 } }),
+    /soak_profile_contract/u);
+});
+
+test("live changes are refused from a profile they would not return to", async () => {
+  // Arrange / Act / Assert
+  await assert.rejects(supervisor({ profile: "catalog-maximum-frequency", liveChanges: SOAK_LIVE_CHANGES }), /soak_live_changes_profile/u);
+});
+
+test("a catalog-maximum soak restores the upstream default once it completes", async (t) => {
+  // Arrange
+  const { root, server, call, patches, clock } = await supervisor({ profile: "catalog-maximum-frequency" });
+  t.after(() => server.close());
+  await reviewed(call);
+  await call("/authorization-context", { controlSessionBindingSha256: binding });
+  await call("/window-artifacts");
+  const { value: completion } = await call("/completion-context", {});
+  clock.fastForward = true;
+  // Act
+  await call("/completion-review", { nonce: completion.nonce, ledger_after: soakLedger, final_state: afterSettings });
+  // Assert
+  assert.deepEqual(patches.map((patch) => patch.settings.frequency), [575, 485]);
+  const { result } = JSON.parse(await readFile(resolve(root, "result.json"), "utf8"));
+  assert.deepEqual(result.settings_restore, { reason: "profile_completed", outcome: "restored" });
 });

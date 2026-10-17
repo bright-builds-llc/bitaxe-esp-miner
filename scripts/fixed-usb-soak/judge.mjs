@@ -77,9 +77,10 @@ export function judgeSoak({ context, records, issuance, ledgerAfter, finalState,
   const planned = (context.live_changes ?? []).length > 0;
   check(planned && !maybeLiveChanges, "live_change_unjudged");
   if (planned && maybeLiveChanges) failures.push(...maybeLiveChanges.failures);
-  check(maybeRestore !== undefined, "live_change_restored");
+  check(maybeRestore?.reason === "incomplete_live_changes", "live_change_restored");
+  check(maybeRestore?.failure !== undefined, "settings_restore_failed");
   return { schema: "fixed-usb-soak-result-v1", result: failures.length === 0 ? "passed" : "unverified", ordinal: issuance.ordinal,
     cumulative_charged_ms: ledgerAfter?.total_charged_ms ?? null, cleanup_confirmed: cleanupConfirmed, failures,
     window_judgement: windowJudgement, ...(planned ? { live_changes: maybeLiveChanges?.segments ?? [] } : {}),
-    ...(maybeRestore ? { live_restore: maybeRestore.failure ?? "restored" } : {}), parity_promotion: false };
+    ...(maybeRestore ? { settings_restore: { reason: maybeRestore.reason, outcome: maybeRestore.failure ?? "restored" } } : {}), parity_promotion: false };
 }

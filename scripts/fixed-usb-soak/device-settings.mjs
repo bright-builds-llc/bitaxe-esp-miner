@@ -7,6 +7,29 @@ import { PRIVATE_FIRST_OCTETS } from "./observer.mjs";
 
 /** Upstream defaults with the automatic fan (owner decision 2026-10-16). */
 export const SOAK_DEVICE_SETTINGS = Object.freeze({ frequency: 485, coreVoltage: 1200, autofanspeed: 1 });
+/**
+ * Profiles a soak may write, chosen at preflight. `catalog-maximum-frequency` runs the catalog's 575 MHz
+ * at 1200 mV: 1300 mV would exceed the 15 W live stop limit (owner decision 2026-10-16).
+ */
+export const SOAK_PROFILES = Object.freeze({
+  "upstream-default": SOAK_DEVICE_SETTINGS,
+  "catalog-maximum-frequency": Object.freeze({ frequency: 575, coreVoltage: 1200, autofanspeed: 1 }),
+});
+export const DEFAULT_SOAK_PROFILE = "upstream-default";
+
+/** The profile a preflight freezes; live changes return to the upstream default, so they only run from it. */
+export function preflightProfile(maybeProfile, liveChanges) {
+  const profile = maybeProfile ?? DEFAULT_SOAK_PROFILE;
+  profileSettings(profile);
+  requireCondition(liveChanges !== true || profile === DEFAULT_SOAK_PROFILE, "soak_live_changes_profile");
+  return profile;
+}
+
+/** The settings a context's profile names; anything else refuses the soak. */
+export function profileSettings(name) {
+  requireCondition(Object.hasOwn(SOAK_PROFILES, name), "soak_profile_unknown");
+  return { ...SOAK_PROFILES[name] };
+}
 const DEVICE_TIMEOUT_MS = 10000;
 /** Read back so evidence records what the automatic fan ran toward. */
 const FAN_SETTINGS = Object.freeze(["temptarget", "minFanSpeed"]);

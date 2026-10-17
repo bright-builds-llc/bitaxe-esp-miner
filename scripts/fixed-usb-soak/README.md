@@ -11,7 +11,16 @@ Gate. The decisions behind it are
   `device-settings.mjs`: 485 MHz, 1200 mV, automatic fan) with an HTTP PATCH,
   while the device is idle. It reads them back from `/api/system/info` and
   records both in the private `device-settings.json`. A read-back that does
-  not match refuses the soak.
+  not match refuses the soak. `preflight --profile` chooses another entry of
+  `SOAK_PROFILES`: `catalog-maximum-frequency` is 575 MHz at 1200 mV with the
+  automatic fan. `serve` writes only the settings of the profile the context
+  names.
+- **Settings restore:** at completion, while the device is idle, `serve`
+  sends one PATCH and records `settings-restore.json`:
+  - a soak on another profile restores the upstream default, so later leases
+    never inherit it;
+  - a soak whose live changes stopped part-way restores its own profile.
+  A failed restore fails the soak.
 - **Live changes (optional):** `preflight --live-changes` freezes
   `SOAK_LIVE_CHANGES` (`live-changes.mjs`) into the context. While the soak
   mines with its work gate open, `serve` sends one PATCH at 200 s of mining
@@ -34,9 +43,8 @@ Gate. The decisions behind it are
     30 mV;
   - the median hashrate must change by the frequency ratio, within 0.12.
 
-  A soak that sent a change but not the whole plan restores the soak's
-  settings once at completion. It records `live-restore.json` and stays
-  `unverified`.
+  A soak that sent a change but not the whole plan restores its profile once
+  at completion, and stays `unverified`.
 - **Budget:** the soak budget (v2) is 600,000 ms of mining, charged in the v2
   soak ledger. The ordered shutdown runs after it, bounded at 22,550 ms.
 

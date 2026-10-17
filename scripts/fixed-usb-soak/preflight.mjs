@@ -8,7 +8,7 @@ import { admitTrust, BUNDLE, canonicalDirectory, cleanPushed, digest, fileDigest
   protectedPath, readJson, requireCondition, writeNew } from "../fixed-usb-qualification/contract.mjs";
 import { parseDetector } from "../hardware-operator/detector.mjs";
 import { requireSoakTask, SOAK_CONTEXT_SCHEMA, SOAK_RENEWALS, SOAK_SUGGESTED_DIFFICULTY } from "./contract.mjs";
-import { SOAK_DEVICE_SETTINGS } from "./device-settings.mjs";
+import { preflightProfile, profileSettings } from "./device-settings.mjs";
 import { SOAK_LIVE_CHANGES } from "./live-changes.mjs";
 
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
@@ -55,15 +55,16 @@ export async function preflight(options, operations = {}) {
   await protectedPath(parent, true);
   await missing(root);
   ignored(options.firmwareRoot, root);
+  const profile = preflightProfile(options.profile, options.liveChanges);
   const detector = await freshDetector(resolve(options.detector), (operations.now ?? Date.now)());
   const snapshot = await inspectSoakSources(options, operations);
   const context = { schema: SOAK_CONTEXT_SCHEMA, ...snapshot, physical_identity_sha256: detector.physical,
-    suggested_difficulty: SOAK_SUGGESTED_DIFFICULTY, renewals: SOAK_RENEWALS, hardware_profile: "device-settings", device_settings: { ...SOAK_DEVICE_SETTINGS },
+    suggested_difficulty: SOAK_SUGGESTED_DIFFICULTY, renewals: SOAK_RENEWALS, hardware_profile: "device-settings", device_profile: profile, device_settings: profileSettings(profile),
     live_changes: options.liveChanges === true ? SOAK_LIVE_CHANGES.map((change) => ({ atActiveMs: change.atActiveMs, settings: { ...change.settings } })) : [],
     firmware_root: options.firmwareRoot, gate_root: options.gateRoot, manifest: resolve(options.manifest) };
   await (operations.mkdir ?? mkdir)(root, { mode: 0o700 });
   await writeNew(resolve(root, "context.json"), { context, sha256: digest(JSON.stringify(context)) });
-  return { soak_preflight_created: true, device_effects: false, hardware_profile: "device-settings", live_changes: context.live_changes.length,
+  return { soak_preflight_created: true, device_effects: false, hardware_profile: "device-settings", device_profile: profile, live_changes: context.live_changes.length,
     renewals: SOAK_RENEWALS };
 }
 

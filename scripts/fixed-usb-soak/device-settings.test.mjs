@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyDeviceSettings, SOAK_DEVICE_SETTINGS } from "./device-settings.mjs";
+import { applyDeviceSettings, preflightProfile, profileSettings, SOAK_DEVICE_SETTINGS } from "./device-settings.mjs";
 
 function fakeDevice(info, ok = true) {
   const calls = [];
@@ -46,4 +46,29 @@ test("an endpoint that is not a private IPv4 address is refused before any reque
   await assert.rejects(named, /soak_device_endpoint/u);
   await assert.rejects(public_, /soak_device_endpoint/u);
   assert.equal(device.calls.length, 0);
+});
+
+test("a named profile gives its settings", () => {
+  // Arrange / Act / Assert
+  assert.deepEqual(profileSettings("catalog-maximum-frequency"), { frequency: 575, coreVoltage: 1200, autofanspeed: 1 });
+});
+
+test("an unknown profile is refused", () => {
+  // Arrange / Act / Assert
+  assert.throws(() => profileSettings("catalog-maximum"), /soak_profile_unknown/u);
+});
+
+test("preflight defaults to the upstream-default profile", () => {
+  // Arrange / Act / Assert
+  assert.equal(preflightProfile(undefined, false), "upstream-default");
+});
+
+test("preflight refuses live changes from the catalog-maximum profile", () => {
+  // Arrange / Act / Assert
+  assert.throws(() => preflightProfile("catalog-maximum-frequency", true), /soak_live_changes_profile/u);
+});
+
+test("preflight refuses an unknown profile", () => {
+  // Arrange / Act / Assert
+  assert.throws(() => preflightProfile("overclock", false), /soak_profile_unknown/u);
 });

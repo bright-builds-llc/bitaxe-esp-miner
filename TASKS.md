@@ -1244,6 +1244,10 @@ Ultra 205 upstream-default soak hardware: enabled.
   - regressions cover all of it.
 - [x] Soak 008 attempt 001: one live change down and back during a lease
       (ordinal 3), with an independent review: `complete`.
+- [x] Selectable soak profiles: `preflight --profile`, and `serve` writes
+      only the named profile's settings, with regressions.
+- [ ] Soak 009 attempt 001: the catalog-maximum frequency, 575 MHz at
+      1200 mV (ordinal 4), with an independent review.
 
 Soak 007 hardware contract (owner-authorized 2026-10-16). It is the archived
 `task-ultra205-default-profile-soak-006` contract, unchanged except:
@@ -1387,7 +1391,8 @@ authorization). It is the soak 007 attempt 002 contract, unchanged except:
 - **Recovery:** a run that sent the first change but not the whole plan may
   leave 400 MHz / 1100 mV saved. That pair already has hardware evidence.
   At completion, `serve` sends one restore PATCH of 485/1200 with the
-  automatic fan, while the device is idle, and records `live-restore.json`.
+  automatic fan, while the device is idle, and records
+  `settings-restore.json`.
   The attempt then stays `unverified`. If completion never runs, the next
   soak's initial settings write restores the pair before its page baseline.
 - **Stop conditions:** a failed live step revokes the lease with
@@ -1423,6 +1428,47 @@ Soak 008 attempt 001 result (2026-10-16): `complete`. Redacted summary:
 - The independent review agrees `complete`. It recomputed every criterion
   and segment from the raw files. It noted that the median takes the upper
   middle value for an even count; that changes no outcome.
+
+Soak 009 hardware contract (the catalog-maximum shutdown tail, under the
+standing authorization). The owner decided on 2026-10-16 to run 575 MHz at
+1200 mV, because 575 MHz at 1300 mV is estimated at about 16 W, over the
+15 W live stop limit. It is the soak 007 attempt 002 contract, unchanged
+except:
+- **Package:** `just package` at the clean, pushed `HEAD` that records this
+  contract. It adds selectable soak profiles and changes no firmware
+  behavior. Install it with the same state-preserving `just flash-monitor
+  ... --capture-timeout-seconds 360 --redact-evidence`.
+- **Parent and ledger:** `P = scratch/ultra205-soak-009`, with
+  `R = P/attempt-001`. Soak ledger v2 ordinal 4. The ledger must report next
+  ordinal 4 and total 1,800,000.
+- **Preflight:** add `--profile catalog-maximum-frequency`, with no live
+  changes. The context must record 575 MHz, 1200 mV and `autofanspeed` 1.
+- **Changed allowed effect:** at `/observer/start`, while the device is idle,
+  `serve` sends one PATCH: `frequency` 575, `coreVoltage` 1200,
+  `autofanspeed` 1. The firmware admits the pair (catalog 400–575 MHz,
+  1100–1300 mV). Preparation then ramps to 575 MHz, and the closed shutdown
+  tail at 575 MHz is the 22,550 ms bound.
+- **Expected load:** a median of about 14 W, estimated from soaks 007 and 008
+  as proportional to frequency times voltage squared. Scaled single-sample
+  peaks reach about 14.8–14.9 W. The firmware stops on one sample over 15 W,
+  so the margin is only 0.1–0.5 W, and a trip is a realistic outcome. The
+  live stop limits are unchanged. A trip revokes the lease
+  (`unsafe_observation`), and the ordered shutdown follows from 575 MHz, so
+  it still exercises the tail this soak is for. The attempt then seals
+  `unverified` with outcome `stop_hardware_blocker`. There is no retry
+  without a new owner decision, such as a lower voltage.
+- **Afterwards:** at completion, while the device is idle, `serve` restores
+  485 MHz, 1200 mV and the automatic fan (`settings-restore.json`, reason
+  `profile_completed`), so later leases never inherit 575 MHz. A failed
+  restore fails the soak. If completion never runs, the next soak's initial
+  write sets its own profile.
+
+Evidence to read (observations, not pass criteria):
+- the device-side shutdown duration against the 22,550 ms bound;
+- power, chip temperature and fan RPM against soak 007;
+- shares;
+- the counter hashrate against soak 007's 485 MHz (expected ratio about
+  575/485 = 1.19).
 
 Verification: soaks 007 and 008 `complete`. Completion review: pending the
 catalog-maximum soak and the parity rows.

@@ -162,7 +162,8 @@ test("the terminal judgement fails closed on each missing criterion", () => {
     live_change_voltage_unconfirmed: soakInput({ context: { ...base.context, live_changes: [{ atActiveMs: 200000, settings: {} }] },
       maybeLiveChanges: { failures: ["live_change_voltage_unconfirmed"], segments: [] } }),
     live_change_restored: soakInput({ context: { ...base.context, live_changes: [{ atActiveMs: 200000, settings: {} }] },
-      maybeLiveChanges: { failures: [], segments: [] }, maybeRestore: { schema: "fixed-usb-soak-live-restore-v1" } }),
+      maybeLiveChanges: { failures: [], segments: [] }, maybeRestore: { schema: "fixed-usb-soak-settings-restore-v1", reason: "incomplete_live_changes" } }),
+    settings_restore_failed: soakInput({ maybeRestore: { schema: "fixed-usb-soak-settings-restore-v1", reason: "profile_completed", failure: "soak_device_settings_patch" } }),
     preservation_baseline_changed: soakInput({ issuance: { ...base.issuance, preservation_baseline_id: "A".repeat(22) },
       finalState: { preservation: { baseline_id: `${"B".repeat(21)}A` } } }),
   };
@@ -228,4 +229,14 @@ test("clock observations stop at the halt, before the device freezes active time
   const observations = clockObservations([open, halted]);
   // Assert
   assert.deepEqual(observations, [{ observedUnixMs: 1000, activeMs: 100000 }]);
+});
+
+test("restoring the upstream default after another profile does not fail the soak", () => {
+  // Arrange
+  const input = soakInput({ maybeRestore: { schema: "fixed-usb-soak-settings-restore-v1", reason: "profile_completed" } });
+  // Act
+  const result = judgeSoak(input);
+  // Assert
+  assert.ok(!result.failures.some((failure) => failure.includes("restore")));
+  assert.deepEqual(result.settings_restore, { reason: "profile_completed", outcome: "restored" });
 });
