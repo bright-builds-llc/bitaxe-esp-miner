@@ -42,7 +42,7 @@ str005-share-crash action *args:
 # One task-gated upstream-default soak through the Gate (ADR-0033). See scripts/fixed-usb-soak/README.md.
 [positional-arguments]
 ultra205-soak action *args:
-    bazel build //tools/http-transport:soak_observer //tools/http-transport:soak_judge
+    bazel build //tools/http-transport:soak_observer //tools/http-transport:soak_judge //tools/bap-client:bap_client
     bazel run //scripts:ultra205_soak -- "$@"
 
 # One task-gated BWG-007 serial restoration attempt through the Gate (ADR-0035). See scripts/bwg-restoration/README.md.
