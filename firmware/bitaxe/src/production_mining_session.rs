@@ -119,6 +119,13 @@ struct OrdinaryEspProductionSessionAdapter {
     live_hardware: live_hardware::LiveHardwareOwner,
 }
 impl OrdinaryEspProductionSessionAdapter {
+    /// The revocation generation that owns this session's effects, if any.
+    fn maybe_owner_generation(&self) -> Option<revocation::WorkerGeneration> {
+        self.maybe_bwg_session
+            .as_ref()
+            .map(|session| session.generation)
+    }
+
     fn new(owner_sender: SyncSender<OwnerInboxMessage>) -> anyhow::Result<Self> {
         let transport_sender = owner_sender.clone();
         let transports = PoolTransportWorkers::spawn(move |event| {
@@ -215,11 +222,7 @@ impl OrdinaryEspProductionSessionAdapter {
                     status.note_snapshot(&snapshot, now_ms);
                     let qualified = status.authorizes_actuation()
                         && self.maybe_bwg_session.is_none()
-                        && revocation::permits(
-                            self.maybe_bwg_session
-                                .as_ref()
-                                .map(|session| session.generation),
-                        )
+                        && revocation::permits(None)
                         && snapshot.campaign_state
                             == bitaxe_stratum::v1::production_session::MiningCampaignState::Active
                         && crate::safety_adapter::safety_actuation_available()
@@ -271,13 +274,10 @@ impl OrdinaryEspProductionSessionAdapter {
             ProductionSessionEffect::PrepareHardware { lease_id, profile } => {
                 release_idle_fan();
                 self.note_worker_preparation_started();
-                self.mining_actuation.set_worker_generation(
-                    self.maybe_bwg_session
-                        .as_ref()
-                        .map(|session| session.generation),
-                );
+                self.mining_actuation
+                    .set_worker_generation(self.maybe_owner_generation());
                 match self.mining_actuation.prepare(profile) {
-                    Ok(()) if revocation::permits(self.maybe_bwg_session.as_ref().map(|session| session.generation)) => {
+                    Ok(()) if revocation::permits(self.maybe_owner_generation()) => {
                         // Preparation proved the fan at 100%; the lease's controller now
                         // follows the device's fan settings until its permit ends.
                         if let Some(session) = self.maybe_bwg_session.as_ref() {
@@ -396,9 +396,7 @@ impl OrdinaryEspProductionSessionAdapter {
                             endpoint: std::net::SocketAddrV4::new(ipv4, endpoint.port),
                             authority: config.authority,
                             generation,
-                            permit: revocation::stamp(
-                                self.maybe_bwg_session.as_ref().map(|s| s.generation),
-                            ),
+                            permit: revocation::stamp(self.maybe_owner_generation()),
                         }
                     }
                 };
@@ -436,9 +434,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 PoolTransportCommand::WriteFrame {
                     transport_epoch,
                     frame,
-                    permit: revocation::stamp(
-                        self.maybe_bwg_session.as_ref().map(|s| s.generation),
-                    ),
+                    permit: revocation::stamp(self.maybe_owner_generation()),
                 },
                 now_ms,
             ),
@@ -453,11 +449,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 PoolTransportCommand::Write {
                     transport_epoch,
                     line,
-                    permit: revocation::stamp(
-                        self.maybe_bwg_session
-                            .as_ref()
-                            .map(|session| session.generation),
-                    ),
+                    permit: revocation::stamp(self.maybe_owner_generation()),
                 },
                 now_ms,
             ),
@@ -572,12 +564,7 @@ impl OrdinaryEspProductionSessionAdapter {
             | AsicWorkerCommand::ReadHashrateRegisters { generation } => *generation,
             AsicWorkerCommand::Shutdown => return None,
         };
-        match self.asic.try_send(
-            command,
-            self.maybe_bwg_session
-                .as_ref()
-                .map(|session| session.generation),
-        ) {
+        match self.asic.try_send(command, self.maybe_owner_generation()) {
             Ok(()) => None,
             Err(TrySendError::Full(_)) => Some(ProductionSessionEvent::AsicInteractionFailed {
                 generation,

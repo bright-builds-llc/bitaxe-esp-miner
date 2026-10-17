@@ -22,7 +22,7 @@ pub(super) fn run_owner(
         let revocation_now = crate::runtime_uptime::millis();
         revocation::check_deadline(revocation_now);
         if let Some(generation) = revocation::maybe_revoked() {
-            if adapter.maybe_bwg_session.is_some() {
+            if adapter.maybe_owner_generation().is_some() {
                 drive_session(
                     &mut session,
                     &mut adapter,
