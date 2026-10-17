@@ -90,17 +90,18 @@ fn an_unsaved_lowered_pair_keeps_the_asic_down() {
 #[test]
 fn a_stop_and_the_guards_hold_pause_the_device_for_the_operator() {
     // Arrange / Act / Assert
-    assert!(OVERHEAT_SOURCE.contains("self.pause_by_device();"));
+    assert!(OVERHEAT_SOURCE.contains("self.pause_by_device(DevicePauseReason::Overheat);"));
     let (_, guard_hold) = LOCAL_OWNER_SOURCE
         .split_once("if reason == LocalHoldReason::RestartGuardHeld && !self.local.guard_paused {")
         .expect("guard hold");
-    assert!(guard_hold.contains("self.pause_by_device();"));
+    assert!(guard_hold.contains("self.pause_by_device(DevicePauseReason::RestartGuard);"));
     // The session wakes to stop, and the resume edge is measured from Paused.
     let (_, pause) = LOCAL_OWNER_SOURCE
-        .split_once("fn pause_by_device(&mut self) {")
+        .split_once("fn pause_by_device(&mut self, reason: DevicePauseReason) {")
         .expect("device pause");
     assert!(pause.contains("ProductionSessionWakeup::OperatorIntentChanged"));
-    assert!(pause.contains("self.local.last_requested_intent = Some(MiningOperatorIntent::Paused);"));
+    assert!(pause.contains("self.local.resume_edge.note_device_pause();"));
+    assert!(pause.contains("crate::device_pause::set(reason);"));
 }
 
 #[test]

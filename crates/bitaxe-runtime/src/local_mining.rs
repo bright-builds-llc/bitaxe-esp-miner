@@ -28,6 +28,8 @@ pub mod owner;
 pub mod persistence;
 #[path = "local_mining/policy.rs"]
 pub mod policy;
+#[path = "local_mining/shell.rs"]
+pub mod shell;
 
 /// How long readings must stay at or below the restart temperature (upstream's six
 /// 5 s cooling cycles).

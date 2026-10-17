@@ -18,14 +18,19 @@ pub enum SettingsPublicResponse {
 /// schema and the update-preservation fingerprint.
 pub const OVERHEAT_STOP_MARKER_KEY: &str = "ovh_stopped";
 
+/// The device-internal crash-loop streak (ADR-0038), outside the REST schema and
+/// the update-preservation fingerprint.
+pub const CRASH_STREAK_KEY: &str = "crashstreak";
+
 /// The only keys a device-owned plan may write: the overheat fan, pair and mode
-/// settings with their legacy keys, and the stop marker.
+/// settings with their legacy keys, the stop marker and the crash-loop streak.
 pub const DEVICE_OWNED_SETTING_KEYS: &[&str] = &[
     "autofanspeed",
     "manualfanspeed",
     "fanspeed",
     "overheat_mode",
     OVERHEAT_STOP_MARKER_KEY,
+    CRASH_STREAK_KEY,
     "asicfrequency_f",
     "asicfrequency",
     "asicvoltage",

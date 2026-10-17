@@ -589,3 +589,19 @@ fn wire_system_asic_fixture_from_reference_safe_ultra_205_defaults_round_trips()
     // Assert
     assert_eq!(round_trip, original);
 }
+
+#[test]
+fn a_device_pause_reason_is_reported_only_while_set() {
+    // Arrange
+    let mut snapshot = ApiSnapshot::safe_ultra_205();
+    let quiet = serde_json::to_value(SystemInfoWire::from_snapshot(&snapshot))
+        .expect("system info should serialize");
+    snapshot.platform.maybe_pause_reason =
+        Some(bitaxe_core::device_pause::DevicePauseReason::CrashLoop);
+    // Act
+    let paused = serde_json::to_value(SystemInfoWire::from_snapshot(&snapshot))
+        .expect("system info should serialize");
+    // Assert
+    assert_eq!(quiet.get("pauseReason"), None);
+    assert_eq!(paused.get("pauseReason"), Some(&json!("crash_loop")));
+}

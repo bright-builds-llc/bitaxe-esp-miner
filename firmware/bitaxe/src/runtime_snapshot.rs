@@ -158,7 +158,9 @@ pub fn mining_runtime_state() -> MiningRuntimeState {
     command_visible_state().mining
 }
 pub(crate) fn requested_mining_operator_intent() -> MiningOperatorIntent {
-    command_visible_state().requested_operator_intent.current()
+    mutate_command_visible_state_with_result(MiningOperatorIntent::Paused, |state| {
+        state.requested_operator_intent.current()
+    })
 }
 
 /// Applies the persisted boot preference to this boot's initial intent.
@@ -592,6 +594,7 @@ fn collect_platform_snapshot(
     platform.source_dirty = crate::source_dirty();
     platform.maybe_hardware_fault =
         crate::production_mining_session::local_owner::maybe_hardware_fault_message();
+    platform.maybe_pause_reason = crate::device_pause::current();
     platform.maybe_release_tag = crate::maybe_release_tag().map(str::to_owned);
     platform.idf_version = compatibility_string(&identity.esp_idf_version);
     platform.axe_os_version = compatibility_string(&identity.axe_os_static_asset);

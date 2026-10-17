@@ -1,4 +1,5 @@
 pub mod bap;
+pub mod device_pause;
 pub mod display;
 pub mod fallible;
 pub mod hashrate;

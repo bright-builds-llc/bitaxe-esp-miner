@@ -150,3 +150,5 @@ code { border-radius: 5px; background: var(--surface-raised); padding: 2px 5px; 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+.pause-notice { margin: 0 0 16px; padding: 12px 16px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--text); }
+.pause-notice:empty { margin: 0; padding: 0; border: 0; }

@@ -19,7 +19,7 @@ pub use persistence::{
     SettingsPersistenceFailure, SettingsPersistenceFailureDisposition,
     SettingsPersistenceFailureReport, SettingsPersistencePlan, SettingsPersistenceStep,
     SettingsPersistenceSuccess, SettingsPersistenceTransaction, SettingsPublicResponse,
-    DEVICE_OWNED_SETTING_KEYS, OVERHEAT_STOP_MARKER_KEY,
+    CRASH_STREAK_KEY, DEVICE_OWNED_SETTING_KEYS, OVERHEAT_STOP_MARKER_KEY,
 };
 
 #[cfg(test)]

@@ -225,3 +225,14 @@ export function themePayload(values: unknown): ThemePayload {
     accentColors: Object.freeze({ primary: validAccent(source.accentColor) }),
   });
 }
+
+const PAUSE_NOTICES: Readonly<Record<string, string>> = Object.freeze({
+  crash_loop: "Mining paused after repeated resets. Check power and cooling, then resume mining.",
+  overheat: "Mining stopped after an overheat it could not recover from. Check cooling, then resume mining.",
+  restart_guard: "Mining paused after repeated failed starts. Check the pool and device, then resume mining.",
+});
+
+/** Why the device paused mining itself (`pauseReason`), or "" when it has not. */
+export function pauseNotice(reason: unknown): string {
+  return typeof reason === "string" && Object.hasOwn(PAUSE_NOTICES, reason) ? (PAUSE_NOTICES[reason] ?? "") : "";
+}

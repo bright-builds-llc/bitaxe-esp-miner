@@ -5,6 +5,7 @@
 //! deadlines across adapters, without ESP-IDF or hardware dependencies.
 
 pub mod allocation;
+pub mod boot_guard;
 pub mod clock;
 pub mod cooling;
 pub mod i2c_retry;

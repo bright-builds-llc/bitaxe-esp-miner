@@ -66,6 +66,15 @@ pub(super) fn page_frame(
             "IP Address:".to_owned(),
             available(&snapshot.ipv4),
         ],
+        ScreenPage::DevicePaused => [
+            "MINING PAUSED".to_owned(),
+            snapshot
+                .maybe_device_pause
+                .map_or("", |reason| reason.screen_line())
+                .to_owned(),
+            "Resume to mine".to_owned(),
+            available(&snapshot.ipv4),
+        ],
         ScreenPage::Welcome => [
             "Welcome to Bitaxe".to_owned(),
             "Setup Wi-Fi:".to_owned(),

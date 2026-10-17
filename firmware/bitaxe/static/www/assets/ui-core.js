@@ -188,6 +188,19 @@
     });
   }
 
+  const PAUSE_NOTICES = Object.freeze({
+    crash_loop: "Mining paused after repeated resets. Check power and cooling, then resume mining.",
+    overheat: "Mining stopped after an overheat it could not recover from. Check cooling, then resume mining.",
+    restart_guard: "Mining paused after repeated failed starts. Check the pool and device, then resume mining.",
+  });
+
+  /** Why the device paused mining itself (`pauseReason`), or "" when it has not. */
+  function pauseNotice(reason) {
+    return typeof reason === "string" && Object.hasOwn(PAUSE_NOTICES, reason)
+      ? PAUSE_NOTICES[reason]
+      : "";
+  }
+
   global.BitaxeUiCore = Object.freeze({
     buildSettingsPatch,
     formatMetric,
@@ -195,6 +208,7 @@
     normalizePath,
     patchFieldNames,
     patchSummary,
+    pauseNotice,
     publicError,
     routeFor,
     scoreboardRows,

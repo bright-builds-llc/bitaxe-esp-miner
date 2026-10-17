@@ -30,6 +30,7 @@ pub fn collect_screen_snapshot(now_ms: u64) -> ScreenSnapshot {
         maybe_self_test: self_test_running
             .then(|| ["running".to_owned(), String::new(), String::new()]),
         overheat: command.overheat,
+        maybe_device_pause: crate::device_pause::current(),
         identify_active: command.identify_active,
         wifi_connected,
         ap_enabled: wifi.ap_enabled,

@@ -4,7 +4,7 @@
 
 import { For, type JSX } from "solid-js";
 
-import { publicError } from "../core/ui-core.js";
+import { pauseNotice, publicError } from "../core/ui-core.js";
 import { commandPrompt, maybeValidatedProvenance, type CommandName } from "../core/workflows.js";
 import { Bind, PageSection, Status, type Shell } from "./shared.js";
 
@@ -62,6 +62,9 @@ export function Dashboard(props: { shell: Shell }): JSX.Element {
   const refresh = <button class="button secondary" type="button" onClick={() => void props.shell.refreshInfo()}>Refresh</button>;
   return (
     <PageSection shell={props.shell} page="dashboard" eyebrow="Overview" title="Dashboard" action={refresh}>
+      <p class="pause-notice" id="pause-notice" role="status" aria-live="polite">
+        {pauseNotice(props.shell.info()?.pauseReason)}
+      </p>
       <div class="hero card">
         <div><p class="eyebrow">Current state</p><h2><Bind shell={props.shell} field="miningActivity" /></h2></div>
         <For each={HERO_STATS}>

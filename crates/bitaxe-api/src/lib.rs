@@ -128,8 +128,8 @@ pub use settings::{
     SettingsPersistenceAdapter, SettingsPersistenceEffect, SettingsPersistenceFailure,
     SettingsPersistenceFailureDisposition, SettingsPersistenceFailureReport,
     SettingsPersistencePlan, SettingsPersistenceStep, SettingsPersistenceSuccess,
-    SettingsPersistenceTransaction, SettingsPublicResponse, DEVICE_OWNED_SETTING_KEYS,
-    OVERHEAT_STOP_MARKER_KEY,
+    SettingsPersistenceTransaction, SettingsPublicResponse, CRASH_STREAK_KEY,
+    DEVICE_OWNED_SETTING_KEYS, OVERHEAT_STOP_MARKER_KEY,
 };
 pub use snapshot::{
     ApiSnapshot, AsicSnapshot, ConfigSnapshot, PlatformSnapshot, ProjectSettingsSnapshot,

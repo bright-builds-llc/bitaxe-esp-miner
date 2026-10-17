@@ -14,6 +14,7 @@ type UiCore = Pick<
   | "normalizePath"
   | "patchFieldNames"
   | "patchSummary"
+  | "pauseNotice"
   | "publicError"
   | "routeFor"
   | "scoreboardRows"
@@ -163,5 +164,21 @@ test("both cores keep the theme bounded and dark by default", async () => {
     assert.deepEqual(fallback, { scheme: "dark", accent: "#f7931a" }, name);
     assert.deepEqual(fromLegacy, { scheme: "light", accent: "#12ABEF" }, name);
     assert.deepEqual(payload, { colorScheme: "dark", accentColors: { primary: "#f7931a" } }, name);
+  }
+});
+
+test("both cores explain a device pause and stay quiet otherwise", async () => {
+  for (const [name, core] of await implementations()) {
+    // Arrange
+    const reasons = ["crash_loop", "overheat", "restart_guard", undefined, "", "unknown", 7];
+
+    // Act
+    const notices = reasons.map((reason) => core.pauseNotice(reason));
+
+    // Assert
+    assert.match(notices[0] ?? "", /repeated resets/, name);
+    assert.match(notices[1] ?? "", /overheat/, name);
+    assert.match(notices[2] ?? "", /repeated failed starts/, name);
+    assert.deepEqual(notices.slice(3), ["", "", "", ""], name);
   }
 });

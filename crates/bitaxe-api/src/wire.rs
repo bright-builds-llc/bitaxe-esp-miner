@@ -260,6 +260,14 @@ pub struct SystemInfoWire {
     pub maybe_power_fault: Option<String>,
     #[serde(rename = "hardware_fault", skip_serializing_if = "Option::is_none")]
     pub maybe_hardware_fault: Option<String>,
+    /// Project extension (ADR-0038): `crash_loop`, `overheat` or `restart_guard`
+    /// while the device has paused mining itself; absent otherwise.
+    #[serde(
+        rename = "pauseReason",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub maybe_pause_reason: Option<String>,
     #[serde(rename = "version")]
     pub version: String,
     #[serde(rename = "semanticVersion")]
@@ -445,6 +453,9 @@ impl SystemInfoWire {
             cpu_usage: platform.cpu_usage_percent,
             maybe_power_fault: platform.maybe_power_fault.clone(),
             maybe_hardware_fault: platform.maybe_hardware_fault.clone(),
+            maybe_pause_reason: platform
+                .maybe_pause_reason
+                .map(|reason| reason.label().to_owned()),
             version: platform.version.clone(),
             semantic_version: platform.semantic_version.clone(),
             source_commit: platform.source_commit.clone(),

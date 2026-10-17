@@ -339,3 +339,56 @@ impl PrivateDecisionLine for ScreenDecision {
         self.frame.private_lines()[index]
     }
 }
+
+#[test]
+fn a_device_pause_shows_its_reason_until_resumed() {
+    // Arrange
+    let mut snapshot = connected_snapshot();
+    snapshot.maybe_device_pause = Some(crate::device_pause::DevicePauseReason::CrashLoop);
+    let mut flow = ScreenFlow::new(0, &snapshot);
+    // Act
+    let paused = flow.update(0, &snapshot).expect("paused");
+    snapshot.maybe_device_pause = None;
+    let resumed = flow.update(500, &snapshot).expect("resumed");
+    // Assert
+    assert_eq!(paused.page, ScreenPage::DevicePaused);
+    assert_eq!(
+        paused.frame.private_lines(),
+        [
+            "MINING PAUSED",
+            "Repeated resets",
+            "Resume to mine",
+            "192.0.2.1"
+        ]
+    );
+    assert!(paused.frame.fits_ultra205());
+    assert_eq!(resumed.page, ScreenPage::BitaxeIntro);
+}
+
+#[test]
+fn an_overheat_outranks_a_device_pause() {
+    // Arrange
+    let mut snapshot = connected_snapshot();
+    snapshot.overheat = true;
+    snapshot.maybe_device_pause = Some(crate::device_pause::DevicePauseReason::Overheat);
+    // Act
+    let decision = ScreenFlow::new(0, &snapshot)
+        .update(0, &snapshot)
+        .expect("overheat");
+    // Assert
+    assert_eq!(decision.page, ScreenPage::Overheat);
+}
+
+#[test]
+fn setup_pages_outrank_a_device_pause() {
+    // Arrange: the device needs Wi-Fi setup before anyone can resume it.
+    let mut snapshot = connected_snapshot();
+    snapshot.wifi_connected = false;
+    snapshot.maybe_device_pause = Some(crate::device_pause::DevicePauseReason::CrashLoop);
+    // Act
+    let decision = ScreenFlow::new(0, &snapshot)
+        .update(0, &snapshot)
+        .expect("setup");
+    // Assert
+    assert_eq!(decision.page, ScreenPage::Connection);
+}

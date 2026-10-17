@@ -22,6 +22,8 @@ pub enum ScreenPage {
     FirmwareUpdate,
     AsicStatus,
     Overheat,
+    /// Project extension (ADR-0038): the device paused mining itself.
+    DevicePaused,
     Welcome,
     Connection,
     BitaxeIntro,
@@ -62,6 +64,8 @@ pub struct ScreenSnapshot {
     pub maybe_firmware_update: Option<[String; 2]>,
     pub maybe_asic_status: Option<String>,
     pub overheat: bool,
+    /// Why the device paused mining itself, until the operator resumes.
+    pub maybe_device_pause: Option<crate::device_pause::DevicePauseReason>,
     pub identify_active: bool,
     pub wifi_connected: bool,
     pub ap_enabled: bool,
@@ -304,6 +308,8 @@ const fn manual_successor(page: ScreenPage) -> ScreenPage {
     match page {
         ScreenPage::SelfTest => ScreenPage::Overheat,
         ScreenPage::Overheat => ScreenPage::AsicStatus,
+        // Upstream's manual order is unchanged; the extension page leaves it here.
+        ScreenPage::DevicePaused => ScreenPage::AsicStatus,
         ScreenPage::AsicStatus => ScreenPage::Welcome,
         ScreenPage::Welcome => ScreenPage::FirmwareUpdate,
         ScreenPage::FirmwareUpdate => ScreenPage::Connection,
@@ -373,6 +379,9 @@ fn priority_page(snapshot: &ScreenSnapshot) -> Option<ScreenPage> {
         Some(ScreenPage::Welcome)
     } else if snapshot.ap_enabled || !snapshot.wifi_connected {
         Some(ScreenPage::Connection)
+    } else if snapshot.maybe_device_pause.is_some() {
+        // After the setup pages, which the operator needs to reach the UI.
+        Some(ScreenPage::DevicePaused)
     } else {
         None
     }

@@ -166,7 +166,9 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     if let Err(error) = best_difficulty_adapter::initialize() {
         log::warn!("best_difficulty=unavailable category={}", error.category());
     }
-    runtime_snapshot::apply_boot_mining_preference(settings_adapter::start_mining_on_boot());
+    runtime_snapshot::apply_boot_mining_preference(crate::boot_guard::boot_preference(
+        settings_adapter::start_mining_on_boot(),
+    ));
     let maybe_thermal_fault_stimulus = match settings_adapter::load_thermal_fault_stimulus() {
         Ok(Some(admission)) => {
             production_mining_session::local_owner::note_other_boot_owner();

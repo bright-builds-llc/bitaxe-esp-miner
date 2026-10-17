@@ -172,6 +172,8 @@ pub struct PlatformSnapshot {
     pub cpu_usage_percent: f64,
     pub maybe_power_fault: Option<String>,
     pub maybe_hardware_fault: Option<String>,
+    /// Project extension (ADR-0038): why the device paused mining itself.
+    pub maybe_pause_reason: Option<bitaxe_core::device_pause::DevicePauseReason>,
 }
 
 impl PlatformSnapshot {
@@ -213,6 +215,7 @@ impl PlatformSnapshot {
             cpu_usage_percent: 0.0,
             maybe_power_fault: None,
             maybe_hardware_fault: None,
+            maybe_pause_reason: None,
         }
     }
 }

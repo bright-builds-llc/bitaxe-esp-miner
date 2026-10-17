@@ -39,6 +39,14 @@ pub(super) fn run_owner(
                 revocation::finish_shutdown(generation);
             }
         }
+        let another_owner_mines = adapter.maybe_bwg_session.is_some()
+            || adapter
+                .maybe_campaign_status
+                .as_ref()
+                .is_some_and(CampaignStatusTracker::authorizes_actuation);
+        adapter
+            .boot_guard
+            .service(revocation_now, another_owner_mines);
         if let Some(event) = adapter.service_local_mining(&session, revocation_now) {
             drive_session(
                 &mut session,

@@ -19,6 +19,7 @@ mod overheat;
 mod overheat_store;
 
 use super::*;
+use bitaxe_core::device_pause::DevicePauseReason;
 use bitaxe_runtime::local_mining::hardware_fault::{
     faulted_local_generation, hardware_fault_message,
 };
@@ -27,6 +28,7 @@ use bitaxe_runtime::local_mining::owner::{LocalOwnerCore, UnsafeStop};
 use bitaxe_runtime::local_mining::policy::{
     LocalDecision, LocalHoldReason, LocalInputs, RunEnding,
 };
+use bitaxe_runtime::local_mining::shell::{api_hold, run_tick, ResumeEdge, RunTick};
 use bitaxe_stratum::v1::production_session::{
     DeviceProfileRefusal, MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState,
     MiningCampaignStopCondition, MiningHardwareProfile, MiningHardwareState,
@@ -122,7 +124,7 @@ pub(super) struct LocalOwner {
     pub(super) maybe_run: Option<LocalRun>,
     core: LocalOwnerCore,
     maybe_logged_hold: Option<LocalHoldReason>,
-    last_requested_intent: Option<MiningOperatorIntent>,
+    resume_edge: ResumeEdge,
     overheat: overheat::OverheatState,
     /// The device has paused itself for the restart guard's hold.
     guard_paused: bool,
@@ -151,16 +153,11 @@ impl LocalOwner {
         if !LOCAL_MINING_ENABLED {
             return None;
         }
-        match self.core.maybe_hold()? {
-            LocalHoldReason::Paused if self.overheat.stopped_by_device() => {
-                Some(LocalHoldReason::Overheat)
-            }
-            LocalHoldReason::Paused if self.guard_paused => Some(LocalHoldReason::RestartGuardHeld),
-            LocalHoldReason::Paused
-            | LocalHoldReason::OtherBootOwner
-            | LocalHoldReason::GateLink => None,
-            reason => Some(reason),
-        }
+        api_hold(
+            self.core.maybe_hold(),
+            self.overheat.stopped_by_device(),
+            self.guard_paused,
+        )
     }
 
     /// Labels a published session snapshot with the current hold.
@@ -201,25 +198,30 @@ impl OrdinaryEspProductionSessionAdapter {
                 return None;
             };
             let id = run.lease.id();
-            let ended = session.maybe_consumed_lease_id() == Some(id)
-                && matches!(
+            let tick = run_tick(
+                id,
+                session.maybe_lease_id(),
+                session.maybe_consumed_lease_id(),
+                matches!(
                     snapshot.hardware_state,
                     MiningHardwareState::Unprepared | MiningHardwareState::Stopped
-                );
-            let adopted = ended || session.maybe_lease_id() == Some(id);
+                ),
+            );
             self.local.core.note_run_progress(
                 snapshot.campaign_state == MiningCampaignState::Active,
                 now_ms,
             );
-            if !adopted {
+            match tick {
+                RunTick::Running => {}
                 // The session's readiness blocker says why; a lost readiness fact is
                 // then requested, as it would be after adoption.
-                let cause = snapshot
-                    .maybe_blocker
-                    .unwrap_or(ProductionSessionBlocker::CampaignLeaseUnavailable);
-                self.end_local_run(Some(cause), now_ms);
-            } else if ended {
-                self.end_local_run(session.stop_cause_for(id), now_ms);
+                RunTick::NotAdopted => {
+                    let cause = snapshot
+                        .maybe_blocker
+                        .unwrap_or(ProductionSessionBlocker::CampaignLeaseUnavailable);
+                    self.end_local_run(Some(cause), now_ms);
+                }
+                RunTick::Ended => self.end_local_run(session.stop_cause_for(id), now_ms),
             }
             return None;
         }
@@ -229,7 +231,7 @@ impl OrdinaryEspProductionSessionAdapter {
             LocalDecision::Hold(reason) => {
                 if reason == LocalHoldReason::RestartGuardHeld && !self.local.guard_paused {
                     self.local.guard_paused = true;
-                    self.pause_by_device();
+                    self.pause_by_device(DevicePauseReason::RestartGuard);
                 }
                 if self.local.maybe_logged_hold != Some(reason) {
                     self.local.maybe_logged_hold = Some(reason);
@@ -267,9 +269,11 @@ impl OrdinaryEspProductionSessionAdapter {
     /// The device pauses itself: the requested intent turns Paused, as recorded here
     /// so an operator resume before the next tick is still seen, and the session
     /// wakes to stop, as for an operator pause.
-    fn pause_by_device(&mut self) {
+    fn pause_by_device(&mut self, reason: DevicePauseReason) {
         crate::runtime_snapshot::pause_mining_by_device();
-        self.local.last_requested_intent = Some(MiningOperatorIntent::Paused);
+        crate::device_pause::set(reason);
+        self.local.resume_edge.note_device_pause();
+        self.boot_guard.note_device_pause();
         if notifications::notify(ProductionSessionWakeup::OperatorIntentChanged)
             == bitaxe_stratum::v1::production_session::ProductionSessionNotificationOutcome::OwnerUnavailable
         {
@@ -281,14 +285,11 @@ impl OrdinaryEspProductionSessionAdapter {
     /// and ends an overheat that stayed stopped.
     fn note_operator_resume(&mut self) {
         let intent = crate::runtime_snapshot::requested_mining_operator_intent();
-        if self.local.last_requested_intent == Some(MiningOperatorIntent::Paused)
-            && intent == MiningOperatorIntent::Run
-        {
+        if self.local.resume_edge.observe(intent) {
             self.local.core.resume();
             self.local.guard_paused = false;
             self.resume_overheat();
         }
-        self.local.last_requested_intent = Some(intent);
     }
 
     fn local_inputs(&mut self, now_ms: u64) -> LocalInputs {

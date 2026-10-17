@@ -104,7 +104,7 @@ impl OrdinaryEspProductionSessionAdapter {
             }
             OverheatStep::StayStopped if !self.local.overheat.stop_paused => {
                 self.local.overheat.stop_paused = true;
-                self.pause_by_device();
+                self.pause_by_device(DevicePauseReason::Overheat);
                 log::warn!("local_mining=overheat_stopped paused_by_device=true");
             }
             OverheatStep::StayStopped | OverheatStep::Clear | OverheatStep::Cooling => {}

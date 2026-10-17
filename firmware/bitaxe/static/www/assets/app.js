@@ -36,6 +36,12 @@
       const field = target.dataset.bind;
       target.textContent = core.formatMetric(field, info?.[field]);
     }
+    const notice = element("#pause-notice");
+    const noticeText = core.pauseNotice(info?.pauseReason);
+    // Unchanged text keeps the live region quiet between polls.
+    if (notice && notice.textContent !== noticeText) {
+      notice.textContent = noticeText;
+    }
     const hostname = element('#network-form input[name="hostname"]');
     const ssid = element('#network-form input[name="ssid"]');
     if (hostname && hostname.value === "" && typeof info?.hostname === "string") {

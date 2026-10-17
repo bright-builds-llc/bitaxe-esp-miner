@@ -119,6 +119,7 @@ struct OrdinaryEspProductionSessionAdapter {
     maybe_cooling_generation: Option<revocation::WorkerGeneration>,
     live_hardware: live_hardware::LiveHardwareOwner,
     local: local_owner::LocalOwner,
+    boot_guard: crate::boot_guard::BootGuardShell,
 }
 impl OrdinaryEspProductionSessionAdapter {
     /// The revocation generation that owns this session's effects, if any: a Gate
@@ -183,6 +184,7 @@ impl OrdinaryEspProductionSessionAdapter {
             maybe_cooling_generation: None,
             live_hardware: live_hardware::LiveHardwareOwner::default(),
             local: local_owner::LocalOwner::default(),
+            boot_guard: crate::boot_guard::BootGuardShell::default(),
         })
     }
 
