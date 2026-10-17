@@ -196,6 +196,9 @@ pub enum MiningCampaignStopCondition {
         activation_timeout: MiningCampaignDuration,
         duration: MiningCampaignDuration,
     },
+    /// One local mining run (ADR-0038): no deadline, and not operator-resumable, so
+    /// every stop ends the run and the local owner decides when the next begins.
+    Local,
 }
 
 impl MiningCampaignStopCondition {
@@ -221,6 +224,7 @@ impl MiningCampaignStopCondition {
                 .maybe_active_since_ms
                 .is_some_and(|started| now_ms.saturating_sub(started) >= duration.milliseconds())
                 .then_some(CampaignExpiration::LeaseConsumed),
+            Self::Local => None,
             Self::ResumableActiveEpoch {
                 activation_timeout,
                 duration,
@@ -447,5 +451,35 @@ mod tests {
                 duration_ms: exact_duration_ms + 1,
             })
         );
+    }
+}
+
+#[cfg(test)]
+mod local_stop_condition_tests {
+    use super::*;
+
+    fn long_after_start() -> MiningCampaignTiming {
+        MiningCampaignTiming {
+            maybe_prepared_at_ms: Some(0),
+            maybe_activation_started_at_ms: Some(0),
+            maybe_resumable_epoch_started_at_ms: None,
+            resumable_active_ms: 0,
+            maybe_active_since_ms: Some(0),
+        }
+    }
+
+    #[test]
+    fn a_local_run_never_expires() {
+        // Arrange / Act
+        let maybe_expiration =
+            MiningCampaignStopCondition::Local.maybe_expiration(u64::MAX, long_after_start());
+        // Assert
+        assert_eq!(maybe_expiration, None);
+    }
+
+    #[test]
+    fn a_local_run_is_not_operator_resumable() {
+        // Arrange / Act / Assert
+        assert!(!MiningCampaignStopCondition::Local.allows_operator_resume());
     }
 }
