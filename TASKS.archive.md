@@ -31685,3 +31685,253 @@ and it is stricter than upstream about cooling, within the catalog. The
 power-down conditions are not done here; they moved to
 `task-local-mining-owner`, where the session lifecycle changes. No hardware
 behavior changed.
+
+### task-local-mining-owner | 2026-10-16 | Mine the saved pool with no lease
+
+ADR-0038 step 3. Depends on the two tasks above.
+
+- [x] A local owner of the production session mines the saved primary or
+      fallback pool with the saved profile when no lease is active and the
+      device is not paused. Reuse the campaign path's pool reading, without
+      its one-time budget.
+- [x] Pause and resume, and `startMiningOnBoot`, take real effect.
+- [x] Wire `bitaxe_runtime::local_mining::OverheatRecovery`:
+  - on an overheat revocation, save `OVERHEAT_ENTRY_SETTINGS`, then feed
+    chip readings;
+  - on `Recover`, save the lowered pair, clear `overheat_mode` and mine
+    again;
+  - on `StayStopped`, hold until resumed.
+- [x] Upstream's power-down conditions for the local owner (moved from
+      `task-local-power-down-conditions`):
+  - readiness without a lease for the local owner;
+  - a power-down (safe-stop) without a `lease_id`;
+  - exhausted pools as a resumable power-down that probes every 30 s and
+    powers up again, not a terminal stop;
+  - a latched hardware fault on a failed fan write, as upstream's
+    `hardware_fault`.
+- [x] Overheat details for the shell:
+  - what ends `StayStopped` (resume, clearing `overheat_mode`, or new
+    settings), and whether a resume clears `overheat_mode`;
+  - clear `overheat_mode` only after the restart's preparation succeeds,
+    as upstream does after it detects the ASIC;
+  - behavior on boot with `overheat_mode` saved.
+- [x] Update README text that still says the adapter is fail-closed before
+      pool effects.
+
+Started 2026-10-17 at the owner's request. Software only. Local mining stays
+off behind a compile-time switch until `task-boot-resume-and-crash-loop-guard`
+lands (owner decision 2026-10-17).
+
+Owner decisions (2026-10-17):
+- Only an operator resume ends `StayStopped`.
+- On booting with `overheat_mode` saved, cool for 30 s, then restart at the
+  saved pair without lowering it again (it may already be lowered). Clear
+  `overheat_mode` after the restart's preparation succeeds.
+- A restart guard backs off between runs that fail before hashing, or that
+  end on non-overheat unsafe stops. After several in a row it holds until
+  resumed; a stable run resets it. This diverges from upstream, which
+  retries forever.
+- Defaults:
+  - the probe connection closes and reconnects after power-up;
+  - the fault latch covers local mining only;
+  - a pause closes the pool connection;
+  - the switch is a compile-time constant;
+  - holds get API blocker labels.
+
+Plan (small commits, pure core first, the full gate after each):
+1. **Runtime:** `FanControllerOwner::Local(generation)` with the lease rule.
+   The chip temperature at revocation is recorded with the unsafe detail,
+   for `is_overheat`.
+2. **Runtime (pure):** `LocalOwnerPolicy`. It decides `Begin(profile)` or
+   `Hold(reason)` from intent, other boot owners, a Gate link, the latched
+   fault, the overheat state, readiness and the profile check. It also holds
+   the restart guard and boot-time overheat cooling.
+3. **Stratum:** a `Local` stop condition that never expires and is not
+   resumable.
+4. **Stratum:** probe-before-power for `Local` runs.
+   - Connect and authorize with the ASIC off.
+   - On success, close and prepare.
+   - Reconnect after `HardwarePrepared`.
+   - Exhausted pools probe every 30 s with no hardware effect.
+   - No dispatch unless `Ready`.
+   - "Hashed" means work reached the ASIC since this power-up. Exhausted
+     pools after one end the run, so the restart guard paces a pool that
+     authorizes and then drops. A local run is never renewed.
+   - Accepted low residuals, for the shell in commit 7 to label or fix:
+     - after the probe, the reconnect starts at the primary even when the
+       fallback authorized;
+     - the first probe shows the campaign as `Preparing`;
+     - an unreachable V2 pool ends a local run at its first failure, where
+       V1 retries with the ASIC off, so the restart guard paces it;
+     - with no pool configured, a run stays `Preparing` with the ASIC off.
+5. **Firmware refactor, no behavior change:** an owner-generation accessor,
+   and an extensible revoked branch in `owner_loop`.
+6. **Firmware persistence:** the overheat entry, the lowered pair, clearing
+   `overheat_mode`, and the overheat stop marker. `Refused` is split from
+   `HardwareWriteFailed`.
+   - Landed as the pure write sets (`local_mining::persistence`), built
+     through the settings validator. The stop marker `ovh_stopped` is
+     device-internal: it is not in the REST schema or the preservation
+     fingerprint, because adding it would change the fingerprint across an
+     update.
+   - The write sets commit through
+     `SettingsPersistencePlan::device_owned` and the existing verified
+     transaction. That constructor admits only the overheat keys (an
+     allowlist), so a device-owned plan cannot reach pool, network or
+     secret keys.
+   - The marker is written first and `overheat_mode` last, because NVS
+     stores each key as it is set. Clearing `overheat_mode` also clears
+     the marker.
+   - Only controller fan writes are ever refused (the authority rule).
+     They now report `refused` rather than `hardware_write_failed`, so
+     commit 8 can latch real write failures only. The preparation adapter's
+     `Refused` arms exist for exhaustiveness: its voltage and fan writes
+     never return it, so preparation receipts are unchanged.
+   - The firmware NVS adapter that calls these moves to commit 9, its first
+     user, because firmware clippy denies dead code.
+7. **Firmware:** the local owner behind `LOCAL_MINING_ENABLED = false`.
+   - begin, activate and prepare a local generation;
+   - the `Local` fan owner and live hardware;
+   - the ordered safe-stop on any revocation, with the local revoked branch
+     first;
+   - lease Start refused while a local run exists;
+   - off while a campaign, diagnostic or stimulus owns the boot.
+   - Landed with a pure `LocalOwnerCore` (`local_mining::owner`) that
+     remembers the run, the hold and the restart guard. The firmware shell
+     (`local_owner.rs`) begins, activates and retires the local generation
+     and leases the session a `Local` run.
+   - A run ends when the session has consumed its lease with the hardware
+     stopped (`maybe_consumed_lease_id`). A run the session never adopted
+     is retired at once, before any hardware effect, and counts as failed.
+     The protocol gate is re-read before deciding, so the decision matches
+     the session's readiness.
+   - Ending classification moved here from commit 9:
+     - The generation's unsafe detail decides first: an overheat, or a
+       failure for any other unsafe stop, whatever the session blocked on
+       afterwards.
+     - Then a settings change, or the session's first stop cause for the
+       lease (`stop_cause_for`), when that is a pause or a lost readiness
+       fact (network, Stratum V1, stale safety, no pool configuration), is
+       `Requested`, so an outage never spends the guard.
+     - Anything else is `Failed`.
+   - Ordinary retirement revokes with `RestorationRequested`, never
+     `ControlFailed`, which the commit 8 latch reads.
+   - Accepted residuals:
+     - While a run probes or is paused with the ASIC off, its generation
+       is active, so the idle fan does not run. The fan stays where the
+       safe-stop left it (30% after cooling). This is thermally safe, but
+       upstream would run its fan controller.
+     - The resume edge is sampled once per tick.
+     - A zero-fan stop with a hot chip counts as an overheat, as upstream
+       judges by temperature alone.
+     - The firmware shell has only source guards; its behavior is
+       verified with the switch on (task 5 and the task 6 soaks).
+   - A `Paused` to `Run` edge is the operator's resume and clears the
+     guard.
+   - The other boot owners are a campaign or a thermal stimulus.
+     Diagnostic owners never start the production owner, and a Gate link
+     or diagnostic claim is `gate_link` (`holds_link`).
+   - Holds are logged when they change. Their API labels come with commit
+     9.
+   - Host source guards pin the switch off and check the tick order, the
+     Start refusal and the `Local` fan owner.
+8. **Hardware fault latch (landed):** the first `HardwareWriteFailed`
+   controller fan write under `Local` latches upstream's
+   `hardware_fault` until reboot. It revokes the run with
+   `ControlFailed`, holds local mining with `HardwareFault`, and the API
+   reports upstream's `Fan Control Failed (<context>)`. A refusal,
+   timeout or full queue never latches. Lease writes do not latch (owner
+   default). Like upstream, the message names the latest failed context.
+   Upstream's `Startup` context has no counterpart here, because this
+   firmware holds the fan at boot instead of applying 70%.
+   Original plan: a real failed controller fan write under
+   `Local` revokes with `ControlFailed` and holds until reboot.
+9. **Overheat wiring (landed):** `local_owner/overheat.rs` and
+   `overheat_store.rs`.
+   - An overheat ending saves the entry (marker first) and cools.
+     `Recover` saves the lowered pair before any run may begin; an
+     unsaved pair keeps the ASIC down.
+   - `overheat_mode` clears once a run has prepared, retried until saved.
+   - `StayStopped`, and the guard's hold, pause the device
+     (`pause_mining_by_device`). The pause is not saved.
+   - A resume clears the guard, ends a stop that stayed stopped, and
+     clears the marker.
+   - At boot, a saved `overheat_mode` or stop marker resumes the recovery
+     once. A marker holds even after the settings page cleared
+     `overheat_mode`, because only a resume ends a stop. An unreadable
+     marker reads as set. A saved pair outside the catalog leaves nothing
+     to cool for, so it holds as `ProfileRefused`.
+   - A failed entry save is retried each tick, as the pair and clear
+     saves are. After a reboot, `Recover` does not save the
+     unlowered pair again, so a pair the operator saved while it cooled
+     stays.
+   - A device pause wakes the session (`OperatorIntentChanged`) and
+     records the pause for resume detection.
+   - Holds other than a pause, another owner or a link label the
+     published snapshot's `blockedReason` (`local_*`). A device pause
+     names the overheat or guard behind it. The display's overheat screen
+     also shows `local_overheat`. A runtime test keeps the labels
+     distinct from the session's.
+   Original plan: enter, cool, save the lowered pair, and clear
+   `overheat_mode` after preparation. `StayStopped` forces Paused and saves
+   a stop marker.
+   - At boot with `overheat_mode` saved, a stop marker holds until resumed.
+     Without one, the reboot interrupted a recovery, so the device cools
+     and restarts at the saved pair. This keeps both owner decisions:
+     pause is not saved, and without the marker a reboot would end the stop
+     at the pair that overheated.
+   - A resume clears the marker.
+   - The restart guard's hold also forces Paused, so there is something to
+     resume.
+   - The shell classifies run endings explicitly. `Failed` means a failed
+     preparation, a non-overheat unsafe stop, or a fault. `Requested` means
+     a pause, a link or a settings change.
+   - A saved pair outside the catalog at boot holds with `ProfileRefused`.
+     The ASIC has been off since boot.
+10. **Records:** README, ADR-0038 and TASKS. The switch itself is turned on
+    by task 5.
+
+Interim rule until task 4: the gate refuses `begin_local` beside a Gate link,
+and `begin_link` beside a local generation. A Start is refused beside a local
+run.
+
+Verification (2026-10-17, software only, no hardware effects):
+- each commit ran the full gate: fmt, clippy, build, cargo tests, `just
+  build`, `just test` (341 targets), the BAP and HTTP stack audits, Bright
+  Builds, redaction, parity, and the owner-stack and realignment audits;
+- every commit had an independent review, and its findings were fixed or
+  recorded;
+- intermediate commits build and pass tests on their own;
+- the new regressions were mutation-checked: each fails without its fix.
+
+At the end:
+- the owner entry frame is 3,392 of 8,192 bytes;
+- BAP headroom is 704 bytes and HTTP headroom 1,104 bytes;
+- SAFE-10's readiness fragment is unchanged.
+
+Completion review: local mining is implemented end to end in software and
+switched off.
+- The pure cores (policy, owner memory and classification, overheat
+  recovery, write sets, the fault decision) are tested in `bitaxe-runtime`.
+- The probe-before-power and stop-cause behavior is tested in
+  `bitaxe-stratum`.
+- The firmware shell is covered by host source guards and the
+  owner-admission host test.
+- No hardware behavior changed: `LOCAL_MINING_ENABLED` is false, and the
+  shell does nothing while it is.
+
+Residual risks, for task 5 (which turns the switch on) and task 6 (soaks):
+- The firmware shell has no behavior tests. Its end detection, adoption,
+  saves, resume edges and labels are verified only by reading the source
+  until it runs on hardware.
+- While a run probes or is paused with the ASIC off, the idle fan does not
+  run; the fan stays at the safe-stop's 30%.
+- The probe residuals in item 4: the reconnect prefers the primary, the
+  first probe shows `Preparing`, V2 pool failures end the run, and a missing
+  pool configuration stays `Preparing`.
+- A zero-fan stop with a hot chip counts as an overheat, as upstream judges
+  by temperature alone.
+- Overheat saves run on the owner thread; a diagnostic that owns the
+  configuration makes them retry, logging each tick.
+- Each local `blockedReason` label is new API vocabulary. No web UI reads
+  it yet.

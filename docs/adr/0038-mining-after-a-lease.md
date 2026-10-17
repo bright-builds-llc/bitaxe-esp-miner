@@ -203,5 +203,17 @@ These tasks follow, in dependency order. Each hardware effect needs its own
 
    "Unbounded mining" stays a non-claim until these soaks exist.
 
+Implementation status (2026-10-17):
+- Tasks 1 to 3 have landed in software.
+- The local owner (`firmware/bitaxe/src/production_mining_session/local_owner.rs`,
+  with its pure core in `crates/bitaxe-runtime/src/local_mining/`) is complete.
+  It probes the pool before power, recovers from overheats, keeps a restart
+  guard and latches hardware faults.
+- `LOCAL_MINING_ENABLED` stays false until task 5 turns it on (owner decision
+  2026-10-17).
+- The restart guard is the owner's divergence from upstream. After a run
+  fails, it backs off from 30 s, doubling. After five failures in a row it
+  holds until resumed. Ten minutes of hashing resets it.
+
 The Gate needs no protocol change: it already expects a Mining Baseline. Its
 tooling's `mine_on_boot=false` checks keep working for test contracts.

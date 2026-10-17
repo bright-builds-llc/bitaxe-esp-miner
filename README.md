@@ -63,9 +63,14 @@ tools from it when normal `PATH` commands are unavailable, including
 
 ## Mining qualification
 
-The current firmware is not qualified for production mining. The Production
-Mining Session has deterministic software coverage for Stratum V1, recovery,
-work correlation, and accepted/rejected submit handling, but the ordinary ESP
-adapter remains fail-closed before pool credentials, connections, socket
-writes, or ASIC effects. Deterministic-session outcomes are not hardware
-evidence or a release-readiness claim.
+The current firmware is not qualified for production mining.
+- The ordinary ESP adapter mines only under a signed Gate Work Lease, within
+  device-local protection. Each surface's evidence status is in
+  `docs/parity`.
+- Local mining without a lease (ADR-0038) is implemented: probe before
+  power, overheat recovery, a restart guard and a hardware fault latch. It
+  stays off behind `LOCAL_MINING_ENABLED` until the crash-loop guard lands.
+- Unbounded mining remains a non-claim until the local mining soaks exist.
+
+Deterministic-session outcomes are not hardware evidence or a
+release-readiness claim.
