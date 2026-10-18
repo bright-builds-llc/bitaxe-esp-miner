@@ -1109,7 +1109,7 @@ confirmation (ADR-0038).
 
 - [ ] Local mining soaks growing from 30 minutes to several hours, recording
       the device configuration.
-- [ ] A hardware check that a lease interrupts local mining and restores it.
+- [x] A hardware check that a lease interrupts local mining and restores it.
 - [ ] An overheat recovery check, only with a safe, contracted stimulus.
 - [ ] Update the parity rows within what the evidence shows. "Unbounded
       mining" stays a non-claim until these soaks exist.
@@ -1369,8 +1369,6 @@ Soak 002 attempt 002 result (2026-10-18): `complete`.
   device was unreachable.
 - The device is left paused, with mining on boot off and the owner's pool
   saved. Soak 002's enable line was removed.
-
-Ultra 205 lease interruption check hardware: enabled.
 
 Lease interruption check contract (owner request 2026-10-18; attempt ordinals
 001 onward). The soak 001 contract applies except as stated.
@@ -1693,9 +1691,40 @@ operator error, not the device.
 - Outcome: `continue_after_verified_fix`. Attempt 004 repeats the check
   with these launch and stop rules, under the owner's re-run rule.
 
+Lease interruption check attempt 004 result (2026-10-18): `complete`. Both
+results are `passed`, and an independent review agrees after recomputing
+them from the private journals.
+- Summary: `docs/parity/evidence/20261018-ultra205-lease-interruption-check.md`.
+- Firmware `a69b2703`, installed state-preserving
+  (`observed_exact_package`).
+- The first endpoint handoff after the install closed without recording
+  an endpoint, while the device was freshly booted. A second handoff
+  recorded it.
+- Every detached run had its own session, and `owner-finish --port`
+  sealed the Gate soak while the local run continued.
+- The local run:
+  - 301,160 ms of local mining, then one refused Connect;
+  - local mining stopped 40 s later;
+  - local mining came back 20 s after the Gate soak's result, then
+    300,947 ms more;
+  - 25 local shares; one 47 s outage in the after phase, recovered on its
+    own;
+  - one boot session, and powered down after the pause.
+- The Gate soak:
+  - ended by its budget at 600,000 ms, with 20 of 20 windows;
+  - 39 shares counted from the handover restart;
+  - the run intent at the end;
+  - ledger ordinal 8 charged once, and sealed `passed`.
+- The attempt 002 panic did not recur, and its cause is still open. The
+  cleared core-dump partition will keep the next dump. Read it under the
+  local mining core-dump contract.
+- The lease check's enable line was removed. The lease interruption checkbox
+  is done. The overheat check and the
+  parity rows remain, as do soaks of several hours.
+
 Remaining in this task, each under its own contract:
 - longer soaks;
-- the lease interruption check;
+- the diagnosis of the attempt 002 panic, when a dump is captured;
 - an overheat check, only with a safe stimulus;
 - parity rows within the evidence.
 
