@@ -1523,6 +1523,39 @@ judge rule in our tooling was wrong.
 - Outcome: `continue_after_verified_fix`. Attempt 002 is the next ordinal,
   on a fresh package with the fix, and a new lease charges ordinal 7.
 
+Lease interruption check attempt 002 result (2026-10-18): `failed`. The
+device panicked during the handover. No grant was signed.
+- Firmware `30fc67e2` (with the share restart fix), installed
+  state-preserving (`observed_exact_package`).
+- In order:
+  - 5 minutes of local mining (`lease_ready`);
+  - one Connect refused at Hello, and local mining stopped 40 s later
+    (0.41 W);
+  - the next Connect was admitted (`ready`, lease inactive, restoration
+    confirmed);
+  - before any page operation, the Gate saw `liveness_lost` about 22 s
+    after admission;
+  - the device had reset with reason `panic` (boot ordinal 7 to 8) and came
+    back paused, with mining on boot off.
+- The local run stopped at once (`soak_device_reset`) and confirmed the
+  paused, powered-down state. The Gate soak sealed `unverified`
+  (`completion_missing`). Afterwards: the same physical device, no serial
+  holder, no process left, and the tab on `about:blank`.
+- The retained log holds no `rust_panic_receipt`, so this was a native
+  panic: an exception, an abort, or a task watchdog that panics. The cause
+  is unknown. Attempt 001 ran the same sequence without a panic; there, a
+  page operation followed the admission within seconds.
+- The core dump would name the cause. Reading it needs:
+  - a reset-capable flash read;
+  - `just core-dump-read`, which is gated to the STR-005 tasks and their
+    recovery proof.
+  Note that `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE` keeps an older dump.
+  Acquiring this one needs its own contract and an admission for this
+  task, which is a material expansion of this contract.
+- Outcome: `stop_hardware_blocker` for this contract until the panic is
+  diagnosed and fixed. Attempt 003 needs a verified fix with a regression
+  across this boundary.
+
 Remaining in this task, each under its own contract:
 - longer soaks;
 - the lease interruption check;
