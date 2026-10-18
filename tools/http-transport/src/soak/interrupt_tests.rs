@@ -80,11 +80,22 @@ fn a_share_restart_while_mining_regresses() {
 }
 
 #[test]
-fn a_share_restart_after_the_work_gate_opens_regresses() {
-    // Arrange: the samples at 0–1 s show mining stopped, so only the work gate rule excuses nothing.
-    let mut lines = restarted_at(1_000);
+fn a_restart_with_the_first_mining_sample_is_the_handover() {
+    // Arrange: as on hardware, the first mining sample after the idle samples carries the restart.
+    let lines = restarted_at(0);
+    // Act
+    let judgement = judge(&lines);
+    // Assert
+    assert_eq!(judgement.failures, Vec::<&str>::new());
+    assert_eq!(judgement.accepted_shares, 6);
+}
+
+#[test]
+fn a_share_restart_after_the_first_window_regresses() {
+    // Arrange: mining stops for 60–61 s, and the counters restart as it comes back.
+    let mut lines = restarted_at(61_000);
     for line in &mut lines {
-        if (0..1_000).contains(&(line.host_unix_ms as i64 - ORIGIN as i64)) {
+        if (60_000..61_000).contains(&(line.host_unix_ms as i64 - ORIGIN as i64)) {
             line.sample.as_mut().expect("sample").mining_active = false;
         }
     }

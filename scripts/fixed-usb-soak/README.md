@@ -99,9 +99,10 @@ it, and its line never enables a standard soak.
   counts as `browser_failure`. That attempt cannot recover: no grant is
   signed, and the local soak pauses at its deadline.
 - **Shares.** The device keeps the local run's share counters until the
-  lease's pool session restarts them. The window judge
-  (`--local-mining-interrupt`) allows one restart to zero, while not mining
-  and before the work gate opens, and counts shares from it.
+  lease starts mining; the first mining sample carries the restart. The
+  window judge (`--local-mining-interrupt`) allows one restart to zero, from
+  a sample that was not mining, within the first 30-second window, and
+  counts shares from it.
 - **Final state.** The run intent survives the lease, so the last sample of
   each transport must show `miningPaused` false, not mining, and `mineonboot`
   off (`final_state_not_resumable` otherwise). Local mining resumes 15 s

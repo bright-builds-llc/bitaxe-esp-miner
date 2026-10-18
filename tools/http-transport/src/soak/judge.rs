@@ -49,7 +49,7 @@ pub enum FinalBaseline {
     Paused,
     /// A lease that interrupted local mining: the operator's run intent survives, and local mining
     /// resumes once the link has been quiet for 15 s, after the observer stops. The handover may
-    /// restart the share counters once, when the lease's pool session begins.
+    /// restart the share counters once, when the lease starts mining.
     Resumable,
 }
 
@@ -203,12 +203,14 @@ fn max_gap(samples: &[Timed<'_>], transport: SoakTransport) -> u64 {
 }
 
 /// A share counter restart from the interrupted local run to the lease's pool session: both counters
-/// drop to zero while the device is not mining, before the work gate opens.
+/// drop to zero as the lease starts mining, from a sample that was not mining, within the first
+/// window. On hardware the restart arrives with the first mining sample, 0.1–0.4 s into the work
+/// gate (lease interruption check attempt 001).
 fn handover_restart(earlier: &Timed<'_>, later: &Timed<'_>) -> bool {
     later.sample.shares_accepted == 0
         && later.sample.shares_rejected == 0
         && !earlier.sample.mining_active
-        && later.active_ms < 0
+        && later.active_ms < i128::from(WINDOW_MS)
 }
 
 fn counters_regress(
