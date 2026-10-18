@@ -1934,6 +1934,33 @@ js_binary(
 ]]
 
 js_library(
+    name = "local_mining_soak_sources",
+    srcs = glob(["local-mining-soak/*.mjs"]),
+    deps = [
+        ":fixed_usb_qualification_sources",
+        ":fixed_usb_soak_sources",
+        ":str005_noise_serial_sources",
+    ],
+)
+
+js_binary(
+    name = "local_mining_soak",
+    data = [":local_mining_soak_sources"],
+    entry_point = "local-mining-soak/main.mjs",
+)
+
+[js_test(
+    name = "local_mining_soak_%s_test" % name,
+    data = [":local_mining_soak_sources"],
+    entry_point = "local-mining-soak/%s.test.mjs" % name,
+) for name in [
+    "judge",
+    "main",
+    "pool",
+    "run",
+]]
+
+js_library(
     name = "bwg_restoration_sources",
     srcs = glob(["bwg-restoration/*.mjs"]),
     deps = [

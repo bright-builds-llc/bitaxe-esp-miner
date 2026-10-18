@@ -1098,8 +1098,6 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-## Future
-
 ### task-local-mining-evidence-soaks | 2026-10-16 | Soak local mining on hardware
 
 ADR-0038 step 6. Hardware. Each soak needs its own `TASKS.md` contract.
@@ -1116,7 +1114,130 @@ confirmation (ADR-0038).
 - [ ] Update the parity rows within what the evidence shows. "Unbounded
       mining" stays a non-claim until these soaks exist.
 
+Ultra 205 local mining soak 001 hardware: enabled.
+
+Owner decisions (2026-10-17):
+- The soak mines the owner's pool. A repo-owned step saves it from the
+  ignored `pool-credentials.json` as the device's primary pool, and it stays
+  saved afterwards.
+- The first soak runs 30 minutes.
+- The device is left paused, with `startMiningOnBoot` false.
+- Run it once the contract and command are verified and pushed.
+
+Command: `just local-mining-soak preflight|run` (`scripts/local-mining-soak/`,
+with a pure judge and fake-device tests). The station endpoint comes from
+`just otawww-endpoint` in the same session.
+
+Hardware contract (local mining soak 001, attempt ordinals 001 onward):
+- Objective: 1,800 seconds of continuous local mining on the Ultra 205 at
+  its saved profile, with no Gate lease. It mines Stratum V1 against the
+  owner's pool saved in NVS. It must prove:
+  - continuous HTTP state, every 2 s, with gaps of at most 10 s;
+  - at least one accepted share;
+  - no reset and no device pause or fault;
+  - the live limits;
+  - a paused baseline with `startMiningOnBoot` false afterwards.
+- Private input, used at run time and never printed, recorded or committed:
+  the ignored `pool-credentials.json` (`pool_config: local-owner-supplied`).
+- Permitted commands, in order, with `P` a new mode-0700 parent under
+  `scratch/local-mining-soak/`, in a shell with `umask 077`. The BAP adapter
+  is still wired, so each detector names the port:
+  `just detect-ultra205 --port <the only /dev/cu.usbmodem* node>`.
+  1. `just package` at a clean, pushed HEAD, and `bun run build:browser` in
+     `../bitaxe-turnstile-system` at the exact pinned Gate commit.
+  1. A detector into `P/detector.stdout.log`.
+  1. `espflash board-info --chip esp32s3 --port <port> --non-interactive`.
+     Then the state-preserving install:
+     `just flash-monitor --board 205 --port <port> --expected-physical-sha256 <detected> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --evidence-dir P/install --capture-timeout-seconds 360 --redact-evidence`.
+     Skip both when the device already runs the exact package.
+  1. A fresh detector, then `just otawww-endpoint preflight`, `serve` (under
+     `nohup`, with mode-0600 logs) and `finish`, with `--private-root
+     P/endpoint`, `--gate-root ../bitaxe-turnstile-system` and the package
+     manifest.
+     - In the dedicated Gate tab: navigate to `http://127.0.0.1:48765/`,
+       check `document.visibilityState`, and Connect once.
+     - The page hands off the endpoint and leaves to `about:blank`.
+  1. `just local-mining-soak preflight --private-root P/attempt-NNN
+     --endpoint-root P/endpoint --package-manifest <manifest>
+     --pool-credentials pool-credentials.json`.
+  1. `just local-mining-soak run --private-root P/attempt-NNN
+     --pool-credentials pool-credentials.json`, detached under `nohup` with
+     separate mode-0600 stdout and stderr files in `P`.
+  1. A final named-port detector, which confirms the same physical device
+     and no serial holder.
+  - Recovery command, only if the run process died or its pause is
+    unconfirmed: `just local-mining-soak pause --private-root P/attempt-NNN`.
+- Allowed effects:
+  - the exact package install above;
+  - one Gate Web Serial admission for the endpoint handoff, with no lease;
+  - one settings PATCH saving the owner's pool as the primary pool, kept
+    afterwards;
+  - one resume through the HTTP API, and pauses: the run's own, and the
+    recovery command's;
+  - local mining: BM1366 initialization and work at the saved profile,
+    Stratum V1 to the owner's pool, device-local protection and the
+    ordered safe-stop;
+  - HTTP observation of the handed-off endpoint.
+- Prohibited effects:
+  - any Gate lease;
+  - TLS or Stratum V2;
+  - changing frequency, voltage or fan settings;
+  - factory reset, Wi-Fi credential writes, erase-flash, raw writes or OTA;
+  - network discovery; non-205 hardware; direct UART or pins;
+  - fault injection, voltage or fan stress;
+  - parity promotion;
+  - raw secret, endpoint or pool output;
+  - mining past the run deadline (40 minutes after the resume).
+- Live stops: the tool pauses at once and fails the attempt on
+  - a reset, a device pause (`pauseReason`), a hardware or power fault, or an
+    overheat;
+  - while mining: input outside 4.5–5.5 V, more than 15 W, the ASIC at 75 C
+    or above, a stopped fan, or readings stale on two samples in a row;
+  - the device unreachable for 30 s;
+  - mining not started within 5 minutes of the resume;
+  - the run deadline, 40 minutes after the resume;
+  - an interruption or a run error.
+  Every path from the resume on pauses the device.
+  The firmware's own device-local protection stays in force throughout.
+- Terminal criterion:
+  - after the pause, within 180 s (which covers the ordered safe-stop's
+    cooling proof), two samples in a row that are paused, not mining, and
+    show fresh input power of at most 5 W: the ASIC powered down;
+  - `startMiningOnBoot` false;
+  - no `pauseReason`.
+- Evidence: `P` holds `ProtectedOperational` data in mode-0600 files. The
+  endpoint stays in `P/endpoint`, and the journal records metadata only.
+  Committed summaries may hold only numeric categories from `result.json`,
+  after `just verify-redaction`.
+- Recovery:
+  - Firmware revokes and safe-stops local mining on any fault; the tool
+    pauses on every stop and on interruption.
+  - If the powered-down state cannot be confirmed, run the recovery
+    command. If it still cannot be confirmed, notify the owner at once
+    that the device may still be mining (under its own protection). Offer
+    a power-off, which only the owner performs, and stop with
+    `stop_hardware_blocker`.
+  - Before the resume, the tool requires the stopped proof on the paused
+    baseline, so a run can always end judged.
+  - No reflash beyond the install above, and no power action without the
+    owner.
+- Afterwards: the device runs the new package, paused, with the owner's pool
+  saved. `pool_configuration_unchanged_since_boot` stays false until the
+  next reboot, so later Gate work should start after a reboot.
+- Retry bound: `docs/hardware/hardware-attempt-policy.md`. Each ordinal needs
+  verified progress, and a recurrence of the same boundary after its targeted
+  fix selects `stop_repeated_boundary`.
+- Accepted outcomes: `complete` only when `result.json` is `passed` and an
+  independent review agrees. Otherwise `stop_repeated_boundary`,
+  `stop_hardware_blocker`, `stop_authority_boundary` or
+  `stop_impossible_contract`.
+
+Authorization: the contract above. Software work continues as ordinary task
+work.
+
 Verification: pending. Completion review: pending.
+
+## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 
