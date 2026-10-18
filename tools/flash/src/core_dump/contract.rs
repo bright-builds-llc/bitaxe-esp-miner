@@ -4,12 +4,21 @@ const TASK: &str = "task-str005-start-panic-diagnosis";
 const ENABLE: &str =
     "Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).";
 
+/// Which safe-state proof the admitted owner must present before any USB effect.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ProofKind {
+    /// A Gate recovery proof from the STR-005 qualification campaign.
+    Str005Recovery,
+    /// HTTP proof that local mining is paused with the ASIC powered down (ADR-0038).
+    LocalMiningStopped,
+}
+
 #[cfg(test)]
-pub(super) fn admit_task(tasks: &str) -> Result<()> {
+pub(super) fn admit_task(tasks: &str) -> Result<ProofKind> {
     admit_mode(tasks, false)
 }
 
-pub(super) fn admit_mode(tasks: &str, clear: bool) -> Result<()> {
+pub(super) fn admit_mode(tasks: &str, clear: bool) -> Result<ProofKind> {
     let owners = [
         (
             TASK,
@@ -35,11 +44,19 @@ pub(super) fn admit_mode(tasks: &str, clear: bool) -> Result<()> {
                 "Heap-loss core-dump acquisition: enabled (fresh recovery required)."
             },
         ),
+        (
+            "task-local-mining-evidence-soaks",
+            if clear {
+                "Local mining core-dump clearing: enabled (private archive verified)."
+            } else {
+                "Local mining core-dump acquisition: enabled (fresh stopped proof required)."
+            },
+        ),
     ];
     let mut active = false;
     let mut maybe_selected = None;
-    let mut counts = [0; 3];
-    let mut enabled = [false; 3];
+    let mut counts = [0; 4];
+    let mut enabled = [false; 4];
     for line in tasks.lines() {
         if line.starts_with("## ") {
             active = line.trim() == "## Active";
@@ -67,7 +84,11 @@ pub(super) fn admit_mode(tasks: &str, clear: bool) -> Result<()> {
     {
         bail!("core_dump=blocked reason=active_contract_disabled_or_ambiguous");
     }
-    Ok(())
+    Ok(if enabled[3] {
+        ProofKind::LocalMiningStopped
+    } else {
+        ProofKind::Str005Recovery
+    })
 }
 
 pub(super) fn hex(value: &str, length: usize) -> bool {

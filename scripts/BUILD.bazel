@@ -1940,6 +1940,7 @@ js_library(
     deps = [
         ":fixed_usb_qualification_sources",
         ":fixed_usb_soak_sources",
+        ":hardware_operator_sources",
         ":str005_noise_serial_sources",
     ],
 )
@@ -1960,6 +1961,7 @@ js_binary(
     "main",
     "pool",
     "run",
+    "stopped-proof",
 ]]
 
 js_library(

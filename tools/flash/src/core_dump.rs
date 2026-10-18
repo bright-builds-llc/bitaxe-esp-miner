@@ -27,7 +27,7 @@ pub(crate) struct CoreDumpReadCommand {
 
 pub(crate) fn preflight(command: &CoreDumpReadCommand, clear: bool) -> Result<()> {
     let workspace = detect_workspace_dir()?;
-    contract::admit_mode(&fs::read_to_string(workspace.join("TASKS.md"))?, clear)?;
+    let kind = contract::admit_mode(&fs::read_to_string(workspace.join("TASKS.md"))?, clear)?;
     let source = Command::new("git")
         .current_dir(&workspace)
         .args(["rev-parse", "HEAD"])
@@ -39,6 +39,7 @@ pub(crate) fn preflight(command: &CoreDumpReadCommand, clear: bool) -> Result<()
         command,
         &workspace,
         String::from_utf8(source.stdout)?.trim(),
+        kind,
     )
 }
 
@@ -54,7 +55,7 @@ fn run_mode(
     environment: &impl FlashEnvironment,
     maybe_clear: Option<&clearing::CoreDumpClearCommand>,
 ) -> Result<()> {
-    contract::admit_mode(
+    let kind = contract::admit_mode(
         &environment.read_to_string(&environment.workspace_path(Utf8Path::new("TASKS.md")))?,
         maybe_clear.is_some(),
     )?;
@@ -81,6 +82,7 @@ fn run_mode(
         command,
         &environment.workspace_path(Utf8Path::new(".")),
         provenance.build_identity().source_commit(),
+        kind,
     )?;
     let maybe_archive = maybe_clear
         .map(|clear| clearing::archive(clear, &environment.workspace_path(Utf8Path::new("."))))
@@ -115,6 +117,7 @@ fn run_mode(
         &environment.workspace_path(Utf8Path::new(".")),
         provenance.build_identity().source_commit(),
         maybe_clear.is_some(),
+        kind,
         &root,
     )?;
     contract::create_root(&root)?;

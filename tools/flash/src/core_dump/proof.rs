@@ -49,12 +49,35 @@ struct Budget {
     pending: bool,
 }
 
+/// HTTP proof that local mining is paused with the ASIC powered down on two samples in a row,
+/// written by `just local-mining-soak stopped-proof` (ADR-0038).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LocalMiningStoppedProof {
+    schema: String,
+    source_commit: String,
+    firmware_commit: String,
+    app_elf_sha256: String,
+    physical_identity_sha256: String,
+    observed_at_unix_ms: u64,
+    boot_session: String,
+    mining_paused: bool,
+    asic_stopped: bool,
+    stopped_samples: u8,
+    mine_on_boot: bool,
+    serial_ownership_released: bool,
+}
+
 pub(super) fn validate(
     bytes: &[u8],
     command: &CoreDumpReadCommand,
     source: &str,
     now: u64,
+    kind: contract::ProofKind,
 ) -> Result<()> {
+    if kind == contract::ProofKind::LocalMiningStopped {
+        return validate_local_mining(bytes, command, source, now);
+    }
     let proof: RecoveryProof =
         serde_json::from_slice(bytes).map_err(|_| anyhow::anyhow!("recovery_proof_shape"))?;
     let shape: serde_json::Value = serde_json::from_slice(bytes)?;
@@ -120,16 +143,44 @@ pub(super) fn validate(
     Ok(())
 }
 
+fn validate_local_mining(
+    bytes: &[u8],
+    command: &CoreDumpReadCommand,
+    source: &str,
+    now: u64,
+) -> Result<()> {
+    let proof: LocalMiningStoppedProof =
+        serde_json::from_slice(bytes).map_err(|_| anyhow::anyhow!("stopped_proof_shape"))?;
+    if proof.schema != "local-mining-stopped-proof-v1"
+        || proof.source_commit != source
+        || proof.firmware_commit != command.expected_installed_source
+        || proof.app_elf_sha256 != command.expected_installed_elf
+        || proof.physical_identity_sha256 != command.expected_physical_sha256
+        || proof.observed_at_unix_ms > now
+        || now - proof.observed_at_unix_ms > 120_000
+        || !contract::hex(&proof.boot_session, 32)
+        || !proof.mining_paused
+        || !proof.asic_stopped
+        || proof.stopped_samples < 2
+        || proof.mine_on_boot
+        || !proof.serial_ownership_released
+    {
+        bail!("stopped_proof_invalid");
+    }
+    Ok(())
+}
+
 pub(super) fn admit(
     command: &CoreDumpReadCommand,
     workspace: &Utf8Path,
     source: &str,
+    kind: contract::ProofKind,
 ) -> Result<()> {
     let bytes = private_file(&command.recovery_proof, workspace, 16_384)?;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
         .as_millis();
-    validate(&bytes, command, source, u64::try_from(now)?)
+    validate(&bytes, command, source, u64::try_from(now)?, kind)
 }
 
 pub(super) fn private_file(path: &Utf8Path, workspace: &Utf8Path, bound: u64) -> Result<Vec<u8>> {
@@ -176,12 +227,13 @@ pub(super) fn claim(
     workspace: &Utf8Path,
     source: &str,
     clear: bool,
+    kind: contract::ProofKind,
     output_root: &Utf8Path,
 ) -> Result<()> {
     use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
     let bytes = private_file(&command.recovery_proof, workspace, 16_384)?;
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
-    validate(&bytes, command, source, u64::try_from(now)?)?;
+    validate(&bytes, command, source, u64::try_from(now)?, kind)?;
     let value: serde_json::Value = serde_json::from_slice(&bytes)?;
     let key = sha256_bytes(&serde_json::to_vec(&canonical(value))?);
     let canonical_workspace = fs::canonicalize(workspace)?;

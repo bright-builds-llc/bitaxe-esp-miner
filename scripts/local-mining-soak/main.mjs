@@ -4,12 +4,15 @@
 // station endpoint comes from a completed `just otawww-endpoint` handoff in the same session; the
 // pool from the ignored pool-credentials file, used at run time only. A lease check watches the
 // `just ultra205-soak --interrupt-local-mining` private root for its result.
-import { mkdir, open, readFile } from "node:fs/promises";
+import { lstat, mkdir, open, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { git, ignored, missing, protectedPath, requireCondition } from "../fixed-usb-qualification/contract.mjs";
 import { readPoolForSigning } from "../fixed-usb-qualification/authority.mjs";
 import { privateRoot, proof, writeNew } from "../str005-noise-serial/files.mjs";
+import { requireNoHolders } from "../str005-noise-serial/host-resources.mjs";
+import { parseDetector } from "../hardware-operator/detector.mjs";
+import { DETECTOR_FRESH_MS, stoppedProof } from "./stopped-proof.mjs";
 import { deviceClient } from "./device.mjs";
 import { poolSettings } from "./pool.mjs";
 import { pauseAndConfirm, runSoak } from "./run.mjs";
@@ -22,9 +25,10 @@ const CONTEXT_SCHEMA = "local-mining-soak-context-v1";
 /** The endpoint must come from this session: a handoff at most this old. */
 const ENDPOINT_MAXIMUM_AGE_MS = 30 * 60_000;
 const ACTIONS = { preflight: ["--private-root", "--endpoint-root", "--package-manifest", "--pool-credentials", "--soak"],
-  run: ["--private-root", "--pool-credentials"], pause: ["--private-root"] };
+  run: ["--private-root", "--pool-credentials"], pause: ["--private-root"],
+  "stopped-proof": ["--private-root", "--endpoint-root", "--installed-manifest", "--detector"] };
 /** Options an action accepts but does not require: a lease check names the Gate soak's private root. */
-const OPTIONAL = { preflight: ["--lease-root"], run: [], pause: [] };
+const OPTIONAL = { preflight: ["--lease-root"], run: [], pause: [], "stopped-proof": [] };
 
 function argumentsFor(argv) {
   const [action, ...rest] = argv; requireCondition(Object.hasOwn(ACTIONS, action), "soak_action");
@@ -128,6 +132,35 @@ export async function readLeaseResult(leaseRoot) {
   return { result: verdict.result, failures: verdict.failures.filter((failure) => /^[a-z0-9_]{1,80}$/u.test(failure)) };
 }
 
+/**
+ * The proof that admits a local mining core-dump read: a new private root holding
+ * `stopped-proof.json`. The endpoint comes from a same-session handoff; the installed firmware from
+ * its package manifest; the physical identity from a fresh named-port detector.
+ */
+async function writeStoppedProof(firmwareRoot, root, options) {
+  await missing(root); await protectedPath(dirname(root), true); ignored(firmwareRoot, root);
+  const endpointRoot = resolve(firmwareRoot, options["--endpoint-root"]);
+  await privateRoot(endpointRoot);
+  const handoff = (await proof(endpointRoot, "result.json")).value;
+  requireCondition(handoff.schema === "otawww-endpoint-result-v1" && handoff.endpoint_recorded === true &&
+    handoff.page_closed === true && handoff.host_released === true, "soak_endpoint_handoff");
+  const endpoint = (await proof(endpointRoot, "endpoint.private.json")).value;
+  requireCondition(Date.now() - endpoint.hostReceivedAtMs <= ENDPOINT_MAXIMUM_AGE_MS, "soak_endpoint_stale");
+  const manifest = JSON.parse(await readFile(resolve(firmwareRoot, options["--installed-manifest"]), "utf8"));
+  requireCondition(/^[0-9a-f]{40}$/u.test(manifest.source_commit) && /^[0-9a-f]{64}$/u.test(manifest.app_elf_sha256) &&
+    manifest.build_identity?.source_dirty === false, "soak_package");
+  const detectorPath = resolve(firmwareRoot, options["--detector"]);
+  await protectedPath(detectorPath);
+  requireCondition(Date.now() - (await lstat(detectorPath)).mtimeMs <= DETECTOR_FRESH_MS, "stopped_proof_detector_stale");
+  const value = await stoppedProof({ client: deviceClient(endpoint),
+    installed: { firmwareCommit: manifest.source_commit, appElfSha256: manifest.app_elf_sha256 }, bootOrdinal: endpoint.bootOrdinal,
+    detector: parseDetector(await readFile(detectorPath, "utf8")), sourceCommit: git(firmwareRoot, ["rev-parse", "HEAD"]).trim(),
+    requireReleased: requireNoHolders, sleep: (ms) => new Promise((done) => setTimeout(done, ms)), now: Date.now });
+  await mkdir(root, { mode: 0o700 });
+  await writeNew(resolve(root, "stopped-proof.json"), value);
+  return { stopped_proof: "written", device_effects: false };
+}
+
 /** Recovery: pause the device a run left mining, and confirm the ASIC powered down. */
 async function pause(root) {
   await privateRoot(root);
@@ -147,6 +180,7 @@ export async function main(argv) {
   const firmwareRoot = process.env.BUILD_WORKSPACE_DIRECTORY ?? git(process.cwd(), ["rev-parse", "--show-toplevel"]);
   const root = resolve(firmwareRoot, options["--private-root"]);
   if (action === "preflight") return preflight(firmwareRoot, root, options);
+  if (action === "stopped-proof") return writeStoppedProof(firmwareRoot, root, options);
   return action === "run" ? run(firmwareRoot, root, options) : pause(root);
 }
 
