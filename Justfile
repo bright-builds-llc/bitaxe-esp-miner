@@ -39,6 +39,11 @@ str005-review-loop action *args:
 str005-share-crash action *args:
     bazel run //scripts:str005_share_crash -- {{ action }} {{ args }}
 
+# One task-gated local mining soak (ADR-0038 task 6), after an otawww-endpoint handoff. See scripts/local-mining-soak/README.md.
+[positional-arguments]
+local-mining-soak action *args:
+    bazel run //scripts:local_mining_soak -- "$@"
+
 # One task-gated upstream-default soak through the Gate (ADR-0033). See scripts/fixed-usb-soak/README.md.
 [positional-arguments]
 ultra205-soak action *args:
