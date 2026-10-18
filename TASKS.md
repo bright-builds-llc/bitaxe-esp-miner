@@ -1556,6 +1556,58 @@ device panicked during the handover. No grant was signed.
   diagnosed and fixed. Attempt 003 needs a verified fix with a regression
   across this boundary.
 
+Local mining core-dump acquisition: enabled (fresh stopped proof required).
+
+Local mining core-dump contract (owner instruction 2026-10-18: "read the core
+dump"; attempt ordinals 001 onward). Objective: read the core-dump partition
+once, read-only, to find the cause of the native panic in lease interruption
+check attempt 002. Decode it offline against the exact installed ELF,
+preserved privately (`d46d296a…`, firmware `30fc67e2`).
+- **Commands**, in order. `C` is a new mode-0700 parent under
+  `scratch/core-dump-lease/`. Use a shell with `umask 077`, and name the
+  port on each detector.
+  1. `just otawww-endpoint preflight|serve|finish` with
+     `--private-root C/endpoint`, and one Connect while the device is paused.
+  1. A detector into `C/detector.stdout.log`. Within 60 s,
+     `just local-mining-soak stopped-proof --private-root C/proof
+     --endpoint-root C/endpoint --installed-manifest
+     scratch/core-dump-lease/package-30fc67e2.json --detector
+     C/detector.stdout.log`. It reads two HTTP samples and writes the proof;
+     it has no device effect.
+  1. Within 120 s of the proof, `just core-dump-read --port <port>
+     --expected-physical-sha256 <detected> --expected-installed-source
+     <30fc67e2…> --expected-installed-elf <d46d296a…> --private-root
+     C/read-NNN --recovery-proof C/proof/stopped-proof.json`.
+  1. A final named-port detector.
+  1. Offline: `just core-dump analyze --dump C/read-NNN/core-dump.private.bin
+     --elf scratch/core-dump-lease/firmware-30fc67e2.elf --elf-sha256
+     <d46d296a…> --private-root C/analysis-NNN`. Use absolute paths
+     inside the repository.
+- **Allowed effects:**
+  - the endpoint handoff's Gate admission;
+  - the flash tool's ROM admission and `espflash read-flash` of the
+    partition table and the core-dump partition;
+  - the tool's return to the application, whose identity must match the
+    installed firmware.
+- **Prohibited effects:** erase or clear the dump (a separate clearing
+  contract and line), any write, flash or OTA, mining, leases, direct UART
+  or pins, and network discovery.
+- **Evidence:** ADR-0030. The raw dump, the extracted files and the
+  debugger output stay mode 0600 under mode-0700 ignored roots. Committed
+  text may give only the redacted diagnosis: the panic class, the task, and
+  functions and lines in our source. It never includes memory contents.
+- **Recovery:** if the return to the application fails, the flash tool
+  retries its application exit. If the device still does not run the
+  installed firmware, tell the owner and offer a power cycle, which only
+  the owner performs. Then stop with `stop_hardware_blocker`.
+- **Note:** `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE` keeps an older dump, so
+  the dump may predate attempt 002. Its ELF identity and task state show
+  which crash it holds. A stale dump needs the clearing contract and a
+  reproduction before this crash can be read.
+- **Accepted outcomes:** `complete` when the read verifies and decodes; then
+  root-cause analysis and a fix follow under the owner's re-run rule.
+  Otherwise `stop_hardware_blocker` or `stop_impossible_contract`.
+
 Remaining in this task, each under its own contract:
 - longer soaks;
 - the lease interruption check;
