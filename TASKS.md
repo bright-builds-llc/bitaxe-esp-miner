@@ -1722,6 +1722,34 @@ them from the private journals.
   is done. The overheat check and the
   parity rows remain, as do soaks of several hours.
 
+Ultra 205 local mining soak 003 hardware: enabled.
+
+Soak 003 contract (owner request 2026-10-18: "a several-hour soak"; attempt
+ordinals 001 onward). Soak 002's contract and amendment apply except as
+stated.
+- **Objective:**
+  - 14,400 s (4 hours) of local mining accumulated within 300 minutes of
+    the resume;
+  - every outage recovered within 60 s;
+  - at least one nonzero hashrate, at least one accepted share, no reset,
+    the live limits, and the powered-down proof after the pause.
+- **Duration:** the agent's choice under the owner's standing authorization.
+  4 hours doubles soak 002 and stays within one working session.
+- **Run deadline:** 300 minutes after the resume, on the monotonic clock.
+  Mining past it is prohibited.
+- **Package:** a fresh package at the clean, pushed HEAD carrying this
+  contract, installed state-preserving.
+- **Commands:** as soak 002, with `--soak 003`. Start the run detached in
+  its own session:
+  `nohup perl -MPOSIX=setsid -e 'setsid; exec @ARGV' -- caffeinate -is just
+  local-mining-soak run ...`. Keep the Mac on AC power with the lid open.
+- **Afterwards:** paused, mining on boot off, the owner's pool saved.
+- **Unchanged:** the private input, allowed and prohibited effects, live
+  stops (an outage past 60 s, or unreachable for 60 s), evidence, recovery
+  (including notifying the owner when the device may still be mining), the
+  retry bound and the accepted outcomes. Under the owner's re-run rule, a
+  failure followed by a root-cause fix is re-run without asking.
+
 Remaining in this task, each under its own contract:
 - longer soaks;
 - the diagnosis of the attempt 002 panic, when a dump is captured;
