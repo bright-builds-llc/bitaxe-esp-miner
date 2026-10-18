@@ -1293,6 +1293,35 @@ except as stated):
   - evidence, recovery (including notifying the owner when the device may
     still be mining), the retry bound and the accepted outcomes.
 
+Soak 002 attempt 001 result (2026-10-18): `failed`, with `soak_deadline`,
+`soak_active_time_short` and `soak_sample_gap`. The device stayed healthy.
+- Firmware `2044c826`, installed state-preserving
+  (`observed_exact_package`). The run used `caffeinate` on AC power.
+- The hashrate fix is verified on hardware: `hashRate` read 339–651 GH/s
+  while mining.
+- Two network outages, at 33 and 105 minutes, about 72 minutes apart. Each
+  time:
+  - the device was unreachable over HTTP for about 19 s;
+  - it then showed `safe_blocked` for about 24 s, and its share counter
+    restarted, which means a new pool session;
+  - the local run ended on the lost network, as a requested ending that
+    spends no restart guard, and a new run resumed mining on its own;
+  - uptime kept rising and the boot session never changed: no reset.
+- Each 19 s gap broke the continuous span, so the longest is 4,251,755 ms
+  (71 minutes). The 130-minute deadline then paused the device as designed.
+- Measurements:
+  - 355 accepted shares, 1 rejected;
+  - 5.22–5.29 V, at most 13.25 W, at most 61 C chip;
+  - no device pause, fault or overheat;
+  - both powered-down samples journaled, with the ASIC down after the pause.
+- The device's retained log holds no Wi-Fi events, and the journal records
+  no Wi-Fi state, so the outages' cause is unconfirmed. Both the host and the
+  device lost the network together, which points to the network rather
+  than the firmware.
+- Outcome: awaiting the owner's decision. An unchanged retry is not
+  eligible under the attempt policy, and the roughly 72-minute event would
+  likely recur.
+
 Remaining in this task, each under its own contract:
 - longer soaks;
 - the lease interruption check;
