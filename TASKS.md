@@ -1432,7 +1432,10 @@ Lease interruption check contract (owner request 2026-10-18; attempt ordinals
      grant, and the local run then pauses at its deadline. Pass `L` and `R`
      as absolute paths.
   1. Stop the Gate soak server, then seal it with `just hardware-operator
-     owner-finish --owner ultra205-soak --private-root R`.
+     owner-finish --owner ultra205-soak --private-root R`. While the BAP
+     adapter is wired, use the README's other path instead: write a
+     named-port detector to `P/final-detector.stdout.log`, then run
+     `just ultra205-soak finish --private-root R`.
   1. Wait for the local run's verdict, then take a final named-port
      detector.
   - Recovery, only if the local run died or its pause is unconfirmed:
@@ -1477,6 +1480,48 @@ Lease interruption check contract (owner request 2026-10-18; attempt ordinals
   `ProtectedOperational` files), recovery, notifying the owner when the
   device may still be mining, the retry bound and the accepted outcomes.
   `complete` also needs an independent review.
+
+Lease interruption check attempt 001 result (2026-10-18): `failed`, with
+`lease_check_lease_failed`. The device did everything the handover asks; a
+judge rule in our tooling was wrong.
+- Firmware `5f9ee423`, installed state-preserving
+  (`observed_exact_package`), with the Gate at `eacd8147`.
+- The local run (`result.json`): 300,819 ms of local mining before the
+  lease, then 300,764 ms after it, with no outage and 40 local shares
+  accepted.
+- The handover:
+  - one Connect refused at Hello while mining locally;
+  - local mining stopped 47 s after `lease_ready`, and the ASIC read 0.32 W;
+  - the next Connect was admitted;
+  - local mining stayed off through the reload, the 60 s idle proof and
+    the lease;
+  - local mining came back 20 s after the Gate soak's result.
+- After the pause the ASIC powered down: paused, mining on boot off, no
+  pause reason, one boot session, the same physical device and no serial
+  holder.
+- The lease itself:
+  - it ended by its budget at 600,000 ms, with the safe-stop complete at
+    `fan_paused` and restoration confirmed;
+  - 14 accepted shares; ledger ordinal 6 charged once;
+  - cleanup confirmed.
+- The Gate soak sealed `unverified`, with `window_counter_regressed` and
+  `window_no_accepted_share`. The window judge allowed the handover's share
+  restart only before the work gate opened. On hardware it arrives with the
+  first mining sample, 0.1–0.4 s after the gate opens. The restart was
+  rejected, so the shares counted from the local run's 23 down to 14, which
+  is none.
+- Fix: the restart is allowed from a sample that was not mining, within
+  the first 30-second window. A regression test mirrors the hardware
+  sample. Re-judging this attempt's journal with the fixed judge passes:
+  20 of 20 windows, 14 accepted shares, the run intent at the end on both
+  transports, and pool settings retained. That recomputation is evidence of
+  the fix, not a pass for this attempt.
+- `owner-finish` cannot seal while the BAP adapter is wired: its detector
+  names no port. The README's other path (a named-port
+  `P/final-detector.stdout.log`, then `just ultra205-soak finish`) sealed
+  the attempt. Use that path.
+- Outcome: `continue_after_verified_fix`. Attempt 002 is the next ordinal,
+  on a fresh package with the fix, and a new lease charges ordinal 7.
 
 Remaining in this task, each under its own contract:
 - longer soaks;
