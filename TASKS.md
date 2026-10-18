@@ -1254,8 +1254,6 @@ Soak 001 result (2026-10-17): attempt 001 `complete`.
   hardware-verified.
 - Later soaks should record both powered-down samples.
 
-Ultra 205 local mining soak 002 hardware: enabled.
-
 Soak 002 contract (owner request 2026-10-17; the soak 001 contract applies
 except as stated):
 - **Objective:** 7,200 seconds (2 hours) of continuous local mining, with
@@ -1347,6 +1345,30 @@ Soak 002 amendment (owner decision 2026-10-18), for attempt 002 onward:
   amendment, installed state-preserving, because the run checks the
   installed commit.
 - **Unchanged:** the rest of the soak 002 contract.
+
+Soak 002 attempt 002 result (2026-10-18): `complete`.
+- `result.json` is `passed` with no failures, under the amended rule. An
+  independent review agrees, after recomputing the verdict from the
+  journal.
+- Summary: `docs/parity/evidence/20261018-ultra205-local-mining-soak-002.md`.
+- Firmware and package: `0beeea07` (package manifest `6d6cb30e…`), installed
+  state-preserving (`observed_exact_package`). The run used `caffeinate` on
+  AC power.
+- Measurements:
+  - 7,201,440 ms of mining accumulated in 121 minutes; the longest unbroken
+    span is 6,938,673 ms;
+  - one outage, 41,267 ms at 4.6 minutes, recovered on its own: 19 s
+    unreachable, then `safe_blocked` with Wi-Fi connected, then a new pool
+    session;
+  - Wi-Fi connected on every sample, RSSI −39 to −32 dBm;
+  - 336 accepted shares, 1 rejected; hashrate median 433 GH/s;
+  - 5,239–5,295 mV, at most 12.45 W, at most 61 C chip;
+  - one boot session, no device pause, fault or overheat;
+  - both powered-down samples journaled, 22 s and 25 s after the pause (0.37 W, 0.55 W).
+- The outages' cause stays unconfirmed: no sample was taken while the
+  device was unreachable.
+- The device is left paused, with mining on boot off and the owner's pool
+  saved. Soak 002's enable line was removed.
 
 Remaining in this task, each under its own contract:
 - longer soaks;
