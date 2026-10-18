@@ -3,13 +3,17 @@
 // metadata; no endpoint, pool or credential value ever enters them.
 
 /**
- * The soaks a contract may run, each with its own enable line (owner decisions 2026-10-17):
- * soak 001 mines 30 minutes; soak 002 mines 2 hours and must show a nonzero hashrate, which
- * verifies the fix soak 001 led to.
+ * The soaks a contract may run, each with its own enable line (owner decisions 2026-10-17/18).
+ * - Soak 001 mines 30 continuous minutes.
+ * - Soak 002 accumulates 2 hours of mining within 2 h 30 min, and must show a nonzero hashrate.
+ *   It tolerates outages the device recovers from on its own (`maybeMaximumOutageMs`), because
+ *   real networks drop: attempt 001 met two ~19 s network outages, and mining resumed each time.
  */
 export const SOAKS = Object.freeze({
-  "001": Object.freeze({ id: "001", activeMs: 30 * 60_000, requireHashrate: false }),
-  "002": Object.freeze({ id: "002", activeMs: 120 * 60_000, requireHashrate: true }),
+  "001": Object.freeze({ id: "001", activeMs: 30 * 60_000, requireHashrate: false, maybeMaximumOutageMs: null,
+    maybeDeadlineMs: null }),
+  "002": Object.freeze({ id: "002", activeMs: 120 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
+    maybeDeadlineMs: 150 * 60_000 }),
 });
 export const SAMPLE_INTERVAL_MS = 2000;
 /** A longer gap between successive samples breaks continuity. */
@@ -18,8 +22,8 @@ export const MAXIMUM_SAMPLE_GAP_MS = 10_000;
 export const START_ALLOWANCE_MS = 5 * 60_000;
 /** The ordered safe-stop, including its up-to-120-s cooling proof, must finish within this. */
 export const STOP_ALLOWANCE_MS = 180_000;
-/** The run never mines past this, measured from the resume: start, the soak's time and slack. */
-export const runDeadlineMs = (soak) => START_ALLOWANCE_MS + soak.activeMs + 5 * 60_000;
+/** The run never mines past this, measured from the resume: the soak's own, or start, its time and slack. */
+export const runDeadlineMs = (soak) => soak.maybeDeadlineMs ?? START_ALLOWANCE_MS + soak.activeMs + 5 * 60_000;
 /** Input power at or below this, freshly measured, shows the ASIC powered down. */
 export const IDLE_POWER_W = 5;
 /** Live stop limits, as for the lease soaks: input 4.5–5.5 V, at most 15 W, ASIC below 75 C. */
@@ -51,6 +55,9 @@ export function sampleFromInfo(info, atMs) {
     pauseReason: typeof info?.pauseReason === "string" ? info.pauseReason : null,
     hardwareFault: typeof info?.hardware_fault === "string",
     powerFault: typeof info?.power_fault === "string",
+    // Wi-Fi state, to diagnose outages; the status label is reduced to a boolean.
+    wifiConnected: info?.wifiStatus === "connected",
+    wifiRssi: number(info?.wifiRSSI),
     fresh: {
       power: info?.powerStatus?.state === "fresh",
       input: info?.voltageStatus?.state === "fresh",
@@ -113,6 +120,29 @@ export function activeSpanMs(samples) {
   return longest;
 }
 
+/**
+ * Mining accumulated across samples: each step between two mining samples at most the gap bound
+ * apart counts. Outages are the intervals from one mining sample to the next mining sample when a
+ * non-mining sample or a longer gap lies between; they start only once mining has begun.
+ */
+export function miningLog(samples) {
+  let activeMs = 0, maybeLastMining = null, broken = false;
+  const outagesMs = [];
+  for (const sample of samples) {
+    if (!mining(sample)) { if (maybeLastMining !== null) broken = true; continue; }
+    if (maybeLastMining !== null) {
+      const stepMs = sample.atMs - maybeLastMining.atMs;
+      if (broken || stepMs > MAXIMUM_SAMPLE_GAP_MS) outagesMs.push(stepMs); else activeMs += stepMs;
+    }
+    maybeLastMining = sample; broken = false;
+  }
+  // An outage still open at the last sample counts too, so a stop during one is reported.
+  const maybeLastSample = samples.at(-1);
+  const maybeOpenOutageMs = maybeLastMining !== null && maybeLastSample !== undefined && !mining(maybeLastSample)
+    ? maybeLastSample.atMs - maybeLastMining.atMs : null;
+  return { activeMs, outagesMs, maybeOpenOutageMs, maybeLastMiningAtMs: maybeLastMining?.atMs ?? null };
+}
+
 /** The counter's increases across samples; a pool reconnect resets it to zero, which is no loss. */
 export function increases(samples, key) {
   let total = 0, maybeLast = null;
@@ -133,11 +163,15 @@ export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["
   samples.forEach((sample, index) => { const stop = liveStop(sample, baseline, samples[index - 1] ?? null); if (stop) fail(stop); });
   const active = samples.filter(mining);
   const span = activeSpanMs(samples);
-  if (span < soak.activeMs) fail("soak_active_time_short");
+  const log = miningLog(samples);
+  const tolerant = soak.maybeMaximumOutageMs !== null;
+  if ((tolerant ? log.activeMs : span) < soak.activeMs) fail("soak_active_time_short");
+  if (tolerant && log.outagesMs.some((outageMs) => outageMs > soak.maybeMaximumOutageMs)) fail("soak_outage_unrecovered");
   if (soak.requireHashrate && !active.some((sample) => sample.hashRate !== null && sample.hashRate > 0)) fail("soak_no_hashrate");
   let maximumGapMs = 0;
   for (let index = 1; index < samples.length; index += 1) maximumGapMs = Math.max(maximumGapMs, samples[index].atMs - samples[index - 1].atMs);
-  if (maximumGapMs > MAXIMUM_SAMPLE_GAP_MS) fail("soak_sample_gap");
+  // A tolerant soak judges gaps as outages instead; anything longer than its bound fails above.
+  if (!tolerant && maximumGapMs > MAXIMUM_SAMPLE_GAP_MS) fail("soak_sample_gap");
   const accepted = increases(samples, "sharesAccepted");
   const rejected = increases(samples, "sharesRejected");
   if (accepted < 1) fail("soak_no_accepted_share");
@@ -158,6 +192,11 @@ export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["
     failures,
     metrics: {
       active_span_ms: span,
+      accumulated_active_ms: log.activeMs,
+      outage_count: log.outagesMs.length + (log.maybeOpenOutageMs === null ? 0 : 1),
+      maximum_outage_ms: Math.max(0, ...log.outagesMs, log.maybeOpenOutageMs ?? 0),
+      minimum_wifi_rssi_dbm: finite(samples.reduce((low, sample) => (sample.wifiRssi !== null && sample.wifiRssi < low ? sample.wifiRssi : low), Infinity)),
+      wifi_disconnected_samples: samples.filter((sample) => !sample.wifiConnected).length,
       active_samples: active.length,
       samples: samples.length,
       maximum_sample_gap_ms: maximumGapMs,

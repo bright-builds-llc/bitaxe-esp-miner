@@ -191,8 +191,8 @@ test("soak 002 runs for two hours", async () => {
 });
 
 test("soak 002 stops at its own deadline", async () => {
-  // Arrange: mining keeps breaking off, so two continuous hours never accrue.
-  const device = fakeDevice({ overrides: (now) => (now % 600_000 < 30_000 ? { miningActivity: "safe_blocked" } : {}) });
+  // Arrange: recovered outages take half the time, so two hours never accumulate by the deadline.
+  const device = fakeDevice({ overrides: (now) => (now % 80_000 < 40_000 ? { miningActivity: "safe_blocked" } : {}) });
   // Act
   const verdict = await runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, now: () => device.clock.now,
     sleep: async (ms) => { device.clock.now += ms; }, record: async () => {}, soak: SOAKS["002"] });
@@ -200,4 +200,45 @@ test("soak 002 stops at its own deadline", async () => {
   assert.ok(verdict.failures.includes("soak_deadline"));
   assert.ok(device.clock.now <= runDeadlineMs(SOAKS["002"]) + 200_000);
   assert.equal(device.state.paused, true);
+});
+
+async function runSoak002(device) {
+  const events = [];
+  const verdict = await runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, now: () => device.clock.now,
+    sleep: async (ms) => { device.clock.now += ms; }, record: async (event) => { events.push(event); }, soak: SOAKS["002"] });
+  return { verdict, events };
+}
+
+test("soak 002 passes through recovered outages like attempt 001's", async () => {
+  // Arrange: two outages of about 45 s, 72 minutes apart; the device recovers each time.
+  const outage = (now) => (now > 2_000_000 && now < 2_045_000) || (now > 6_300_000 && now < 6_345_000);
+  const device = fakeDevice({ overrides: (now) => (outage(now) ? { miningActivity: "safe_blocked" } : {}) });
+  // Act
+  const { verdict } = await runSoak002(device);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.metrics.outage_count, 2);
+  assert.ok(verdict.metrics.accumulated_active_ms >= SOAKS["002"].activeMs);
+});
+
+test("soak 002 stops at once on an outage past its bound", async () => {
+  // Arrange: a 90 s outage after 10 minutes.
+  const device = fakeDevice({ overrides: (now) => (now > 600_000 && now < 690_000 ? { miningActivity: "safe_blocked" } : {}) });
+  // Act
+  const { verdict } = await runSoak002(device);
+  // Assert
+  assert.ok(verdict.failures.includes("soak_outage_unrecovered"));
+  assert.ok(device.clock.now < 1_000_000);
+  assert.equal(device.state.paused, true);
+});
+
+test("soak 002 stops on an outage that becomes unreachable", async () => {
+  // Arrange: idle for 40 s, then unreachable; the outage passes 60 s while unreachable.
+  const device = fakeDevice({ overrides: (now) => (now > 600_000 && now < 640_000 ? { miningActivity: "safe_blocked" } : {}),
+    failInfoAfterMs: 630_000 });
+  // Act
+  const { verdict } = await runSoak002(device);
+  // Assert
+  assert.ok(verdict.failures.includes("soak_outage_unrecovered"), JSON.stringify(verdict.failures));
+  assert.ok(device.clock.now < 600_000 + 4_000 + 120_000 + 200_000);
 });

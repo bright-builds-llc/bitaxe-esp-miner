@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { activeSpanMs, hardwareStopped, increases, judge, LIMITS, liveStop, MAXIMUM_SAMPLE_GAP_MS, sampleFromInfo, SOAKS } from "./judge.mjs";
+import { activeSpanMs, hardwareStopped, increases, judge, miningLog, LIMITS, liveStop, MAXIMUM_SAMPLE_GAP_MS, sampleFromInfo, SOAKS } from "./judge.mjs";
 
 const SOAK_ACTIVE_MS = SOAKS["001"].activeMs;
 
@@ -182,4 +182,51 @@ test("soak 002 needs two hours and a nonzero hashrate", () => {
   assert.ok(short.failures.includes("soak_active_time_short"));
   assert.deepEqual(healthy.failures, []);
   assert.equal(healthy.soak, "002");
+});
+
+test("a sample keeps the Wi-Fi state as a boolean and RSSI", () => {
+  // Arrange / Act
+  const sample = sampleFromInfo(info({ wifiStatus: "connected", wifiRSSI: -61 }), 0);
+  // Assert
+  assert.equal(sample.wifiConnected, true);
+  assert.equal(sample.wifiRssi, -61);
+});
+
+const at = (atMs, overrides = {}) => sampleFromInfo(info(overrides), atMs);
+const idleAt = (atMs) => at(atMs, { miningActivity: "safe_blocked" });
+
+test("a gap with no samples between mining samples is an outage", () => {
+  // Arrange / Act
+  const log = miningLog([at(0), at(2000), at(21_000), at(23_000)]);
+  // Assert
+  assert.deepEqual(log.outagesMs, [19_000]);
+  assert.equal(log.activeMs, 4000);
+});
+
+test("idle samples before mining begins are no outage", () => {
+  // Arrange / Act
+  const log = miningLog([idleAt(0), idleAt(2000), at(4000), at(6000)]);
+  // Assert
+  assert.deepEqual(log.outagesMs, []);
+  assert.equal(log.activeMs, 2000);
+});
+
+test("an outage still open at the end is reported", () => {
+  // Arrange / Act
+  const log = miningLog([at(0), at(2000), idleAt(4000), idleAt(30_000)]);
+  // Assert
+  assert.equal(log.maybeOpenOutageMs, 28_000);
+});
+
+test("soak 002 fails an outage past 60 s and accepts one at the bound", () => {
+  // Arrange
+  const soak = SOAKS["002"];
+  const run = (outageMs) => {
+    const samples = activeRun(soak.activeMs);
+    const shifted = samples.map((sample, index) => (index > 100 ? { ...sample, atMs: sample.atMs + outageMs } : sample));
+    return judge({ baseline: samples[0], samples: shifted, maybeFinal: paused(), soak });
+  };
+  // Act / Assert: the shifted gap is 2 s plus the outage.
+  assert.ok(!run(58_000).failures.includes("soak_outage_unrecovered"));
+  assert.ok(run(60_000).failures.includes("soak_outage_unrecovered"));
 });

@@ -1318,9 +1318,35 @@ Soak 002 attempt 001 result (2026-10-18): `failed`, with `soak_deadline`,
   no Wi-Fi state, so the outages' cause is unconfirmed. Both the host and the
   device lost the network together, which points to the network rather
   than the firmware.
-- Outcome: awaiting the owner's decision. An unchanged retry is not
-  eligible under the attempt policy, and the roughly 72-minute event would
-  likely recur.
+- Outcome: `continue_after_verified_fix`, by the owner's decision of
+  2026-10-18. The long-soak rule now tolerates outages the device recovers
+  from on its own (amendment below), and the journal records Wi-Fi state.
+  Attempt 002 is the next ordinal.
+
+Soak 002 amendment (owner decision 2026-10-18), for attempt 002 onward:
+- **Objective:**
+  - accumulate 7,200 s of mining within 150 minutes of the resume;
+  - every outage, from one mining sample to the next with idle samples or
+    a gap over 10 s between, must end with mining back within 60 s;
+  - outages are counted and reported, and every other soak 002 criterion
+    is unchanged (no reset, the live limits, a nonzero hashrate,
+    `startMiningOnBoot` false, the powered-down proof).
+- **Live stops:**
+  - an outage past 60 s, or the device unreachable for 60 s (not 30 s),
+    stops the run and pauses;
+  - the run deadline is 150 minutes after the resume, and mining past it
+    is prohibited.
+- **Journal:** each sample also records whether Wi-Fi is connected, and
+  RSSI, to diagnose outages.
+- **Clarifications:**
+  - a gap where only the host lost contact also counts as an outage, which
+    is conservative;
+  - at the deadline, the pause starts within one sample interval, and the
+    ordered safe-stop then runs, as in soak 001.
+- **Package:** a fresh package at the clean, pushed HEAD carrying this
+  amendment, installed state-preserving, because the run checks the
+  installed commit.
+- **Unchanged:** the rest of the soak 002 contract.
 
 Remaining in this task, each under its own contract:
 - longer soaks;

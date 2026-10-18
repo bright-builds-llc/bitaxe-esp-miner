@@ -4,8 +4,8 @@
 // powered down. From the resume on, every path pauses the device. The device, clock and journal
 // are injected, so the sequence is tested without hardware.
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { activeSpanMs, hardwareStopped, judge, liveStop, mining, runDeadlineMs, sampleFromInfo, SAMPLE_INTERVAL_MS,
-  SOAKS, START_ALLOWANCE_MS, STOP_ALLOWANCE_MS } from "./judge.mjs";
+import { activeSpanMs, hardwareStopped, judge, liveStop, mining, miningLog, runDeadlineMs, sampleFromInfo,
+  SAMPLE_INTERVAL_MS, SOAKS, START_ALLOWANCE_MS, STOP_ALLOWANCE_MS } from "./judge.mjs";
 import { poolSaved } from "./pool.mjs";
 
 /** The device stays unreachable this long before the soak stops. */
@@ -54,13 +54,19 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
 /** Samples until the soak's continuous mining time (null) or a stop code. */
 async function observe({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak }) {
   let maybeLastReachedAt = resumedAt;
+  // A tolerant soak waits out a recovering outage up to its bound; a strict one stops sooner.
+  const unreachableStopMs = soak.maybeMaximumOutageMs ?? UNREACHABLE_STOP_MS;
   for (;;) {
     await sleep(SAMPLE_INTERVAL_MS);
     if (isInterrupted()) return "soak_interrupted";
     if (now() - resumedAt > runDeadlineMs(soak)) return "soak_deadline";
     let info;
     try { info = await client.info(); } catch {
-      if (now() - maybeLastReachedAt > UNREACHABLE_STOP_MS) return "soak_device_unreachable";
+      if (now() - maybeLastReachedAt > unreachableStopMs) return "soak_device_unreachable";
+      // An outage keeps counting while the device cannot be reached.
+      const maybeLastMiningAtMs = miningLog(samples).maybeLastMiningAtMs;
+      if (soak.maybeMaximumOutageMs !== null && maybeLastMiningAtMs !== null &&
+        now() - maybeLastMiningAtMs > soak.maybeMaximumOutageMs) return "soak_outage_unrecovered";
       continue;
     }
     maybeLastReachedAt = now();
@@ -71,7 +77,15 @@ async function observe({ client, baseline, samples, resumedAt, now, sleep, note,
     const maybeStop = liveStop(sample, baseline, maybePrevious);
     if (maybeStop !== null) return maybeStop;
     if (!samples.some(mining) && sample.atMs - resumedAt > START_ALLOWANCE_MS) return "soak_mining_not_started";
-    if (activeSpanMs(samples) >= soak.activeMs) return null;
+    if (soak.maybeMaximumOutageMs === null) {
+      if (activeSpanMs(samples) >= soak.activeMs) return null;
+      continue;
+    }
+    const log = miningLog(samples);
+    if (log.maybeLastMiningAtMs !== null && sample.atMs - log.maybeLastMiningAtMs > soak.maybeMaximumOutageMs) {
+      return "soak_outage_unrecovered";
+    }
+    if (log.activeMs >= soak.activeMs) return null;
   }
 }
 

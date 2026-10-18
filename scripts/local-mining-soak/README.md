@@ -4,8 +4,10 @@
 Ultra 205 (ADR-0038 task 6). Each soak needs its own exact enable line,
 `Ultra 205 local mining soak <id> hardware: enabled.`, in the active
 `task-local-mining-evidence-soaks` block. `--soak` at preflight chooses it:
-- `001` mines 30 minutes;
-- `002` mines 2 hours and must show a nonzero hashrate.
+- `001` mines 30 continuous minutes;
+- `002` accumulates 2 hours of mining within 2 h 30 min and must show a
+  nonzero hashrate. It tolerates outages the device recovers from on its
+  own, up to 60 s each, and counts them.
 
 There is no Gate lease. The device mines the pool saved in its NVS once the
 operator resumes it, and stops when paused. The soak:
@@ -17,8 +19,8 @@ operator resumes it, and stops when paused. The soak:
 3. saves the owner's pool from the ignored `pool-credentials.json` as the
    primary pool (owner decision 2026-10-17: keep it);
 4. resumes, samples `/api/system/info` every 2 s, and stops at the soak's
-   continuous mining time, at the first live stop, or at the run deadline
-   (the soak's time plus 10 minutes);
+   mining time, at the first live stop, or at the run deadline (soak 001:
+   40 minutes; soak 002: 150 minutes);
 5. pauses on every path from the resume on, then waits up to 180 s for the
    ordered safe-stop: two samples in a row with fresh input power at most
    5 W, both journaled. Then it judges.
