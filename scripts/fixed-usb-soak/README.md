@@ -77,6 +77,37 @@ archived. After this task is archived the command refuses
 again; a later soak needs a new active task with its own contract and the
 enabling line, with `SOAK_TASK` in `contract.mjs` pointed at it.
 
+## Interrupting local mining
+
+`preflight --interrupt-local-mining` freezes a soak whose lease interrupts
+local mining (ADR-0038 task 6). It pairs with `just local-mining-soak` lease
+check `lease-001`, which watches this soak's `R/result.json`. It refuses live
+changes and other profiles. It needs its own enable line,
+`Ultra 205 lease interruption check hardware: enabled.`, in the active
+`task-local-mining-evidence-soaks` block; the standard line never enables
+it, and its line never enables a standard soak.
+
+- **The first Connect is refused.** The device mines locally, so it ignores
+  the Hello and stops local mining through its ordered safe-stop. The page
+  fails with `connect_failed` at stage `hello`. Once the ASIC is down, reload
+  and Connect again within the 5-minute hold. The judge excuses those
+  refusals only before the observer starts, and requires at least one
+  (`interrupt_refusal_unobserved`).
+- **Reload quickly.** After `startObserver()`, reload and Connect within
+  15 s. A longer quiet link lets local mining resume. The idle proof then
+  fails, and the next refused Hello comes after the observer started, so it
+  counts as `browser_failure`. That attempt cannot recover: no grant is
+  signed, and the local soak pauses at its deadline.
+- **Shares.** The device keeps the local run's share counters until the
+  lease's pool session restarts them. The window judge
+  (`--local-mining-interrupt`) allows one restart to zero, while not mining
+  and before the work gate opens, and counts shares from it.
+- **Final state.** The run intent survives the lease, so the last sample of
+  each transport must show `miningPaused` false, not mining, and `mineonboot`
+  off (`final_state_not_resumable` otherwise). Local mining resumes 15 s
+  after the link goes quiet, after the observer stops; the local soak judges
+  that.
+
 ## Sequence
 
 `P` is a new mode-0700 ignored parent and `R=P/attempt-NNN` must not exist yet.
@@ -153,7 +184,8 @@ mode 0600; preflight and finish refuse other modes.
   WebSocket gap over 5 s.
 - Each transport sees mining stopped by the end of the ordered safe-stop
   (160 s after the gate closes), and shows the paused baseline after
-  restoration. The legacy 10 s rule measured from a serial marker that no
+  restoration (with `--interrupt-local-mining`, the run intent instead). The
+  legacy 10 s rule measured from a serial marker that no
   longer reaches USB, and safe-stop now includes an up-to-120-s cooling proof.
 
 The journal and records hold no pool, endpoint or credential values. The result

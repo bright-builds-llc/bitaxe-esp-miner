@@ -9,6 +9,9 @@ use std::time::{Duration, Instant};
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
+#[cfg(test)]
+#[path = "soak/interrupt_tests.rs"]
+mod interrupt_tests;
 pub mod judge;
 mod observer;
 pub mod sample;
@@ -95,8 +98,14 @@ struct ClockRecord {
 }
 
 fn judge_files(arguments: &[String]) -> Result<judge::SoakJudgement, &'static str> {
-    let [journal, clock, source, elf] = arguments else {
-        return Err("invalid_arguments");
+    let (journal, clock, source, elf, baseline) = match arguments {
+        [journal, clock, source, elf] => {
+            (journal, clock, source, elf, judge::FinalBaseline::Paused)
+        }
+        [journal, clock, source, elf, flag] if flag == "--local-mining-interrupt" => {
+            (journal, clock, source, elf, judge::FinalBaseline::Resumable)
+        }
+        _ => return Err("invalid_arguments"),
     };
     let base = std::env::var_os("BUILD_WORKING_DIRECTORY")
         .map(std::path::PathBuf::from)
@@ -120,11 +129,17 @@ fn judge_files(arguments: &[String]) -> Result<judge::SoakJudgement, &'static st
         source_commit: source.clone(),
         app_elf_sha256: elf.clone(),
     };
-    Ok(judge::judge(&lines, &clock.observations, &expected))
+    Ok(judge::judge_with(
+        &lines,
+        &clock.observations,
+        &expected,
+        baseline,
+    ))
 }
 
-/// `soak-judge <journal> <gate-clock> <expected-source-commit> <expected-app-elf-sha256>`: prints one
-/// numeric JSON judgement; exit 0 only when every window and terminal criterion passes.
+/// `soak-judge <journal> <gate-clock> <expected-source-commit> <expected-app-elf-sha256>
+/// [--local-mining-interrupt]`: prints one numeric JSON judgement; exit 0 only when every window and
+/// terminal criterion passes. The flag judges a lease that interrupted local mining (ADR-0038).
 pub fn run_judge() -> i32 {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     match judge_files(&arguments) {

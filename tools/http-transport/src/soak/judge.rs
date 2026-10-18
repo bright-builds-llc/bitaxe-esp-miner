@@ -42,6 +42,17 @@ pub struct ClockObservation {
     pub active_ms: u64,
 }
 
+/// What the device returns to after the lease (ADR-0038).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FinalBaseline {
+    /// The paused baseline: the device was paused before the lease.
+    Paused,
+    /// A lease that interrupted local mining: the operator's run intent survives, and local mining
+    /// resumes once the link has been quiet for 15 s, after the observer stops. The handover may
+    /// restart the share counters once, when the lease's pool session begins.
+    Resumable,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExpectedPackage {
@@ -191,21 +202,40 @@ fn max_gap(samples: &[Timed<'_>], transport: SoakTransport) -> u64 {
         .unwrap_or(u64::MAX)
 }
 
-fn counters_regress(samples: &[Timed<'_>], transport: SoakTransport) -> bool {
-    let values: Vec<_> = samples
+/// A share counter restart from the interrupted local run to the lease's pool session: both counters
+/// drop to zero while the device is not mining, before the work gate opens.
+fn handover_restart(earlier: &Timed<'_>, later: &Timed<'_>) -> bool {
+    later.sample.shares_accepted == 0
+        && later.sample.shares_rejected == 0
+        && !earlier.sample.mining_active
+        && later.active_ms < 0
+}
+
+fn counters_regress(
+    samples: &[Timed<'_>],
+    transport: SoakTransport,
+    baseline: FinalBaseline,
+) -> bool {
+    let values: Vec<&Timed<'_>> = samples
         .iter()
         .filter(|value| value.transport == transport)
-        .map(|value| {
-            (
-                value.sample.shares_accepted,
-                value.sample.shares_rejected,
-                value.sample.revision,
-            )
-        })
         .collect();
-    values
-        .windows(2)
-        .any(|pair| pair[1].0 < pair[0].0 || pair[1].1 < pair[0].1 || pair[1].2 < pair[0].2)
+    let mut restarts = 0;
+    values.windows(2).any(|pair| {
+        let (earlier, later) = (pair[0].sample, pair[1].sample);
+        if later.revision < earlier.revision {
+            return true;
+        }
+        let shares_drop = later.shares_accepted < earlier.shares_accepted
+            || later.shares_rejected < earlier.shares_rejected;
+        if !shares_drop {
+            return false;
+        }
+        restarts += 1;
+        !(baseline == FinalBaseline::Resumable
+            && restarts == 1
+            && handover_restart(pair[0], pair[1]))
+    })
 }
 
 /// Mining observed stopped within `TERMINAL_WINDOW_MS` of the gate closing.
@@ -219,15 +249,19 @@ fn terminal_confirmed(samples: &[Timed<'_>], transport: SoakTransport) -> bool {
     })
 }
 
-/// The last sample after restoration shows the paused baseline with `mineonboot` off.
-fn final_paused(samples: &[Timed<'_>], transport: SoakTransport) -> bool {
+/// The last sample after restoration shows the expected baseline, not mining, with `mineonboot` off.
+fn final_baseline(
+    samples: &[Timed<'_>],
+    transport: SoakTransport,
+    baseline: FinalBaseline,
+) -> bool {
     samples
         .iter()
         .rev()
         .find(|value| value.transport == transport)
         .is_some_and(|value| {
             value.active_ms >= i128::from(WORK_GATE_MS)
-                && value.sample.mining_paused
+                && value.sample.mining_paused == (baseline == FinalBaseline::Paused)
                 && !value.sample.mining_active
                 && !value.sample.start_mining_on_boot
         })
@@ -244,12 +278,20 @@ fn identity_consistent(samples: &[Timed<'_>], expected: &ExpectedPackage) -> boo
         && first.sample.app_elf_sha256 == expected.app_elf_sha256
 }
 
-fn share_deltas(samples: &[Timed<'_>]) -> (u64, u64) {
-    let http: Vec<&SoakSample> = samples
+/// Shares over the soak's HTTP samples; after a handover restart, from the restarted counters.
+fn share_deltas(samples: &[Timed<'_>], baseline: FinalBaseline) -> (u64, u64) {
+    let http: Vec<&Timed<'_>> = samples
         .iter()
         .filter(|value| value.transport == SoakTransport::Http)
-        .map(|value| value.sample)
         .collect();
+    let start = match baseline {
+        FinalBaseline::Paused => 0,
+        FinalBaseline::Resumable => http
+            .windows(2)
+            .position(|pair| handover_restart(pair[0], pair[1]))
+            .map_or(0, |index| index + 1),
+    };
+    let http: Vec<&SoakSample> = http[start..].iter().map(|value| value.sample).collect();
     match (http.first(), http.last()) {
         (Some(first), Some(last)) => (
             last.shares_accepted.saturating_sub(first.shares_accepted),
@@ -273,13 +315,24 @@ fn reconnects(lines: &[JournalLine]) -> u64 {
         .count() as u64
 }
 
-/// Judge one soak. Every failure is a closed category; the earliest is not privileged here because
-/// the supervisor preserves the earliest typed failure separately.
+/// Judge one soak that returns to the paused baseline.
 #[must_use]
 pub fn judge(
     lines: &[JournalLine],
     observations: &[ClockObservation],
     expected: &ExpectedPackage,
+) -> SoakJudgement {
+    judge_with(lines, observations, expected, FinalBaseline::Paused)
+}
+
+/// Judge one soak. Every failure is a closed category; the earliest is not privileged here because
+/// the supervisor preserves the earliest typed failure separately.
+#[must_use]
+pub fn judge_with(
+    lines: &[JournalLine],
+    observations: &[ClockObservation],
+    expected: &ExpectedPackage,
+    baseline: FinalBaseline,
 ) -> SoakJudgement {
     let mut failures = Vec::new();
     if lines
@@ -295,7 +348,7 @@ pub fn judge(
     let samples = timed(lines, origin);
     let margin = residual.saturating_add(EDGE_GUARD_MS);
     let windows = windows(&samples, margin);
-    let (accepted, rejected) = share_deltas(&samples);
+    let (accepted, rejected) = share_deltas(&samples, baseline);
     let http: Vec<&Timed<'_>> = samples
         .iter()
         .filter(|value| value.transport == SoakTransport::Http)
@@ -317,8 +370,8 @@ pub fn judge(
         rejected_shares: rejected,
         terminal_http_confirmed: terminal_confirmed(&samples, SoakTransport::Http),
         terminal_websocket_confirmed: terminal_confirmed(&samples, SoakTransport::Websocket),
-        final_http_paused: final_paused(&samples, SoakTransport::Http),
-        final_websocket_paused: final_paused(&samples, SoakTransport::Websocket),
+        final_http_paused: final_baseline(&samples, SoakTransport::Http, baseline),
+        final_websocket_paused: final_baseline(&samples, SoakTransport::Websocket, baseline),
         pool_settings_retained: pool_retained,
         windows,
     };
@@ -340,8 +393,8 @@ pub fn judge(
             "websocket_gap_exceeded",
         ),
         (
-            counters_regress(&samples, SoakTransport::Http)
-                || counters_regress(&samples, SoakTransport::Websocket),
+            counters_regress(&samples, SoakTransport::Http, baseline)
+                || counters_regress(&samples, SoakTransport::Websocket, baseline),
             "counter_regressed",
         ),
         (accepted == 0, "no_accepted_share"),
@@ -356,7 +409,10 @@ pub fn judge(
         (!pool_retained, "pool_settings_changed"),
         (
             !judgement.final_http_paused || !judgement.final_websocket_paused,
-            "final_state_not_paused",
+            match baseline {
+                FinalBaseline::Paused => "final_state_not_paused",
+                FinalBaseline::Resumable => "final_state_not_resumable",
+            },
         ),
     ] {
         if failed {

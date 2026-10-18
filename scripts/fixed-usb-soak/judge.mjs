@@ -25,7 +25,16 @@ export function clockObservations(records) {
     .map((record) => ({ observedUnixMs: record.receivedAtUnixMs, activeMs: record.state.qualification.active_ms }));
 }
 
-function terminalFailures(records, ordinal) {
+/**
+ * A Connect refused while the device mined locally (ADR-0038): the firmware ignores the Hello and
+ * stops local mining, so the Gate's Hello times out. It counts only before the observer started.
+ */
+export function refusedConnect(record, maybeObserverStartSequence) {
+  return maybeObserverStartSequence !== undefined && record.sequence <= maybeObserverStartSequence &&
+    record.state.failure === "connect_failed" && record.state.admissionFailureStage === "hello";
+}
+
+function terminalFailures(records, ordinal, maybeObserverStartSequence) {
   const soakSamples = records.map((record) => record.state.qualification).filter((q) => q?.soak?.ordinal === ordinal);
   const last = soakSamples.at(-1);
   if (!last) return ["soak_never_observed"];
@@ -45,7 +54,7 @@ function terminalFailures(records, ordinal) {
   check(soakSamples.some((q) => q.revocation_reason !== "none" && q.revocation_reason !== "lease_or_budget_expired"), "soak_revoked");
   check(records.some((record) => record.state.running && record.state.qualification && unsafeSample(record.state.qualification)), "unsafe_sample");
   check(records.some((record) => record.state.renewalsConfirmed > SOAK_RENEWALS), "renewal_bound");
-  check(records.some((record) => record.state.failure !== undefined), "browser_failure");
+  check(records.some((record) => record.state.failure !== undefined && !refusedConnect(record, maybeObserverStartSequence)), "browser_failure");
   return failures;
 }
 
@@ -53,7 +62,8 @@ function terminalFailures(records, ordinal) {
  * Judge one completed soak. `windowJudgement` is the parsed `soak-judge` output, or null when it could not
  * run. The result is `passed` only when every terminal, ledger, cleanup and window criterion holds.
  */
-export function judgeSoak({ context, records, issuance, ledgerAfter, finalState, windowJudgement, observerClean, deviceSettings, maybeLiveChanges, maybeRestore }) {
+export function judgeSoak({ context, records, issuance, ledgerAfter, finalState, windowJudgement, observerClean, deviceSettings, maybeLiveChanges, maybeRestore,
+  maybeObserverStartSequence }) {
   const failures = [];
   const check = (failed, category) => { if (failed) failures.push(category); };
   // ADR-0037: the device settings are the profile; the soak must have recorded the ones it set.
@@ -69,7 +79,11 @@ export function judgeSoak({ context, records, issuance, ledgerAfter, finalState,
   const before = issuance.ledger_before;
   check(!(ledgerAfter?.schema === "worker-soak-ledger-v2" && ledgerAfter.pending === false && ledgerAfter.next_ordinal === issuance.ordinal + 1 &&
     ledgerAfter.total_charged_ms === before.total_charged_ms + SOAK_MAXIMUM_ACTIVE_MS), "soak_ledger_not_charged_once");
-  failures.push(...terminalFailures(records, issuance.ordinal));
+  // Only an interrupting soak may excuse refused Connects, and it must show at least one.
+  const interrupts = context.local_mining_interrupt === true;
+  const refused = interrupts ? records.filter((record) => refusedConnect(record, maybeObserverStartSequence)).length : 0;
+  check(interrupts && refused === 0, "interrupt_refusal_unobserved");
+  failures.push(...terminalFailures(records, issuance.ordinal, interrupts ? maybeObserverStartSequence : undefined));
   check(windowJudgement === null, "window_judge_unavailable");
   check(!observerClean, "observer_unclean");
   if (windowJudgement && !windowJudgement.passed) failures.push(...windowJudgement.failures.map((failure) => `window_${failure}`));
@@ -82,5 +96,6 @@ export function judgeSoak({ context, records, issuance, ledgerAfter, finalState,
   return { schema: "fixed-usb-soak-result-v1", result: failures.length === 0 ? "passed" : "unverified", ordinal: issuance.ordinal,
     cumulative_charged_ms: ledgerAfter?.total_charged_ms ?? null, cleanup_confirmed: cleanupConfirmed, failures,
     window_judgement: windowJudgement, ...(planned ? { live_changes: maybeLiveChanges?.segments ?? [] } : {}),
+    ...(interrupts ? { refused_connect_records: refused } : {}),
     ...(maybeRestore ? { settings_restore: { reason: maybeRestore.reason, outcome: maybeRestore.failure ?? "restored" } } : {}), parity_promotion: false };
 }

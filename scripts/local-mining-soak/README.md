@@ -8,6 +8,10 @@ Ultra 205 (ADR-0038 task 6). Each soak needs its own exact enable line,
 - `002` accumulates 2 hours of mining within 2 h 30 min and must show a
   nonzero hashrate. It tolerates outages the device recovers from on its
   own, up to 60 s each, and counts them.
+- `lease-001` is the lease interruption check. Its enable line is the Gate
+  soak's interruption line, `Ultra 205 lease interruption check hardware:
+  enabled.`, so one line enables both halves. See [Lease interruption
+  check](#lease-interruption-check).
 
 There is no Gate lease. The device mines the pool saved in its NVS once the
 operator resumes it, and stops when paused. The soak:
@@ -51,6 +55,40 @@ with `umask 077`:
    `caffeinate` keeps the host awake, because a sleeping host stops watching a
    mining device. `-s` needs AC power, so keep the Mac on AC power and the lid
    open.
+
+## Lease interruption check
+
+`--soak lease-001 --lease-root R` pairs this soak with one
+`just ultra205-soak --interrupt-local-mining` run whose private root is `R`.
+`R` must not exist at this preflight. Over HTTP a lease's mining looks like
+local mining, so the check follows the order of events, journaling each
+phase:
+
+1. **before**: 5 minutes of local mining (`lease_ready`).
+2. **interrupt**: the first Gate Connect is refused, and its Hello stops local
+   mining (`local_stopped`). The Gate soak then runs its lease. The phase
+   ends when `R/result.json` exists (`lease_ended`, with the Gate soak's
+   result and closed failure categories). If local mining never stopped,
+   the check stops at once.
+3. **restore**: local mining must be back within 3 minutes of
+   `lease_ended` (`local_restored`): 15 s after the link goes quiet, plus the
+   pool probe and the ASIC's start. The clock does not wait on the operator:
+   `submitSoakCompletion()` closes the link before the Gate soak writes its
+   result.
+4. **after**: 5 more minutes of local mining, then the pause.
+
+Outages up to 60 s are tolerated in the local phases only; the lease's own
+idle time is never an outage. The hashrate and share proofs come from the
+local phases only, because the lease's mining reads the same over HTTP; the
+Gate soak judges the lease's own. `local_stopped` is the first idle sample
+after `lease_ready`; the Gate soak's refused Connect shows its cause.
+
+A pause sent while the lease runs (at the deadline, on an unreachable device
+or an interruption) cannot be confirmed, because the lease's session shows
+the run intent. The requested pause still holds, and the device stops when
+the lease ends; run the recovery `pause` to confirm it. The run deadline is 90 minutes. The verdict
+passes only when every phase happened in order, the Gate soak `passed`, and
+every soak 002 criterion holds over the whole run.
 
 `P/attempt-NNN` holds `context.json`, `journal.ndjson` and `result.json`.
 These hold metadata only: the endpoint stays in `P/endpoint`, and no pool

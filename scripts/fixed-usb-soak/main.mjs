@@ -17,7 +17,8 @@ const string = { type: "string" };
 const FINAL_DETECTOR_FRESH_MS = 300000;
 const ACTIONS = {
   preflight: { options: { "private-root": string, "firmware-root": string, "gate-root": string, "firmware-commit": string, "gate-commit": string,
-    manifest: string, "authority-directory": string, detector: string, bun: string, "live-changes": { type: "boolean" }, "bap-changes": { type: "boolean" }, profile: string },
+    manifest: string, "authority-directory": string, detector: string, bun: string, "live-changes": { type: "boolean" }, "bap-changes": { type: "boolean" }, profile: string,
+    "interrupt-local-mining": { type: "boolean" } },
   required: ["private-root", "firmware-root", "gate-root", "firmware-commit", "gate-commit", "manifest", "authority-directory", "detector"] },
   serve: { options: { "private-root": string, "authority-directory": string, "pool-credentials": string, "bap-port": string, bun: string },
     required: ["private-root", "authority-directory", "pool-credentials"] },
@@ -37,6 +38,7 @@ export function argumentsFor(argv) {
     firmwareCommit: values["firmware-commit"], gateCommit: values["gate-commit"], manifest: path("manifest"), authorityDirectory: path("authority-directory"),
     detector: path("detector"), poolCredentials: path("pool-credentials"), bun: values.bun ?? "bun",
     liveChanges: values["live-changes"] === true, bapChanges: values["bap-changes"] === true, profile: values.profile,
+    interruptLocalMining: values["interrupt-local-mining"] === true,
     bapPort: values["bap-port"] } };
 }
 

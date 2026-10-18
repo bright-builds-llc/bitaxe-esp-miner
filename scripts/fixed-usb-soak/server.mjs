@@ -58,6 +58,8 @@ export async function createSoakSupervisor(options, operations = {}) {
     typeof context.bap_client?.path === "string"), "soak_bap_port");
   const runChange = operations.runBapChange ?? runBapChange;
   let maybeDeviceEndpoint, liveSent = 0, liveInFlight = Promise.resolve();
+  // Records up to this sequence came before the observer started: an interrupting soak's refused Connects.
+  let maybeObserverStartSequence;
   const liveRecords = [];
 
   function challengeFor(kind) {
@@ -206,7 +208,8 @@ export async function createSoakSupervisor(options, operations = {}) {
     if (await fileDigest(context.soak_judge.path).catch(() => null) !== context.soak_judge.sha256) return null;
     try {
       const { stdout } = await promisify(execFile)(context.soak_judge.path,
-        [observer.journalPath, clockPath, context.firmware_commit, context.app_elf_sha256], { env: {}, maxBuffer: 1048576 });
+        [observer.journalPath, clockPath, context.firmware_commit, context.app_elf_sha256,
+          ...(context.local_mining_interrupt === true ? ["--local-mining-interrupt"] : [])], { env: {}, maxBuffer: 1048576 });
       return JSON.parse(stdout);
     } catch (error) {
       // The judge exits 1 for a failed soak and still prints its numeric judgement.
@@ -230,7 +233,7 @@ export async function createSoakSupervisor(options, operations = {}) {
     const maybeLiveChanges = await judgeLive();
     const maybeRestore = await restoreSettings(maybeLiveChanges);
     const result = judgeSoak({ context, records, issuance, ledgerAfter: input.ledger_after, finalState: input.final_state, windowJudgement, observerClean,
-      deviceSettings, maybeLiveChanges, maybeRestore });
+      deviceSettings, maybeLiveChanges, maybeRestore, maybeObserverStartSequence });
     await writeNew(resolve(root, "result.json"), { result, sha256: digest(JSON.stringify(result)) });
     return { result: result.result, ordinal: result.ordinal, cumulative_charged_ms: result.cumulative_charged_ms, cleanup_confirmed: result.cleanup_confirmed };
   }
@@ -269,6 +272,7 @@ export async function createSoakSupervisor(options, operations = {}) {
       const settings = await apply({ ipv4: endpoint.ipv4, httpPort: endpoint.httpPort }, profileTarget);
       await writeNew(resolve(root, "device-settings.json"), { ...settings, context_sha256: digest(JSON.stringify(context)) });
       settingsBaselineId = baselineId;
+      maybeObserverStartSequence ??= records.length;
       maybeDeviceEndpoint = { ipv4: endpoint.ipv4, httpPort: endpoint.httpPort };
       return observer.start({ ipv4: endpoint.ipv4, httpPort: endpoint.httpPort });
     },

@@ -8,12 +8,18 @@
  * - Soak 002 accumulates 2 hours of mining within 2 h 30 min, and must show a nonzero hashrate.
  *   It tolerates outages the device recovers from on its own (`maybeMaximumOutageMs`), because
  *   real networks drop: attempt 001 met two ~19 s network outages, and mining resumed each time.
+ * - Lease check 001 (`lease.mjs`) mines locally for 5 minutes, then a Gate lease interrupts local
+ *   mining. Local mining must come back within 3 minutes of the lease's end and mine 5 more
+ *   minutes. Outages are tolerated as in soak 002, in the local phases only.
  */
 export const SOAKS = Object.freeze({
   "001": Object.freeze({ id: "001", activeMs: 30 * 60_000, requireHashrate: false, maybeMaximumOutageMs: null,
     maybeDeadlineMs: null }),
   "002": Object.freeze({ id: "002", activeMs: 120 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
     maybeDeadlineMs: 150 * 60_000 }),
+  "lease-001": Object.freeze({ id: "lease-001", kind: "lease", activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true,
+    maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 90 * 60_000, restoreBoundMs: 180_000,
+    enableLine: "Ultra 205 lease interruption check hardware: enabled." }),
 });
 export const SAMPLE_INTERVAL_MS = 2000;
 /** A longer gap between successive samples breaks continuity. */
@@ -175,16 +181,7 @@ export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["
   const accepted = increases(samples, "sharesAccepted");
   const rejected = increases(samples, "sharesRejected");
   if (accepted < 1) fail("soak_no_accepted_share");
-  if (!maybeFinal) fail("soak_final_state_missing");
-  else {
-    if (maybeFinal.bootSession !== baseline.bootSession) fail("soak_device_reset");
-    if (!hardwareStopped(maybeFinal)) fail("soak_not_stopped_after");
-    if (maybeFinal.startMiningOnBoot) fail("soak_mine_on_boot_enabled");
-    if (maybeFinal.pauseReason !== null) fail("soak_device_paused_itself");
-  }
-  const maximum = (key) => active.reduce((top, sample) => (sample[key] !== null && sample[key] > top ? sample[key] : top), -Infinity);
-  const minimum = (key) => active.reduce((low, sample) => (sample[key] !== null && sample[key] < low ? sample[key] : low), Infinity);
-  const finite = (value) => (Number.isFinite(value) ? value : null);
+  finalFailures(baseline, maybeFinal).forEach(fail);
   return {
     schema: "local-mining-soak-result-v1",
     soak: soak.id,
@@ -195,21 +192,50 @@ export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["
       accumulated_active_ms: log.activeMs,
       outage_count: log.outagesMs.length + (log.maybeOpenOutageMs === null ? 0 : 1),
       maximum_outage_ms: Math.max(0, ...log.outagesMs, log.maybeOpenOutageMs ?? 0),
-      minimum_wifi_rssi_dbm: finite(samples.reduce((low, sample) => (sample.wifiRssi !== null && sample.wifiRssi < low ? sample.wifiRssi : low), Infinity)),
-      wifi_disconnected_samples: samples.filter((sample) => !sample.wifiConnected).length,
+      ...wifiMetrics(samples),
       active_samples: active.length,
       samples: samples.length,
       maximum_sample_gap_ms: maximumGapMs,
       shares_accepted: accepted,
       shares_rejected: rejected,
-      maximum_chip_temp_c: finite(maximum("chipTempC")),
-      maximum_vr_temp_c: finite(maximum("vrTempC")),
-      maximum_power_w: finite(maximum("powerW")),
-      minimum_input_mv: finite(minimum("inputMv")),
-      maximum_input_mv: finite(maximum("inputMv")),
-      minimum_fan_rpm: finite(minimum("fanRpm")),
-      minimum_hashrate_ghs: finite(minimum("hashRate")),
-      maximum_hashrate_ghs: finite(maximum("hashRate")),
+      ...limitMetrics(active),
     },
+  };
+}
+
+/** The final sample's failures: the same boot, the ASIC powered down, mining on boot off, no pause reason. */
+export function finalFailures(baseline, maybeFinal) {
+  if (!maybeFinal) return ["soak_final_state_missing"];
+  return [
+    maybeFinal.bootSession !== baseline.bootSession && "soak_device_reset",
+    !hardwareStopped(maybeFinal) && "soak_not_stopped_after",
+    maybeFinal.startMiningOnBoot && "soak_mine_on_boot_enabled",
+    maybeFinal.pauseReason !== null && "soak_device_paused_itself",
+  ].filter(Boolean);
+}
+
+const finite = (value) => (Number.isFinite(value) ? value : null);
+
+/** The extremes of each limited reading over the mining samples. */
+export function limitMetrics(active) {
+  const maximum = (key) => active.reduce((top, sample) => (sample[key] !== null && sample[key] > top ? sample[key] : top), -Infinity);
+  const minimum = (key) => active.reduce((low, sample) => (sample[key] !== null && sample[key] < low ? sample[key] : low), Infinity);
+  return {
+    maximum_chip_temp_c: finite(maximum("chipTempC")),
+    maximum_vr_temp_c: finite(maximum("vrTempC")),
+    maximum_power_w: finite(maximum("powerW")),
+    minimum_input_mv: finite(minimum("inputMv")),
+    maximum_input_mv: finite(maximum("inputMv")),
+    minimum_fan_rpm: finite(minimum("fanRpm")),
+    minimum_hashrate_ghs: finite(minimum("hashRate")),
+    maximum_hashrate_ghs: finite(maximum("hashRate")),
+  };
+}
+
+/** Wi-Fi state over every sample, to diagnose outages. */
+export function wifiMetrics(samples) {
+  return {
+    minimum_wifi_rssi_dbm: finite(samples.reduce((low, sample) => (sample.wifiRssi !== null && sample.wifiRssi < low ? sample.wifiRssi : low), Infinity)),
+    wifi_disconnected_samples: samples.filter((sample) => !sample.wifiConnected).length,
   };
 }

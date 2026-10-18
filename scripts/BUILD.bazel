@@ -1928,6 +1928,7 @@ js_binary(
 ) for name in [
     "bap-changes",
     "device-settings",
+    "interrupt",
     "live-changes",
     "server",
     "soak",
@@ -1955,6 +1956,7 @@ js_binary(
     entry_point = "local-mining-soak/%s.test.mjs" % name,
 ) for name in [
     "judge",
+    "lease",
     "main",
     "pool",
     "run",

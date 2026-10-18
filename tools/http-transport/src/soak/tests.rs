@@ -11,7 +11,7 @@ use super::judge::{
 use super::sample::{SoakSample, SoakTransport};
 use super::*;
 
-const ORIGIN: u64 = 1_000_000;
+pub(super) const ORIGIN: u64 = 1_000_000;
 
 fn sample(active_ms: i64, sequence: u64) -> SoakSample {
     let active = (0..WORK_GATE_MS as i64).contains(&active_ms);
@@ -65,7 +65,7 @@ fn line(transport: SoakTransport, active_ms: i64, sample: SoakSample) -> Journal
 }
 
 /// A complete soak: WebSocket every second, HTTP every two seconds, from 10 s before work to 50 s after.
-fn complete() -> Vec<JournalLine> {
+pub(super) fn complete() -> Vec<JournalLine> {
     let mut lines = Vec::new();
     for step in -10..=650_i64 {
         let active_ms = step * 1_000;
@@ -84,7 +84,7 @@ fn complete() -> Vec<JournalLine> {
     lines
 }
 
-fn clock() -> Vec<ClockObservation> {
+pub(super) fn clock() -> Vec<ClockObservation> {
     [(10_000, 10_000), (300_400, 300_000), (590_200, 590_000)]
         .map(|(after, active_ms)| ClockObservation {
             observed_unix_ms: ORIGIN + after,
@@ -93,7 +93,7 @@ fn clock() -> Vec<ClockObservation> {
         .to_vec()
 }
 
-fn expected() -> ExpectedPackage {
+pub(super) fn expected() -> ExpectedPackage {
     ExpectedPackage {
         source_commit: "a".repeat(40),
         app_elf_sha256: "b".repeat(64),

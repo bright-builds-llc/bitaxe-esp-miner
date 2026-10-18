@@ -38,7 +38,7 @@ const PROFILES = { "upstream-default": { frequency: 485, coreVoltage: 1200, auto
   "upstream-default-bap": { frequency: 485, coreVoltage: 1200, autofanspeed: 1, manualFanSpeed: 100 } };
 
 async function supervisor({ idlePassed = true, liveChanges = [], failLive = false, profile = "upstream-default", settings = PROFILES[profile],
-  livePlan = null, bapPort = undefined, failBap = false, clientDrift = false } = {}) {
+  livePlan = null, bapPort = undefined, failBap = false, clientDrift = false, extraContext = {} } = {}) {
   const root = await realpath(await mkdtemp(resolve(process.env.TEST_TMPDIR ?? tmpdir(), "soak-server-")));
   const firmware = resolve(root, "firmware");
   await mkdir(resolve(firmware, "firmware/bitaxe/bwg"), { recursive: true });
@@ -50,7 +50,7 @@ async function supervisor({ idlePassed = true, liveChanges = [], failLive = fals
   // Completion waits for terminal samples on the clock; tests fast-forward it once the window is done.
   const clock = { now: Date.now(), fastForward: false };
   const server = await createSoakSupervisor({ privateRoot: root, context: { ...context, firmware_root: firmware, live_changes: liveChanges, live_plan: livePlan, device_profile: profile, device_settings: settings,
-    bap_client: { path: client, sha256: clientSha256 } }, bapPort }, {
+    bap_client: { path: client, sha256: clientSha256 }, ...extraContext }, bapPort }, {
     runBapChange: async (binary, port, ops, { allowed }) => {
       bapChanges.push({ binary: binary === client ? "frozen" : binary, port, parameters: ops.map((op) => op.parameter), allowed: allowed() });
       return { results: ops.map((op) => ({ parameter: op.parameter, passed: !failBap })), maybeFailure: failBap ? "bap_operation_failed" : undefined };
@@ -421,4 +421,28 @@ test("a BAP change never runs a client rebuilt after preflight", async (t) => {
   // Assert
   const recorded = JSON.parse(await readFile(resolve(root, "live-change-1.json"), "utf8"));
   assert.deepEqual([recorded.failure, bapChanges.length], ["bap_client_drift", 0]);
+});
+
+test("an interrupting soak excuses a Connect refused before the observer and judges a resumable baseline", async (t) => {
+  // Arrange: a stand-in window judge that echoes its arguments.
+  const judgeRoot = await realpath(await mkdtemp(resolve(process.env.TEST_TMPDIR ?? tmpdir(), "soak-judge-")));
+  const judgePath = resolve(judgeRoot, "soak_judge");
+  const script = '#!/bin/sh\necho "{\\"schema\\":\\"soak-judge-v1\\",\\"passed\\":true,\\"failures\\":[],\\"last\\":\\"${5:-none}\\"}"\n';
+  await writeFile(judgePath, script, { mode: 0o700 });
+  const soakJudge = { path: judgePath, sha256: createHash("sha256").update(script).digest("hex") };
+  const { root, server, call, clock } = await supervisor({ extraContext: { local_mining_interrupt: true, soak_judge: soakJudge } });
+  t.after(() => server.close());
+  await call("/record", { state: { ...state, status: "failed", connected: false, failure: "connect_failed", admissionFailureStage: "hello" } });
+  await reviewed(call);
+  await call("/authorization-context", { controlSessionBindingSha256: binding });
+  await call("/window-artifacts");
+  const { value: completion } = await call("/completion-context", {});
+  clock.fastForward = true;
+  // Act
+  await call("/completion-review", { nonce: completion.nonce, ledger_after: soakLedger, final_state: afterSettings });
+  // Assert
+  const { result } = JSON.parse(await readFile(resolve(root, "result.json"), "utf8"));
+  assert.equal(result.window_judgement.last, "--local-mining-interrupt");
+  assert.equal(result.refused_connect_records, 1);
+  assert.ok(!result.failures.includes("browser_failure") && !result.failures.includes("interrupt_refusal_unobserved"), JSON.stringify(result.failures));
 });

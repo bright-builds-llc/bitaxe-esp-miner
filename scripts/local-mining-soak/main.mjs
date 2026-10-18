@@ -1,8 +1,9 @@
-// `just local-mining-soak preflight|run|pause`: the first local mining soak (ADR-0038 task 6), gated
-// by an exact line in the active task. `pause` is the recovery action: it pauses the device and
-// confirms the ASIC powered down, for a run that died. The station endpoint comes from a completed
-// `just otawww-endpoint` handoff in the same session; the pool from the ignored
-// pool-credentials file, used at run time only.
+// `just local-mining-soak preflight|run|pause`: the local mining soaks and the lease interruption
+// check (ADR-0038 task 6), each gated by an exact line in the active task. `pause` is the recovery
+// action: it pauses the device and confirms the ASIC powered down, for a run that died. The
+// station endpoint comes from a completed `just otawww-endpoint` handoff in the same session; the
+// pool from the ignored pool-credentials file, used at run time only. A lease check watches the
+// `just ultra205-soak --interrupt-local-mining` private root for its result.
 import { mkdir, open, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,18 +17,20 @@ import { SOAKS } from "./judge.mjs";
 
 export const SOAK_TASK = "task-local-mining-evidence-soaks";
 /** Each soak has its own enable line in the active task. */
-export const soakTaskLine = (soakId) => `Ultra 205 local mining soak ${soakId} hardware: enabled.`;
+export const soakTaskLine = (soakId) => SOAKS[soakId]?.enableLine ?? `Ultra 205 local mining soak ${soakId} hardware: enabled.`;
 const CONTEXT_SCHEMA = "local-mining-soak-context-v1";
 /** The endpoint must come from this session: a handoff at most this old. */
 const ENDPOINT_MAXIMUM_AGE_MS = 30 * 60_000;
 const ACTIONS = { preflight: ["--private-root", "--endpoint-root", "--package-manifest", "--pool-credentials", "--soak"],
   run: ["--private-root", "--pool-credentials"], pause: ["--private-root"] };
+/** Options an action accepts but does not require: a lease check names the Gate soak's private root. */
+const OPTIONAL = { preflight: ["--lease-root"], run: [], pause: [] };
 
 function argumentsFor(argv) {
   const [action, ...rest] = argv; requireCondition(Object.hasOwn(ACTIONS, action), "soak_action");
   const options = {};
   for (let index = 0; index < rest.length; index += 2) {
-    requireCondition(ACTIONS[action].includes(rest[index]) && typeof rest[index + 1] === "string" &&
+    requireCondition([...ACTIONS[action], ...OPTIONAL[action]].includes(rest[index]) && typeof rest[index + 1] === "string" &&
       !Object.hasOwn(options, rest[index]), "soak_option");
     options[rest[index]] = rest[index + 1];
   }
@@ -55,6 +58,11 @@ async function preflight(firmwareRoot, root, options) {
   const soakId = options["--soak"];
   requireCondition(Object.hasOwn(SOAKS, soakId), "soak_unknown");
   requireSoakTask(await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8"), soakId);
+  const leases = SOAKS[soakId].kind === "lease";
+  requireCondition(leases === Object.hasOwn(options, "--lease-root"), "soak_lease_root");
+  // The Gate soak's root must not exist yet, so only a result written after this preflight ends the lease phase.
+  const maybeLeaseRoot = leases ? resolve(firmwareRoot, options["--lease-root"]) : null;
+  if (maybeLeaseRoot !== null) { await missing(maybeLeaseRoot); ignored(firmwareRoot, maybeLeaseRoot); }
   await missing(root); await protectedPath(dirname(root), true); ignored(firmwareRoot, root);
   const endpointRoot = resolve(firmwareRoot, options["--endpoint-root"]);
   await privateRoot(endpointRoot);
@@ -70,7 +78,8 @@ async function preflight(firmwareRoot, root, options) {
   await readPoolForSigning(firmwareRoot, resolve(firmwareRoot, options["--pool-credentials"]));
   await mkdir(root, { mode: 0o700 });
   await writeNew(resolve(root, "context.json"), { schema: CONTEXT_SCHEMA, soak: soakId, firmware_commit: manifest.source_commit,
-    app_elf_sha256: manifest.app_elf_sha256, endpoint_root: endpointRoot, boot_ordinal: endpoint.bootOrdinal });
+    app_elf_sha256: manifest.app_elf_sha256, endpoint_root: endpointRoot, boot_ordinal: endpoint.bootOrdinal,
+    ...(maybeLeaseRoot === null ? {} : { lease_root: maybeLeaseRoot }) });
   return { preflight: "passed", device_effects: false };
 }
 
@@ -80,6 +89,9 @@ async function run(firmwareRoot, root, options) {
   requireCondition(Object.hasOwn(SOAKS, context.soak), "soak_unknown");
   requireSoakTask(await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8"), context.soak);
   await missing(resolve(root, "result.json"));
+  const leases = SOAKS[context.soak].kind === "lease";
+  requireCondition(!leases || typeof context.lease_root === "string", "soak_lease_root");
+  if (leases) await missing(resolve(context.lease_root, "result.json"));
   const endpoint = (await proof(context.endpoint_root, "endpoint.private.json")).value;
   const pool = await readPoolForSigning(firmwareRoot, resolve(firmwareRoot, options["--pool-credentials"]));
   const journal = await open(resolve(root, "journal.ndjson"), "wx", 0o600);
@@ -94,7 +106,7 @@ async function run(firmwareRoot, root, options) {
       // Monotonic, so a wall-clock correction never stretches the run deadline.
       now: () => Math.round(performance.now()), sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
       record: (event) => journal.appendFile(`${JSON.stringify(event)}\n`), isInterrupted: () => interrupted,
-      soak: SOAKS[context.soak],
+      soak: SOAKS[context.soak], ...(leases ? { leaseResult: () => readLeaseResult(context.lease_root) } : {}),
     });
     await writeNew(resolve(root, "result.json"), verdict);
     return verdict;
@@ -102,6 +114,18 @@ async function run(firmwareRoot, root, options) {
     await journal.close();
     for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.removeListener(signal, interrupt);
   }
+}
+
+/**
+ * The Gate soak's verdict once its `result.json` exists, else null: only the result and its closed
+ * failure categories. A file still being written reads as absent until the next sample.
+ */
+export async function readLeaseResult(leaseRoot) {
+  let value;
+  try { value = JSON.parse(await readFile(resolve(leaseRoot, "result.json"), "utf8")); } catch { return null; }
+  const verdict = value?.result;
+  if (typeof verdict?.result !== "string" || !Array.isArray(verdict.failures)) return null;
+  return { result: verdict.result, failures: verdict.failures.filter((failure) => /^[a-z0-9_]{1,80}$/u.test(failure)) };
 }
 
 /** Recovery: pause the device a run left mining, and confirm the ASIC powered down. */

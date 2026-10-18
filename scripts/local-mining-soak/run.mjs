@@ -1,19 +1,24 @@
 // One local mining soak against an admitted, paused Ultra 205 (ADR-0038 task 6): confirm the
-// installed identity and the paused baseline, save the owner's pool, resume, observe until 30
-// minutes of continuous mining, a live stop or the run deadline, then pause and confirm the ASIC
-// powered down. From the resume on, every path pauses the device. The device, clock and journal
-// are injected, so the sequence is tested without hardware.
+// installed identity and the paused baseline, save the owner's pool, resume, observe until the
+// soak's mining time (or, for a lease check, its phases), a live stop or the run deadline, then
+// pause and confirm the ASIC powered down. From the resume on, every path pauses the device. The
+// device, clock, journal and lease result are injected, so the sequence is tested without hardware.
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
 import { activeSpanMs, hardwareStopped, judge, liveStop, mining, miningLog, runDeadlineMs, sampleFromInfo,
   SAMPLE_INTERVAL_MS, SOAKS, START_ALLOWANCE_MS, STOP_ALLOWANCE_MS } from "./judge.mjs";
+import { judgeLease, leasePhases } from "./lease.mjs";
 import { poolSaved } from "./pool.mjs";
 
 /** The device stays unreachable this long before the soak stops. */
 export const UNREACHABLE_STOP_MS = 30_000;
 const PAUSE_RESEND_MS = 30_000;
 
-/** Runs the soak; `expected` names the installed firmware and the handed-off boot. */
-export async function runSoak({ client, expected, settings, now, sleep, record, isInterrupted = () => false, soak = SOAKS["001"] }) {
+/**
+ * Runs the soak; `expected` names the installed firmware and the handed-off boot. A lease check
+ * also takes `leaseResult`, which returns the Gate soak's result once it exists, else null.
+ */
+export async function runSoak({ client, expected, settings, now, sleep, record, isInterrupted = () => false, soak = SOAKS["001"],
+  leaseResult = async () => null }) {
   // A journal failure must never stop the pause; it is noted in the verdict instead.
   let journalFailed = false;
   const note = async (event) => { try { await record(event); } catch { journalFailed = true; } };
@@ -33,26 +38,48 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
   await note({ event: "pool_saved" });
 
   const samples = [];
+  const marks = {};
   let maybeStop = null;
   try {
     requireCondition(!isInterrupted(), "soak_interrupted_before_resume");
     const resumedAt = now();
     await client.command("resume");
     await note({ event: "resumed", atMs: resumedAt });
-    maybeStop = await observe({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak });
+    const phases = soak.kind === "lease" ? leasePhases({ soak, samples, resumedAt, marks, note, leaseResult }) : localPhases({ soak, samples, resumedAt });
+    maybeStop = await sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases });
   } catch {
     maybeStop ??= "soak_run_error";
   }
   if (maybeStop !== null) await note({ event: "live_stop", code: maybeStop });
   const maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
-  const verdict = judge({ baseline, samples, maybeFinal, soak,
-    maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) });
+  const judged = { baseline, samples, maybeFinal, soak, maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) };
+  const verdict = soak.kind === "lease" ? judgeLease({ ...judged, marks }) : judge(judged);
   await note({ event: "verdict", result: verdict.result, failures: verdict.failures });
   return verdict;
 }
 
-/** Samples until the soak's continuous mining time (null) or a stop code. */
-async function observe({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak }) {
+/** A plain soak's phases: mine until its mining time, continuous or, if tolerant, accumulated. */
+function localPhases({ soak, samples, resumedAt }) {
+  return {
+    outageSamples: () => samples,
+    onSample(sample) {
+      if (!samples.some(mining) && sample.atMs - resumedAt > START_ALLOWANCE_MS) return "soak_mining_not_started";
+      if (soak.maybeMaximumOutageMs === null) return activeSpanMs(samples) >= soak.activeMs ? null : undefined;
+      const log = miningLog(samples);
+      if (log.maybeLastMiningAtMs !== null && sample.atMs - log.maybeLastMiningAtMs > soak.maybeMaximumOutageMs) {
+        return "soak_outage_unrecovered";
+      }
+      return log.activeMs >= soak.activeMs ? null : undefined;
+    },
+  };
+}
+
+/**
+ * Samples until the phases finish (null) or a stop code. `phases.onSample` returns null when done,
+ * a stop code, or undefined to go on; `phases.outageSamples` names the samples whose outage counts
+ * while the device cannot be reached.
+ */
+async function sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases }) {
   let maybeLastReachedAt = resumedAt;
   // A tolerant soak waits out a recovering outage up to its bound; a strict one stops sooner.
   const unreachableStopMs = soak.maybeMaximumOutageMs ?? UNREACHABLE_STOP_MS;
@@ -64,7 +91,7 @@ async function observe({ client, baseline, samples, resumedAt, now, sleep, note,
     try { info = await client.info(); } catch {
       if (now() - maybeLastReachedAt > unreachableStopMs) return "soak_device_unreachable";
       // An outage keeps counting while the device cannot be reached.
-      const maybeLastMiningAtMs = miningLog(samples).maybeLastMiningAtMs;
+      const maybeLastMiningAtMs = miningLog(phases.outageSamples()).maybeLastMiningAtMs;
       if (soak.maybeMaximumOutageMs !== null && maybeLastMiningAtMs !== null &&
         now() - maybeLastMiningAtMs > soak.maybeMaximumOutageMs) return "soak_outage_unrecovered";
       continue;
@@ -76,16 +103,8 @@ async function observe({ client, baseline, samples, resumedAt, now, sleep, note,
     await note({ event: "sample", sample });
     const maybeStop = liveStop(sample, baseline, maybePrevious);
     if (maybeStop !== null) return maybeStop;
-    if (!samples.some(mining) && sample.atMs - resumedAt > START_ALLOWANCE_MS) return "soak_mining_not_started";
-    if (soak.maybeMaximumOutageMs === null) {
-      if (activeSpanMs(samples) >= soak.activeMs) return null;
-      continue;
-    }
-    const log = miningLog(samples);
-    if (log.maybeLastMiningAtMs !== null && sample.atMs - log.maybeLastMiningAtMs > soak.maybeMaximumOutageMs) {
-      return "soak_outage_unrecovered";
-    }
-    if (log.activeMs >= soak.activeMs) return null;
+    const outcome = await phases.onSample(sample);
+    if (outcome !== undefined) return outcome;
   }
 }
 

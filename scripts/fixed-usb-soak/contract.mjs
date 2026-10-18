@@ -8,6 +8,12 @@ import { SOAK_CONTEXT_SCHEMA, SOAK_MAXIMUM_ACTIVE_MS } from "../fixed-usb-qualif
 export { SOAK_CONTEXT_SCHEMA, SOAK_MAXIMUM_ACTIVE_MS };
 export const SOAK_TASK = "task-parity-bap-settings-effects";
 export const SOAK_TASK_LINE = "Ultra 205 upstream-default soak hardware: enabled.";
+/**
+ * A soak whose lease interrupts local mining (ADR-0038 task 6) is gated by its own task and line,
+ * so enabling one never enables the other.
+ */
+export const INTERRUPT_TASK = "task-local-mining-evidence-soaks";
+export const INTERRUPT_TASK_LINE = "Ultra 205 lease interruption check hardware: enabled.";
 export const SOAK_WORK_GATE_MS = 600000;
 /** 36 renewals at 20 s, the Gate's soak bound, cover up to 120 s of preparation plus the 600 s gate. */
 export const SOAK_RENEWALS = 36;
@@ -19,16 +25,17 @@ export const IDLE_PROOF_MS = 60000;
 export const IDLE_MINIMUM_HTTP_SAMPLES = 20;
 
 /** The soak task must be active exactly once and carry the exact enable line in its own block. */
-export async function requireSoakTask(firmwareRoot) {
+export async function requireSoakTask(firmwareRoot, interruptsLocalMining = false) {
+  const [task, enableLine] = interruptsLocalMining ? [INTERRUPT_TASK, INTERRUPT_TASK_LINE] : [SOAK_TASK, SOAK_TASK_LINE];
   const lines = (await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8")).split(/\r?\n/u);
   let section = "", inBlock = false, count = 0, enabled = false;
   for (const line of lines) {
     if (line.startsWith("## ")) { section = line; inBlock = false; }
     if (line.startsWith("### ")) {
-      inBlock = section === "## Active" && line.slice(4).split(/\s/u)[0] === SOAK_TASK;
+      inBlock = section === "## Active" && line.slice(4).split(/\s/u)[0] === task;
       if (inBlock) count += 1;
     }
-    if (inBlock && line.trim() === SOAK_TASK_LINE) enabled = true;
+    if (inBlock && line.trim() === enableLine) enabled = true;
   }
   requireCondition(count === 1, "soak_task_ambiguous");
   requireCondition(enabled, "soak_task_disabled");

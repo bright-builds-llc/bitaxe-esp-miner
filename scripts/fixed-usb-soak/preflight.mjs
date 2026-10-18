@@ -26,7 +26,7 @@ export async function inspectSoakSources(options, operations = {}) {
   const checkRepo = operations.cleanPushed ?? cleanPushed;
   checkRepo(options.firmwareRoot, options.firmwareCommit);
   checkRepo(options.gateRoot, options.gateCommit);
-  await requireSoakTask(options.firmwareRoot);
+  await requireSoakTask(options.firmwareRoot, options.interruptLocalMining === true);
   const packaged = await packageSnapshot(options.firmwareRoot, options.manifest, options.firmwareCommit);
   const trustPath = resolve(options.firmwareRoot, "firmware/bitaxe/bwg/deployment-trust.json");
   await protectedPath(options.authorityDirectory, true);
@@ -44,6 +44,11 @@ export async function inspectSoakSources(options, operations = {}) {
     bap_client: await (operations.canonicalBinary ?? canonicalBinary)(options.firmwareRoot, "bap-client/bap_client") };
 }
 
+/** The interruption check judges the handover only: no live changes and the upstream default profile. */
+export function requireInterruptPlan(options, maybePlan) {
+  requireCondition(!options.interruptLocalMining || (maybePlan === undefined && options.profile === undefined), "soak_interrupt_plan");
+}
+
 async function freshDetector(path, now) {
   await protectedPath(path);
   const info = await lstat(path);
@@ -58,12 +63,14 @@ export async function preflight(options, operations = {}) {
   ignored(options.firmwareRoot, root);
   const { maybePlan, refused } = selectedPlan(options);
   requireCondition(!refused, "soak_live_plan_ambiguous");
+  requireInterruptPlan(options, maybePlan);
   const profile = preflightProfile(options.profile, maybePlan && LIVE_PLANS[maybePlan].profile);
   const detector = await freshDetector(resolve(options.detector), (operations.now ?? Date.now)());
   const snapshot = await inspectSoakSources(options, operations);
   const context = { schema: SOAK_CONTEXT_SCHEMA, ...snapshot, physical_identity_sha256: detector.physical,
     suggested_difficulty: SOAK_SUGGESTED_DIFFICULTY, renewals: SOAK_RENEWALS, hardware_profile: "device-settings", device_profile: profile, device_settings: profileSettings(profile),
     live_plan: maybePlan ?? null, live_changes: maybePlan ? frozenPlan(maybePlan) : [],
+    ...(options.interruptLocalMining ? { local_mining_interrupt: true } : {}),
     firmware_root: options.firmwareRoot, gate_root: options.gateRoot, manifest: resolve(options.manifest) };
   await (operations.mkdir ?? mkdir)(root, { mode: 0o700 });
   await writeNew(resolve(root, "context.json"), { context, sha256: digest(JSON.stringify(context)) });
@@ -81,7 +88,8 @@ export async function loadSoakContext(root) {
 /** Serve and sign only against exactly the sources preflight froze. */
 export async function verifyFrozenSoak(context, authorityDirectory, bun, operations = {}) {
   const observed = await inspectSoakSources({ firmwareRoot: context.firmware_root, gateRoot: context.gate_root,
-    firmwareCommit: context.firmware_commit, gateCommit: context.gate_commit, manifest: context.manifest, authorityDirectory, bun }, operations);
+    firmwareCommit: context.firmware_commit, gateCommit: context.gate_commit, manifest: context.manifest, authorityDirectory, bun,
+    interruptLocalMining: context.local_mining_interrupt === true }, operations);
   for (const [key, value] of Object.entries(observed)) {
     requireCondition(JSON.stringify(context[key]) === JSON.stringify(value), "frozen_source_drift");
   }
