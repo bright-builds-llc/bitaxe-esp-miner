@@ -1433,9 +1433,10 @@ Lease interruption check contract (owner request 2026-10-18; attempt ordinals
      as absolute paths.
   1. Stop the Gate soak server, then seal it with `just hardware-operator
      owner-finish --owner ultra205-soak --private-root R`. While the BAP
-     adapter is wired, use the README's other path instead: write a
-     named-port detector to `P/final-detector.stdout.log`, then run
-     `just ultra205-soak finish --private-root R`.
+     adapter is wired, pass `--port <board node>`. Launch every detached
+     run (local soak, Gate soak server, endpoint server) in its own session
+     with `perl -MPOSIX=setsid -e 'setsid; exec @ARGV' -- …`, and never
+     signal a shared process group.
   1. Wait for the local run's verdict, then take a final named-port
      detector.
   - Recovery, only if the local run died or its pause is unconfirmed:
@@ -1653,6 +1654,44 @@ attempt only.
   - stop and seal the Gate soak;
   - then read the new dump under the read contract (a fresh handoff, a
     stopped proof and `read-NNN`) and decode it.
+
+Lease interruption check diagnostic attempt 003 result (2026-10-18): the
+Gate soak `passed`. The local run `failed`, with `soak_interrupted`,
+`lease_check_not_restored` and `lease_check_after_short`, because of an
+operator error, not the device.
+- Firmware `286cf82f`, installed state-preserving, after clearing the
+  core-dump partition. Clear 001 matched the archive and read back empty.
+- The panic did not recur. The admitted page stayed idle for 90 s, then
+  through the 60 s idle proof and the lease, with no reset. The boot
+  session never changed. The panic is intermittent and still
+  undiagnosed; the cleared partition will keep the next dump.
+- The handover passed every step that ran:
+  - 300,256 ms of local mining;
+  - one Connect refused at Hello;
+  - local mining stopped 43 s after `lease_ready`;
+  - the next Connect was admitted;
+  - the idle proof passed with no mining.
+- The Gate soak in interrupt mode `passed`:
+  - 20 of 20 windows and 30 accepted shares, counted from the handover
+    restart (the fix holds);
+  - ended by its budget at 600,000 ms, with the safe-stop complete;
+  - the run intent on both transports at the end, and pool settings
+    retained;
+  - ledger ordinal 7 charged once; cleanup confirmed; sealed `passed`.
+- The operator error: I stopped the Gate soak server by signalling its
+  process group. The local run had been started detached from the same
+  shell, so it shared that group, and it stopped before local mining could
+  restore. Its interrupt path paused the device and journaled both
+  powered-down samples (paused, mining on boot off, no pause reason).
+- Fix:
+  - `just hardware-operator owner-finish --port` names the board on its
+    detector, so it works while the BAP adapter is wired. It signals only
+    the owner's own process, and the port is checked before the stop.
+  - Each detached run is launched in its own session
+    (`perl -MPOSIX=setsid -e 'setsid; exec @ARGV' -- …`).
+  - Tests cover the named port and the refusal before the stop.
+- Outcome: `continue_after_verified_fix`. Attempt 004 repeats the check
+  with these launch and stop rules, under the owner's re-run rule.
 
 Remaining in this task, each under its own contract:
 - longer soaks;
