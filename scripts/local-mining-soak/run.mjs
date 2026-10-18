@@ -4,8 +4,8 @@
 // powered down. From the resume on, every path pauses the device. The device, clock and journal
 // are injected, so the sequence is tested without hardware.
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { activeSpanMs, hardwareStopped, judge, liveStop, mining, RUN_DEADLINE_MS, sampleFromInfo, SAMPLE_INTERVAL_MS,
-  SOAK_ACTIVE_MS, START_ALLOWANCE_MS, STOP_ALLOWANCE_MS } from "./judge.mjs";
+import { activeSpanMs, hardwareStopped, judge, liveStop, mining, runDeadlineMs, sampleFromInfo, SAMPLE_INTERVAL_MS,
+  SOAKS, START_ALLOWANCE_MS, STOP_ALLOWANCE_MS } from "./judge.mjs";
 import { poolSaved } from "./pool.mjs";
 
 /** The device stays unreachable this long before the soak stops. */
@@ -13,7 +13,7 @@ export const UNREACHABLE_STOP_MS = 30_000;
 const PAUSE_RESEND_MS = 30_000;
 
 /** Runs the soak; `expected` names the installed firmware and the handed-off boot. */
-export async function runSoak({ client, expected, settings, now, sleep, record, isInterrupted = () => false }) {
+export async function runSoak({ client, expected, settings, now, sleep, record, isInterrupted = () => false, soak = SOAKS["001"] }) {
   // A journal failure must never stop the pause; it is noted in the verdict instead.
   let journalFailed = false;
   const note = async (event) => { try { await record(event); } catch { journalFailed = true; } };
@@ -39,24 +39,25 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
     const resumedAt = now();
     await client.command("resume");
     await note({ event: "resumed", atMs: resumedAt });
-    maybeStop = await observe({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted });
+    maybeStop = await observe({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak });
   } catch {
     maybeStop ??= "soak_run_error";
   }
   if (maybeStop !== null) await note({ event: "live_stop", code: maybeStop });
   const maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
-  const verdict = judge({ baseline, samples, maybeFinal, maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) });
+  const verdict = judge({ baseline, samples, maybeFinal, soak,
+    maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) });
   await note({ event: "verdict", result: verdict.result, failures: verdict.failures });
   return verdict;
 }
 
-/** Samples until 30 minutes of continuous mining (null) or a stop code. */
-async function observe({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted }) {
+/** Samples until the soak's continuous mining time (null) or a stop code. */
+async function observe({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak }) {
   let maybeLastReachedAt = resumedAt;
   for (;;) {
     await sleep(SAMPLE_INTERVAL_MS);
     if (isInterrupted()) return "soak_interrupted";
-    if (now() - resumedAt > RUN_DEADLINE_MS) return "soak_deadline";
+    if (now() - resumedAt > runDeadlineMs(soak)) return "soak_deadline";
     let info;
     try { info = await client.info(); } catch {
       if (now() - maybeLastReachedAt > UNREACHABLE_STOP_MS) return "soak_device_unreachable";
@@ -70,7 +71,7 @@ async function observe({ client, baseline, samples, resumedAt, now, sleep, note,
     const maybeStop = liveStop(sample, baseline, maybePrevious);
     if (maybeStop !== null) return maybeStop;
     if (!samples.some(mining) && sample.atMs - resumedAt > START_ALLOWANCE_MS) return "soak_mining_not_started";
-    if (activeSpanMs(samples) >= SOAK_ACTIVE_MS) return null;
+    if (activeSpanMs(samples) >= soak.activeMs) return null;
   }
 }
 
@@ -93,6 +94,7 @@ export async function pauseAndConfirm({ client, now, sleep, note }) {
       if (pauseSent && hardwareStopped(sample)) {
         if (maybeStopped !== null) { await note({ event: "final", sample }); return sample; }
         maybeStopped = sample;
+        await note({ event: "stopped_sample", sample });
       } else {
         maybeStopped = null;
       }

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { activeSpanMs, hardwareStopped, increases, judge, LIMITS, liveStop, MAXIMUM_SAMPLE_GAP_MS, sampleFromInfo, SOAK_ACTIVE_MS } from "./judge.mjs";
+import { activeSpanMs, hardwareStopped, increases, judge, LIMITS, liveStop, MAXIMUM_SAMPLE_GAP_MS, sampleFromInfo, SOAKS } from "./judge.mjs";
+
+const SOAK_ACTIVE_MS = SOAKS["001"].activeMs;
 
 const fresh = { state: "fresh" };
 
@@ -164,4 +166,20 @@ test("a stale reading's zero never trips its limit", () => {
   const stale = sampleFromInfo(info({ voltage: 0, voltageStatus: { state: "stale" } }), 2000);
   // Act / Assert
   assert.equal(liveStop(stale, baseline, sampleFromInfo(info(), 0)), null);
+});
+
+test("soak 002 needs two hours and a nonzero hashrate", () => {
+  // Arrange
+  const soak = SOAKS["002"];
+  const noHashrate = activeRun(soak.activeMs, { hashRate: 0 });
+  const thirtyMinutes = activeRun(SOAK_ACTIVE_MS);
+  // Act
+  const blind = judge({ baseline: noHashrate[0], samples: noHashrate, maybeFinal: paused(), soak });
+  const short = judge({ baseline: thirtyMinutes[0], samples: thirtyMinutes, maybeFinal: paused(), soak });
+  const healthy = judge({ baseline: noHashrate[0], samples: activeRun(soak.activeMs), maybeFinal: paused(), soak });
+  // Assert
+  assert.deepEqual(blind.failures, ["soak_no_hashrate"]);
+  assert.ok(short.failures.includes("soak_active_time_short"));
+  assert.deepEqual(healthy.failures, []);
+  assert.equal(healthy.soak, "002");
 });

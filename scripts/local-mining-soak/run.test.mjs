@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { RUN_DEADLINE_MS, SOAK_ACTIVE_MS } from "./judge.mjs";
+import { runDeadlineMs, SOAKS } from "./judge.mjs";
+
+const SOAK_ACTIVE_MS = SOAKS["001"].activeMs;
+const RUN_DEADLINE_MS = runDeadlineMs(SOAKS["001"]);
 import { runSoak, UNREACHABLE_STOP_MS } from "./run.mjs";
 
 const EXPECTED = { firmwareCommit: "c".repeat(40), appElfSha256: "e".repeat(64), bootOrdinal: 7 };
@@ -164,4 +167,37 @@ test("an interruption before the resume never starts mining", async () => {
   // Assert
   assert.ok(verdict.failures.includes("soak_run_error"));
   assert.ok(!device.state.calls.includes("resume"));
+});
+
+test("both powered-down samples are recorded", async () => {
+  // Arrange
+  const device = fakeDevice();
+  // Act
+  const { events } = await run(device);
+  // Assert
+  const kinds = events.map((event) => event.event);
+  assert.ok(kinds.indexOf("stopped_sample") >= 0 && kinds.indexOf("stopped_sample") < kinds.indexOf("final"));
+});
+
+test("soak 002 runs for two hours", async () => {
+  // Arrange
+  const device = fakeDevice();
+  // Act
+  const verdict = await runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, now: () => device.clock.now,
+    sleep: async (ms) => { device.clock.now += ms; }, record: async () => {}, soak: SOAKS["002"] });
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.ok(verdict.metrics.active_span_ms >= SOAKS["002"].activeMs);
+});
+
+test("soak 002 stops at its own deadline", async () => {
+  // Arrange: mining keeps breaking off, so two continuous hours never accrue.
+  const device = fakeDevice({ overrides: (now) => (now % 600_000 < 30_000 ? { miningActivity: "safe_blocked" } : {}) });
+  // Act
+  const verdict = await runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, now: () => device.clock.now,
+    sleep: async (ms) => { device.clock.now += ms; }, record: async () => {}, soak: SOAKS["002"] });
+  // Assert
+  assert.ok(verdict.failures.includes("soak_deadline"));
+  assert.ok(device.clock.now <= runDeadlineMs(SOAKS["002"]) + 200_000);
+  assert.equal(device.state.paused, true);
 });

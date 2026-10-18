@@ -12,13 +12,15 @@ import { privateRoot, proof, writeNew } from "../str005-noise-serial/files.mjs";
 import { deviceClient } from "./device.mjs";
 import { poolSettings } from "./pool.mjs";
 import { pauseAndConfirm, runSoak } from "./run.mjs";
+import { SOAKS } from "./judge.mjs";
 
 export const SOAK_TASK = "task-local-mining-evidence-soaks";
-export const SOAK_TASK_LINE = "Ultra 205 local mining soak 001 hardware: enabled.";
+/** Each soak has its own enable line in the active task. */
+export const soakTaskLine = (soakId) => `Ultra 205 local mining soak ${soakId} hardware: enabled.`;
 const CONTEXT_SCHEMA = "local-mining-soak-context-v1";
 /** The endpoint must come from this session: a handoff at most this old. */
 const ENDPOINT_MAXIMUM_AGE_MS = 30 * 60_000;
-const ACTIONS = { preflight: ["--private-root", "--endpoint-root", "--package-manifest", "--pool-credentials"],
+const ACTIONS = { preflight: ["--private-root", "--endpoint-root", "--package-manifest", "--pool-credentials", "--soak"],
   run: ["--private-root", "--pool-credentials"], pause: ["--private-root"] };
 
 function argumentsFor(argv) {
@@ -34,7 +36,8 @@ function argumentsFor(argv) {
 }
 
 /** The soak task must be active exactly once and carry the exact enable line in its own block. */
-export function requireSoakTask(tasksText) {
+export function requireSoakTask(tasksText, soakId) {
+  const enableLine = soakTaskLine(soakId);
   let section = "", inBlock = false, count = 0, enabled = false;
   for (const line of tasksText.split(/\r?\n/u)) {
     if (line.startsWith("## ")) { section = line; inBlock = false; }
@@ -42,14 +45,16 @@ export function requireSoakTask(tasksText) {
       inBlock = section === "## Active" && line.slice(4).split(/\s/u)[0] === SOAK_TASK;
       if (inBlock) count += 1;
     }
-    if (inBlock && line.trim() === SOAK_TASK_LINE) enabled = true;
+    if (inBlock && line.trim() === enableLine) enabled = true;
   }
   requireCondition(count === 1, "soak_task_ambiguous");
   requireCondition(enabled, "soak_task_disabled");
 }
 
 async function preflight(firmwareRoot, root, options) {
-  requireSoakTask(await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8"));
+  const soakId = options["--soak"];
+  requireCondition(Object.hasOwn(SOAKS, soakId), "soak_unknown");
+  requireSoakTask(await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8"), soakId);
   await missing(root); await protectedPath(dirname(root), true); ignored(firmwareRoot, root);
   const endpointRoot = resolve(firmwareRoot, options["--endpoint-root"]);
   await privateRoot(endpointRoot);
@@ -64,15 +69,16 @@ async function preflight(firmwareRoot, root, options) {
   requireCondition(git(firmwareRoot, ["rev-parse", "HEAD"]).trim() === manifest.source_commit, "soak_package_not_head");
   await readPoolForSigning(firmwareRoot, resolve(firmwareRoot, options["--pool-credentials"]));
   await mkdir(root, { mode: 0o700 });
-  await writeNew(resolve(root, "context.json"), { schema: CONTEXT_SCHEMA, firmware_commit: manifest.source_commit,
+  await writeNew(resolve(root, "context.json"), { schema: CONTEXT_SCHEMA, soak: soakId, firmware_commit: manifest.source_commit,
     app_elf_sha256: manifest.app_elf_sha256, endpoint_root: endpointRoot, boot_ordinal: endpoint.bootOrdinal });
   return { preflight: "passed", device_effects: false };
 }
 
 async function run(firmwareRoot, root, options) {
-  requireSoakTask(await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8"));
   await privateRoot(root);
   const context = (await proof(root, "context.json")).value; requireCondition(context.schema === CONTEXT_SCHEMA, "soak_context");
+  requireCondition(Object.hasOwn(SOAKS, context.soak), "soak_unknown");
+  requireSoakTask(await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8"), context.soak);
   await missing(resolve(root, "result.json"));
   const endpoint = (await proof(context.endpoint_root, "endpoint.private.json")).value;
   const pool = await readPoolForSigning(firmwareRoot, resolve(firmwareRoot, options["--pool-credentials"]));
@@ -85,8 +91,10 @@ async function run(firmwareRoot, root, options) {
     const verdict = await runSoak({
       client: deviceClient(endpoint), settings: poolSettings(pool),
       expected: { firmwareCommit: context.firmware_commit, appElfSha256: context.app_elf_sha256, bootOrdinal: context.boot_ordinal },
-      now: Date.now, sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
+      // Monotonic, so a wall-clock correction never stretches the run deadline.
+      now: () => Math.round(performance.now()), sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
       record: (event) => journal.appendFile(`${JSON.stringify(event)}\n`), isInterrupted: () => interrupted,
+      soak: SOAKS[context.soak],
     });
     await writeNew(resolve(root, "result.json"), verdict);
     return verdict;

@@ -1114,8 +1114,6 @@ confirmation (ADR-0038).
 - [ ] Update the parity rows within what the evidence shows. "Unbounded
       mining" stays a non-claim until these soaks exist.
 
-Ultra 205 local mining soak 001 hardware: enabled.
-
 Owner decisions (2026-10-17):
 - The soak mines the owner's pool. A repo-owned step saves it from the
   ignored `pool-credentials.json` as the device's primary pool, and it stays
@@ -1255,6 +1253,45 @@ Soak 001 result (2026-10-17): attempt 001 `complete`.
   them with the owning generation, and a source guard pins it; it is not yet
   hardware-verified.
 - Later soaks should record both powered-down samples.
+
+Ultra 205 local mining soak 002 hardware: enabled.
+
+Soak 002 contract (owner request 2026-10-17; the soak 001 contract applies
+except as stated):
+- **Objective:** 7,200 seconds (2 hours) of continuous local mining, with
+  everything soak 001 proves. Also at least one mining sample with a
+  nonzero `hashRate`, which verifies on hardware the fix soak 001 led to
+  (`071b5af3`).
+- **Package:** a fresh `just package` at the clean, pushed HEAD that
+  contains the fix and this contract. It is installed state-preserving, as
+  in soak 001; the install is never skipped, because the device runs
+  `be69061a`.
+- **Parent:** a new mode-0700 `P` under `scratch/local-mining-soak/`; attempt
+  roots are `P/attempt-NNN`.
+- **Preflight:** `just local-mining-soak preflight --soak 002 ...`, with the
+  same remaining arguments as soak 001. Preflight now requires `--soak`, and
+  each soak has its own enable line; soak 001's line was removed after it
+  completed.
+- **Run:** `nohup caffeinate -is just local-mining-soak run ...`, so the host
+  stays awake for the 2 hours. Keep the Mac on AC power with the lid open.
+  A sleeping host would stop watching a mining device.
+- **Run deadline:** 130 minutes after the resume (start allowance, 2 hours
+  and 5 minutes of slack), on a monotonic clock. It replaces soak 001's
+  40-minute deadline, and mining past it is prohibited.
+- **Accepted risk:** one gap over 10 s, such as a Wi-Fi blip, fails the
+  attempt (`soak_sample_gap`). A later attempt then needs a new ordinal.
+- **Pool:** the owner's pool is already saved. The run writes the same
+  values again, which changes nothing.
+- **Judged:** both powered-down samples are journaled (`stopped_sample`,
+  then `final`), as soak 001's review asked.
+- **Afterwards:** paused, mining on boot off, the owner's pool saved.
+- **Unchanged:**
+  - the private input and the permitted command order;
+  - allowed and prohibited effects;
+  - the live stops and limits, except the deadline above;
+  - the terminal criterion;
+  - evidence, recovery (including notifying the owner when the device may
+    still be mining), the retry bound and the accepted outcomes.
 
 Remaining in this task, each under its own contract:
 - longer soaks;

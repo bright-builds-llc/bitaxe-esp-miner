@@ -2,8 +2,15 @@
 // live stop rule applied to each, and the verdict over the whole run. Samples carry only
 // metadata; no endpoint, pool or credential value ever enters them.
 
-/** Active mining the first soak must observe (owner decision 2026-10-17: 30 minutes). */
-export const SOAK_ACTIVE_MS = 30 * 60_000;
+/**
+ * The soaks a contract may run, each with its own enable line (owner decisions 2026-10-17):
+ * soak 001 mines 30 minutes; soak 002 mines 2 hours and must show a nonzero hashrate, which
+ * verifies the fix soak 001 led to.
+ */
+export const SOAKS = Object.freeze({
+  "001": Object.freeze({ id: "001", activeMs: 30 * 60_000, requireHashrate: false }),
+  "002": Object.freeze({ id: "002", activeMs: 120 * 60_000, requireHashrate: true }),
+});
 export const SAMPLE_INTERVAL_MS = 2000;
 /** A longer gap between successive samples breaks continuity. */
 export const MAXIMUM_SAMPLE_GAP_MS = 10_000;
@@ -11,8 +18,8 @@ export const MAXIMUM_SAMPLE_GAP_MS = 10_000;
 export const START_ALLOWANCE_MS = 5 * 60_000;
 /** The ordered safe-stop, including its up-to-120-s cooling proof, must finish within this. */
 export const STOP_ALLOWANCE_MS = 180_000;
-/** The run never mines past this, measured from the resume: start, 30 minutes and slack. */
-export const RUN_DEADLINE_MS = START_ALLOWANCE_MS + SOAK_ACTIVE_MS + 5 * 60_000;
+/** The run never mines past this, measured from the resume: start, the soak's time and slack. */
+export const runDeadlineMs = (soak) => START_ALLOWANCE_MS + soak.activeMs + 5 * 60_000;
 /** Input power at or below this, freshly measured, shows the ASIC powered down. */
 export const IDLE_POWER_W = 5;
 /** Live stop limits, as for the lease soaks: input 4.5–5.5 V, at most 15 W, ASIC below 75 C. */
@@ -119,14 +126,15 @@ export function increases(samples, key) {
 }
 
 /** The verdict over a run: its baseline, the samples while mining, and the final paused sample. */
-export function judge({ baseline, samples, maybeFinal, maybeStop }) {
+export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["001"] }) {
   const failures = [];
   const fail = (code) => { if (!failures.includes(code)) failures.push(code); };
   if (maybeStop) fail(maybeStop);
   samples.forEach((sample, index) => { const stop = liveStop(sample, baseline, samples[index - 1] ?? null); if (stop) fail(stop); });
   const active = samples.filter(mining);
   const span = activeSpanMs(samples);
-  if (span < SOAK_ACTIVE_MS) fail("soak_active_time_short");
+  if (span < soak.activeMs) fail("soak_active_time_short");
+  if (soak.requireHashrate && !active.some((sample) => sample.hashRate !== null && sample.hashRate > 0)) fail("soak_no_hashrate");
   let maximumGapMs = 0;
   for (let index = 1; index < samples.length; index += 1) maximumGapMs = Math.max(maximumGapMs, samples[index].atMs - samples[index - 1].atMs);
   if (maximumGapMs > MAXIMUM_SAMPLE_GAP_MS) fail("soak_sample_gap");
@@ -145,6 +153,7 @@ export function judge({ baseline, samples, maybeFinal, maybeStop }) {
   const finite = (value) => (Number.isFinite(value) ? value : null);
   return {
     schema: "local-mining-soak-result-v1",
+    soak: soak.id,
     result: failures.length === 0 ? "passed" : "failed",
     failures,
     metrics: {
