@@ -1235,6 +1235,33 @@ Hardware contract (local mining soak 001, attempt ordinals 001 onward):
 Authorization: the contract above. Software work continues as ordinary task
 work.
 
+Soak 001 result (2026-10-17): attempt 001 `complete`.
+- `result.json` is `passed` with no failures.
+- An independent review agrees, after recomputing the verdict from the
+  journal.
+- Summary: `docs/parity/evidence/20261017-ultra205-local-mining-soak-001.md`.
+- Firmware and package: `be69061a` (package manifest `e430a9db…`), installed
+  state-preserving (`observed_exact_package`).
+- Measurements:
+  - 1,801,120 ms of continuous mining, maximum gap 2,611 ms;
+  - 87 accepted shares, 0 rejected;
+  - 5.24–5.28 V, at most 12.4 W, 61 C chip;
+  - one boot session;
+  - the ASIC powered down 27 s after the pause.
+- The device is left paused, with mining on boot off and the owner's pool
+  saved.
+- The soak found a defect. `hashRate` read 0 under local mining, because the
+  hashrate register reads carried only a lease's generation. The fix stamps
+  them with the owning generation, and a source guard pins it; it is not yet
+  hardware-verified.
+- Later soaks should record both powered-down samples.
+
+Remaining in this task, each under its own contract:
+- longer soaks;
+- the lease interruption check;
+- an overheat check, only with a safe stimulus;
+- parity rows within the evidence.
+
 Verification: pending. Completion review: pending.
 
 ## Future
