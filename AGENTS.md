@@ -352,6 +352,12 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - Treat a targeted fix plus a regression across the failed boundary, clean verification, and an exact pushed package as sufficient progress for the next bounded attempt. Keep the task record and worklog current; an unchanged retry remains ineligible.
 - Require a new formal plan only when an explicitly invoked skill requires one, the intended effects or authority materially expand, the safety/privacy/recovery/stop contract changes, or no active task contract covers the next effect.
 - This standing authorization covers recovery-only fixes and retries needed to return the admitted Ultra 205 to its declared baseline. Direct UART/pins and ad hoc destructive, fault-injection, electrical-stress, or broader network actions retain their separate authorization gates.
+- Owner rule, 2026-10-18 (permanent, to speed up iterated development):
+  - After a root-cause analysis of a hardware failure and a verified fix, agents re-run the failed check, soak or attempt automatically and iterate, without asking the owner, whenever `just detect-ultra205` shows the device connected and available.
+  - This also covers diagnostic captures needed for that analysis, such as core-dump reads, under their task contracts.
+  - Each run still needs an active task contract, a repo-owned command, a fresh ordinal, the progress-gated attempt policy and the safety, privacy and evidence gates above.
+  - Agents may write or amend that contract as ordinary task work.
+  - Stop and report when the device is absent or ambiguous, the same boundary recurs after its fix (`stop_repeated_boundary`), or the next action needs authority the active contract does not grant. Direct UART, pins, and ad hoc destructive, fault-injection, electrical-stress or broader network actions keep their separate gates above.
 
 ### Direct UART And Pin-Manipulation Authorization
 
