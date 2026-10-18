@@ -6,6 +6,7 @@ const SESSION_SOURCE: &str = include_str!("production_mining_session.rs");
 const FAN_RUNTIME_SOURCE: &str = include_str!("fan_controller_runtime.rs");
 const OVERHEAT_SOURCE: &str = include_str!("production_mining_session/local_owner/overheat.rs");
 const LINK_SOURCE: &str = include_str!("bwg_worker_usb/link.rs");
+const STATUS_SOURCE: &str = include_str!("production_mining_session/status_publication.rs");
 
 #[test]
 fn local_mining_is_on_with_the_crash_loop_guard() {
@@ -141,4 +142,16 @@ fn a_held_link_stops_a_run_through_the_core_and_holds_local_mining() {
     assert!(handover.contains("let revoked = revocation::revoke_at(generation, now_ms);"));
     assert!(handover.contains("self.local.core.note_handover(revoked);"));
     assert!(LOCAL_OWNER_SOURCE.contains("|| gate_link_holds(now_ms),"));
+}
+
+#[test]
+fn hashrate_reads_carry_the_owning_generation() {
+    // Arrange: soak 001 found local runs reporting no hashrate, because the reads
+    // carried only a lease's generation and so had no permit.
+    let (_, read) = STATUS_SOURCE
+        .split_once("AsicWorkerCommand::ReadHashrateRegisters {")
+        .expect("hashrate read");
+    // Act / Assert
+    assert!(read.contains("self.maybe_owner_generation(),"));
+    assert!(!read.contains("self.maybe_bwg_session"));
 }

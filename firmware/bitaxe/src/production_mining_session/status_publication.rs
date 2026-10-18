@@ -83,9 +83,8 @@ impl OrdinaryEspProductionSessionAdapter {
                     AsicWorkerCommand::ReadHashrateRegisters {
                         generation: snapshot.generation,
                     },
-                    self.maybe_bwg_session
-                        .as_ref()
-                        .map(|session| session.generation),
+                    // A local run's generation as well as a lease's: the reads need its permit.
+                    self.maybe_owner_generation(),
                 )
                 .is_err()
         {
