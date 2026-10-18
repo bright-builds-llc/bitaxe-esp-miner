@@ -8,6 +8,7 @@
  * - Soak 002 accumulates 2 hours of mining within 2 h 30 min, and must show a nonzero hashrate.
  *   It tolerates outages the device recovers from on its own (`maybeMaximumOutageMs`), because
  *   real networks drop: attempt 001 met two ~19 s network outages, and mining resumed each time.
+ * - Soak 003 is soak 002 at several hours: 4 hours of mining accumulated within 5 hours.
  * - Lease check 001 (`lease.mjs`) mines locally for 5 minutes, then a Gate lease interrupts local
  *   mining. Local mining must come back within 3 minutes of the lease's end and mine 5 more
  *   minutes. Outages are tolerated as in soak 002, in the local phases only.
@@ -17,6 +18,8 @@ export const SOAKS = Object.freeze({
     maybeDeadlineMs: null }),
   "002": Object.freeze({ id: "002", activeMs: 120 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
     maybeDeadlineMs: 150 * 60_000 }),
+  "003": Object.freeze({ id: "003", activeMs: 240 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
+    maybeDeadlineMs: 300 * 60_000 }),
   "lease-001": Object.freeze({ id: "lease-001", kind: "lease", activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true,
     maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 90 * 60_000, restoreBoundMs: 180_000,
     enableLine: "Ultra 205 lease interruption check hardware: enabled." }),

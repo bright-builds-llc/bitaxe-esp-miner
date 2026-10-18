@@ -8,6 +8,8 @@ Ultra 205 (ADR-0038 task 6). Each soak needs its own exact enable line,
 - `002` accumulates 2 hours of mining within 2 h 30 min and must show a
   nonzero hashrate. It tolerates outages the device recovers from on its
   own, up to 60 s each, and counts them.
+- `003` is soak 002 at several hours: 4 hours of mining accumulated within
+  5 hours, with the same outage tolerance.
 - `lease-001` is the lease interruption check. Its enable line is the Gate
   soak's interruption line, `Ultra 205 lease interruption check hardware:
   enabled.`, so one line enables both halves. See [Lease interruption

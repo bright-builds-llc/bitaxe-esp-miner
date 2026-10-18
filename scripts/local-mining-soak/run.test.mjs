@@ -242,3 +242,16 @@ test("soak 002 stops on an outage that becomes unreachable", async () => {
   assert.ok(verdict.failures.includes("soak_outage_unrecovered"), JSON.stringify(verdict.failures));
   assert.ok(device.clock.now < 600_000 + 4_000 + 120_000 + 200_000);
 });
+
+test("soak 003 accumulates four hours through recovered outages", async () => {
+  // Arrange: a 45 s outage every 72 minutes, as soak 002 attempt 001 met.
+  const outage = (now) => now % 4_320_000 > 2_000_000 && now % 4_320_000 < 2_045_000;
+  const device = fakeDevice({ overrides: (now) => (outage(now) ? { miningActivity: "safe_blocked" } : {}) });
+  // Act
+  const verdict = await runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, now: () => device.clock.now,
+    sleep: async (ms) => { device.clock.now += ms; }, record: async () => {}, soak: SOAKS["003"] });
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.ok(verdict.metrics.accumulated_active_ms >= SOAKS["003"].activeMs);
+  assert.ok(device.clock.now <= runDeadlineMs(SOAKS["003"]));
+});
