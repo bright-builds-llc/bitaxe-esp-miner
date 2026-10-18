@@ -1608,6 +1608,52 @@ preserved privately (`d46d296a…`, firmware `30fc67e2`).
   root-cause analysis and a fix follow under the owner's re-run rule.
   Otherwise `stop_hardware_blocker` or `stop_impossible_contract`.
 
+Local mining core-dump read 001 result (2026-10-18): `complete`, but the
+dump is stale.
+- The read verified, the device returned to the installed firmware, and
+  cleanup completed. Afterwards: the same physical device, no holder.
+- Offline decoding refused the dump: its app SHA-256 (`84d1cd51…`) is not
+  the installed image (`d46d296a…`). `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE`
+  kept an older dump from an unknown earlier image, so attempt 002's panic
+  was never saved. Read 001's private files keep that older dump as the
+  archive.
+- Next, under the owner's re-run rule (diagnostic captures):
+  1. clear the partition, bound to that archive;
+  2. reproduce the panic in a diagnostic attempt of the lease check;
+  3. read the new dump.
+
+Local mining core-dump clearing: enabled (private archive verified).
+
+Clearing contract (2026-10-18; ordinals 001 onward), the read contract
+applying except as stated:
+- **Commands:**
+  - a fresh endpoint handoff, a fresh detector and a stopped proof, as for
+    a read;
+  - within 120 s, `just core-dump-clear` with the read arguments plus
+    `--preserved-dump <C>/read-001/core-dump.private.bin
+    --preserved-sha256 <its digest>` and a new `--private-root`.
+  The tool reads the partition again, requires it to equal the archive,
+  erases only the core-dump partition, and reads it back as all `0xff`.
+- **Allowed effects:** besides the read's, `espflash erase-region` of the
+  core-dump partition only, after the archive matches.
+- **Prohibited effects:** any other erase or write, including NVS, app and
+  OTA partitions.
+
+Lease interruption check diagnostic attempt 003 (2026-10-18), under the
+owner's re-run rule (diagnostic capture). The lease check contract applies,
+and attempt 002's `stop_hardware_blocker` is lifted for this diagnostic
+attempt only.
+- **Precondition:** the core-dump partition is cleared and verified empty.
+- **Sequence change:** connect promptly once the ASIC reads down, as in
+  attempt 002. Then hold the admitted page idle for 90 s, with no page
+  operation, before `startObserver()`. If the device does not panic, finish
+  the check normally; a pass counts as a pass.
+- **If it panics:**
+  - the local run stops and pauses, as in attempt 002;
+  - stop and seal the Gate soak;
+  - then read the new dump under the read contract (a fresh handoff, a
+    stopped proof and `read-NNN`) and decode it.
+
 Remaining in this task, each under its own contract:
 - longer soaks;
 - the lease interruption check;
