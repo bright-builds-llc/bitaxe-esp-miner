@@ -167,3 +167,27 @@ test("the restoration owner refuses a missing, readable or unexpected pool file 
   assert.equal(await isLive(owner), true);
   assert.deepEqual(await fixture.calls(), []);
 });
+
+test("owner-finish names the board port on its detector when given one", async (t) => {
+  // Arrange
+  const fixture = await workspaceFixture();
+  const owner = await detachedOwner();
+  t.after(() => kill(owner));
+  await writeServerOwner(fixture.root, owner);
+  // Act
+  await stopAndFinish({ name: "str005-heartbeat-shutdown", root: fixture.root, maybePort: "/dev/cu.usbmodem1101" }, fixture.operations);
+  // Assert
+  assert.deepEqual((await fixture.calls())[0], ["detect-ultra205", "--port", "/dev/cu.usbmodem1101"]);
+});
+
+test("owner-finish refuses a port that is not a serial node before stopping the owner", async (t) => {
+  // Arrange
+  const fixture = await workspaceFixture();
+  const owner = await detachedOwner();
+  t.after(() => kill(owner));
+  await writeServerOwner(fixture.root, owner);
+  // Act
+  await rejectsWith(stopAndFinish({ name: "str005-heartbeat-shutdown", root: fixture.root, maybePort: "--all" }, fixture.operations), "detector_port_invalid");
+  // Assert
+  assert.equal(await isLive(owner), true);
+});

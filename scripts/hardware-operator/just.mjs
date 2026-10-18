@@ -61,9 +61,13 @@ export async function startJustDetached(args, { stdoutPath, stderrPath }, operat
   } finally { await stdout.close(); await stderr.close(); }
 }
 
-/** Fresh detection into private files; only an admitted Serial/JTAG runtime device passes. */
-export async function detect(stdoutPath, stderrPath, operations = {}) {
-  const code = await runJust(["detect-ultra205"], { stdoutPath, stderrPath }, operations);
+/**
+ * Fresh detection into private files; only an admitted Serial/JTAG runtime device passes. `maybePort`
+ * names the board's node when another serial adapter is attached, which would make detection ambiguous.
+ */
+export async function detect(stdoutPath, stderrPath, operations = {}, maybePort = undefined) {
+  refuse(maybePort === undefined || /^\/dev\/cu\.[A-Za-z0-9._-]+$/u.test(maybePort), "detector_port_invalid");
+  const code = await runJust(["detect-ultra205", ...(maybePort === undefined ? [] : ["--port", maybePort])], { stdoutPath, stderrPath }, operations);
   refuse(code === 0, "detector_failed");
   return parseDetector(await readFile(stdoutPath, "utf8"));
 }

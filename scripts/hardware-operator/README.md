@@ -86,6 +86,13 @@ the exact pool values) and every other owner refuses it. The file must be a
 mode-0600 regular file; owner-finish checks that before stopping the owner and
 never reads it, then passes it to finish as `--pool-credentials=<path>`.
 
+`--port /dev/cu.…` names the board's node on the final detector, for when another
+serial adapter (such as the BAP adapter) is attached; detection would otherwise be
+ambiguous. It is checked before the owner is stopped. Launch each detached owner in
+its own session (`perl -MPOSIX=setsid -e 'setsid; exec @ARGV' -- just …`). The
+finish waits for the owner's whole process group, so a group shared with another
+detached run would block it, and a group-wide signal would stop that run too.
+
 The owners are a closed table in `owners.mjs`:
 
 - heartbeat: `str005-heartbeat-shutdown`, `str005-heartbeat-probe`

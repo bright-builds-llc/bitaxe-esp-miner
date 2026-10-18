@@ -31,7 +31,7 @@ test("send flags become the parent's command line", () => {
 
 test("unknown actions, unknown flags, positionals and missing required flags are refused", () => {
   // Arrange
-  const cases = [["flash"], ["owner-finish", "--owner", "x", "--private-root", "/r", "--port", "/dev/x"], ["noise-launch", "/r"], ["owner-finish", "--owner", "x"]];
+  const cases = [["flash"], ["owner-finish", "--owner", "x", "--private-root", "/r", "--board", "205"], ["noise-launch", "/r"], ["owner-finish", "--owner", "x"]];
   // Act
   const codes = cases.map((argv) => { try { argumentsFor(argv); return "accepted"; } catch (error) { return error.code; } });
   // Assert

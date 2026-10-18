@@ -17,7 +17,8 @@ const ACTIONS = {
   "noise-send": { options: { "private-root": string, command: string, index: string, "timeout-seconds": string }, required: ["private-root", "command"] },
   "noise-await": { options: { "private-root": string, "timeout-seconds": string }, required: ["private-root"] },
   "noise-stop-holder": { options: { "private-root": string }, required: ["private-root"] },
-  "owner-finish": { options: { owner: string, "private-root": string, stage: string, "wait-collection": { type: "boolean" }, "pool-credentials": string },
+  "owner-finish": { options: { owner: string, "private-root": string, stage: string, "wait-collection": { type: "boolean" }, "pool-credentials": string,
+    port: string },
     required: ["owner", "private-root"] },
   "restart-sequence": { options: { owner: string, "private-root": string }, required: ["owner", "private-root"] },
   "recovery-core-dump": { options: { owner: string, "private-root": string, "core-root": string, "wait-collection": { type: "boolean" } },
@@ -76,7 +77,7 @@ export async function run(action, values) {
   if (action === "owner-finish") {
     const maybePoolCredentials = values["pool-credentials"] === undefined ? undefined : userPath(values["pool-credentials"]);
     const { summary } = await stopAndFinish({ name: values.owner, root, maybeStage: values.stage, waitCollection: values["wait-collection"] === true,
-      maybePoolCredentials });
+      maybePoolCredentials, maybePort: values.port });
     return summary;
   }
   if (action === "restart-sequence") return restartSequence({ name: values.owner, root });

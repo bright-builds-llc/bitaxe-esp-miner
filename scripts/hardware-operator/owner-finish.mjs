@@ -67,7 +67,8 @@ async function poolCredentialsArguments(owner, maybePoolCredentials) {
 }
 
 /** Refuse every input problem before the first effect (the SIGTERM). */
-export async function admitOwnerFinish({ name, root, maybeStage, maybePoolCredentials }) {
+export async function admitOwnerFinish({ name, root, maybeStage, maybePoolCredentials, maybePort }) {
+  refuse(maybePort === undefined || /^\/dev\/cu\.[A-Za-z0-9._-]+$/u.test(maybePort), "detector_port_invalid");
   root = await privateDirectory(root, "owner_root_missing");
   const layout = ownerLayout(name, root, maybeStage);
   const finishArguments = [...layout.finishArguments, ...await poolCredentialsArguments(layout.owner, maybePoolCredentials)];
@@ -88,7 +89,7 @@ export async function stopAndFinish(request, operations = {}) {
   await awaitGroupGone(record.owner, operations);
   requirePortFree(record.port, operations);
   await breadcrumb(layout.parent, "owner-finish", { owner: request.name, stage: request.maybeStage ?? null, step: "owner_released", stop });
-  await detect(layout.finalDetector, layout.finalDetectorStderr, operations);
+  await detect(layout.finalDetector, layout.finalDetectorStderr, operations, request.maybePort);
   const finishExit = await runJust(layout.finishArguments, { stdoutPath: layout.finishStdout, stderrPath: layout.finishStderr }, operations);
   await breadcrumb(layout.parent, "owner-finish", { owner: request.name, stage: request.maybeStage ?? null, step: "finish_exited", exit: finishExit });
   return { layout, maybeCollectionStartedAt, summary: { event: "owner_finished", owner: request.name, stage: request.maybeStage ?? null, stop,
