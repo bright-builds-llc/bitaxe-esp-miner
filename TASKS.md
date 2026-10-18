@@ -1370,6 +1370,114 @@ Soak 002 attempt 002 result (2026-10-18): `complete`.
 - The device is left paused, with mining on boot off and the owner's pool
   saved. Soak 002's enable line was removed.
 
+Ultra 205 lease interruption check hardware: enabled.
+
+Lease interruption check contract (owner request 2026-10-18; attempt ordinals
+001 onward). The soak 001 contract applies except as stated.
+- **Objective:** show on hardware that a Gate lease interrupts local mining
+  and that local mining comes back afterwards (ADR-0038 handover). In order:
+  - 5 minutes of local mining on the owner's saved pool;
+  - a Gate Connect refused while mining locally, which stops local mining
+    through the ordered safe-stop;
+  - an admitted Connect, and one 600-active-second soak lease mining Stratum
+    V1 to the owner's pool through the grant, passing the Gate soak judge in
+    interrupt mode;
+  - local mining back within 180 s of the Gate soak's result, then 5 more
+    minutes of it;
+  - a pause, with the ASIC powered down.
+- **Commands:** `just local-mining-soak` with `--soak lease-001`, paired
+  with `just ultra205-soak --interrupt-local-mining`. This one line enables
+  both. Durations are the agent's choice under the owner's standing
+  authorization: the lease uses the existing 600 s soak budget, and 5 local
+  minutes on each side show mining before and after.
+- **Private inputs**, used at run time and never printed, recorded or
+  committed: the ignored `pool-credentials.json`
+  (`pool_config: local-owner-supplied`) and the existing protected authority
+  directory.
+- **Permitted commands**, in order. `P` is a new mode-0700 parent under
+  `scratch/lease-interruption/`; `R=P/gate-NNN` is the Gate soak root and
+  `L=P/attempt-NNN` the local root, for the same ordinal. Use a shell with
+  `umask 077`, and name the port on each detector:
+  `just detect-ultra205 --port <the only /dev/cu.usbmodem* node>`.
+  1. `just package` at a clean, pushed HEAD that contains this contract, and
+     `bun run build:browser` in `../bitaxe-turnstile-system` at the pinned
+     Gate commit.
+  1. A detector, `espflash board-info`, and the state-preserving
+     `just flash-monitor` install of the exact package, as in soak 001.
+  1. A fresh detector, then `just otawww-endpoint preflight|serve|finish`
+     with `--private-root P/endpoint`, Connected once while the device is
+     paused.
+  1. `just local-mining-soak preflight --soak lease-001 --private-root L
+     --endpoint-root P/endpoint --package-manifest <manifest>
+     --pool-credentials pool-credentials.json --lease-root R`.
+  1. `nohup caffeinate -is just local-mining-soak run --private-root L
+     --pool-credentials pool-credentials.json`, detached, with mode-0600
+     logs in `P`, on AC power.
+  1. A fresh detector, then within 60 s `just ultra205-soak preflight
+     --interrupt-local-mining --private-root R`, with the README's other
+     arguments. Then `just ultra205-soak serve`, detached under `nohup` with
+     mode-0600 logs.
+  1. Once the local journal shows `lease_ready`, in the dedicated Gate tab:
+     - open `http://127.0.0.1:48765/`, check `document.visibilityState`, and
+       Connect, which is refused;
+     - once the local journal shows the ASIC down (not mining, fresh power
+       at most 5 W), reload and Connect;
+     - run the README's page sequence: `startObserver()`, then reload and
+       Connect within 15 s, the idle proof, the reviews, the signed window,
+       and `submitSoakCompletion()`;
+     - navigate the tab to `about:blank`. Check visibility before each
+       step.
+     A reload and Connect slower than 15 s lets local mining resume. That
+     fails the attempt (idle proof and `browser_failure`) without signing a
+     grant, and the local run then pauses at its deadline. Pass `L` and `R`
+     as absolute paths.
+  1. Stop the Gate soak server, then seal it with `just hardware-operator
+     owner-finish --owner ultra205-soak --private-root R`.
+  1. Wait for the local run's verdict, then take a final named-port
+     detector.
+  - Recovery, only if the local run died or its pause is unconfirmed:
+    `just local-mining-soak pause --private-root L`.
+- **Allowed effects:**
+  - the exact package install;
+  - the endpoint handoff's Gate admission;
+  - one PATCH writing the owner's saved pool unchanged;
+  - one resume through the HTTP API;
+  - local mining at the saved profile, before and after the lease;
+  - refused Hellos, each of which stops local mining through the ordered
+    safe-stop;
+  - Gate admission and the fan cooling proof;
+  - the Gate soak's settings write of the upstream default (485 MHz,
+    1200 mV, automatic fan), which equals the saved profile;
+  - one signed soak grant with 36 renewals and its ledger charge
+    (600,000 ms);
+  - BM1366 work and Stratum V1 to the owner's pool under the lease;
+  - device-local safe-stop and restoration, and local mining's restart;
+  - the run's pauses and the recovery pause;
+  - HTTP and WebSocket observation of the handed-off endpoint.
+- **Prohibited effects:**
+  - more than one lease, or mining beyond its signed budget;
+  - mining past the local run deadline (90 minutes after the resume);
+  - live changes, other profiles, TLS or Stratum V2;
+  - and everything soak 001 prohibits besides a lease.
+- **Live stops:**
+  - **Local tool:** soak 002's stops, with the outage bound applied only to
+    the local phases. Also a lease that ends while local mining never
+    stopped, and local mining not back within 180 s of the lease's end.
+  - **Firmware and Gate:** the lease's own revocation and heartbeat stops.
+  Every path from the resume on pauses the device.
+- **Terminal criterion:** both results `passed`.
+  - The local `result.json` covers the phases, the limits on every sample,
+    a nonzero hashrate, an accepted share, the powered-down proof after the
+    pause, `startMiningOnBoot` false, no `pauseReason` and one boot session.
+  - The Gate soak's `R/result.json` is judged in interrupt mode, which
+    expects the run intent preserved at its end.
+- **Afterwards:** the device is paused, with mining on boot off and the
+  owner's pool saved. The soak ledger has advanced one ordinal.
+- **Unchanged from soak 001:** evidence (including the Gate root's
+  `ProtectedOperational` files), recovery, notifying the owner when the
+  device may still be mining, the retry bound and the accepted outcomes.
+  `complete` also needs an independent review.
+
 Remaining in this task, each under its own contract:
 - longer soaks;
 - the lease interruption check;
