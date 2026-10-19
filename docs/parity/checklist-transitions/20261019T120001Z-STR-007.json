@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261019T120001Z-STR-007",
+  "predecessor_sha256": "5d41f7638043d82bda030f0697ac3582ee63e32db18f90642bd80c00ad26e833",
+  "result_sha256": "d66bac2870bab5ef2ed6c9a5691dd778dc4c1a06a0005aaeb68b3d37043ebb84",
+  "row_id": "STR-007",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261019T120001Z-STR-007/PLAN.md",
+  "plan_sha256": "badb974f2a4817d6fee9dccffc86e3504ecf9590479e861d28275aa5b9c3301f",
+  "result_path": "docs/parity/work-plans/20261019T120001Z-STR-007/RESULT.md",
+  "result_document_sha256": "8f5a6c2ed657dc9add3ee421465aa6b459eae9be9af8eb0b9d8a4ca714f6765c",
+  "verified_revision_authority_path": "docs/parity/verified-revisions/2026-10-19-local-mining.json",
+  "verified_revision_authority_sha256": "1b85138223c16aec8cf4f4996839544565d14352a91df40dc87832aa5e1a334c",
+  "before_rust_owned_target": "`tools/flash/src/campaign`, `crates/bitaxe-stratum/src/v1/production_session`, `crates/bitaxe-automation-contracts/src/mining_criteria_evidence.rs`, `tools/automation/src/mining-criteria-evidence.ts`",
+  "after_rust_owned_target": "`tools/flash/src/campaign`, `crates/bitaxe-stratum/src/v1/production_session`, `crates/bitaxe-automation-contracts/src/mining_criteria_evidence.rs`, `tools/automation/src/mining-criteria-evidence.ts`",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "workflow,hardware-smoke,soak",
+  "after_evidence": "workflow,hardware-smoke,soak,hardware-regression",
+  "before_notes": "Sealed evidence binds the committed Phase 21 controlled no-share smoke and approved 300-second bounded soak, verified STR-006 coordinator compatibility, and current exact 600-second upstream-default fail-closed criteria; see `docs/parity/work-plans/20260812T133713Z-STR-007/RESULT.md` and `docs/parity/evidence/str007-mining-criteria/mining-criteria-projection.json`. The terminal attempt-004 continuity task, a current accepted or rejected share soak, arbitrary pools, automatic controls, profitability, unbounded mining, TLS, Stratum v2, other boards, updates, recovery, and release readiness remain non-claims.",
+  "after_notes": "Sealed evidence binds the committed Phase 21 controlled no-share smoke and approved 300-second bounded soak, verified STR-006 coordinator compatibility, and current exact 600-second upstream-default fail-closed criteria; see `docs/parity/work-plans/20260812T133713Z-STR-007/RESULT.md` and `docs/parity/evidence/str007-mining-criteria/mining-criteria-projection.json`. The terminal attempt-004 continuity task, a current accepted or rejected share soak, arbitrary pools, automatic controls, profitability, unbounded mining, TLS, Stratum v2, other boards, updates, recovery, and release readiness remain non-claims. Later evidence, outside the projection above, adds current accepted-share soaks of ADR-0038 local mining through the repo-owned `just local-mining-soak` on exact Ultra 205 packages: 30 continuous minutes with 87 accepted and 0 rejected shares (soak 001), 2 hours accumulated with 336 accepted and 1 rejected (soak 002 attempt 002), and 4 hours accumulated in 241 minutes with 477 accepted and 1 rejected (soak 003). Each was judged on live limits with fresh readings, one boot session and a powered-down stop, and each was independently reviewed; see docs/parity/evidence/20261017-ultra205-local-mining-soak-001.md, docs/parity/evidence/20261018-ultra205-local-mining-soak-002.md and docs/parity/evidence/20261018-ultra205-local-mining-soak-003.md. This narrows the share-soak non-claim; mining beyond 4 hours, arbitrary pools and the remaining non-claims above still apply."
+}

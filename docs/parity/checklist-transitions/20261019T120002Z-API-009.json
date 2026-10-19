@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261019T120002Z-API-009",
+  "predecessor_sha256": "d66bac2870bab5ef2ed6c9a5691dd778dc4c1a06a0005aaeb68b3d37043ebb84",
+  "result_sha256": "37dd845559e53d473a8ddfe42b0cc72a463bc1e28e8bd1968837fe5356fe7de3",
+  "row_id": "API-009",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261019T120002Z-API-009/PLAN.md",
+  "plan_sha256": "e7d3a31495c5cb8e39c6fde313033abe34073c8cd9437ce958ae35767c30e94d",
+  "result_path": "docs/parity/work-plans/20261019T120002Z-API-009/RESULT.md",
+  "result_document_sha256": "178978d215c518eea2ab487118118b0ffbd6422bce7bd53bb5f428b8837337b7",
+  "verified_revision_authority_path": "docs/parity/verified-revisions/2026-10-19-local-mining.json",
+  "verified_revision_authority_sha256": "1b85138223c16aec8cf4f4996839544565d14352a91df40dc87832aa5e1a334c",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/commands.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session`, `firmware/bitaxe/src/http_api/handlers.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/commands.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session`, `firmware/bitaxe/src/http_api/handlers.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression,soak",
+  "before_notes": "The [typed result](work-plans/20260815T044046Z-API-009/RESULT.md), [attempt-046 programmatic projection](evidence/api009-command-effects/command-effects-projection-attempt-046.json), and [attempt-005 physical-display projection](evidence/api009-command-effects/display-uat-projection-attempt-005.json) bind one exact-package detector-admitted Ultra 205, exactly one pause, dismiss, IDENTIFY, resume, and restart request, claim-specific HTTP/runtime/render postconditions, reader-first same-device restart at ordinal N+1 with exact build identity, safe stop, cleanup, redaction, and independent confirmation that IDENTIFY visibly rendered and cleared. Native USB duplex, external serial wiring, other commands or boards, endurance, power-loss behavior, hardware controls, OTA, and release readiness remain separate non-claims.",
+  "after_notes": "The [typed result](work-plans/20260815T044046Z-API-009/RESULT.md), [attempt-046 programmatic projection](evidence/api009-command-effects/command-effects-projection-attempt-046.json), and [attempt-005 physical-display projection](evidence/api009-command-effects/display-uat-projection-attempt-005.json) bind one exact-package detector-admitted Ultra 205, exactly one pause, dismiss, IDENTIFY, resume, and restart request, claim-specific HTTP/runtime/render postconditions, reader-first same-device restart at ordinal N+1 with exact build identity, safe stop, cleanup, redaction, and independent confirmation that IDENTIFY visibly rendered and cleared. Native USB duplex, external serial wiring, other commands or boards, endurance, power-loss behavior, hardware controls, OTA, and release readiness remain separate non-claims. Later evidence, outside the projection above, shows pause and resume driving ADR-0038 local mining with no Work Lease on exact Ultra 205 packages: in soaks 001 to 003 each HTTP resume started mining the saved pool within 16 s, and in those soaks and the lease interruption check each HTTP pause stopped it through the ordered safe-stop, confirmed within 30 s by two consecutive samples with fresh input power at most 5 W (soak 001 journaled only the second), `miningPaused` true, `startMiningOnBoot` false and no `pauseReason`; see docs/parity/evidence/20261017-ultra205-local-mining-soak-001.md, docs/parity/evidence/20261018-ultra205-local-mining-soak-002.md, docs/parity/evidence/20261018-ultra205-local-mining-soak-003.md and docs/parity/evidence/20261018-ultra205-lease-interruption-check.md. This adds the upstream meaning of resume as starting local mining; endurance, power-loss behavior and the remaining non-claims above still apply."
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261019T120003Z-STAT-001",
+  "predecessor_sha256": "37dd845559e53d473a8ddfe42b0cc72a463bc1e28e8bd1968837fe5356fe7de3",
+  "result_sha256": "b8179e9aff0aeda9fbe5dfac22ec34f6c0a7ad95a46e8ca70103c7aae4a78a2c",
+  "row_id": "STAT-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261019T120003Z-STAT-001/PLAN.md",
+  "plan_sha256": "60e2508071119d0a6772ef003de926146e528dc2ade5982da6eab13abcd59f5a",
+  "result_path": "docs/parity/work-plans/20261019T120003Z-STAT-001/RESULT.md",
+  "result_document_sha256": "141ed6f63ac0fd0b3846d557d7df7789baa355872e2074bf10fdfea99f3f2a1a",
+  "verified_revision_authority_path": "docs/parity/verified-revisions/2026-10-19-local-mining.json",
+  "verified_revision_authority_sha256": "1b85138223c16aec8cf4f4996839544565d14352a91df40dc87832aa5e1a334c",
+  "before_rust_owned_target": "`crates/bitaxe-core/src/hashrate.rs`, `crates/bitaxe-stratum/src/v1/state.rs`, `crates/bitaxe-api/src/mining.rs`, `crates/bitaxe-api/src/wire.rs`, `firmware/bitaxe/src/production_mining_session/hashrate.rs`, `firmware/bitaxe/src/production_mining_session/asic_worker.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/hashrate.rs`, `crates/bitaxe-stratum/src/v1/state.rs`, `crates/bitaxe-api/src/mining.rs`, `crates/bitaxe-api/src/wire.rs`, `firmware/bitaxe/src/production_mining_session/hashrate.rs`, `firmware/bitaxe/src/production_mining_session/asic_worker.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,api-compare,hardware-smoke,hardware-regression",
+  "after_evidence": "unit,workflow,api-compare,hardware-smoke,hardware-regression,soak",
+  "before_notes": "Exact-package Ultra 205 attempt-019 proves one BM1366/four-domain 1,000 ms live hashrate sampling across 20/20 renewed windows, coherent changing positive HTTP/WebSocket current rates and warm rolling windows, terminal zero, submit evidence, stable watchdog, no panic or mixed session, safe stop, cleanup, protected modes, independent validation, and redaction. See docs/parity/work-plans/20260818T050654Z-STAT-001/RESULT.md and docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json. Profitability, laboratory-calibrated absolute accuracy, arbitrary profiles/pools, other boards/ASICs, unbounded mining, OTA, and release readiness remain separate.",
+  "after_notes": "Exact-package Ultra 205 attempt-019 proves one BM1366/four-domain 1,000 ms live hashrate sampling across 20/20 renewed windows, coherent changing positive HTTP/WebSocket current rates and warm rolling windows, terminal zero, submit evidence, stable watchdog, no panic or mixed session, safe stop, cleanup, protected modes, independent validation, and redaction. See docs/parity/work-plans/20260818T050654Z-STAT-001/RESULT.md and docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json. Profitability, laboratory-calibrated absolute accuracy, arbitrary profiles/pools, other boards/ASICs, unbounded mining, OTA, and release readiness remain separate. Later evidence, outside the projection above, shows the hashrate monitor under ADR-0038 local mining with no Work Lease, after the owning-generation fix (071b5af3): the current hashrate read nonzero on every mining sample except those right after a mining start, with a median of 433 GH/s over 2 hours (soak 002 attempt 002) and 432 GH/s over 4 hours (soak 003) on exact Ultra 205 packages; see docs/parity/evidence/20261018-ultra205-local-mining-soak-002.md and docs/parity/evidence/20261018-ultra205-local-mining-soak-003.md. Laboratory-calibrated accuracy, mining beyond 4 hours and the remaining non-claims above still apply."
+}

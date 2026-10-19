@@ -1,0 +1,55 @@
+{
+  "schema_version": "parity-verified-revision-authority-v1",
+  "authority_id": "2026-10-19-local-mining",
+  "authorized_by": "owner",
+  "authorized_on": "2026-10-19",
+  "rationale": "ADR-0038 made local mining the Mining Baseline. Local mining soaks 001-003 and the lease interruption check gathered hardware evidence that narrows named non-claims on these verified rows. The owner asked on 2026-10-19 to update the parity rows within that evidence, once per row, with the status and the original notes unchanged.",
+  "evidence": [
+    {
+      "path": "docs/parity/evidence/20261017-ultra205-local-mining-soak-001.md",
+      "sha256": "414fb6379fd92695e4c779af2b6b1c92b813f9698d67700ba205bae32983459c"
+    },
+    {
+      "path": "docs/parity/evidence/20261018-ultra205-local-mining-soak-002.md",
+      "sha256": "382a46170bb7be2a4d75294f4480fd89e5e75b70e1c20f15313572180315e161"
+    },
+    {
+      "path": "docs/parity/evidence/20261018-ultra205-local-mining-soak-003.md",
+      "sha256": "07b101c07515364f40032bb4eb7bc59cf11201c650b8d3f16f68fa13c1d37ab2"
+    },
+    {
+      "path": "docs/parity/evidence/20261018-ultra205-lease-interruption-check.md",
+      "sha256": "b9ad81cdb394f42967c2394e4c2819be8007c574ca27fb3f6a8ecd47f78a21a6"
+    }
+  ],
+  "rows": [
+    {
+      "row_id": "STR-006",
+      "added_evidence": [
+        "soak"
+      ],
+      "after_notes_sha256": "d681a26ab6738998fd7b632405836c836083bd7ae19177b32beda752073e1822"
+    },
+    {
+      "row_id": "STR-007",
+      "added_evidence": [
+        "hardware-regression"
+      ],
+      "after_notes_sha256": "cba23db8f24ab2dbb27155fbb524eb7e3639372cf5171baf5d04c6d2e700d719"
+    },
+    {
+      "row_id": "API-009",
+      "added_evidence": [
+        "soak"
+      ],
+      "after_notes_sha256": "f11ed6299aacf7798c14148d28c9c422e4577300dd0bdaa8a8e51a26a8a3fc6d"
+    },
+    {
+      "row_id": "STAT-001",
+      "added_evidence": [
+        "soak"
+      ],
+      "after_notes_sha256": "745b89d528b43db689c78ad79d5a4654ff6439b9db70727f621146c791e85a62"
+    }
+  ]
+}

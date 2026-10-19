@@ -1111,7 +1111,7 @@ confirmation (ADR-0038).
       the device configuration.
 - [x] A hardware check that a lease interrupts local mining and restores it.
 - [ ] An overheat recovery check, only with a safe, contracted stimulus.
-- [ ] Update the parity rows within what the evidence shows. "Unbounded
+- [x] Update the parity rows within what the evidence shows. "Unbounded
       mining" stays a non-claim until these soaks exist.
 
 Owner decisions (2026-10-17):
@@ -1776,10 +1776,32 @@ Soak 003 attempt 001 result (2026-10-18): `complete`.
   - the parity rows;
   - the attempt 002 panic's diagnosis, when a dump is captured.
 
+Parity rows (2026-10-19, owner request "update the parity rows within the
+evidence"): `STR-006`, `STR-007`, `API-009` and `STAT-001` gained one
+additive passage each. Their status stays `verified`.
+- Authority: `docs/parity/verified-revisions/2026-10-19-local-mining.json`.
+  Transitions `20261019T120000Z-STR-006` through
+  `20261019T120003Z-STAT-001`; progress synced.
+- Evidence tokens added: `soak` on STR-006, API-009 and STAT-001;
+  `hardware-regression` on STR-007.
+- What each passage adds:
+  - STR-006: the local owner over 30 minutes, 2 hours and 4 hours;
+    recovery by safe-stop and restart after outages up to 47 s; the lease
+    handover;
+  - STR-007: current accepted-share soaks;
+  - API-009: pause and resume driving local mining;
+  - STAT-001: the hashrate monitor under local mining.
+- An independent review corrected two passages before promotion:
+  - a refused Connect stops local mining, not the lease itself;
+  - the outage cause is unconfirmed;
+  - resume timing covers soaks 001 to 003 only.
+- Still non-claims: unbounded mining, mining beyond 4 hours, a lease
+  starting without a refused Connect first, fallback-pool switching, and
+  the attempt 002 panic.
+
 Remaining in this task, each under its own contract:
 - the diagnosis of the attempt 002 panic, when a dump is captured;
-- an overheat check, only with a safe stimulus;
-- parity rows within the evidence.
+- an overheat check, only with a safe stimulus.
 
 Verification: pending. Completion review: pending.
 
