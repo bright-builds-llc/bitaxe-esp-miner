@@ -47,6 +47,17 @@ export function breakLog(text, fromUptimeMs, toUptimeMs) {
  */
 export function breakWatcher({ readLogs, keepLogs, note }) {
   let maybeBreakFrom = null, sawMining = false, captures = 0;
+  const capture = async (from, maybeToUptimeMs, atMs) => {
+    captures += 1;
+    try {
+      const text = await readLogs();
+      await keepLogs(text, captures);
+      const { markers, dropped } = breakLog(text, from, maybeToUptimeMs ?? Number.MAX_SAFE_INTEGER);
+      await note({ event: "break_log", capture: captures, atMs, markers, dropped });
+    } catch {
+      await note({ event: "break_log_failed", capture: captures, atMs });
+    }
+  };
   return {
     /** Called with each sample in order, after its own live checks. */
     async observe(sample, isMining) {
@@ -58,16 +69,14 @@ export function breakWatcher({ readLogs, keepLogs, note }) {
       if (maybeBreakFrom === null) return;
       const from = maybeBreakFrom;
       maybeBreakFrom = null;
-      captures += 1;
-      try {
-        const text = await readLogs();
-        await keepLogs(text, captures);
-        const toUptime = sample.uptimeSeconds === null ? Number.MAX_SAFE_INTEGER : sample.uptimeSeconds * 1000;
-        const { markers, dropped } = breakLog(text, from, toUptime);
-        await note({ event: "break_log", capture: captures, atMs: sample.atMs, markers, dropped });
-      } catch {
-        await note({ event: "break_log_failed", capture: captures, atMs: sample.atMs });
-      }
+      await capture(from, sample.uptimeSeconds === null ? null : sample.uptimeSeconds * 1000, sample.atMs);
+    },
+    /** A run that stops during a break reads the log too, before the pause, since no recovery will. */
+    async stopped(atMs) {
+      if (maybeBreakFrom === null) return;
+      const from = maybeBreakFrom;
+      maybeBreakFrom = null;
+      await capture(from, null, atMs);
     },
     /** A device that could not be reached is a break too, from the last reachable sample. */
     unreachable(maybeLastSample) {

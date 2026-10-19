@@ -94,3 +94,27 @@ test("a marker in an unexpected form is counted as dropped", () => {
   // Assert
   assert.deepEqual([markers, dropped], [[], 2]);
 });
+
+test("a run that stops during a break still reads the log once", async () => {
+  // Arrange
+  let reads = 0;
+  const watcher = breakWatcher({ readLogs: async () => { reads += 1; return ""; }, keepLogs: async () => {}, note: async () => {} });
+  await watcher.observe({ atMs: 0, uptimeSeconds: 100 }, true);
+  await watcher.observe({ atMs: 2000, uptimeSeconds: 102 }, false);
+  // Act
+  await watcher.stopped(70_000);
+  await watcher.stopped(72_000);
+  // Assert
+  assert.equal(reads, 1);
+});
+
+test("a run that stops while mining reads no log", async () => {
+  // Arrange
+  let reads = 0;
+  const watcher = breakWatcher({ readLogs: async () => { reads += 1; return ""; }, keepLogs: async () => {}, note: async () => {} });
+  await watcher.observe({ atMs: 0, uptimeSeconds: 100 }, true);
+  // Act
+  await watcher.stopped(2000);
+  // Assert
+  assert.equal(reads, 0);
+});

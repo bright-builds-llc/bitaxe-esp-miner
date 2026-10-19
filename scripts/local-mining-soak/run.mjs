@@ -42,6 +42,8 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
   const samples = [];
   const marks = {};
   let maybeStop = null;
+  // Clients without a log route (older test fakes) skip the break diagnostics.
+  const watcher = typeof client.logs === "function" ? breakWatcher({ readLogs: () => client.logs(), keepLogs, note }) : null;
   try {
     requireCondition(!isInterrupted(), "soak_interrupted_before_resume");
     const resumedAt = now();
@@ -49,12 +51,12 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
     await note({ event: "resumed", atMs: resumedAt });
     const phases = soak.kind === "lease" ? leasePhases({ soak, samples, resumedAt, marks, note, leaseResult })
       : soak.kind === "handover" ? handoverPhases({ soak, samples, resumedAt, note }) : localPhases({ soak, samples, resumedAt });
-    // Clients without a log route (older test fakes) skip the break diagnostics.
-    const watcher = typeof client.logs === "function" ? breakWatcher({ readLogs: () => client.logs(), keepLogs, note }) : null;
     maybeStop = await sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases, watcher });
   } catch {
     maybeStop ??= "soak_run_error";
   }
+  // An outage that never recovered still gets its log, before the pause; this never throws.
+  if (maybeStop !== null) await watcher?.stopped(now());
   if (maybeStop !== null) await note({ event: "live_stop", code: maybeStop });
   const maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
   const judged = { baseline, samples, maybeFinal, soak, maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) };

@@ -75,3 +75,12 @@ test("a break that never recovers stops the loop", async () => {
   assert.ok(verdict.failures.includes("handover_not_restored"));
   assert.ok(device.clock.now < 240_000 + LOOP.breakBoundMs + 200_000);
 });
+
+test("a stop during a break reads the log once more before the pause", async () => {
+  // Arrange: local mining never comes back after 4 minutes, so the loop stops mid-break.
+  const device = fakeLoop({ idle: (t) => t >= 240_000 });
+  // Act
+  await run(device);
+  // Assert
+  assert.equal(device.state.logReads, 1);
+});
