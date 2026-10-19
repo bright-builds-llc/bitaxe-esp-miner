@@ -1,4 +1,4 @@
-import { readFile, stat, mkdir } from 'node:fs/promises';
+import { readFile, readdir, stat, mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
@@ -7,7 +7,7 @@ import { privateRoot, proof, writeNew, retain } from '../str005-noise-serial/fil
 import { processSnapshot, sameProcess, requireNoHolders, requireLsofAbsent } from '../str005-v2-serial/host-resources.mjs';
 import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
-import { CLOSED_FILE, ENDPOINT_FILE, createEndpointServer } from './server.mjs';
+import { ATTEMPT_FILE, CLOSED_FILE, ENDPOINT_FILE, createEndpointServer } from './server.mjs';
 
 const GATE_PORT = 48765;
 const ACTIONS = { preflight: ['--private-root', '--gate-root', '--package-manifest', '--detector-output'],
@@ -81,11 +81,25 @@ async function finish(firmwareRoot, root, context, options) {
   requireLsofAbsent(['-nP', `-iTCP:${owner.port}`, '-sTCP:LISTEN', '-t']);
   const selected = await detect(workspacePath(firmwareRoot, options['--detector-output']), context.physical);
   for (const port of new Set([owner.serialPort, selected.port])) requireNoHolders(port);
-  const closed = (await proof(root, CLOSED_FILE)).value; await protectedPath(resolve(root, ENDPOINT_FILE));
-  const result = { schema: 'otawww-endpoint-result-v1', endpoint_recorded: closed.endpoint_saved === true, page_closed: true, host_released: true };
+  const failedAttempts = (await readdir(root)).filter(name => ATTEMPT_FILE.test(name)).length;
+  const maybeClosed = await maybeProof(root, CLOSED_FILE);
+  if (maybeClosed?.endpoint_saved === true) await protectedPath(resolve(root, ENDPOINT_FILE));
+  const { result, maybeFailure } = handoffResult(maybeClosed, failedAttempts);
   await writeNew(resolve(root, 'result.json'), result);
-  check(result.endpoint_recorded, 'endpoint_not_recorded');
+  check(!maybeFailure, maybeFailure);
   return result;
+}
+
+async function maybeProof(root, file) {
+  try { return (await proof(root, file)).value; } catch (error) { if (error.code === 'ENOENT') return undefined; throw error; }
+}
+
+/** The handoff result and, unless the page closed after saving an endpoint, the typed reason it failed. */
+export function handoffResult(maybeClosed, failedAttempts) {
+  const result = { schema: 'otawww-endpoint-result-v1', endpoint_recorded: maybeClosed?.endpoint_saved === true, page_closed: maybeClosed !== undefined,
+    host_released: true, failed_attempts: failedAttempts };
+  const maybeFailure = !result.page_closed ? 'endpoint_page_not_closed' : !result.endpoint_recorded ? 'endpoint_not_recorded' : undefined;
+  return { result, maybeFailure };
 }
 
 export async function main(argv) {

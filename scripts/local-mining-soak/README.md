@@ -57,9 +57,10 @@ With `P` a new mode-0700 parent under `scratch/local-mining-soak/`, in a shell
 with `umask 077`:
 
 1. `just otawww-endpoint preflight|serve|finish` with
-   `--private-root P/endpoint`, and one Connect in the dedicated Gate tab. The
-   device must be paused, so the Hello is admitted and the link is quiet
-   afterwards.
+   `--private-root P/endpoint`, and a Connect in the dedicated Gate tab, again
+   after each reload the page asks for
+   ([attempts](../otawww-endpoint/README.md#attempts)). The device must be
+   paused, so the Hello is admitted and the link is quiet afterwards.
 2. `just local-mining-soak preflight --soak <id> --private-root P/attempt-NNN --endpoint-root P/endpoint --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --pool-credentials pool-credentials.json`
 3. `nohup caffeinate -is just local-mining-soak run --private-root P/attempt-NNN --pool-credentials pool-credentials.json > P/run.stdout.log 2> P/run.stderr.log &`.
    `caffeinate` keeps the host awake, because a sleeping host stops watching a

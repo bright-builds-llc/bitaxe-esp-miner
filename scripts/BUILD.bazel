@@ -1905,6 +1905,12 @@ js_test(
     entry_point = "otawww-endpoint/endpoint.test.mjs",
 )
 
+js_test(
+    name = "otawww_endpoint_page_test",
+    data = [":otawww_endpoint_sources"],
+    entry_point = "otawww-endpoint/page.test.mjs",
+)
+
 js_library(
     name = "hardware_operator_sources",
     srcs = glob(["hardware-operator/*.mjs"]),

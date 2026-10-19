@@ -1906,6 +1906,94 @@ Remaining in this task, each under its own contract:
 
 Verification: pending. Completion review: pending.
 
+### task-otawww-endpoint-handoff-retry | 2026-10-19 | Make the endpoint handoff survive a failed Connect or endpoint read
+
+Owner request 2026-10-19: investigate the intermittent `just otawww-endpoint`
+failures (Connect `connect_failed` / `operation_failed`, or a page closed with
+`endpoint_saved: false`, so `finish` hit ENOENT) and fix them in the
+repo-owned page or server, with unit tests.
+
+Investigation (code reading at Gate `eacd8147`, firmware `d4c6eede`):
+- `operation_failed` is the Gate's projection of every admission error
+  outside its short public list. A `port.open` failure surfaces as `io`
+  and a refused Hello (the device stays silent) as `timeout`, so neither
+  the open itself nor the ADR-0038 refused Hello has this signature.
+- The archived cadence preparation hit the same signature at admission
+  stage `permission`, with Chrome's native chooser observed. Since
+  ADR-0101 the Gate reuses a grant only when `getPorts()` lists exactly one
+  attached `303a:1001` port; otherwise it opens the chooser, which an
+  agent's click cannot answer (`permission_cancelled`). A Connect during
+  USB re-enumeration, after an install or reset, can hit that window.
+- `just detect-ultra205 --port` is passive (IORegistry, `rom_admitted:
+  false`). It neither resets the device nor opens the port.
+- Endpoint misses: the firmware returns no endpoint until HTTP is active
+  and the station has an IPv4 (`telemetry_cadence.rs`), and a failed
+  possession proof closes the Worker (`#lost`, again `operation_failed`).
+  The page was one-shot, the Gate's endpoint operation is one use per
+  document, and the server issued one challenge and one nonce, so any miss
+  ended the handoff.
+- The page never kept the Gate's stage or category, so no failure could be
+  attributed afterwards.
+
+- [x] Server: a fresh challenge per `/activate`, a fresh nonce per attempt,
+      and a value-free `attempt-NNN.json` per failed attempt (step, Gate
+      status, failure, serial category, admission stage, port counts,
+      foreground, endpoint rejection code), bounded at 5 attempts.
+- [x] Page: hold Connect while the granted Worker ports are not exactly one
+      attached port, record each failure, release the Worker and reload a
+      fresh Gate document for the next Connect; give up after the bound.
+- [x] `finish`: typed `endpoint_page_not_closed` and
+      `endpoint_not_recorded` instead of ENOENT, with the attempt count.
+- [x] Unit tests (Arrange/Act/Assert) on the real HTTP server, and gates.
+- [ ] Hardware verification under the contract below, then commit, push
+      and the completion review.
+
+Hardware contract (attempt ordinals 001 onward):
+- **Precondition:** no other task's run owns the device (no running soak,
+  Gate page or serial holder), and the device is paused (not mining
+  locally), so a Connect cannot cause a handover.
+- **Objective:** three consecutive handoffs, one server each, each record
+  an endpoint within the attempt bound. Any failed attempt leaves its
+  record, which names the failing step and stage.
+- **Commands:** per handoff N, under `umask 077`, in a new mode-0700 parent
+  `H` under `scratch/otawww-endpoint-retry/`:
+  1. `just detect-ultra205 --port <port>` into `H/detector-N.stdout.log`;
+  1. `just otawww-endpoint preflight` (`--private-root H/endpoint-N`,
+     `--gate-root ../bitaxe-turnstile-system`, the installed package
+     manifest, that detector), then `serve` detached with a fresh detector;
+  1. a real click on Connect in the persistent Gate tab after a read-only
+     `document.visibilityState` check, and again after each reload the page
+     asks for;
+  1. a named-port detector and `finish`.
+- **Allowed effects:** Gate admissions (Hello, possession, status, the
+  endpoint read) and their closes, on the paused device.
+- **Prohibited effects:** any grant, lease, mining, settings write, flash,
+  reset, direct UART or pins, and network discovery.
+- **Evidence:** attempt records and endpoints stay in the ignored private
+  roots. Committed text gives only counts, steps and categories.
+- **Stops:** a device pause, fault, reset or identity change; a handoff
+  exhausting its bound, or two handoffs failing at the same stage
+  (`stop_repeated_boundary`).
+- **Accepted outcomes:** `complete` when all three handoffs record an
+  endpoint; otherwise the attempt records drive the next fix.
+
+Software verification (2026-10-19): 20 Arrange/Act/Assert tests across
+`//scripts:otawww_endpoint_test` and `//scripts:otawww_endpoint_page_test`.
+The page tests drive the real HTTP server: a held Connect while the port is
+detached, a failed Connect recorded and reloaded, the endpoint read gated on
+the published ready state, an endpoint miss recorded with its rejection, and
+the bounded give-up. `just test`: 347 of 348 passed on the cold first
+build; the one failure, `usb_bootstrap_measure_regression_process_test`
+(`cleanup_timeout`, a 3 s bound under load), is unrelated to this change and
+passed when rerun alone. `bun scripts/bright-builds-check.ts all` found 0
+findings and `just verify-redaction` passed.
+
+Hardware verification: pending. Soak 004 of
+`task-local-mining-handover-panic-and-outages` owns the device until about
+17:40; the contract's precondition holds this run until then.
+
+Completion review: pending.
+
 ## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
