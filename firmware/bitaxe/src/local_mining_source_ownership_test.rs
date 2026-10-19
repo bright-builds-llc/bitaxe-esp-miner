@@ -155,3 +155,29 @@ fn hashrate_reads_carry_the_owning_generation() {
     assert!(read.contains("self.maybe_owner_generation(),"));
     assert!(!read.contains("self.maybe_bwg_session"));
 }
+
+#[test]
+fn local_run_lifecycle_lines_reach_the_retained_log() {
+    // Arrange
+    let (_, helper) = LOCAL_OWNER_SOURCE
+        .split_once("fn retained(level: log::Level, line: &str) {")
+        .expect("retained helper");
+    // Act
+    let retains = helper.contains("crate::log_buffer::append_runtime_log_line(&line);");
+    // Assert: a soak reads why a run ended from the retained log, beside the Wi-Fi lines.
+    assert!(retains);
+    assert!(helper.contains("format!(\"{line} uptime_ms={}\""));
+    for marker in [
+        "local_mining=run_began",
+        "local_mining=run_ended",
+        "local_mining=hold",
+        "local_mining=handover",
+        "local_mining=begin_refused",
+        "local_mining=hardware_fault",
+    ] {
+        for level in ["info", "warn", "error"] {
+            assert!(!LOCAL_OWNER_SOURCE.contains(&format!("log::{level}!(\"{marker}")), "{marker}");
+        }
+        assert!(LOCAL_OWNER_SOURCE.contains(marker), "{marker}");
+    }
+}

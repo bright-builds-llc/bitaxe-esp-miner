@@ -48,6 +48,14 @@ static BOOT_OWNED_ELSEWHERE: AtomicBool = AtomicBool::new(false);
 /// held until reboot. Like upstream's message, it names the latest failed context.
 static HARDWARE_FAULT_CONTEXT: Mutex<Option<&'static str>> = Mutex::new(None);
 
+/// Logs a value-free local mining lifecycle line and keeps it in the retained log with the
+/// uptime, so a soak can read why a run ended next to the Wi-Fi reconnect lines.
+fn retained(level: log::Level, line: &str) {
+    let line = format!("{line} uptime_ms={}", crate::runtime_uptime::millis());
+    log::log!(level, "{line}");
+    crate::log_buffer::append_runtime_log_line(&line);
+}
+
 /// A real fan write failed. Under a local run this latches the hardware fault and
 /// revokes the run, as upstream stops mining on `hardware_fault`.
 pub(crate) fn note_fan_control_failure(
@@ -61,7 +69,10 @@ pub(crate) fn note_fan_control_failure(
     *HARDWARE_FAULT_CONTEXT
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(context);
-    log::error!("local_mining=hardware_fault context={context}");
+    retained(
+        log::Level::Error,
+        &format!("local_mining=hardware_fault context={context}"),
+    );
     // `false` means the run was already revoked; the latch still holds it off.
     let _already_revoked = !revocation::revoke_reason_at(
         generation,
@@ -236,7 +247,10 @@ impl OrdinaryEspProductionSessionAdapter {
                 }
                 if self.local.maybe_logged_hold != Some(reason) {
                     self.local.maybe_logged_hold = Some(reason);
-                    log::info!("local_mining=hold reason={}", reason.label());
+                    retained(
+                        log::Level::Info,
+                        &format!("local_mining=hold reason={}", reason.label()),
+                    );
                     let mut labelled = session.snapshot();
                     self.local.label_hold(&mut labelled);
                     crate::runtime_snapshot::publish_production_session_snapshot(labelled);
@@ -261,9 +275,12 @@ impl OrdinaryEspProductionSessionAdapter {
         }
         let revoked = revocation::revoke_at(generation, now_ms);
         self.local.core.note_handover(revoked);
-        log::info!(
-            "local_mining=handover generation={} revoked={revoked}",
-            generation.raw()
+        retained(
+            log::Level::Info,
+            &format!(
+                "local_mining=handover generation={} revoked={revoked}",
+                generation.raw()
+            ),
         );
     }
 
@@ -338,7 +355,7 @@ impl OrdinaryEspProductionSessionAdapter {
         {
             revocation::revoke_at(generation, now_ms);
             revocation::finish_shutdown(generation);
-            log::warn!("local_mining=begin_refused");
+            retained(log::Level::Warn, "local_mining=begin_refused");
             return None;
         }
         set_fan_controller_owner(None);
@@ -350,7 +367,10 @@ impl OrdinaryEspProductionSessionAdapter {
         });
         self.local.core.run_began();
         self.local.maybe_logged_hold = None;
-        log::info!("local_mining=run_began generation={}", generation.raw());
+        retained(
+            log::Level::Info,
+            &format!("local_mining=run_began generation={}", generation.raw()),
+        );
         Some(self.wake_event(
             Some(ProductionSessionWakeup::ObservationsChanged),
             now_ms,
@@ -388,9 +408,12 @@ impl OrdinaryEspProductionSessionAdapter {
             .local
             .core
             .run_ended(maybe_unsafe_stop, maybe_stop_cause, now_ms);
-        log::info!(
-            "local_mining=run_ended generation={} ending={maybe_ending:?}",
-            run.generation.raw()
+        retained(
+            log::Level::Info,
+            &format!(
+                "local_mining=run_ended generation={} ending={maybe_ending:?}",
+                run.generation.raw()
+            ),
         );
         if maybe_ending == Some(RunEnding::Overheat) {
             self.enter_overheat(run.lease.profile(), now_ms);
