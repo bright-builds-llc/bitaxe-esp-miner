@@ -255,3 +255,16 @@ test("soak 003 accumulates four hours through recovered outages", async () => {
   assert.ok(verdict.metrics.accumulated_active_ms >= SOAKS["003"].activeMs);
   assert.ok(device.clock.now <= runDeadlineMs(SOAKS["003"]));
 });
+
+test("soak 005 accumulates eight hours within its nine-hour deadline", async () => {
+  // Arrange: a 45 s outage every 90 minutes.
+  const outage = (now) => now % 5_400_000 > 3_000_000 && now % 5_400_000 < 3_045_000;
+  const device = fakeDevice({ overrides: (now) => (outage(now) ? { miningActivity: "safe_blocked" } : {}) });
+  // Act
+  const verdict = await runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, now: () => device.clock.now,
+    sleep: async (ms) => { device.clock.now += ms; }, record: async () => {}, soak: SOAKS["005"] });
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.ok(verdict.metrics.accumulated_active_ms >= SOAKS["005"].activeMs);
+  assert.ok(device.clock.now <= runDeadlineMs(SOAKS["005"]));
+});

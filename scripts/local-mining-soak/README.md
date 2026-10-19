@@ -12,6 +12,8 @@ Ultra 205 (ADR-0038 task 6). Each soak needs its own exact enable line,
   5 hours, with the same outage tolerance.
 - `004` repeats soak 002 (2 hours within 150 minutes) to catch outages
   with their break logs.
+- `005` runs overnight: 8 hours of mining accumulated within 9 hours, with
+  the same outage tolerance and break logs.
 - `handover-001` is the handover loop. Its enable line is `Ultra 205 local
   mining handover loop hardware: enabled.` It mines locally while the
   operator repeats a lease-free handover: a refused Gate Connect, an admitted
