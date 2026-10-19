@@ -1122,15 +1122,15 @@ commands look for them. This block holds the contract.
       test. BAP is back to 13,680 bytes (656 bytes of headroom); HTTP and
       link are unchanged. The writer audit already failed on the previous
       ELF, so a separate chip covers it with the control audit.
-- [ ] Break observability:
+- [x] Break observability:
   - the firmware keeps the `local_mining=` lifecycle lines (run began,
     run ended with its ending, hold, handover) in the retained log, with
     `uptime_ms`;
   - the soak reads the retained log as each break ends and journals only
     the value-free marker lines.
-- [ ] The handover loop (`--soak handover-001`): 20 lease-free handovers
+- [x] The handover loop (`--soak handover-001`): 20 lease-free handovers
       on hardware, with the cleared core-dump partition ready to keep a
-      panic.
+      panic. It passed; the panic did not reproduce (record below).
 - [ ] Soak 004 (2 hours), to capture outages with their break logs.
 - [ ] Diagnose from the dump and the break logs, fix under the owner's
       re-run rule, and record evidence.
@@ -1187,6 +1187,68 @@ onward). Soak 002's contract and amendment apply except as stated.
   - `complete` when the run passes and an independent review agrees;
   - a reproduced panic is a diagnostic success. It leads to the dump read,
     a root cause and a fix under the owner's re-run rule.
+
+Handover loop attempt 001 result (2026-10-19): `passed`. The panic did not
+reproduce.
+- Firmware `83337e33`, installed state-preserving
+  (`observed_exact_package`); the ELF and map are preserved privately.
+- 20 lease-free handovers in 55 minutes on one boot session. No reset,
+  device pause, fault or overheat.
+- Each cycle:
+  - a Connect refused at `hello`;
+  - the ASIC down (0.27–1.77 W);
+  - an admitted Connect held idle with status polls for 48 s, then
+    `about:blank`;
+  - local mining back.
+  Breaks lasted 87–94 s.
+- All 20 break logs show the handover markers and nothing else:
+  - `local_mining=handover … revoked=true`;
+  - `run_ended ending=Some(Requested)`;
+  - `hold reason=local_gate_link`;
+  - a new `run_began`.
+  No Wi-Fi reconnect line, and no dropped markers.
+- The Gate soak sealed `unverified` (`completion_missing`), as expected:
+  no grant was ever signed.
+- Afterwards: the same physical device, no serial holder, no process
+  left.
+- Taken with lease check attempts 003 and 004, the panic did not recur in
+  22 admitted handovers after attempt 002. It stays open and
+  undiagnosed. The dump partition is still clear for the next one.
+- Observation: endpoint handoffs failed intermittently (`operation_failed`
+  on the Connect, or a page closed without an endpoint). A fresh handoff
+  always succeeded. A separate chip covers it.
+
+Soak 004 attempt 001 result (2026-10-19): `failed`, with
+`soak_outage_unrecovered` and `soak_active_time_short`. It found the
+outages' cause.
+- Firmware `83337e33`. The run mined 2,546,990 ms, with 113 accepted shares
+  and 0 rejected. After 43 minutes, one outage passed the 60 s bound
+  (61,333 ms), and the run stopped and paused. The ASIC powered down
+  (0.54 W), mining on boot stayed off, and there was no reset.
+- The retained log, read at once after the stop, showed this sequence
+  (value-free lines, uptime in seconds):
+  1. `wifi_reconnect=disconnected reason=beacon_timeout` at 5,448;
+  2. reconnected at 5,457.6;
+  3. `local_mining=run_ended ending=Some(Requested)` at 5,473.6, as the pool
+     session dropped;
+  4. a new run began at once, but was not mining before the bound expired.
+- Root cause of the outages, about one an hour:
+  - Wi-Fi beacon timeouts, with modem power save on;
+  - upstream `connect.c` calls `esp_wifi_set_ps(WIFI_PS_NONE)` after each
+    `esp_wifi_start`. Our firmware never did, so it ran ESP-IDF's station
+    default, `WIFI_PS_MIN_MODEM`.
+  - Every earlier outage matches this. The device was unreachable for
+    about 20 s while Wi-Fi reconnected, and the pool session then
+    restarted.
+- Fixes:
+  - the firmware sets `WIFI_PS_NONE` after each driver start, as upstream
+    does, with a source guard;
+  - the soak reads the retained log when a run stops during a break. This
+    attempt's break produced no break log, because it never recovered;
+    the log above was fetched by hand right after the stop.
+- Outcome: `continue_after_verified_fix`. Attempt 002 re-runs soak 004 on
+  the fixed firmware, under the owner's re-run rule. Its evidence: whether
+  any `beacon_timeout` remains over 2 hours.
 
 Verification: pending. Completion review: pending.
 
