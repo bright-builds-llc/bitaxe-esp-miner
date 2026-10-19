@@ -1098,6 +1098,98 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
+### task-local-mining-handover-panic-and-outages | 2026-10-19 | Reproduce the handover panic and explain the outages
+
+Owner request 2026-10-19: "Go ahead with 1 and 2". Item 1 reproduces and
+diagnoses lease interruption check attempt 002's native panic. Item 2
+explains the recurring outages, about one an hour. Each is about 20 s
+unreachable, then a new pool session.
+
+The enable lines live in `task-local-mining-evidence-soaks`, where the
+commands look for them. This block holds the contract.
+
+- [x] Static check of the stack-overflow candidate. On `30fc67e2`, the
+      control thread's deepest resolved path is about 10,000 bytes against
+      a 14,080-byte budget. The deepest branch is the telemetry cadence
+      snapshot, not the status path, and 413 indirect edges are unbounded.
+      This is inconclusive. `just audit-control-stack` no longer finds its
+      root, because `run_owner` is inlined; a separate chip repairs it.
+- [x] Stack-audit false positive. The BAP audit failed on this change at
+      14,768 bytes, because the audit bounded each function body by the
+      next label: a literal pool after the 26-byte `alloc_impl` decoded as
+      an `l32r` and `callx8` pair into the HTTP handler. The shared parser
+      now bounds bodies by symbol size (`objdump -t`), with a regression
+      test. BAP is back to 13,680 bytes (656 bytes of headroom); HTTP and
+      link are unchanged. The writer audit already failed on the previous
+      ELF, so a separate chip covers it with the control audit.
+- [ ] Break observability:
+  - the firmware keeps the `local_mining=` lifecycle lines (run began,
+    run ended with its ending, hold, handover) in the retained log, with
+    `uptime_ms`;
+  - the soak reads the retained log as each break ends and journals only
+    the value-free marker lines.
+- [ ] The handover loop (`--soak handover-001`): 20 lease-free handovers
+      on hardware, with the cleared core-dump partition ready to keep a
+      panic.
+- [ ] Soak 004 (2 hours), to capture outages with their break logs.
+- [ ] Diagnose from the dump and the break logs, fix under the owner's
+      re-run rule, and record evidence.
+
+Hardware contract (handover loop and soak 004, attempt ordinals 001
+onward). Soak 002's contract and amendment apply except as stated.
+- **Objective, handover loop:** local mining with 20 lease-free handovers.
+  Each cycle:
+  1. a Gate Connect on the `just ultra205-soak --interrupt-local-mining`
+     page, refused while mining locally;
+  2. once the ASIC reads down, a reload and an admitted Connect, left idle
+     with status polls for at least 45 s;
+  3. the tab to `about:blank`;
+  4. local mining back after the link has been quiet for 15 s.
+  It passes after 20 recovered breaks with no reset. The review classifies
+  each break from its break log: `local_mining=handover` or
+  `hold reason=local_gate_link` marks a handover, and a natural outage is
+  reported apart. A panic stops it at once (`soak_device_reset`), and the core dump is then read under the
+  local mining core-dump contract (`task-local-mining-evidence-soaks`). No
+  grant is ever signed. The Gate soak seals `unverified`
+  (`completion_missing`), which is expected and not judged.
+- **Objective, soak 004:** soak 002's rule (2 hours accumulated within
+  150 minutes, outages up to 60 s), with break logs.
+- **Package:** a fresh package at the clean, pushed HEAD, installed
+  state-preserving. Preserve its ELF and map privately for decoding.
+- **Commands:**
+  - the endpoint handoff;
+  - `just local-mining-soak preflight|run --soak handover-001` or
+    `--soak 004`;
+  - for the loop only, `just ultra205-soak preflight --interrupt-local-mining`
+    and `serve`;
+  - `owner-finish --port` afterwards.
+  Each detached run gets its own session (`perl -MPOSIX=setsid -e
+  'setsid; exec @ARGV' -- …`). If the first handoff after an install fails
+  with `operation_failed`, stop its server and use a fresh handoff.
+- **Allowed effects:**
+  - those of soak 002;
+  - for the loop, Gate admissions, refused Hellos and their ordered
+    safe-stops, about 20 ASIC start and stop cycles, and no lease or
+    ledger charge;
+  - the HTTP read of `/api/system/logs` after each break.
+- **Prohibited effects:** any grant, and everything soak 002 prohibits.
+- **Live stops:**
+  - **Handover loop:** a reset, a device pause, a fault or an overheat;
+    while mining, the live limits; unreachable for 60 s; a break not
+    recovered within 10 minutes; the 150-minute deadline. Outages are not
+    judged, because handovers idle by design.
+  - **Soak 004:** as soak 002.
+- **Evidence:**
+  - raw retained logs stay in `break-log-NNN.private.txt` (mode 0600);
+  - the journal holds only value-free marker lines;
+  - committed summaries after `just verify-redaction`.
+- **Accepted outcomes:**
+  - `complete` when the run passes and an independent review agrees;
+  - a reproduced panic is a diagnostic success. It leads to the dump read,
+    a root cause and a fix under the owner's re-run rule.
+
+Verification: pending. Completion review: pending.
+
 ### task-local-mining-evidence-soaks | 2026-10-16 | Soak local mining on hardware
 
 ADR-0038 step 6. Hardware. Each soak needs its own `TASKS.md` contract.
@@ -1798,6 +1890,15 @@ additive passage each. Their status stays `verified`.
 - Still non-claims: unbounded mining, mining beyond 4 hours, a lease
   starting without a refused Connect first, fallback-pool switching, and
   the attempt 002 panic.
+
+Ultra 205 local mining handover loop hardware: enabled.
+Ultra 205 local mining soak 004 hardware: enabled.
+Ultra 205 lease interruption check hardware: enabled.
+
+These three lines enable the handover loop and soak 004 under
+`task-local-mining-handover-panic-and-outages`'s contract. The lease
+interruption line is there only for the loop's Gate page, which never signs
+a grant. Remove them when that task closes.
 
 Remaining in this task, each under its own contract:
 - the diagnosis of the attempt 002 panic, when a dump is captured;
