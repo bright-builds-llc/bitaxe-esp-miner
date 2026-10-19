@@ -176,6 +176,7 @@ pub(crate) fn start_wifi(prepared: PreparedWifi) -> anyhow::Result<()> {
                 )),
             )?;
             observe(Phase::DriverStart, wifi.start())?;
+            disable_power_save();
 
             if wifi.connect().and_then(|()| wifi.wait_netif_up()).is_err() {
                 log::warn!("wifi_status=connection_failed fallback=configuration_ap");
@@ -401,6 +402,7 @@ fn start_provisioning(
         wifi.set_configuration(&Configuration::AccessPoint(ap_configuration.clone())),
     )?;
     observe(Phase::DriverStart, wifi.start())?;
+    disable_power_save();
     observe(Phase::ApNetif, wifi.wait_netif_up())?;
     retain_provisioning(
         wifi,
@@ -577,6 +579,23 @@ fn publish_wifi_state(snapshot: WifiRuntimeSnapshot) {
 
 fn wifi_snapshot_cell() -> &'static Mutex<WifiRuntimeSnapshot> {
     WIFI_RUNTIME_SNAPSHOT.get_or_init(|| Mutex::new(WifiRuntimeSnapshot::default()))
+}
+
+/// Turns Wi-Fi modem power save off, as upstream `connect.c` does in both of its branches
+/// ("Disable power savings for best performance"; before `esp_wifi_start` with a station, after
+/// it without one). Here it follows each driver start and comes before any association.
+/// ESP-IDF's station default sleeps the modem between beacons, and the Ultra 205 then lost its
+/// access point about hourly (`beacon_timeout`), dropping the pool session each time. A failure
+/// only loses that improvement, so it is logged and Wi-Fi carries on.
+fn disable_power_save() {
+    // SAFETY: the driver exists and was started just before; this only sets its power-save mode.
+    let result = esp_idf_svc::sys::esp!(unsafe {
+        esp_idf_svc::sys::esp_wifi_set_ps(esp_idf_svc::sys::wifi_ps_type_t_WIFI_PS_NONE)
+    });
+    match result {
+        Ok(()) => log_runtime_line("wifi_power_save=none"),
+        Err(error) => log_runtime_line(&format!("wifi_power_save=unchanged code={}", error.code())),
+    }
 }
 
 fn log_runtime_line(line: &str) {

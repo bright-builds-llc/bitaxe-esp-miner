@@ -384,3 +384,15 @@ fn no_connect_time_rssi_is_stored() {
         );
     }
 }
+
+#[test]
+fn every_wifi_driver_start_turns_power_save_off_as_upstream_does() {
+    // Arrange
+    let starts = WIFI_ADAPTER_SOURCE.matches("observe(Phase::DriverStart, wifi.start())?;").count();
+    // Act
+    let power_save_off = WIFI_ADAPTER_SOURCE.matches("disable_power_save();").count();
+    // Assert: reference/esp-miner/components/connect/connect.c sets WIFI_PS_NONE in both branches.
+    assert!(starts > 0);
+    assert_eq!(starts, power_save_off);
+    assert!(WIFI_ADAPTER_SOURCE.contains("esp_wifi_set_ps(esp_idf_svc::sys::wifi_ps_type_t_WIFI_PS_NONE)"));
+}
