@@ -584,9 +584,9 @@ fn wifi_snapshot_cell() -> &'static Mutex<WifiRuntimeSnapshot> {
 /// Turns Wi-Fi modem power save off, as upstream `connect.c` does in both of its branches
 /// ("Disable power savings for best performance"; before `esp_wifi_start` with a station, after
 /// it without one). Here it follows each driver start and comes before any association.
-/// ESP-IDF's station default sleeps the modem between beacons, and the Ultra 205 then lost its
-/// access point about hourly (`beacon_timeout`), dropping the pool session each time. A failure
-/// only loses that improvement, so it is logged and Wi-Fi carries on.
+/// ESP-IDF's station default sleeps the modem between beacons. With it, a soak caught a
+/// `beacon_timeout` disconnect that dropped the pool session, matching outages seen about every
+/// 1.5 hours. A failure only loses that improvement, so it is logged and Wi-Fi carries on.
 fn disable_power_save() {
     // SAFETY: the driver exists and was started just before; this only sets its power-save mode.
     let result = esp_idf_svc::sys::esp!(unsafe {
