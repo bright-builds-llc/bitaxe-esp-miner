@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { boundToFunctions, functionSizes } from './virtual-emulator/noise-stack-audit.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +23,10 @@ export async function main(argv) {
   const elfPath = resolve(argv[1]), output = resolve(argv[3]);
   const elf = await readFile(elfPath), binary = await readFile(objdump);
   check(elf.subarray(0, 7).equals(Buffer.from([127, 69, 76, 70, 1, 1, 1])) && elf.readUInt16LE(18) === 94, 'device_noise_elf_arch');
-  const disassembly = execFileSync(objdump, ['-d', '-C', elfPath], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 120000 });
+  // Bound each body by its symbol size, so literal pools after a function never decode as its calls.
+  const disassembly = boundToFunctions(
+    execFileSync(objdump, ['-d', '-C', elfPath], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 120000 }),
+    functionSizes(execFileSync(objdump, ['-t', elfPath], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 120000 })));
   const result = { ...auditDeviceNoiseStack(disassembly, sources), elf_sha256: sha256(elf), objdump_sha256: sha256(binary) };
   check(sha256(await readFile(elfPath)) === result.elf_sha256, 'device_noise_input_changed');
   await writeFile(output, JSON.stringify(result, null, 2) + '\n', { flag: 'wx', mode: 0o600 });

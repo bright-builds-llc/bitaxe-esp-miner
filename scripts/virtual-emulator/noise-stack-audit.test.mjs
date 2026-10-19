@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { auditNoiseStack, parseNoiseFrames, measureNoisePath, noiseAuditIdentity, validateNoiseAudit } from './noise-stack-audit.mjs';
+import { auditNoiseStack, boundToFunctions, functionSizes, parseNoiseFrames, measureNoisePath, noiseAuditIdentity, validateNoiseAudit } from './noise-stack-audit.mjs';
 
 const CONFIG = 'CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384\nCONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y\nCONFIG_FREERTOS_TASK_FUNCTION_WRAPPER=y\n# CONFIG_LIBC_NEWLIB_NANO_FORMAT is not set\n';
 const digest = text => createHash('sha256').update(text).digest('hex');
@@ -264,4 +264,32 @@ test('a real direct call outside any literal pool is still credited', () => {
   const frames = parseNoiseFrames(disassembly);
   // Assert
   assert.deepEqual(frames.byAddress.get(0x42000000).calls, [0x42000100]);
+});
+
+test('a literal pool after a small function never decodes as its calls', () => {
+  // Arrange: `small` is 8 bytes; the pool after it decodes as an l32r and a callx8 to `handler`.
+  const disassembly = [
+    '00001000 <small>:',
+    '    1000:\t004136        \tentry\ta1, 32',
+    '    1003:\t000090        \tretw',
+    '    1008:\td31a81        \tl32r\ta8, 1100 <small+0x100> (2000 <handler>)',
+    '    100b:\t0008e0        \tcallx8\ta8',
+    '00002000 <handler>:',
+    '    2000:\t008136        \tentry\ta1, 64',
+  ].join('\n');
+  const symbols = '00001000 g     F .flash.text\t00000008 small\n00002000 g     F .flash.text\t00000010 handler\n';
+  // Act
+  const frames = parseNoiseFrames(boundToFunctions(disassembly, functionSizes(symbols)));
+  // Assert
+  assert.deepEqual(frames.byAddress.get(0x1000).calls, []);
+});
+
+test('a function without a recorded size keeps its body to the next label', () => {
+  // Arrange
+  const disassembly = ['00001000 <asm>:', '    1000:\t004136        \tentry\ta1, 32', '    1010:\t0000e5        \tcall8\t2000 <handler>',
+    '00002000 <handler>:', '    2000:\t008136        \tentry\ta1, 64'].join('\n');
+  // Act
+  const frames = parseNoiseFrames(boundToFunctions(disassembly, functionSizes('')));
+  // Assert
+  assert.deepEqual(frames.byAddress.get(0x1000).calls, [0x2000]);
 });

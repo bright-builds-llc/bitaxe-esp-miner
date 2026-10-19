@@ -62,6 +62,40 @@ function nativeCalls(body, literals = new Set()) {
 }
 
 /** Native entries are physical frames; aliases and inline DWARF frames add no frame. */
+/** Function sizes from `objdump -t`, by address; symbols without a recorded size are left out. */
+export function functionSizes(symbolTable) {
+  const sizes = new Map();
+  for (const match of symbolTable.matchAll(/^([0-9a-f]{8}) .{6}F \S+\t([0-9a-f]{8}) /gm)) {
+    const address = Number.parseInt(match[1], 16), size = Number.parseInt(match[2], 16);
+    if (size > 0) sizes.set(address, Math.max(sizes.get(address) ?? 0, size));
+  }
+  return sizes;
+}
+
+/**
+ * Drops instruction lines past the end of their labelled function. Without a size, a body runs to
+ * the next label, and a literal pool or padding after a small function then decodes as its code,
+ * including `l32r` and `callx` pairs that look like calls. A label without a recorded size keeps
+ * the old behavior.
+ */
+export function boundToFunctions(disassembly, sizes) {
+  const lines = disassembly.split('\n'), kept = [];
+  let maybeEnd = null;
+  for (const line of lines) {
+    const maybeLabel = line.match(/^([a-f0-9]+) <.+>:\s*$/);
+    if (maybeLabel) {
+      const address = Number.parseInt(maybeLabel[1], 16), maybeSize = sizes.get(address);
+      maybeEnd = maybeSize === undefined ? null : address + maybeSize;
+      kept.push(line);
+      continue;
+    }
+    const maybeInstruction = line.match(/^\s*([a-f0-9]+):/);
+    if (maybeInstruction && maybeEnd !== null && Number.parseInt(maybeInstruction[1], 16) >= maybeEnd) continue;
+    kept.push(line);
+  }
+  return kept.join('\n');
+}
+
 export function parseNoiseFrames(disassembly) {
   const byAddress = new Map(), byName = new Map();
   const labels = [...disassembly.matchAll(/^([a-f0-9]+) <(.+)>:\s*$/gm)], literals = literalWords(disassembly);
