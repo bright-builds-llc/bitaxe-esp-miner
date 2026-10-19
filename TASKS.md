@@ -1107,7 +1107,7 @@ after a refused Hello, which the archived
 `task-lease-handover-and-baseline-restore` recorded as awaiting
 confirmation (ADR-0038).
 
-- [ ] Local mining soaks growing from 30 minutes to several hours, recording
+- [x] Local mining soaks growing from 30 minutes to several hours, recording
       the device configuration.
 - [x] A hardware check that a lease interrupts local mining and restores it.
 - [ ] An overheat recovery check, only with a safe, contracted stimulus.
@@ -1722,8 +1722,6 @@ them from the private journals.
   is done. The overheat check and the
   parity rows remain, as do soaks of several hours.
 
-Ultra 205 local mining soak 003 hardware: enabled.
-
 Soak 003 contract (owner request 2026-10-18: "a several-hour soak"; attempt
 ordinals 001 onward). Soak 002's contract and amendment apply except as
 stated.
@@ -1750,8 +1748,35 @@ stated.
   retry bound and the accepted outcomes. Under the owner's re-run rule, a
   failure followed by a root-cause fix is re-run without asking.
 
+Soak 003 attempt 001 result (2026-10-18): `complete`.
+- `result.json` is `passed` with no failures. An independent review agrees,
+  after recomputing the verdict from the journal with its own script.
+- Summary: `docs/parity/evidence/20261018-ultra205-local-mining-soak-003.md`.
+- Firmware `1be9a635` (package manifest `413154cb…`), installed
+  state-preserving (`observed_exact_package`). The run used its own
+  session, under `caffeinate` on AC power.
+- Measurements:
+  - 14,401,713 ms of mining accumulated in 241 minutes; the longest
+    unbroken span is 10,397,989 ms;
+  - one outage, 46,175 ms at 173.5 minutes, recovered on its own: 19 s
+    unreachable, then `safe_blocked` with Wi-Fi connected, then a new pool
+    session;
+  - 477 accepted shares, 1 rejected; hashrate median 432 GH/s;
+  - 5,240–5,298 mV, at most 12.62 W, at most 61 C chip;
+  - one boot session, no device pause, fault or overheat;
+  - powered down 25 s and 27 s after the pause.
+- The first endpoint handoff after the install failed to open the port
+  (`operation_failed`), as in lease check attempt 004. A fresh handoff
+  succeeded.
+- The device is left paused, with mining on boot off and the owner's pool
+  saved. Soak 003's enable line was removed.
+- The first checkbox is done: soaks grew from 30 minutes to 4 hours. Still
+  open:
+  - the overheat check, only with a safe stimulus;
+  - the parity rows;
+  - the attempt 002 panic's diagnosis, when a dump is captured.
+
 Remaining in this task, each under its own contract:
-- longer soaks;
 - the diagnosis of the attempt 002 panic, when a dump is captured;
 - an overheat check, only with a safe stimulus;
 - parity rows within the evidence.
