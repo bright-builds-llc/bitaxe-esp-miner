@@ -1136,6 +1136,7 @@ commands look for them. This block holds the contract.
       no outage.
 - [ ] Diagnose from the dump and the break logs, fix under the owner's
       re-run rule, and record evidence.
+- [ ] Soak 005 (8 hours overnight) on the power-save fix.
 
 Hardware contract (handover loop and soak 004, attempt ordinals 001
 onward). Soak 002's contract and amendment apply except as stated.
@@ -1284,6 +1285,30 @@ review recomputed the verdict and agrees.
 - The boot ordinal restarted at 1 after this install. It is an RTC-retained
   counter that restarts when the retained record is cold or invalid, and
   NVS was unaffected.
+
+
+Soak 005 contract (owner request 2026-10-19: "Run the 8-hour overnight
+soak"; attempt ordinals 001 onward). Soak 004's contract applies except as
+stated.
+- **Objective:**
+  - 28,800 s (8 hours) of local mining accumulated within 540 minutes;
+  - every outage recovered within 60 s;
+  - break logs for every break, and the usual limits, hashrate, shares
+    and powered-down stop.
+  It tests the Wi-Fi power-save fix: beacon timeouts were about one every
+  1.5 hours before it. It also gives the handover panic no trigger, since
+  no Gate connection is made.
+- **Run deadline:** 540 minutes after the resume, on the monotonic clock.
+  Mining past it is prohibited.
+- **Package:** a fresh package at the clean, pushed HEAD, installed
+  state-preserving. Preserve the ELF and map privately.
+- **Host:** `caffeinate -is` on AC power, lid open, overnight. The run is
+  detached in its own session.
+- **Afterwards:** paused, mining on boot off, the owner's pool saved; a
+  final named-port detector.
+- **Evidence for NET-001:** if no `beacon_timeout` and no outage appear
+  over 8 hours, NET-001 may gain the `connect.c` power-save breadcrumb
+  under an owner-authorized revision.
 
 Verification: pending. Completion review: pending.
 
@@ -1987,6 +2012,8 @@ additive passage each. Their status stays `verified`.
 - Still non-claims: unbounded mining, mining beyond 4 hours, a lease
   starting without a refused Connect first, fallback-pool switching, and
   the attempt 002 panic.
+
+Ultra 205 local mining soak 005 hardware: enabled.
 
 The handover loop, soak 004 and lease interruption enable lines were
 removed after the handover loop and soak 004 attempt 002 completed
