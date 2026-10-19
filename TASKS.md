@@ -1131,7 +1131,9 @@ commands look for them. This block holds the contract.
 - [x] The handover loop (`--soak handover-001`): 20 lease-free handovers
       on hardware, with the cleared core-dump partition ready to keep a
       panic. It passed; the panic did not reproduce (record below).
-- [ ] Soak 004 (2 hours), to capture outages with their break logs.
+- [x] Soak 004 (2 hours), to capture outages with their break logs. Attempt
+      001 caught a `beacon_timeout`; attempt 002, on the power-save fix, had
+      no outage.
 - [ ] Diagnose from the dump and the break logs, fix under the owner's
       re-run rule, and record evidence.
 
@@ -1192,7 +1194,7 @@ Handover loop attempt 001 result (2026-10-19): `passed`. The panic did not
 reproduce.
 - Firmware `83337e33`, installed state-preserving
   (`observed_exact_package`); the ELF and map are preserved privately.
-- 20 lease-free handovers in 55 minutes on one boot session. No reset,
+- 20 lease-free handovers in 38 minutes on one boot session. No reset,
   device pause, fault or overheat.
 - Each cycle:
   - a Connect refused at `hello`;
@@ -1201,12 +1203,15 @@ reproduce.
     `about:blank`;
   - local mining back.
   Breaks lasted 87–94 s.
-- All 20 break logs show the handover markers and nothing else:
+- All 20 break logs show the handover markers:
   - `local_mining=handover … revoked=true`;
   - `run_ended ending=Some(Requested)`;
   - `hold reason=local_gate_link`;
   - a new `run_began`.
-  No Wi-Fi reconnect line, and no dropped markers.
+  No Wi-Fi reconnect line, and no dropped markers. Only lease check
+  attempt 003's idle hold matched the panic's idle-page condition; the
+  loop's admitted pages ran status polls, so it is weak evidence for that
+  trigger.
 - The Gate soak sealed `unverified` (`completion_missing`), as expected:
   no grant was ever signed.
 - Afterwards: the same physical device, no serial holder, no process
@@ -1220,7 +1225,7 @@ reproduce.
 
 Soak 004 attempt 001 result (2026-10-19): `failed`, with
 `soak_outage_unrecovered` and `soak_active_time_short`. It found the
-outages' cause.
+outages' likely cause.
 - Firmware `83337e33`. The run mined 2,546,990 ms, with 113 accepted shares
   and 0 rejected. After 43 minutes, one outage passed the 60 s bound
   (61,333 ms), and the run stopped and paused. The ASIC powered down
@@ -1232,7 +1237,9 @@ outages' cause.
   3. `local_mining=run_ended ending=Some(Requested)` at 5,473.6, as the pool
      session dropped;
   4. a new run began at once, but was not mining before the bound expired.
-- Root cause of the outages, about one an hour:
+- Leading hypothesis for the outages, about one every 1.5 hours (one
+  `beacon_timeout` observed directly; earlier outages only share its
+  shape):
   - Wi-Fi beacon timeouts, with modem power save on;
   - upstream `connect.c` calls `esp_wifi_set_ps(WIFI_PS_NONE)` in both of
     its branches. With a station it does so before `esp_wifi_start`;
@@ -1256,6 +1263,27 @@ outages' cause.
   reconnects stay non-claims until then.
 - Also: `.bazelignore` now skips `.claude/worktrees`. An agent worktree
   inside the repository had broken `bazel test //...`.
+
+Soak 004 attempt 002 result (2026-10-19): `complete`. An independent
+review recomputed the verdict and agrees.
+- Summary: `docs/parity/evidence/20261019-ultra205-handover-loop-and-wifi-power-save.md`.
+- Firmware `9408968b`, installed state-preserving, with power save off
+  (`wifi_power_save=none` in the retained log).
+- The endpoint handoff succeeded on its first attempt (`failed_attempts:
+  0`), with the handoff retry fix `468147bc`.
+- Measurements:
+  - 7,201,760 ms of unbroken mining; no outage; largest sample gap
+    7,824 ms;
+  - 282 accepted shares, 0 rejected;
+  - at most 12.69 W and 61 C; RSSI down to −50 dBm, Wi-Fi connected on
+    every sample;
+  - one boot session; powered down after the pause.
+- Strength: six outages in about 9.1 hours before the fix, so 2 clean
+  hours happen by chance about a quarter of the time. This is consistent
+  with the fix, not proof of it. NET-001 waits for a longer soak.
+- The boot ordinal restarted at 1 after this install. It is an RTC-retained
+  counter that restarts when the retained record is cold or invalid, and
+  NVS was unaffected.
 
 Verification: pending. Completion review: pending.
 
@@ -1960,14 +1988,10 @@ additive passage each. Their status stays `verified`.
   starting without a refused Connect first, fallback-pool switching, and
   the attempt 002 panic.
 
-Ultra 205 local mining handover loop hardware: enabled.
-Ultra 205 local mining soak 004 hardware: enabled.
-Ultra 205 lease interruption check hardware: enabled.
-
-These three lines enable the handover loop and soak 004 under
-`task-local-mining-handover-panic-and-outages`'s contract. The lease
-interruption line is there only for the loop's Gate page, which never signs
-a grant. Remove them when that task closes.
+The handover loop, soak 004 and lease interruption enable lines were
+removed after the handover loop and soak 004 attempt 002 completed
+(2026-10-19). The core-dump acquisition and clearing lines stay, ready
+for the next panic.
 
 Remaining in this task, each under its own contract:
 - the diagnosis of the attempt 002 panic, when a dump is captured;
