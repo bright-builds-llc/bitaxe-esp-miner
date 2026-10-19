@@ -32171,3 +32171,75 @@ Residual risks:
   `Other` resets clear the streak.
 - The 5-minute hold after a refused Hello (task 4) awaits the owner's
   confirmation.
+
+### task-stack-audit-inlined-owner-roots | 2026-10-19 | Find inlined control and writer stack-audit roots
+
+Owner request 2026-10-19. `just audit-control-stack` throws
+`control_stack_root_missing` and `just audit-writer-stack` prints
+`{"writer_stack_audit":"blocked"}` on current ELFs, including `1be9a635`.
+Split from `task-local-mining-handover-panic-and-outages`. Software only: no
+device, no hardware effect.
+
+- [x] Diagnose both on the `1be9a635` ELF. Both are missing roots, not
+      overflows: LLVM inlined `run_owner` and `writer::run` into their
+      spawn closures, so each body and frame lives in one of 22
+      `std::sys::backtrace::__rust_begin_short_backtrace` instances
+      (688 and 752 bytes).
+- [x] `threadRoot` in `scripts/control-stack-audit.mjs`: a named owner
+      still roots the walk; without one, the root is the only trampoline
+      that reaches an anchor without entering another trampoline
+      (`prepare_frame` for control,
+      `SerialRecordWriter::receive_credit` for the writer). No match is
+      `control_stack_root_missing`, several are
+      `control_stack_root_ambiguous`. The root is exempt from the
+      `backtrace` exclusion, so its frame counts. Results report
+      `root_frame`.
+- [x] Tests on objdump-format fixtures (`scripts/stack-audit-fixture.mjs`):
+      same-named trampoline instances, `l32r`/`callx8` long calls, and a
+      literal pool after each body that only the symbol-size bound drops.
+      The new tests fail on the previous walker.
+- [x] `//scripts:firmware_stack_audits_test` runs the control, writer,
+      link, HTTP and BAP audits on `//firmware/bitaxe:firmware` with the
+      espup objdump, as `verify_native_usb_symbols_test` uses its `nm`, so
+      `just test` fails when any owner is lost or any path exceeds its
+      budget. A throwing audit is a failed row, never a skipped one.
+- [x] Verification below.
+
+Verification:
+- `1be9a635` and `83337e33` ELFs, pinned ESP-IDF objdump through the
+  CLIs and the espup objdump through the gate script, all passing:
+
+  | Audit | 1be9a635 | 83337e33 | Budget |
+  | --- | --- | --- | --- |
+  | control | 10,256 | 10,256 | 14,336 |
+  | writer | 5,552 | 5,488 | 6,144 |
+  | link | 5,216 | 5,216 | 6,144 |
+  | HTTP | 13,296 | 13,296 | 14,336 |
+  | BAP | 13,680 | 13,680 | 14,336 |
+
+  Control's deepest path is the telemetry cadence snapshot
+  (`prepare_general` > `CadenceRecorder::snapshot` > `Storage::new`),
+  with 434 unresolved edges. The writer's is serde error formatting under
+  `SerialRecordWriter::control`, with 136.
+- `bazel test` passed for the control, writer, link, BAP, HTTP,
+  virtual-noise and device-noise audit tests and
+  `verify_firmware_stack_audits_test`.
+- `firmware_stack_audits_test` passed under Bazel (3.5 s) with the
+  `83337e33` ELF standing in for `//firmware/bitaxe:firmware`; this
+  worktree has no ESP-IDF install to build the firmware itself. Its real
+  target passed analysis.
+- `bun scripts/bright-builds-check.ts all` and `just verify-redaction`
+  passed.
+
+Completion review: both audits find their owners again and pass with
+4,080 and 592 to 656 bytes of headroom. Neither failure was an overflow.
+The new gate keeps all five thread audits in `just test`.
+
+Residual risks:
+- The bounds are lower bounds over resolved direct calls; indirect and
+  excluded edges stay unbounded, as before.
+- Writer and BAP headroom is about 600 bytes.
+- An anchor that another thread starts calling makes the audit fail closed
+  as ambiguous; the anchor then needs updating.
+- The gate needs the espup Xtensa toolchain on a macOS host, like
+  `verify_native_usb_symbols_test`; CI does not run `bazel test //...`.

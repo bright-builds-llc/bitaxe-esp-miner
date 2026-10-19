@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { auditWriterStack } from './writer-stack-audit.mjs';
+import { objdumpFixture, TRAMPOLINE } from './stack-audit-fixture.mjs';
+import { boundToFunctions, functionSizes } from './virtual-emulator/noise-stack-audit.mjs';
 
 const OWNER = 'std::thread::Builder::new()\n        .name("bwg-serial-writer".into())\n        .stack_size(8192)\n';
 const WRITER = 'bitaxe_firmware::bwg_worker_usb::writer::run';
@@ -64,4 +66,30 @@ test('a call target spilled to a stack slot still counts toward depth', () => {
   const result = auditWriterStack(text, OWNER);
   // Assert
   assert.equal(result.deepest_normal_path_bytes, 640 + 3000 + 256);
+});
+
+const CREDIT = 'bitaxe_worker_control::serial::writer::SerialRecordWriter::receive_credit';
+// `writer::run` inlined into one of several thread trampolines, as built; `decoy` sits after a literal pool.
+function inlinedWriter(trampolines) {
+  return objdumpFixture([...trampolines, [CREDIT, 160, ['next_record']], ['next_record', 2400, []],
+    ['other_thread_work', 512, []], ['decoy', 9000, []]]);
+}
+const audit = ({ disassembly, symbols }) =>
+  auditWriterStack(boundToFunctions(disassembly, functionSizes(symbols)), OWNER);
+
+test('a writer loop inlined into its thread trampoline is rooted at the trampoline that samples credit', () => {
+  // Arrange
+  const fixture = inlinedWriter([[TRAMPOLINE, 48, ['other_thread_work']], [TRAMPOLINE, 752, [CREDIT]]]);
+  // Act
+  const result = audit(fixture);
+  // Assert
+  assert.equal(result.root_frame, 'inlined_into_thread_trampoline');
+  assert.equal(result.deepest_normal_path_bytes, 752 + 160 + 2400 + 256);
+});
+
+test('an inlined writer loop without a trampoline that samples credit fails closed', () => {
+  // Arrange
+  const fixture = inlinedWriter([[TRAMPOLINE, 48, ['other_thread_work']]]);
+  // Act / Assert
+  assert.throws(() => audit(fixture), /control_stack_root_missing/u);
 });

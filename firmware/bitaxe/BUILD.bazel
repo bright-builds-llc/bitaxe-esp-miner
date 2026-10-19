@@ -172,6 +172,18 @@ js_library(
     ],
 )
 
+# Thread stack-size contracts read by //scripts:firmware_stack_audits_test.
+js_library(
+    name = "stack_audit_owner_sources",
+    srcs = [
+        "src/bap_adapter.rs",
+        "src/bwg_worker_usb.rs",
+        "src/bwg_worker_usb/prepared_link.rs",
+        "src/http_api.rs",
+    ],
+    visibility = ["//scripts:__pkg__"],
+)
+
 js_library(
     name = "bwg_deployment_trust_js",
     srcs = ["bwg/deployment-trust.json"],

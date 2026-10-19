@@ -1217,7 +1217,7 @@ js_binary(
 js_test(
     name = "control_stack_audit_test",
     entry_point = "control-stack-audit.test.mjs",
-    data = ["control-stack-audit.mjs", ":virtual_emulator_sources"],
+    data = ["control-stack-audit.mjs", "stack-audit-fixture.mjs", ":virtual_emulator_sources"],
 )
 
 js_binary(
@@ -1256,7 +1256,38 @@ js_test(
 js_test(
     name = "writer_stack_audit_test",
     entry_point = "writer-stack-audit.test.mjs",
-    data = ["control-stack-audit.mjs", "link-stack-audit.mjs", "writer-stack-audit.mjs", ":virtual_emulator_sources"],
+    data = ["control-stack-audit.mjs", "link-stack-audit.mjs", "stack-audit-fixture.mjs", "writer-stack-audit.mjs", ":virtual_emulator_sources"],
+)
+
+# Every thread stack audit must find its owner and fit on the built ELF; uses the espup objdump.
+js_test(
+    name = "firmware_stack_audits_test",
+    args = ["$(rootpath //firmware/bitaxe:firmware)"],
+    data = [
+        "bap-stack-audit.mjs",
+        "control-stack-audit.mjs",
+        "http-stack-audit.mjs",
+        "link-stack-audit.mjs",
+        "writer-stack-audit.mjs",
+        ":virtual_emulator_sources",
+        "//firmware/bitaxe:firmware",
+        "//firmware/bitaxe:stack_audit_owner_sources",
+    ],
+    entry_point = "verify-firmware-stack-audits.mjs",
+)
+
+js_test(
+    name = "verify_firmware_stack_audits_test",
+    data = [
+        "bap-stack-audit.mjs",
+        "control-stack-audit.mjs",
+        "http-stack-audit.mjs",
+        "link-stack-audit.mjs",
+        "verify-firmware-stack-audits.mjs",
+        "writer-stack-audit.mjs",
+        ":virtual_emulator_sources",
+    ],
+    entry_point = "verify-firmware-stack-audits.test.mjs",
 )
 
 js_binary(
