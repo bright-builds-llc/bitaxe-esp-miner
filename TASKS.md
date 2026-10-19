@@ -1234,21 +1234,28 @@ outages' cause.
   4. a new run began at once, but was not mining before the bound expired.
 - Root cause of the outages, about one an hour:
   - Wi-Fi beacon timeouts, with modem power save on;
-  - upstream `connect.c` calls `esp_wifi_set_ps(WIFI_PS_NONE)` after each
-    `esp_wifi_start`. Our firmware never did, so it ran ESP-IDF's station
+  - upstream `connect.c` calls `esp_wifi_set_ps(WIFI_PS_NONE)` in both of
+    its branches. With a station it does so before `esp_wifi_start`;
+    without one, after. Our firmware never did, so it ran ESP-IDF's station
     default, `WIFI_PS_MIN_MODEM`.
   - Every earlier outage matches this. The device was unreachable for
     about 20 s while Wi-Fi reconnected, and the pool session then
     restarted.
 - Fixes:
-  - the firmware sets `WIFI_PS_NONE` after each driver start, as upstream
-    does, with a source guard;
+  - the firmware sets `WIFI_PS_NONE` after each driver start and before
+    any association, with a source guard. A failure is logged
+    (`wifi_power_save=unchanged`) and Wi-Fi carries on. The retained line
+    `wifi_power_save=none` confirms it on hardware;
   - the soak reads the retained log when a run stops during a break. This
     attempt's break produced no break log, because it never recovered;
     the log above was fetched by hand right after the stop.
 - Outcome: `continue_after_verified_fix`. Attempt 002 re-runs soak 004 on
   the fixed firmware, under the owner's re-run rule. Its evidence: whether
-  any `beacon_timeout` remains over 2 hours.
+  any `beacon_timeout` remains over 2 hours. If it holds, NET-001 gains
+  the `connect.c` power-save breadcrumb. Repeated and long-running
+  reconnects stay non-claims until then.
+- Also: `.bazelignore` now skips `.claude/worktrees`. An agent worktree
+  inside the repository had broken `bazel test //...`.
 
 Verification: pending. Completion review: pending.
 
