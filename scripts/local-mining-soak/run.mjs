@@ -7,6 +7,8 @@ import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
 import { activeSpanMs, hardwareStopped, judge, liveStop, mining, miningLog, runDeadlineMs, sampleFromInfo,
   SAMPLE_INTERVAL_MS, SOAKS, START_ALLOWANCE_MS, STOP_ALLOWANCE_MS } from "./judge.mjs";
 import { judgeLease, leasePhases } from "./lease.mjs";
+import { handoverPhases, judgeHandover } from "./handover.mjs";
+import { breakWatcher } from "./break-log.mjs";
 import { poolSaved } from "./pool.mjs";
 
 /** The device stays unreachable this long before the soak stops. */
@@ -18,7 +20,7 @@ const PAUSE_RESEND_MS = 30_000;
  * also takes `leaseResult`, which returns the Gate soak's result once it exists, else null.
  */
 export async function runSoak({ client, expected, settings, now, sleep, record, isInterrupted = () => false, soak = SOAKS["001"],
-  leaseResult = async () => null }) {
+  leaseResult = async () => null, keepLogs = async () => {} }) {
   // A journal failure must never stop the pause; it is noted in the verdict instead.
   let journalFailed = false;
   const note = async (event) => { try { await record(event); } catch { journalFailed = true; } };
@@ -45,15 +47,18 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
     const resumedAt = now();
     await client.command("resume");
     await note({ event: "resumed", atMs: resumedAt });
-    const phases = soak.kind === "lease" ? leasePhases({ soak, samples, resumedAt, marks, note, leaseResult }) : localPhases({ soak, samples, resumedAt });
-    maybeStop = await sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases });
+    const phases = soak.kind === "lease" ? leasePhases({ soak, samples, resumedAt, marks, note, leaseResult })
+      : soak.kind === "handover" ? handoverPhases({ soak, samples, resumedAt, note }) : localPhases({ soak, samples, resumedAt });
+    // Clients without a log route (older test fakes) skip the break diagnostics.
+    const watcher = typeof client.logs === "function" ? breakWatcher({ readLogs: () => client.logs(), keepLogs, note }) : null;
+    maybeStop = await sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases, watcher });
   } catch {
     maybeStop ??= "soak_run_error";
   }
   if (maybeStop !== null) await note({ event: "live_stop", code: maybeStop });
   const maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
   const judged = { baseline, samples, maybeFinal, soak, maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) };
-  const verdict = soak.kind === "lease" ? judgeLease({ ...judged, marks }) : judge(judged);
+  const verdict = soak.kind === "lease" ? judgeLease({ ...judged, marks }) : soak.kind === "handover" ? judgeHandover(judged) : judge(judged);
   await note({ event: "verdict", result: verdict.result, failures: verdict.failures });
   return verdict;
 }
@@ -79,16 +84,17 @@ function localPhases({ soak, samples, resumedAt }) {
  * a stop code, or undefined to go on; `phases.outageSamples` names the samples whose outage counts
  * while the device cannot be reached.
  */
-async function sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases }) {
+async function sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases, watcher }) {
   let maybeLastReachedAt = resumedAt;
   // A tolerant soak waits out a recovering outage up to its bound; a strict one stops sooner.
-  const unreachableStopMs = soak.maybeMaximumOutageMs ?? UNREACHABLE_STOP_MS;
+  const unreachableStopMs = soak.unreachableStopMs ?? soak.maybeMaximumOutageMs ?? UNREACHABLE_STOP_MS;
   for (;;) {
     await sleep(SAMPLE_INTERVAL_MS);
     if (isInterrupted()) return "soak_interrupted";
     if (now() - resumedAt > runDeadlineMs(soak)) return "soak_deadline";
     let info;
     try { info = await client.info(); } catch {
+      watcher?.unreachable(samples.at(-1));
       if (now() - maybeLastReachedAt > unreachableStopMs) return "soak_device_unreachable";
       // An outage keeps counting while the device cannot be reached.
       const maybeLastMiningAtMs = miningLog(phases.outageSamples()).maybeLastMiningAtMs;
@@ -103,6 +109,9 @@ async function sampleLoop({ client, baseline, samples, resumedAt, now, sleep, no
     await note({ event: "sample", sample });
     const maybeStop = liveStop(sample, baseline, maybePrevious);
     if (maybeStop !== null) return maybeStop;
+    await watcher?.observe(sample, mining(sample));
+    // A log read can take seconds; it never counts against the unreachable bound.
+    maybeLastReachedAt = Math.max(maybeLastReachedAt, now());
     const outcome = await phases.onSample(sample);
     if (outcome !== undefined) return outcome;
   }

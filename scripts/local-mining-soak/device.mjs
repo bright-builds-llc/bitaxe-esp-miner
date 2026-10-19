@@ -5,6 +5,8 @@ import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
 import { PRIVATE_FIRST_OCTETS } from "../fixed-usb-soak/observer.mjs";
 
 const DEVICE_TIMEOUT_MS = 10_000;
+/** The retained log is up to 512 KiB. */
+const LOG_TIMEOUT_MS = 30_000;
 
 /** A client bound to one private-LAN endpoint; anything else refuses the soak. */
 export function deviceClient(endpoint, fetchImpl = fetch) {
@@ -22,6 +24,12 @@ export function deviceClient(endpoint, fetchImpl = fetch) {
       const response = await call("/api/system", { method: "PATCH", headers: { "content-type": "application/json" },
         body: JSON.stringify(settings) });
       requireCondition(response.ok, "soak_device_settings_patch");
+    },
+    /** The retained log, read once per break; it can hold the station address, so callers keep it private. */
+    async logs() {
+      const response = await fetchImpl(`${base}/api/system/logs`, { signal: AbortSignal.timeout(LOG_TIMEOUT_MS) });
+      requireCondition(response.ok, "soak_device_logs");
+      return response.text();
     },
     async command(name) {
       requireCondition(name === "pause" || name === "resume", "soak_device_command");

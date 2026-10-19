@@ -9,6 +9,8 @@
  *   It tolerates outages the device recovers from on its own (`maybeMaximumOutageMs`), because
  *   real networks drop: attempt 001 met two ~19 s network outages, and mining resumed each time.
  * - Soak 003 is soak 002 at several hours: 4 hours of mining accumulated within 5 hours.
+ * - Soak 004 repeats soak 002 to catch outages, now that each break's retained log is journaled.
+ * - Handover loop 001 (`handover.mjs`) counts 20 lease-free handovers, to reproduce a panic.
  * - Lease check 001 (`lease.mjs`) mines locally for 5 minutes, then a Gate lease interrupts local
  *   mining. Local mining must come back within 3 minutes of the lease's end and mine 5 more
  *   minutes. Outages are tolerated as in soak 002, in the local phases only.
@@ -20,6 +22,11 @@ export const SOAKS = Object.freeze({
     maybeDeadlineMs: 150 * 60_000 }),
   "003": Object.freeze({ id: "003", activeMs: 240 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
     maybeDeadlineMs: 300 * 60_000 }),
+  "004": Object.freeze({ id: "004", activeMs: 120 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
+    maybeDeadlineMs: 150 * 60_000 }),
+  "handover-001": Object.freeze({ id: "handover-001", kind: "handover", cycles: 20, breakBoundMs: 10 * 60_000,
+    unreachableStopMs: 60_000, requireHashrate: true, maybeMaximumOutageMs: null, maybeDeadlineMs: 150 * 60_000,
+    enableLine: "Ultra 205 local mining handover loop hardware: enabled." }),
   "lease-001": Object.freeze({ id: "lease-001", kind: "lease", activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true,
     maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 90 * 60_000, restoreBoundMs: 180_000,
     enableLine: "Ultra 205 lease interruption check hardware: enabled." }),

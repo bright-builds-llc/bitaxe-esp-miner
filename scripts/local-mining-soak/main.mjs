@@ -111,6 +111,8 @@ async function run(firmwareRoot, root, options) {
       now: () => Math.round(performance.now()), sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
       record: (event) => journal.appendFile(`${JSON.stringify(event)}\n`), isInterrupted: () => interrupted,
       soak: SOAKS[context.soak], ...(leases ? { leaseResult: () => readLeaseResult(context.lease_root) } : {}),
+      // The raw retained log can hold the station address: mode 0600 in the private root only.
+      keepLogs: (text, capture) => keepPrivateText(resolve(root, `break-log-${String(capture).padStart(3, "0")}.private.txt`), text),
     });
     await writeNew(resolve(root, "result.json"), verdict);
     return verdict;
@@ -118,6 +120,12 @@ async function run(firmwareRoot, root, options) {
     await journal.close();
     for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.removeListener(signal, interrupt);
   }
+}
+
+/** Raw text in a new mode-0600 file; it never overwrites. */
+async function keepPrivateText(path, text) {
+  const file = await open(path, "wx", 0o600);
+  try { await file.writeFile(text); await file.sync(); } finally { await file.close(); }
 }
 
 /**

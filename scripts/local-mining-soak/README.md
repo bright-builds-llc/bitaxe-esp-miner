@@ -10,6 +10,14 @@ Ultra 205 (ADR-0038 task 6). Each soak needs its own exact enable line,
   own, up to 60 s each, and counts them.
 - `003` is soak 002 at several hours: 4 hours of mining accumulated within
   5 hours, with the same outage tolerance.
+- `004` repeats soak 002 (2 hours within 150 minutes) to catch outages
+  with their break logs.
+- `handover-001` is the handover loop. Its enable line is `Ultra 205 local
+  mining handover loop hardware: enabled.` It mines locally while the
+  operator repeats a lease-free handover: a refused Gate Connect, an admitted
+  Connect left idle, and a closed page, after which local mining comes back.
+  It passes after 20 recovered breaks with no reset. A break that has not
+  recovered within 10 minutes stops it, as does any live stop.
 - `lease-001` is the lease interruption check. Its enable line is the Gate
   soak's interruption line, `Ultra 205 lease interruption check hardware:
   enabled.`, so one line enables both halves. See [Lease interruption
@@ -57,6 +65,17 @@ with `umask 077`:
    `caffeinate` keeps the host awake, because a sleeping host stops watching a
    mining device. `-s` needs AC power, so keep the Mac on AC power and the lid
    open.
+
+## Break logs
+
+When mining resumes after a break, or the device answers again after being
+unreachable, the soak reads `/api/system/logs` at once. The retained log
+holds about 40 minutes of lines, so a later read would miss the break. The
+raw log goes to `break-log-NNN.private.txt` (mode 0600), because it can hold
+the station address. The journal's `break_log` event keeps only the
+value-free `wifi_reconnect=`, `wifi_reconnect_probe=` and `local_mining=`
+lines from 60 s before the break to its end. A failed read is journaled as
+`break_log_failed` and never stops the soak.
 
 ## Lease interruption check
 
