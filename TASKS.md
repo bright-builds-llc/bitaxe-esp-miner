@@ -1186,6 +1186,71 @@ Hardware verification: pending. Soak 004 of
 
 Completion review: pending.
 
+### task-handover-panic-diagnosis | 2026-10-20 | Diagnose the lease handover panic once it recurs
+
+Activated 2026-10-20 by a trigger below: boot-resume check attempt 001
+(`task-local-mining-boot-resume`) sent one `POST /api/system/restart` to
+the paused device on firmware `1dfca479`, and the next boot reported reset
+reason `panic` instead of `software_cpu`. The restart's HTTP response was
+lost. The core-dump partition was empty before it. The read follows the
+steps below.
+
+It was blocked until a recurrence (owner decision, 2026-10-20), and was to
+be selected only when one of these happens:
+- a device boots with reset reason `panic`;
+- a soak refuses with `soak_previous_panic`;
+- a core-dump read shows a dump whose app SHA-256 matches an installed
+  image.
+
+Background (archived `task-local-mining-handover-panic-and-outages`, lease
+interruption check attempt 002 in archived
+`task-local-mining-evidence-soaks`):
+- **The panic:** firmware `30fc67e2` panicked about 22 s after an admitted
+  Gate Connect that followed a refused one. The admitted page was idle,
+  with no page operation. There was no `rust_panic_receipt`, so it was a
+  native panic. The stored dump predated that image and was archived
+  privately and cleared, so the partition is empty and waits for the next
+  dump.
+- **Not reproduced since:** in 22 admitted handovers, including a 90 s
+  idle hold, the panic did not recur.
+- **Leading candidates** (a read-only analysis; unconfirmed):
+  1. a deliberate `esp_system_abort` on internal-heap corruption, caught at
+     an idle status poll (`control_stack_trace::require_intact`);
+  2. a stack overflow in the status path after a local run (16 KiB
+     control stack);
+  3. the known stack-realignment toolchain bug.
+  The dump's crashed task, exception cause and panic message tell these
+  apart.
+- **Preserved ELFs and maps:** `scratch/core-dump-lease/firmware-<commit>.elf`,
+  for every installed image since `30fc67e2`.
+
+When a crash happens:
+1. Move this block to `## Active`.
+2. Read the dump: a fresh endpoint handoff, then `just local-mining-soak
+   stopped-proof`, then `just core-dump-read`.
+3. Decode it with `just core-dump analyze` against the installed image's
+   preserved ELF.
+4. Find the root cause, fix it with a regression, and re-run the triggering
+   check under the owner's re-run rule.
+The contract is the local mining core-dump contract recorded in the
+archived `task-local-mining-evidence-soaks`. The owner is now this task.
+These lines enable it once this block is active:
+
+Local mining core-dump acquisition: enabled (fresh stopped proof required).
+Local mining core-dump clearing: enabled (private archive verified).
+
+Reproduction tools whose task is this one: `--soak handover-001`,
+`--soak lease-001` and `just ultra205-soak --interrupt-local-mining`. Each
+needs its enable line added here, under a written contract.
+
+- [ ] Read the dump of the restart panic (firmware `1dfca479`) under the
+      local mining core-dump contract: a fresh handoff, a stopped proof,
+      `just core-dump-read`.
+- [ ] Decode it against the preserved `firmware-1dfca479.elf`, find the
+      root cause, and compare it with the lease handover panic.
+- [ ] Fix it with a regression, then re-run boot-resume check attempt 002
+      under the owner's re-run rule.
+
 ### task-local-mining-boot-resume | 2026-10-20 | Check on hardware that mining on boot resumes local mining
 
 Owner approval 2026-10-20 ("Yes, this sounds right. Please proceed.", for
@@ -1283,59 +1348,25 @@ except as stated.
 
 Ultra 205 local mining boot resume check hardware: enabled.
 
+Attempt 001 result (2026-10-20): `failed` (`boot_resume_reset_category`),
+outcome `stop_hardware_blocker` until the panic is fixed.
+- Firmware `1dfca479`, installed state-preserving
+  (`observed_exact_package`). The handoff succeeded on its first attempt.
+- The baseline was admitted and the pool saved, and mining on boot was
+  turned on and read back.
+- The one restart request got no HTTP response (`restart_ambiguous`). The
+  next boot reported reset reason `panic`, so the check stopped there.
+- That boot still began local mining on its own, 5.9 s after it started
+  (`local_mining=run_began`): mining on boot was honored, even after a
+  panic.
+- Recovery worked as designed: an immediate pause, mining on boot turned
+  off and read back off, and the ASIC powered down (0.6 W).
+- The panic moves `task-handover-panic-diagnosis` to `## Active`. Attempt
+  002 needs its fix first.
+
 Verification: pending. Completion review: pending.
 
 ## Future
-
-### task-handover-panic-diagnosis | 2026-10-20 | Diagnose the lease handover panic once it recurs
-
-Blocked until a recurrence (owner decision, 2026-10-20). Select this only
-when one of these happens:
-- a device boots with reset reason `panic`;
-- a soak refuses with `soak_previous_panic`;
-- a core-dump read shows a dump whose app SHA-256 matches an installed
-  image.
-
-Background (archived `task-local-mining-handover-panic-and-outages`, lease
-interruption check attempt 002 in archived
-`task-local-mining-evidence-soaks`):
-- **The panic:** firmware `30fc67e2` panicked about 22 s after an admitted
-  Gate Connect that followed a refused one. The admitted page was idle,
-  with no page operation. There was no `rust_panic_receipt`, so it was a
-  native panic. The stored dump predated that image and was archived
-  privately and cleared, so the partition is empty and waits for the next
-  dump.
-- **Not reproduced since:** in 22 admitted handovers, including a 90 s
-  idle hold, the panic did not recur.
-- **Leading candidates** (a read-only analysis; unconfirmed):
-  1. a deliberate `esp_system_abort` on internal-heap corruption, caught at
-     an idle status poll (`control_stack_trace::require_intact`);
-  2. a stack overflow in the status path after a local run (16 KiB
-     control stack);
-  3. the known stack-realignment toolchain bug.
-  The dump's crashed task, exception cause and panic message tell these
-  apart.
-- **Preserved ELFs and maps:** `scratch/core-dump-lease/firmware-<commit>.elf`,
-  for every installed image since `30fc67e2`.
-
-When a crash happens:
-1. Move this block to `## Active`.
-2. Read the dump: a fresh endpoint handoff, then `just local-mining-soak
-   stopped-proof`, then `just core-dump-read`.
-3. Decode it with `just core-dump analyze` against the installed image's
-   preserved ELF.
-4. Find the root cause, fix it with a regression, and re-run the triggering
-   check under the owner's re-run rule.
-The contract is the local mining core-dump contract recorded in the
-archived `task-local-mining-evidence-soaks`. The owner is now this task.
-These lines enable it once this block is active:
-
-Local mining core-dump acquisition: enabled (fresh stopped proof required).
-Local mining core-dump clearing: enabled (private archive verified).
-
-Reproduction tools whose task is this one: `--soak handover-001`,
-`--soak lease-001` and `just ultra205-soak --interrupt-local-mining`. Each
-needs its enable line added here, under a written contract.
 
 ### task-local-mining-overheat-check | 2026-10-20 | Check local mining's overheat recovery on hardware
 
