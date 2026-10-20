@@ -31,6 +31,21 @@ pub mod policy;
 #[path = "local_mining/shell.rs"]
 pub mod shell;
 
+/// The chip reading that ends a local run as an overheat: upstream's 75 C, the same
+/// boundary as the shared mining-safety verdict. The test-only feature
+/// `overheat-trip-test` lowers it so the recovery can be checked on hardware at normal
+/// mining temperatures; that build is never packaged for release (ADR-0040).
+#[cfg(not(feature = "overheat-trip-test"))]
+pub const LOCAL_OVERHEAT_TRIP_C: f64 = ASIC_THROTTLE_TEMP_C;
+/// See the production definition; this is the test-only lowered trip.
+#[cfg(feature = "overheat-trip-test")]
+pub const LOCAL_OVERHEAT_TRIP_C: f64 = 55.0;
+// A trip at or below the restart temperature would never let cooling finish, and one
+// above the shared verdict's limit would never fire.
+const _: () = assert!(
+    LOCAL_OVERHEAT_TRIP_C > SAFE_RESTART_TEMP_C && LOCAL_OVERHEAT_TRIP_C <= ASIC_THROTTLE_TEMP_C
+);
+
 /// How long readings must stay at or below the restart temperature (upstream's six
 /// 5 s cooling cycles).
 pub const OVERHEAT_COOLING_MS: u64 = 30_000;
@@ -53,7 +68,7 @@ pub struct ChipReading {
 #[must_use]
 pub fn is_overheat(reason: RevocationReason, maybe_chip_temp_c: Option<f64>) -> bool {
     reason == RevocationReason::UnsafeObservation
-        && maybe_chip_temp_c.is_some_and(|celsius| celsius >= ASIC_THROTTLE_TEMP_C)
+        && maybe_chip_temp_c.is_some_and(|celsius| celsius >= LOCAL_OVERHEAT_TRIP_C)
 }
 
 /// The settings upstream saves on entering overheat mode.

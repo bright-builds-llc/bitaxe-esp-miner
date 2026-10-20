@@ -6,6 +6,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use bitaxe_api::{SafetyFact, SafetyFactState, SafetyVerdict};
 
 use super::{GenerationGate, RevocationReason, WorkerGeneration, ACTIVE, FLAGS};
+#[cfg(feature = "overheat-trip-test")]
+use crate::local_mining::LOCAL_OVERHEAT_TRIP_C;
 
 /// Which device-local check revoked the active generation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -252,6 +254,19 @@ impl GenerationGate {
                 UnsafeTrigger::UnsafeSample,
                 maybe_verdict,
             );
+            return;
+        }
+        // The test-only build also stops a local run at its lowered overheat trip
+        // (ADR-0040). A production build has no such branch: its trip is the shared
+        // verdict's own 75 C.
+        #[cfg(feature = "overheat-trip-test")]
+        if self.is_local(generation)
+            && self
+                .unsafe_detail
+                .maybe_latest_chip_milli()
+                .is_some_and(|milli| f64::from(milli) / 1_000.0 >= LOCAL_OVERHEAT_TRIP_C)
+        {
+            self.revoke_unsafe_at(generation, now_ms, UnsafeTrigger::UnsafeSample, None);
             return;
         }
         if self.fan_proof_generation.load(Ordering::Acquire) == generation.0 && !nonzero_fan {

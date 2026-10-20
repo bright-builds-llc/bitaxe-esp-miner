@@ -132,6 +132,7 @@ fn flash_evidence_records_nvs_seed_without_credential_path_or_values() {
         manifest: Some(manifest),
         wifi_credentials: Some(credentials_path.clone()),
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let environment = FakeFlashEnvironment::default();
 

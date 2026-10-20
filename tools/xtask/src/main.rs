@@ -8,6 +8,7 @@ use bitaxe_api::BuildProvenance;
 use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 
+mod firmware_variant;
 mod package_manifest;
 mod partition_contract;
 mod web_ui;
@@ -128,6 +129,10 @@ struct PackageArgs {
     #[arg(long = "web-ui-variant", value_enum)]
     web_ui_variant: web_ui::WebUiVariant,
 
+    /// Firmware variant compiled into the application image (ADR-0040).
+    #[arg(long = "firmware-variant", value_enum)]
+    firmware_variant: firmware_variant::FirmwareVariant,
+
     /// The exact `www` tree packed into `www.bin`, digested into the manifest.
     #[arg(long = "www-dir", value_parser = parse_utf8_path)]
     www_dir: Utf8PathBuf,
@@ -163,6 +168,7 @@ struct PackageRequest {
     provenance_manifest: Utf8PathBuf,
     otadata_source: String,
     web_ui_variant: web_ui::WebUiVariant,
+    firmware_variant: firmware_variant::FirmwareVariant,
     www_dir: Utf8PathBuf,
 }
 
@@ -188,6 +194,7 @@ impl From<PackageArgs> for PackageRequest {
             provenance_manifest: args.provenance_manifest,
             otadata_source: args.otadata_source,
             web_ui_variant: args.web_ui_variant,
+            firmware_variant: args.firmware_variant,
             www_dir: args.www_dir,
         }
     }

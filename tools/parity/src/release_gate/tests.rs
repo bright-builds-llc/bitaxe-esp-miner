@@ -435,3 +435,37 @@ fn valid_manifest_value() -> serde_json::Value {
         ]
     })
 }
+
+#[test]
+fn release_gate_manifest_rejects_a_test_firmware_variant() {
+    // Arrange
+    let mut manifest = valid_manifest_value();
+    manifest["firmware_variant"] = serde_json::json!("overheat-trip-test");
+    let documents = documents_with_manifest(manifest);
+
+    // Act
+    let report = validate_release_gate(&documents);
+
+    // Assert
+    assert!(report
+        .errors
+        .iter()
+        .any(|error| error.contains("firmware_variant")));
+}
+
+#[test]
+fn release_gate_manifest_accepts_the_production_variant() {
+    // Arrange
+    let mut manifest = valid_manifest_value();
+    manifest["firmware_variant"] = serde_json::json!("production");
+    let documents = documents_with_manifest(manifest);
+
+    // Act
+    let report = validate_release_gate(&documents);
+
+    // Assert
+    assert!(!report
+        .errors
+        .iter()
+        .any(|error| error.contains("firmware_variant")));
+}

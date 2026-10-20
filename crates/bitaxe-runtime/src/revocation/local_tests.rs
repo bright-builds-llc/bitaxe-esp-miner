@@ -140,3 +140,80 @@ fn a_link_waits_until_a_stopping_local_generation_is_retired() {
     // Assert
     assert!(while_stopping.is_none() && after_retirement.is_some());
 }
+
+/// The local overheat trip in milli-degrees, as the sensor path notes readings.
+fn trip_milli() -> i32 {
+    (crate::local_mining::LOCAL_OVERHEAT_TRIP_C * 1_000.0).round() as i32
+}
+
+#[cfg(feature = "overheat-trip-test")]
+#[test]
+fn a_local_generation_stops_at_the_local_overheat_trip() {
+    // Arrange
+    let (gate, generation) = active_local();
+    gate.note_chip_temperature(Some(trip_milli()));
+    // Act
+    gate.check_safety(true, true, 500);
+    // Assert
+    assert!(!gate.permits(Some(generation)));
+    assert_eq!(
+        gate.maybe_unsafe_detail()
+            .and_then(|detail| detail.maybe_chip_temp_milli),
+        Some(trip_milli())
+    );
+}
+
+#[test]
+fn a_local_generation_below_the_trip_keeps_mining() {
+    // Arrange
+    let (gate, generation) = active_local();
+    gate.note_chip_temperature(Some(trip_milli() - 1));
+    // Act
+    gate.check_safety(true, true, 500);
+    // Assert
+    assert!(gate.permits(Some(generation)));
+}
+
+#[test]
+fn a_local_generation_without_a_fresh_chip_reading_keeps_mining() {
+    // Arrange
+    let (gate, generation) = active_local();
+    gate.note_chip_temperature(None);
+    // Act
+    gate.check_safety(true, true, 500);
+    // Assert
+    assert!(gate.permits(Some(generation)));
+}
+
+#[test]
+fn a_linked_generation_ignores_the_local_overheat_trip() {
+    // Arrange: a lease stops only on the shared verdict, which this safe sample passed.
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("link");
+    assert!(gate.admit_budget(generation, u64::MAX));
+    assert!(gate.activate_at(generation, 0));
+    gate.note_chip_temperature(Some(trip_milli()));
+    // Act
+    gate.check_safety(true, true, 500);
+    // Assert
+    assert!(gate.permits(Some(generation)));
+}
+
+#[cfg(feature = "overheat-trip-test")]
+#[test]
+fn a_local_overheat_stop_is_labelled_an_overheat() {
+    // Arrange
+    let (gate, _generation) = active_local();
+    gate.note_chip_temperature(Some(trip_milli()));
+    gate.check_safety(true, true, 500);
+    let detail = gate.maybe_unsafe_detail().expect("detail");
+    // Act
+    let overheat = crate::local_mining::is_overheat(
+        RevocationReason::UnsafeObservation,
+        detail
+            .maybe_chip_temp_milli
+            .map(|milli| f64::from(milli) / 1_000.0),
+    );
+    // Assert
+    assert!(overheat);
+}

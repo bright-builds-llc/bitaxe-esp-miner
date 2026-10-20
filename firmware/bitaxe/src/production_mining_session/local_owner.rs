@@ -389,7 +389,13 @@ impl OrdinaryEspProductionSessionAdapter {
         revocation::revoke_at(run.generation, now_ms);
         // The gate publishes an unsafe detail just after revoking; the hardware has
         // been stopping for seconds since, so it is in place by now.
-        let maybe_unsafe_stop = revocation::maybe_unsafe_detail_for(run.generation).map(|detail| {
+        let maybe_detail = revocation::maybe_unsafe_detail_for(run.generation);
+        // The first failing fact names why an unsafe stop happened; an overheat check reads it
+        // to tell the trip from another unsafe stop on a hot chip.
+        if let Some(detail) = &maybe_detail {
+            retained(log::Level::Info, &detail.marker());
+        }
+        let maybe_unsafe_stop = maybe_detail.map(|detail| {
             let maybe_chip_c = detail
                 .maybe_chip_temp_milli
                 .map(|milli| f64::from(milli) / 1_000.0);

@@ -299,6 +299,20 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - Change `solid` dependencies only through its `package.json` and `pnpm-lock.yaml` (pnpm 10, exact versions, `allowBuilds: {}`), then rebuild through Bazel. Never commit `.gz` files under `static/www`; staging generates and verifies them.
 - `just web-ui-sizes` reports sizes. `//tools/automation:web_ui_budget_test` enforces `firmware/bitaxe/web-ui-budget.json`. Raise a budget only in a reviewed change with a new `--append-history` row in `docs/web-ui/size-history.csv`.
 
+### Firmware Variants
+
+- `production` is the default firmware. `overheat-trip-test` (ADR-0040) is
+  test-only: its local overheat trip is 55 C, for the overheat check on
+  hardware. Build it only with `just package-overheat-trip-test` (Bazel flag
+  `--//firmware/bitaxe:firmware_variant`). Never release or publish it.
+- The manifest records `firmware_variant`, checked against the ELF marker.
+  The flash tool refuses a test variant unless `--allow-test-firmware
+  <variant>` names it, the release gate refuses it, and
+  `//scripts:firmware_variant_isolation_test` keeps the marker out of
+  production.
+- After any hardware run on the test variant, reinstall production with
+  `just package` and confirm it.
+
 ### Autonomous Ultra 205 Hardware Verification
 
 ### Persistent Gate Browser Tab

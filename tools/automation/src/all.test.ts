@@ -1,4 +1,5 @@
 import "./build.test.js";
+import "./package.test.js";
 import "./contracts.test.js";
 import "./api-command-effects-budget.test.js";
 import "./api-command-effects-checkpoint.test.js";
@@ -13,6 +14,7 @@ import "./firmware-stack-budget.test.js";
 import "./http.test.js";
 import "./interrupted-upload.test.js";
 import "./invocation.test.js";
+import "./asic-protocol-projection-invocation.test.js";
 import "./log-buffer-evidence.test.js";
 import "./network-reconnect-evidence.test.js";
 import "./network-scan-evidence.test.js";

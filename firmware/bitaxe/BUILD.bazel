@@ -73,6 +73,31 @@ config_setting(
     flag_values = {":web_ui": "solid"},
 )
 
+# Firmware variant compiled into bitaxe-firmware.elf (ADR-0040):
+#   bazel build //firmware/bitaxe:firmware_image --//firmware/bitaxe:firmware_variant=overheat-trip-test
+# `production` stays the default. The test variant lowers the local overheat
+# trip for hardware checks only; it is never released, its manifest records
+# `firmware_variant`, and the flash tool refuses it without
+# `--allow-test-firmware overheat-trip-test`.
+string_flag(
+    name = "firmware_variant",
+    build_setting_default = "production",
+    values = [
+        "production",
+        "overheat-trip-test",
+    ],
+)
+
+config_setting(
+    name = "firmware_variant_production",
+    flag_values = {":firmware_variant": "production"},
+)
+
+config_setting(
+    name = "firmware_variant_overheat_trip_test",
+    flag_values = {":firmware_variant": "overheat-trip-test"},
+)
+
 CURRENT_UI_SOURCES = [
     "static/www/index.html",
     "static/www/assets/api-client.js",
@@ -1275,8 +1300,10 @@ js_run_binary(
         "--build-timestamp-utc",
         "$(location :build_timestamp_utc)",
         "--build-mode",
-        "normal",
-    ],
+    ] + select({
+        ":firmware_variant_production": ["normal"],
+        ":firmware_variant_overheat_trip_test": ["overheat-trip-test"],
+    }),
     execution_requirements = {
         "local": "1",
         "no-sandbox": "1",
@@ -1458,7 +1485,11 @@ js_run_binary(
         "$(RULEDIR)/bitaxe-ultra205-package.json",
         "--web-ui-stage",
         "$(location :web_ui_staged)",
-    ],
+        "--firmware-variant",
+    ] + select({
+        ":firmware_variant_production": ["production"],
+        ":firmware_variant_overheat_trip_test": ["overheat-trip-test"],
+    }),
     execution_requirements = {
         "local": "1",
         "no-sandbox": "1",

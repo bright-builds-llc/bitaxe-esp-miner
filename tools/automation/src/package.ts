@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { internalCommandSpec } from "./contracts.generated.js";
+import { requireFirmwareVariantMarker, type FirmwareVariant } from "./firmware-variant.js";
 import type { ProcessPort, ProcessOutcome } from "./process.js";
 import { readStage, readTree } from "./web-ui-files.js";
 import { verifyGzipSiblings, type StagedFile, type WebUiVariant } from "./web-ui-stage.js";
@@ -18,6 +19,8 @@ export type PackageFirmwareRequest = {
   readonly outDir: string;
   readonly manifest: string;
   readonly webUi: WebUiSource;
+  /** Variant the ELF was built as (ADR-0040); recorded in the manifest and checked against the ELF bytes. */
+  readonly firmwareVariant: FirmwareVariant;
 };
 
 /**
@@ -65,8 +68,9 @@ export async function packageFirmware(
   xtaskProgram: string,
 ): Promise<void> {
   const input = resolveRequest(workspaceRoot, request);
-  const { webUi: webUiSource, ...paths } = input;
+  const { webUi: webUiSource, firmwareVariant, ...paths } = input;
   await Promise.all(Object.values(paths).map((file) => file === input.outDir || file === input.manifest ? undefined : readFile(file)));
+  requireFirmwareVariantMarker(await readFile(input.firmwareElf), firmwareVariant);
   await requireSuccess(
     processPort.run(internalCommandSpec(xtaskProgram, ["verify-reference"], (value) => value)),
     "reference verification",
@@ -182,7 +186,7 @@ export async function packageFirmware(
             "--license-inventory", "docs/release/license-inventory.md",
             "--provenance-manifest", "docs/release/provenance-manifest.md",
             "--otadata-source", input.otadataInitialBin,
-            "--web-ui-variant", webUi.variant, "--www-dir", staging,
+            "--web-ui-variant", webUi.variant, "--firmware-variant", firmwareVariant, "--www-dir", staging,
           ],
           (value) => value,
         ),
@@ -224,6 +228,7 @@ function resolveRequest(workspaceRoot: string, request: PackageFirmwareRequest):
     outDir: path.resolve(workspaceRoot, request.outDir),
     manifest: path.resolve(workspaceRoot, request.manifest),
     webUi: { kind: request.webUi.kind, path: path.resolve(workspaceRoot, request.webUi.path) },
+    firmwareVariant: request.firmwareVariant,
   };
 }
 

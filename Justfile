@@ -124,6 +124,10 @@ package *args:
     flag="$(scripts/web-ui-flag.sh "$@")"
     bazel build //firmware/bitaxe:firmware_image "$flag"
 
+# Test-only lowered overheat trip (ADR-0040), never released; flash needs `--allow-test-firmware overheat-trip-test`; reinstall production afterwards.
+package-overheat-trip-test:
+    bazel build //firmware/bitaxe:firmware_image --//firmware/bitaxe:firmware_variant=overheat-trip-test
+
 # Web UI raw/gzip/served bytes and www.bin SPIFFS use; `--append-history docs/web-ui/size-history.csv` records them.
 web-ui-sizes *args:
     bazel run //tools/automation:web_ui_sizes -- {{ args }}

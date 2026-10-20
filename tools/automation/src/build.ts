@@ -11,8 +11,38 @@ export type BuildFirmwareRequest = {
   readonly buildProvenanceStamp: string;
   readonly identitySdkconfigDefaults: string;
   readonly buildTimestampUtc: string;
-  readonly buildMode: "normal" | "rollback-probe";
+  readonly buildMode: FirmwareBuildMode;
 };
+
+/** `overheat-trip-test` is the test-only firmware variant (ADR-0040); it keeps the normal artifact names. */
+export type FirmwareBuildMode = "normal" | "rollback-probe" | "overheat-trip-test";
+
+/** Per-mode Cargo inputs; each mode owns its target directory so builds never share ESP-IDF state. */
+export function firmwareBuildPlan(buildMode: FirmwareBuildMode): {
+  readonly artifactPrefix: string;
+  readonly cargoTargetDir: string;
+  readonly cargoFeatures: readonly string[];
+  readonly otaRollbackProbe: "0" | "1";
+} {
+  switch (buildMode) {
+    case "normal":
+      return { artifactPrefix: "bitaxe-firmware", cargoTargetDir: ".bazel-firmware-target", cargoFeatures: [], otaRollbackProbe: "0" };
+    case "rollback-probe":
+      return {
+        artifactPrefix: "bitaxe-firmware-rollback-probe",
+        cargoTargetDir: ".bazel-firmware-rollback-probe-target",
+        cargoFeatures: [],
+        otaRollbackProbe: "1",
+      };
+    case "overheat-trip-test":
+      return {
+        artifactPrefix: "bitaxe-firmware",
+        cargoTargetDir: ".bazel-firmware-overheat-trip-test-target",
+        cargoFeatures: ["--features", "overheat-trip-test"],
+        otaRollbackProbe: "0",
+      };
+  }
+}
 
 const target = "xtensa-esp32s3-espidf";
 const packageName = "bitaxe-firmware";
@@ -45,12 +75,9 @@ export async function buildFirmware(
   processPort: ProcessPort,
 ): Promise<void> {
   const outputDir = path.resolve(workspaceRoot, request.outputDir);
-  const rollbackProbe = request.buildMode === "rollback-probe";
-  const artifactPrefix = rollbackProbe ? "bitaxe-firmware-rollback-probe" : "bitaxe-firmware";
-  const cargoTargetDir = path.join(
-    workspaceRoot,
-    rollbackProbe ? ".bazel-firmware-rollback-probe-target" : ".bazel-firmware-target",
-  );
+  const plan = firmwareBuildPlan(request.buildMode);
+  const artifactPrefix = plan.artifactPrefix;
+  const cargoTargetDir = path.join(workspaceRoot, plan.cargoTargetDir);
   const sourceElf = path.join(cargoTargetDir, target, "release", packageName);
   const sourceMap = `${sourceElf}.map`;
   const provenanceStamp = path.resolve(workspaceRoot, request.buildProvenanceStamp);
@@ -86,12 +113,12 @@ export async function buildFirmware(
     ESP_IDF_SYS_ROOT_CRATE: packageName,
     ESP_IDF_TOOLS_INSTALL_DIR: "workspace",
     ESP_IDF_VERSION: "tag:v5.5.4",
-    BITAXE_OTA_ROLLBACK_PROBE: rollbackProbe ? "1" : "0",
+    BITAXE_OTA_ROLLBACK_PROBE: plan.otaRollbackProbe,
   };
   const cargo = await processPort.run(
     internalCommandSpec(
       "cargo",
-      ["build", "-p", packageName, "--release", "--target", target],
+      ["build", "-p", packageName, "--release", "--target", target, ...plan.cargoFeatures],
       (value) => value,
       environment,
     ),

@@ -9,10 +9,17 @@ use sha2::{Digest, Sha256};
 
 use bitaxe_api::BuildProvenance;
 
+use crate::firmware_variant::{validate_manifest_firmware_variant, FirmwareVariant};
 use crate::web_ui::{collect_web_ui_assets, validate_web_ui_manifest, WebUiAsset, WebUiVariant};
 use crate::{
     validate_package_request, PackageEnvironment, PackageRequest, DEFAULT_ELF_NAME,
     EXPECTED_REFERENCE_COMMIT, FACTORY_IMAGE_NAME, RUST_TARGET, UNAVAILABLE,
+};
+
+mod validation;
+use validation::{
+    require_artifact_kind, require_artifact_offset, require_non_empty, validate_app_elf_sha256,
+    validate_sha256,
 };
 
 const CANONICAL_PARTITION_TABLE_PATH: &str = "firmware/bitaxe/partitions-ultra205.csv";
@@ -42,6 +49,10 @@ pub(crate) struct PackageManifestV3 {
     /// SHA-256 digest of every file packed into `www.bin`, sorted by path.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) web_ui_assets: Vec<WebUiAsset>,
+    /// Firmware variant compiled into the application (ADR-0040); absent only in
+    /// historical packages, which are all `production`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) firmware_variant: Option<FirmwareVariant>,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -284,6 +295,7 @@ pub(crate) fn build_manifest(
         update_segments,
         web_ui_variant: Some(package_request.web_ui_variant),
         web_ui_assets: collect_web_ui_assets(&package_request.www_dir)?,
+        firmware_variant: Some(package_request.firmware_variant),
     };
     validate_package_manifest_v3(&manifest)?;
 
@@ -391,6 +403,10 @@ pub(crate) fn validate_package_manifest_v3(manifest: &PackageManifestV3) -> Resu
     }
 
     validate_web_ui_manifest(manifest.web_ui_variant, &manifest.web_ui_assets)?;
+    validate_manifest_firmware_variant(
+        manifest.firmware_variant,
+        manifest.build_identity.release_tag.as_deref(),
+    )?;
     require_artifact_offset(manifest, ArtifactKind::FirmwareElf, UNAVAILABLE)?;
     require_artifact_offset(manifest, ArtifactKind::FirmwareOtaImage, "0x10000")?;
     require_artifact_offset(manifest, ArtifactKind::WwwSpiffsImage, "0x410000")?;
@@ -408,32 +424,6 @@ pub(crate) fn validate_package_manifest_v3(manifest: &PackageManifestV3) -> Resu
     Ok(())
 }
 
-fn require_non_empty(label: &str, value: &str) -> Result<()> {
-    if value.trim().is_empty() {
-        bail!("{label} must not be empty");
-    }
-
-    Ok(())
-}
-
-fn require_artifact_kind(
-    manifest: &PackageManifestV3,
-    kind: ArtifactKind,
-) -> Result<&ReleaseArtifact> {
-    let mut matches = manifest
-        .artifacts
-        .iter()
-        .filter(|artifact| artifact.kind == kind);
-    let Some(artifact) = matches.next() else {
-        bail!(required_artifact_message(kind));
-    };
-    if matches.next().is_some() {
-        bail!(duplicate_artifact_message(kind));
-    }
-
-    Ok(artifact)
-}
-
 fn validate_firmware_elf_app_sha_relationship(manifest: &PackageManifestV3) -> Result<()> {
     let firmware_elf = require_artifact_kind(manifest, ArtifactKind::FirmwareElf)?;
     if firmware_elf.sha256 != manifest.app_elf_sha256 {
@@ -441,75 +431,6 @@ fn validate_firmware_elf_app_sha_relationship(manifest: &PackageManifestV3) -> R
     }
 
     Ok(())
-}
-
-fn validate_sha256(kind: &ArtifactKind, sha256: &str) -> Result<()> {
-    if sha256.len() == 64
-        && sha256
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-    {
-        return Ok(());
-    }
-
-    bail!("{kind} sha256 must be a 64 character hex string");
-}
-
-fn validate_app_elf_sha256(sha256: &str) -> Result<()> {
-    if sha256.len() == 64
-        && sha256
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        && sha256.bytes().any(|byte| byte != b'0')
-    {
-        return Ok(());
-    }
-
-    bail!("app_elf_sha256 must be a nonzero 64-character lowercase hexadecimal string")
-}
-
-fn require_artifact_offset(
-    manifest: &PackageManifestV3,
-    kind: ArtifactKind,
-    expected_offset: &str,
-) -> Result<()> {
-    let artifact = require_artifact_kind(manifest, kind)?;
-    if artifact.offset == expected_offset {
-        return Ok(());
-    }
-
-    bail!(
-        "{kind} artifact must use offset {expected_offset}, found {}",
-        artifact.offset
-    );
-}
-
-fn required_artifact_message(kind: ArtifactKind) -> String {
-    match kind {
-        ArtifactKind::Bootloader => "required artifact kind bootloader missing".to_owned(),
-        ArtifactKind::PartitionTableBinary => {
-            "required artifact kind partition_table_binary missing".to_owned()
-        }
-        ArtifactKind::FirmwareElf => "required artifact kind firmware_elf missing".to_owned(),
-        ArtifactKind::FirmwareOtaImage => {
-            "required artifact kind firmware_ota_image missing".to_owned()
-        }
-        ArtifactKind::WwwSpiffsImage => {
-            "required artifact kind www_spiffs_image missing".to_owned()
-        }
-        ArtifactKind::FactoryMergedImage => {
-            "required artifact kind factory_merged_image missing".to_owned()
-        }
-        ArtifactKind::PartitionTable => "required artifact kind partition_table missing".to_owned(),
-        ArtifactKind::OtadataInitial => "required artifact kind otadata_initial missing".to_owned(),
-        ArtifactKind::UpdateOnlyImage => {
-            "required artifact kind update_only_image missing".to_owned()
-        }
-    }
-}
-
-fn duplicate_artifact_message(kind: ArtifactKind) -> String {
-    format!("required artifact kind {kind} duplicate")
 }
 
 fn artifact_entry(

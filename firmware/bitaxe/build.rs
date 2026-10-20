@@ -34,6 +34,12 @@ fn main() {
     println!("cargo:rerun-if-env-changed=BITAXE_OTA_ROLLBACK_PROBE");
     let provenance = required_build_provenance();
     let identity = provenance.build_identity();
+    // ADR-0040: the lowered overheat trip is for hardware checks only, never a release.
+    if env::var_os("CARGO_FEATURE_OVERHEAT_TRIP_TEST").is_some()
+        && identity.maybe_release_tag().is_some()
+    {
+        panic!("the overheat-trip-test firmware variant must never carry a release tag");
+    }
     println!(
         "cargo:rustc-env=BITAXE_SEMANTIC_VERSION={}",
         provenance.semantic_version()

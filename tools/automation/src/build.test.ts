@@ -5,9 +5,10 @@ import path from "node:path";
 import test from "node:test";
 
 import {
-  buildFirmware, FIRMWARE_BUILD_TIMEOUT_MS, FirmwareBuildTimeoutError, rejectUnknownKconfigWarnings, requireResolvedUsbMemoryContract,
+  buildFirmware, FIRMWARE_BUILD_TIMEOUT_MS, FirmwareBuildTimeoutError, firmwareBuildPlan, rejectUnknownKconfigWarnings, requireResolvedUsbMemoryContract,
   requireResolvedCoreDumpContract, requireCoreDumpPartition, requireDebugArtifacts,
 } from "./build.js";
+import type { CommandSpec } from "./contracts.generated.js";
 import { createFakeProcessPort, type ProcessLifetime, type ProcessOutcome } from "./process.js";
 import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
 
@@ -215,6 +216,52 @@ test("an ordinary firmware build failure stays an untyped process failure", asyn
     assert.ok(error instanceof Error && !(error instanceof FirmwareBuildTimeoutError));
     assert.match(error.message, /^firmware Cargo build failed; protected diagnostic scratch\/firmware-build-/u);
     assert.equal(maybeTypedFailureCategory(error), undefined);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("the overheat-trip-test build owns its Cargo target directory and keeps the normal artifact names", () => {
+  // Arrange / Act
+  const plan = firmwareBuildPlan("overheat-trip-test");
+
+  // Assert
+  assert.equal(plan.cargoTargetDir, ".bazel-firmware-overheat-trip-test-target");
+  assert.notEqual(plan.cargoTargetDir, firmwareBuildPlan("normal").cargoTargetDir);
+  assert.equal(plan.artifactPrefix, firmwareBuildPlan("normal").artifactPrefix);
+  assert.equal(plan.otaRollbackProbe, "0");
+});
+
+test("only the overheat-trip-test build enables the overheat-trip-test Cargo feature", () => {
+  // Arrange
+  const modes = ["normal", "rollback-probe", "overheat-trip-test"] as const;
+
+  // Act
+  const features = modes.map((mode) => firmwareBuildPlan(mode).cargoFeatures);
+
+  // Assert
+  assert.deepEqual(features, [[], [], ["--features", "overheat-trip-test"]]);
+});
+
+test("an overheat-trip-test build runs Cargo with the feature in its own target directory", async () => {
+  // Arrange
+  const root = await buildWorkspace();
+  let maybeCargo: CommandSpec<unknown> | undefined;
+  const port = createFakeProcessPort(async (spec) => {
+    maybeCargo = spec;
+    return { exitCode: 101, stdout: "", stderr: "", timedOut: false };
+  });
+  const request = { outputDir: "out", buildProvenanceStamp: "stamp.txt", identitySdkconfigDefaults: "identity.defaults",
+    buildTimestampUtc: "timestamp.txt", buildMode: "overheat-trip-test" } as const;
+
+  try {
+    // Act
+    await buildFirmware(root, request, port).catch(() => undefined);
+
+    // Assert
+    assert.deepEqual(maybeCargo?.args.slice(-2), ["--features", "overheat-trip-test"]);
+    assert.equal(maybeCargo?.environment?.["CARGO_TARGET_DIR"], path.join(root, ".bazel-firmware-overheat-trip-test-target"));
+    assert.equal(maybeCargo?.environment?.["BITAXE_OTA_ROLLBACK_PROBE"], "0");
   } finally {
     await rm(root, { recursive: true });
   }

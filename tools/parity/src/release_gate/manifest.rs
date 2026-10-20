@@ -32,9 +32,26 @@ pub(super) fn validate_manifest_if_provided(
     validate_manifest_schema_version(errors, manifest_path, &manifest);
     validate_manifest_required_strings(errors, manifest_path, &manifest);
     validate_manifest_build_identity(errors, manifest_path, &manifest);
+    validate_manifest_firmware_variant(errors, manifest_path, &manifest);
     validate_manifest_exact_strings(errors, manifest_path, &manifest);
     validate_manifest_path(errors, manifest_path);
     validate_manifest_required_artifacts(errors, manifest_path, &manifest);
+}
+
+/// Only production firmware is released; a test-only variant never is (ADR-0040). A manifest
+/// from before the field existed is production.
+fn validate_manifest_firmware_variant(
+    errors: &mut Vec<String>,
+    manifest_path: &Utf8PathBuf,
+    manifest: &Value,
+) {
+    match manifest.get("firmware_variant") {
+        None => {}
+        Some(Value::String(variant)) if variant == "production" => {}
+        Some(other) => errors.push(format!(
+            "package manifest `{manifest_path}` field `firmware_variant` must be `production` for a release, not {other}"
+        )),
+    }
 }
 
 fn validate_manifest_schema_version(

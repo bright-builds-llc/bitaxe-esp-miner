@@ -30,7 +30,10 @@ fn entered(frequency_mhz: f32, core_voltage_mv: u16) -> OverheatRecovery {
 #[test]
 fn a_hot_chip_at_an_unsafe_revocation_is_an_overheat() {
     // Arrange / Act / Assert
-    assert!(is_overheat(RevocationReason::UnsafeObservation, Some(75.0)));
+    assert!(is_overheat(
+        RevocationReason::UnsafeObservation,
+        Some(LOCAL_OVERHEAT_TRIP_C)
+    ));
 }
 
 #[test]
@@ -39,7 +42,7 @@ fn a_cool_chip_at_an_unsafe_revocation_is_not_an_overheat() {
     // Act / Assert
     assert!(!is_overheat(
         RevocationReason::UnsafeObservation,
-        Some(74.0)
+        Some(LOCAL_OVERHEAT_TRIP_C - 1.0)
     ));
 }
 
@@ -303,4 +306,11 @@ fn a_saved_pair_outside_the_catalog_leaves_nothing_to_cool_for() {
     overheat.enter_after_boot(None, false, 0);
     // Assert
     assert!(!overheat.holds_power_down());
+}
+
+#[cfg(not(feature = "overheat-trip-test"))]
+#[test]
+fn a_production_build_trips_at_upstreams_seventy_five_degrees() {
+    // Arrange / Act / Assert
+    assert!((LOCAL_OVERHEAT_TRIP_C - 75.0).abs() < f64::EPSILON);
 }

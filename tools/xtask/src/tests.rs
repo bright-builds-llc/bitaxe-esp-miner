@@ -522,6 +522,7 @@ fn package_request(
         provenance_manifest,
         otadata_source: "generated-erased-flash".to_owned(),
         web_ui_variant: crate::web_ui::WebUiVariant::Current,
+        firmware_variant: crate::firmware_variant::FirmwareVariant::Production,
         www_dir: www_dir_fixture(dir),
     }
 }

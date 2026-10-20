@@ -180,6 +180,10 @@ pub(crate) fn resolve_flash_image(
         package_manifest.maybe_web_ui_variant.as_deref(),
         expected_web_ui_variant(command.maybe_web_ui, builds_package),
     )?;
+    admit_firmware_variant(
+        manifest_firmware_variant(package_manifest.maybe_firmware_variant.as_deref())?,
+        command.maybe_allow_test_firmware,
+    )?;
     let current_provenance = environment.current_provenance()?;
     let admitted_factory = validate_identity_admission(
         &manifest,
@@ -245,6 +249,11 @@ pub(crate) fn validate_identity_admission(
     let elf_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&elf_artifact.path))?;
     let elf_bytes = read_validated_artifact(elf_artifact, &elf_path, environment)?;
     execution_profile::reject_virtual_bytes(&elf_bytes)?;
+    // The OTA image is bound to this ELF through `app_elf_sha256`, so the ELF settles the variant.
+    require_firmware_variant_bytes(
+        manifest_firmware_variant(manifest.maybe_firmware_variant.as_deref())?,
+        &elf_bytes,
+    )?;
     if sha256_bytes(&elf_bytes) != manifest.app_elf_sha256 {
         bail!("identity_admission=blocked reason=firmware_elf_app_sha_mismatch");
     }

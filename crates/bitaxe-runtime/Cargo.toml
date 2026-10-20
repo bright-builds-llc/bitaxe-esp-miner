@@ -4,6 +4,11 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 
+[features]
+# Test-only: lowers the local overheat trip so the recovery can be checked on hardware at
+# normal mining temperatures. Never packaged for release (ADR-0040).
+overheat-trip-test = []
+
 [dependencies]
 bitaxe-api = { path = "../bitaxe-api" }
 bitaxe-safety = { path = "../bitaxe-safety" }

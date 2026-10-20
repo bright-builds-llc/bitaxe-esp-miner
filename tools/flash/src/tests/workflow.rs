@@ -14,6 +14,7 @@ fn explicit_factory_reset_exits_rom_once_after_the_final_nvs_write() {
         manifest: Some(write_manifest_v4(&dir, DEFAULT_ELF_NAME)),
         wifi_credentials: Some(write_wifi_credentials(&dir, "LabNet", "test-only")),
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let environment = FakeFlashEnvironment::default();
 
@@ -38,6 +39,7 @@ fn canonical_flash_propagates_failed_final_rom_exit() {
         manifest: Some(write_manifest_v4(&dir, DEFAULT_ELF_NAME)),
         wifi_credentials: None,
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let environment = FakeFlashEnvironment {
         application_exit_failure: true,
@@ -88,6 +90,7 @@ fn dry_run_flash_with_explicit_image_renders_vector_command() {
         manifest: None,
         wifi_credentials: None,
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let environment = FakeFlashEnvironment::default();
 
@@ -128,6 +131,7 @@ fn explicit_factory_reset_provisions_wifi_after_the_factory_write() {
         manifest: Some(manifest),
         wifi_credentials: Some(credentials_path),
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let environment = FakeFlashEnvironment::default();
 

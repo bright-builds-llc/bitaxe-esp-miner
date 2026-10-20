@@ -10,6 +10,7 @@ fn dry_run_command(manifest: Utf8PathBuf, maybe_web_ui: Option<WebUiVariant>) ->
         manifest: Some(manifest),
         wifi_credentials: None,
         maybe_web_ui,
+        maybe_allow_test_firmware: None,
     }
 }
 

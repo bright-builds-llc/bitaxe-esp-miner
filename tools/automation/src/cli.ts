@@ -1,7 +1,8 @@
 import { constants, promises } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildFirmware } from "./build.js";
+import { buildFirmware, type FirmwareBuildMode } from "./build.js";
+import type { FirmwareVariant } from "./firmware-variant.js";
 import { captureAdcObservationEvidence } from "./adc-observation-evidence.js";
 import { captureApiCommandEffects } from "./api-command-effects.js";
 import { emitOperatorCheckpointSignal } from "./api-command-effects-checkpoint.js";
@@ -218,7 +219,7 @@ async function main(): Promise<number> {
         buildProvenanceStamp: optionValue(invocation, "--build-provenance-stamp"),
         identitySdkconfigDefaults: optionValue(invocation, "--identity-sdkconfig-defaults"),
         buildTimestampUtc: optionValue(invocation, "--build-timestamp-utc"),
-        buildMode: optionValue(invocation, "--build-mode") as "normal" | "rollback-probe",
+        buildMode: optionValue(invocation, "--build-mode") as FirmwareBuildMode,
       }, processPort);
     } else if (invocation.command === "package-firmware") {
       await packageFirmware(root, {
@@ -231,6 +232,7 @@ async function main(): Promise<number> {
         outDir: optionValue(invocation, "--out-dir"),
         manifest: optionValue(invocation, "--manifest"),
         webUi: { kind: "stage", path: optionValue(invocation, "--web-ui-stage") },
+        firmwareVariant: optionValue(invocation, "--firmware-variant") as FirmwareVariant,
       }, processPort, toolProgram(root, "tools/xtask/xtask"));
     } else if (invocation.command === "package-rollback-probe") {
       publicValue = await packageRollbackProbe(root, {

@@ -1,3 +1,4 @@
+.bazel-firmware-overheat-trip-test-target
 .bazel-firmware-rollback-probe-target
 .bazel-firmware-target
 .embuild

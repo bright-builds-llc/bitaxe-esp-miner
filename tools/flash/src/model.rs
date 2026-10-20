@@ -329,6 +329,9 @@ pub(crate) struct PackageManifest {
     /// Web UI variant packed into `www.bin` (ADR-0034); absent in historical packages.
     #[serde(default, rename = "web_ui_variant")]
     pub(crate) maybe_web_ui_variant: Option<String>,
+    /// Firmware variant compiled into the application (ADR-0040); absent means production.
+    #[serde(default, rename = "firmware_variant")]
+    pub(crate) maybe_firmware_variant: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

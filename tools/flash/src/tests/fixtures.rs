@@ -51,6 +51,7 @@ fn flash_monitor_fixture(dir: &TempDir, evidence_dir: Utf8PathBuf) -> FlashMonit
         self_test_intent: None,
         capture_timeout_seconds: DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS,
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     }
 }
 
@@ -292,6 +293,7 @@ fn run_explicit_image_admission(manifest: &Utf8Path, image: Utf8PathBuf) -> Resu
         manifest: Some(manifest.to_owned()),
         wifi_credentials: Some(Utf8PathBuf::from("/missing/credentials.json")),
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let environment = FakeFlashEnvironment::with_ports(
         "/dev/cu.usbmodem101 USB JTAG\n/dev/cu.usbmodem102 USB JTAG\n",

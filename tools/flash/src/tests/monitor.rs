@@ -12,6 +12,7 @@ fn manifest_v4_rejects_wrong_factory_artifact_name() {
         manifest: Some(manifest),
         wifi_credentials: None,
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let environment = FakeFlashEnvironment::default();
 

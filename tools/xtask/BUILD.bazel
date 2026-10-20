@@ -13,9 +13,11 @@ filegroup(
 rust_binary(
     name = "xtask",
     srcs = [
+        "src/firmware_variant.rs",
         "src/main.rs",
         "src/package_manifest.rs",
         "src/package_manifest/tests.rs",
+        "src/package_manifest/validation.rs",
         "src/tests.rs",
         "src/partition_contract.rs",
         "src/web_ui.rs",

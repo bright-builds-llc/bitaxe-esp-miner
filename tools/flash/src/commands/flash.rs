@@ -120,6 +120,7 @@ pub(crate) fn run_flash_monitor(
         manifest: command.manifest.clone(),
         wifi_credentials: command.wifi_credentials.clone(),
         maybe_web_ui: command.maybe_web_ui,
+        maybe_allow_test_firmware: command.maybe_allow_test_firmware,
     };
     let wifi_mode = match (
         &command.thermal_fault_stimulus_intent,

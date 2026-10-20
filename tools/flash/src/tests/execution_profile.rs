@@ -20,6 +20,7 @@ fn virtual_package_rejected_before_capture_discovery_or_credentials() {
         manifest: Some(Utf8PathBuf::from_path_buf(path).expect("UTF8 path")),
         wifi_credentials: Some(Utf8PathBuf::from("/missing-sensitive-input")),
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let environment = FakeFlashEnvironment::default();
     // Act

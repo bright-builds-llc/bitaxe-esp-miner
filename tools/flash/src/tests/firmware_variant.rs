@@ -1,0 +1,192 @@
+use super::*;
+
+const TEST_ELF: &[u8] =
+    b"synthetic elf firmware_variant=overheat-trip-test local_overheat_trip_c=55";
+
+fn dry_run_command(
+    manifest: Utf8PathBuf,
+    maybe_allow_test_firmware: Option<FirmwareVariant>,
+) -> FlashCommand {
+    let mut common = common_args();
+    common.dry_run = true;
+    FlashCommand {
+        factory_reset: false,
+        common,
+        image: None,
+        manifest: Some(manifest),
+        wifi_credentials: None,
+        maybe_web_ui: None,
+        maybe_allow_test_firmware,
+    }
+}
+
+fn manifest_document(manifest: &Utf8Path) -> serde_json::Value {
+    serde_json::from_str(&std::fs::read_to_string(manifest).expect("manifest")).expect("JSON")
+}
+
+fn write_manifest_document(manifest: &Utf8Path, document: &serde_json::Value) {
+    std::fs::write(manifest, document.to_string()).expect("rewrite manifest");
+}
+
+fn record_firmware_variant(manifest: &Utf8Path, variant: &str) {
+    let mut document = manifest_document(manifest);
+    document["firmware_variant"] = variant.into();
+    write_manifest_document(manifest, &document);
+}
+
+/// Replaces the package ELF and its artifact digest, leaving the rest of the package intact.
+fn replace_firmware_elf(manifest: &Utf8Path, elf: &[u8]) {
+    let mut document = manifest_document(manifest);
+    let artifacts = document["artifacts"].as_array_mut().expect("artifacts");
+    let artifact = artifacts
+        .iter_mut()
+        .find(|artifact| artifact["kind"] == "firmware_elf")
+        .expect("firmware_elf artifact");
+    artifact["sha256"] = sha256_bytes(elf).into();
+    let path = artifact["path"].as_str().expect("path").to_owned();
+    let parent = manifest.parent().expect("manifest parent");
+    std::fs::write(parent.join(path), elf).expect("write ELF");
+    write_manifest_document(manifest, &document);
+}
+
+#[test]
+fn a_manifest_without_a_firmware_variant_flashes_as_production() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let manifest = write_manifest(&dir, DEFAULT_ELF_NAME);
+    let command = dry_run_command(manifest, None);
+    let environment = FakeFlashEnvironment::default();
+
+    // Act
+    let outcome = run_flash(&command, &environment);
+
+    // Assert
+    assert!(outcome.is_ok(), "{outcome:?}");
+}
+
+#[test]
+fn a_test_variant_package_is_refused_without_the_allowance() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let manifest = write_manifest(&dir, DEFAULT_ELF_NAME);
+    record_firmware_variant(&manifest, "overheat-trip-test");
+    let command = dry_run_command(manifest, None);
+    let environment = FakeFlashEnvironment::default();
+
+    // Act
+    let error = run_flash(&command, &environment).expect_err("test firmware must be refused");
+
+    // Assert
+    assert!(error
+        .to_string()
+        .contains("reason=test_firmware_requires_allowance"));
+    assert!(environment.executed_commands().is_empty());
+}
+
+#[test]
+fn the_allowance_with_a_production_package_is_refused() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let manifest = write_manifest(&dir, DEFAULT_ELF_NAME);
+    record_firmware_variant(&manifest, "production");
+    let command = dry_run_command(manifest, Some(FirmwareVariant::OverheatTripTest));
+    let environment = FakeFlashEnvironment::default();
+
+    // Act
+    let error = run_flash(&command, &environment).expect_err("allowance mismatch must block");
+
+    // Assert
+    assert!(error
+        .to_string()
+        .contains("reason=test_firmware_allowance_without_test_package"));
+}
+
+#[test]
+fn test_firmware_bytes_in_a_production_package_are_refused() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let manifest = write_manifest(&dir, DEFAULT_ELF_NAME);
+    replace_firmware_elf(&manifest, TEST_ELF);
+    let command = dry_run_command(manifest, None);
+    let environment = FakeFlashEnvironment::default();
+
+    // Act
+    let error = run_flash(&command, &environment).expect_err("disagreeing bytes must block");
+
+    // Assert
+    assert!(error
+        .to_string()
+        .contains("reason=test_firmware_bytes_in_production_package"));
+}
+
+#[test]
+fn an_unknown_recorded_firmware_variant_is_refused() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let manifest = write_manifest(&dir, DEFAULT_ELF_NAME);
+    record_firmware_variant(&manifest, "debug");
+    let command = dry_run_command(manifest, None);
+    let environment = FakeFlashEnvironment::default();
+
+    // Act
+    let error = run_flash(&command, &environment).expect_err("unknown variant must block");
+
+    // Assert
+    assert!(error
+        .to_string()
+        .contains("reason=manifest_firmware_variant_unknown"));
+}
+
+#[test]
+fn the_matching_allowance_admits_a_test_variant_package() {
+    // Arrange
+    let recorded = FirmwareVariant::OverheatTripTest;
+
+    // Act
+    let admission = admit_firmware_variant(recorded, Some(FirmwareVariant::OverheatTripTest));
+    let bytes = require_firmware_variant_bytes(recorded, TEST_ELF);
+
+    // Assert
+    assert!(admission.is_ok(), "{admission:?}");
+    assert!(bytes.is_ok(), "{bytes:?}");
+}
+
+#[test]
+fn a_test_variant_package_without_the_marker_is_refused() {
+    // Arrange
+    let production_elf = b"synthetic firmware elf";
+
+    // Act
+    let error = require_firmware_variant_bytes(FirmwareVariant::OverheatTripTest, production_elf)
+        .expect_err("missing marker must block");
+
+    // Assert
+    assert!(error
+        .to_string()
+        .contains("reason=test_firmware_marker_missing"));
+}
+
+#[test]
+fn flash_monitor_cli_parses_the_test_firmware_allowance() {
+    // Arrange
+    let argv = [
+        "bitaxe-flash",
+        "flash-monitor",
+        "--board",
+        "205",
+        "--allow-test-firmware",
+        "overheat-trip-test",
+    ];
+
+    // Act
+    let cli = parse_cli(argv.iter().map(|value| value.to_string())).expect("parse flash-monitor");
+
+    // Assert
+    let CliCommand::FlashMonitor(command) = cli.command else {
+        panic!("expected flash-monitor command");
+    };
+    assert_eq!(
+        command.maybe_allow_test_firmware,
+        Some(FirmwareVariant::OverheatTripTest)
+    );
+}

@@ -166,6 +166,11 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     if let Err(error) = best_difficulty_adapter::initialize() {
         log::warn!("best_difficulty=unavailable category={}", error.category());
     }
+    #[cfg(feature = "overheat-trip-test")]
+    crate::info_retained(&format!(
+        "firmware_variant=overheat-trip-test local_overheat_trip_c={}",
+        bitaxe_runtime::local_mining::LOCAL_OVERHEAT_TRIP_C
+    ));
     runtime_snapshot::apply_boot_mining_preference(crate::boot_guard::boot_preference(
         settings_adapter::start_mining_on_boot(),
     ));

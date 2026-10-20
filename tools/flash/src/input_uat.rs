@@ -234,6 +234,7 @@ pub(crate) fn run_input_uat(
         manifest: Some(command.manifest.clone()),
         wifi_credentials: None,
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let flash_outcome = run_flash(&flash_command, environment)?;
     if environment.device_effect_state() != UsbDeviceEffectState::Completed {

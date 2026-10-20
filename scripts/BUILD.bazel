@@ -1604,6 +1604,14 @@ js_binary(
     ],
 )
 
+# The default (production) firmware ELF never carries the overheat-trip-test marker (ADR-0040).
+js_test(
+    name = "firmware_variant_isolation_test",
+    args = ["$(rootpath //firmware/bitaxe:firmware)"],
+    data = ["//firmware/bitaxe:firmware"],
+    entry_point = "verify-firmware-variant-isolation.mjs",
+)
+
 # No Rust hardware compare-exchange in the built ELF (ADR-0039); uses the espup objdump.
 js_test(
     name = "firmware_psram_atomics_test",
@@ -2041,6 +2049,7 @@ js_binary(
     "judge",
     "lease",
     "main",
+    "overheat",
     "pool",
     "run",
     "stopped-proof",

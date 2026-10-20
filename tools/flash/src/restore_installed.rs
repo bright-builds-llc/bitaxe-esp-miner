@@ -345,6 +345,10 @@ fn package_command(
     if sha256_bytes(&elf_bytes) != identity.app_elf_sha256 {
         bail!("restore_installed=blocked reason=elf_identity");
     }
+    // Restoration has no operator allowance, so it never reinstalls test firmware (ADR-0040).
+    let firmware_variant = manifest_firmware_variant(manifest.maybe_firmware_variant.as_deref())?;
+    admit_firmware_variant(firmware_variant, None)?;
+    require_firmware_variant_bytes(firmware_variant, &elf_bytes)?;
     let ota = require_artifact(&manifest, "firmware_ota_image")?;
     let ota_path = resolve_manifest_sibling(&manifest_path, Utf8Path::new(&ota.path))?;
     let ota_bytes = read_validated_artifact(ota, &ota_path, environment)?;

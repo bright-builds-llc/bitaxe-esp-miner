@@ -335,6 +335,7 @@ fn execute_campaign(
         manifest: command.manifest.clone(),
         wifi_credentials: None,
         maybe_web_ui: None,
+        maybe_allow_test_firmware: None,
     };
     let prepared = prepare_flash(&flash_command, environment)
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::PackageAdmissionFailed))?;

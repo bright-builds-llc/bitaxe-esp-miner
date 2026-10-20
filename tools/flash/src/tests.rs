@@ -28,6 +28,7 @@ mod display_recovery;
 #[path = "tests/evidence.rs"]
 mod evidence_cases;
 mod execution_profile;
+mod firmware_variant;
 mod input_uat;
 mod installed_application;
 mod monitor;

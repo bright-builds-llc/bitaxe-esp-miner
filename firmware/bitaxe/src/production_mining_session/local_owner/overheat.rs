@@ -60,9 +60,12 @@ impl OrdinaryEspProductionSessionAdapter {
         overheat
             .recovery
             .enter_after_boot(saved_profile().ok(), saved.stopped_marker, now_ms);
-        log::info!(
-            "local_mining=overheat_resumed_after_boot stopped={}",
-            saved.stopped_marker
+        super::retained(
+            log::Level::Info,
+            &format!(
+                "local_mining=overheat_resumed_after_boot stopped={}",
+                saved.stopped_marker
+            ),
         );
     }
 
@@ -72,7 +75,10 @@ impl OrdinaryEspProductionSessionAdapter {
         overheat.recovery.enter(profile, now_ms);
         overheat.clear_after_preparation = true;
         let stays_stopped = reduced_profile(profile).is_none();
-        log::warn!("local_mining=overheat stays_stopped={stays_stopped}");
+        super::retained(
+            log::Level::Warn,
+            &format!("local_mining=overheat stays_stopped={stays_stopped}"),
+        );
         if !save("overheat_entry", overheat_entry_writes(stays_stopped)) {
             overheat.maybe_unsaved_entry = Some(stays_stopped);
         }
@@ -94,7 +100,7 @@ impl OrdinaryEspProductionSessionAdapter {
         }
         match self.local.overheat.recovery.observe(chip_reading(), now_ms) {
             OverheatStep::Recover(pair) => {
-                log::info!("local_mining=overheat_recovered");
+                super::retained(log::Level::Info, "local_mining=overheat_recovered");
                 // After a reboot the pair is the saved one: saving it again could only
                 // overwrite a pair the operator saved while it cooled.
                 let already_saved = saved_profile() == Ok(pair);
@@ -105,7 +111,10 @@ impl OrdinaryEspProductionSessionAdapter {
             OverheatStep::StayStopped if !self.local.overheat.stop_paused => {
                 self.local.overheat.stop_paused = true;
                 self.pause_by_device(DevicePauseReason::Overheat);
-                log::warn!("local_mining=overheat_stopped paused_by_device=true");
+                super::retained(
+                    log::Level::Warn,
+                    "local_mining=overheat_stopped paused_by_device=true",
+                );
             }
             OverheatStep::StayStopped | OverheatStep::Clear | OverheatStep::Cooling => {}
         }
@@ -141,7 +150,10 @@ fn save(what: &str, writes: Result<Vec<NvsWrite>, Vec<ConfigValidationError>>) -
         .map_err(|errors| format!("{} invalid settings", errors.len()))
         .and_then(overheat_store::persist);
     if let Err(error) = &result {
-        log::error!("local_mining=save_failed what={what} error={error}");
+        super::retained(
+            log::Level::Error,
+            &format!("local_mining=save_failed what={what} error={error}"),
+        );
     }
     result.is_ok()
 }

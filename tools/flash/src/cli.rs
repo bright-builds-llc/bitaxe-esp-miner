@@ -1,7 +1,9 @@
 use crate::*;
 
 mod rom_exit;
+mod stratum_v2_diagnostic;
 pub(crate) use rom_exit::{RomExitDiagnosticCommand, StartInstalledCommand};
+pub(crate) use stratum_v2_diagnostic::{NoiseDiagnosticCommand, TcpPayloadDiagnosticCommand};
 
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-flash")]
@@ -130,53 +132,6 @@ pub(crate) struct OwnerRecoveryCommand {
     pub(crate) plan: Utf8PathBuf,
     #[arg(long = "manual-checkpoint", value_parser = parse_utf8_path)]
     pub(crate) manual_checkpoint: Option<Utf8PathBuf>,
-    #[arg(long = "redact-evidence")]
-    pub(crate) redact_evidence: bool,
-}
-
-#[derive(Debug, Parser, Clone)]
-pub(crate) struct TcpPayloadDiagnosticCommand {
-    #[arg(long, default_value = "205", value_parser = parse_board)]
-    pub(crate) board: BoardId,
-    #[arg(long)]
-    pub(crate) port: String,
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) manifest: Utf8PathBuf,
-    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
-    pub(crate) wifi_credentials: Utf8PathBuf,
-    #[arg(long = "pool-credentials", value_parser = parse_utf8_path)]
-    pub(crate) pool_credentials: Utf8PathBuf,
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) intent: Utf8PathBuf,
-    #[arg(long = "capture-timeout-seconds", default_value_t = 360)]
-    pub(crate) capture_timeout_seconds: u64,
-    #[arg(long = "redact-evidence")]
-    pub(crate) redact_evidence: bool,
-}
-
-#[derive(Debug, Parser, Clone)]
-pub(crate) struct NoiseDiagnosticCommand {
-    #[arg(long, default_value = "205", value_parser = parse_board)]
-    pub(crate) board: BoardId,
-
-    #[arg(long)]
-    pub(crate) port: String,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) manifest: Utf8PathBuf,
-
-    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
-    pub(crate) wifi_credentials: Utf8PathBuf,
-
-    #[arg(long = "pool-credentials", value_parser = parse_utf8_path)]
-    pub(crate) pool_credentials: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) intent: Utf8PathBuf,
-
-    #[arg(long = "capture-timeout-seconds", default_value_t = 120)]
-    pub(crate) capture_timeout_seconds: u64,
-
     #[arg(long = "redact-evidence")]
     pub(crate) redact_evidence: bool,
 }
@@ -387,6 +342,10 @@ pub(crate) struct FlashCommand {
     /// Web UI variant to build and require in the package manifest (ADR-0034).
     #[arg(long = "web-ui", value_enum)]
     pub(crate) maybe_web_ui: Option<WebUiVariant>,
+
+    /// Admit a test-only firmware package of exactly this variant (ADR-0040).
+    #[arg(long = "allow-test-firmware", value_enum)]
+    pub(crate) maybe_allow_test_firmware: Option<FirmwareVariant>,
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -425,6 +384,10 @@ pub(crate) struct FlashMonitorCommand {
     /// Web UI variant to build and require in the package manifest (ADR-0034).
     #[arg(long = "web-ui", value_enum)]
     pub(crate) maybe_web_ui: Option<WebUiVariant>,
+
+    /// Admit a test-only firmware package of exactly this variant (ADR-0040).
+    #[arg(long = "allow-test-firmware", value_enum)]
+    pub(crate) maybe_allow_test_firmware: Option<FirmwareVariant>,
 
     #[arg(
         long = "thermal-fault-stimulus-intent",

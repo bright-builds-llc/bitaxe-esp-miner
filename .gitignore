@@ -4,6 +4,7 @@ bazel-*
 target/
 /.bazel-firmware-target/
 /.bazel-firmware-rollback-probe-target/
+/.bazel-firmware-overheat-trip-test-target/
 /.bazel-workspace-status-target/
 .embuild/
 /.planning/phases/**/hardware-runs/
