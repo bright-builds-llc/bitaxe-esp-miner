@@ -1136,7 +1136,8 @@ commands look for them. This block holds the contract.
       no outage.
 - [ ] Diagnose from the dump and the break logs, fix under the owner's
       re-run rule, and record evidence.
-- [ ] Soak 005 (8 hours overnight) on the power-save fix.
+- [x] Soak 005 (8 hours overnight) on the power-save fix: passed, with one
+      residual `beacon_timeout` (record below).
 
 Hardware contract (handover loop and soak 004, attempt ordinals 001
 onward). Soak 002's contract and amendment apply except as stated.
@@ -1309,6 +1310,30 @@ stated.
 - **Evidence for NET-001:** if no `beacon_timeout` and no outage appear
   over 8 hours, NET-001 may gain the `connect.c` power-save breadcrumb
   under an owner-authorized revision.
+
+Soak 005 attempt 001 result (2026-10-20): `complete` under the contract's
+definition. An independent review agrees.
+- Summary: `docs/parity/evidence/20261020-ultra205-local-mining-soak-005.md`.
+- Firmware `be2ad02a`, power save off (`wifi_power_save=none`); the handoff
+  succeeded on its first attempt.
+- Measurements:
+  - 28,800,268 ms accumulated in 481 minutes; longest span 7.1 hours;
+  - 1,042 accepted shares, 0 rejected;
+  - at most 12.52 W and 61 C; one boot session; powered down after the
+    pause.
+- One Wi-Fi `beacon_timeout` at 7.2 hours caused two breaks (21 s and
+  12 s), both recovered without a reset.
+- Caveat: for 13 s between the breaks, the status read `active` while the
+  ASIC was not hashing (1.3–1.6 W, hashrate frozen). The run cleared
+  8 hours by 268 ms, so by actual hashing it was about 13 s short. A
+  power-aware judge or status is a follow-up.
+- The fix: one disconnect in about 10 hours since it, against about 6.6
+  expected at the old rate (roughly 1–5% by chance). Markedly fewer, not
+  none.
+- NET-001: the evidence supports adding the `connect.c` power-save
+  breadcrumb under an owner-authorized revision, with the residual
+  disconnect stated. That waits for the owner.
+- The soak 005 enable line was removed.
 
 Verification: pending. Completion review: pending.
 
@@ -2013,7 +2038,6 @@ additive passage each. Their status stays `verified`.
   starting without a refused Connect first, fallback-pool switching, and
   the attempt 002 panic.
 
-Ultra 205 local mining soak 005 hardware: enabled.
 
 The handover loop, soak 004 and lease interruption enable lines were
 removed after the handover loop and soak 004 attempt 002 completed
