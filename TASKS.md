@@ -1243,13 +1243,55 @@ Reproduction tools whose task is this one: `--soak handover-001`,
 `--soak lease-001` and `just ultra205-soak --interrupt-local-mining`. Each
 needs its enable line added here, under a written contract.
 
-- [ ] Read the dump of the restart panic (firmware `1dfca479`) under the
+- [x] Read the dump of the restart panic (firmware `1dfca479`) under the
       local mining core-dump contract: a fresh handoff, a stopped proof,
-      `just core-dump-read`.
-- [ ] Decode it against the preserved `firmware-1dfca479.elf`, find the
+      `just core-dump-read` (read 002). The dump's ELF identity verified.
+      It was archived privately and the partition cleared (clear 002).
+- [x] Decode it against the preserved `firmware-1dfca479.elf`, find the
       root cause, and compare it with the lease handover panic.
 - [ ] Fix it with a regression, then re-run boot-resume check attempt 002
       under the owner's re-run rule.
+
+Root cause (decoded 2026-10-20; ADR-0039):
+- **The crash:** FreeRTOS asserted in `xTaskPriorityDisinherit`
+  (`pxTCB == pxCurrentTCBs[core]`). The deferred-effect worker was
+  unlocking the reply slot's mutex in `ReplySender::send`, the ownership
+  acknowledgement of `POST /api/system/restart`, sent before any response.
+  The mutex's recorded holder was httpd. Both tasks counted one held
+  mutex. httpd was inside `ReplyReceiver::recv`, waiting for that
+  acknowledgement; its stack also held lazy-initialization frames
+  (`OnceBox::initialize`), found by a heuristic stack scan.
+- **Why two tasks held "one" mutex** (inferred; the dump holds task
+  stacks, not the PSRAM slot): the slot was in PSRAM (`0x3c48…`).
+  On the ESP32-S3 `S32C1I` is not atomic there. ESP-IDF compiles its C
+  with `-mdisable-hardware-atomics` for that reason
+  (`CONFIG_STDATOMIC_S32C1I_SPIRAM_WORKAROUND=y`), but rustc inlines
+  `s32c1i` for every Rust atomic. Both tasks' `OnceBox` compare-exchanges
+  "won": each locked its own mutex. `unlock` re-reads the `OnceBox`, so
+  the worker unlocked httpd's. No other explanation fits the dump.
+- **Why now:** `92f58abb` (2026-10-05, `ALWAYSINTERNAL=0`) moved ordinary
+  Rust allocations, including every `Arc`, channel and lazily initialized
+  `Mutex`, into PSRAM. The `1dfca479` image has 363 Rust functions with a
+  hardware compare-exchange, one of them exported under a C name.
+- **The lease handover panic** (`30fc67e2`, 2026-10-18) was a native panic
+  with no Rust receipt, at an idle status poll, which also uses reply
+  slots. Its dump predated the image and was not decodable, so the link
+  is likely but unproven.
+
+Fix (ADR-0039):
+- `.cargo/config.toml` builds Rust for `xtensa-esp32s3-espidf` with
+  `-C target-feature=-s32c1i`. Every Rust atomic now calls ESP-IDF's
+  PSRAM-aware `__atomic_*` libcalls, which sit in IRAM. The rebuilt image
+  has no Rust hardware compare-exchange and about 1,100 libcall sites.
+- Regression guard: `//scripts:firmware_psram_atomics_test` (in
+  `just test`) refuses a built ELF with a hardware compare-exchange
+  (`wsr.scompare1` then `s32c1i`) outside an exact native allowlist.
+  `just audit-psram-atomics` checks any other image. Unit tests use
+  fixtures; the crashing image fails with 363 functions, and the fix
+  passes with none.
+- The cost (every Rust atomic is now a call; a PSRAM one takes a shared
+  spinlock) is measured in attempt 002 and the next soak against soak
+  005's hashrate.
 
 ### task-local-mining-boot-resume | 2026-10-20 | Check on hardware that mining on boot resumes local mining
 

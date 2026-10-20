@@ -479,6 +479,10 @@ audit-startup-frames elf output:
 audit-control-stack elf output:
     bazel run //scripts:audit_control_stack -- --elf "{{ elf }}" --output "{{ output }}"
 
+# Refuse a device ELF whose Rust code uses S32C1I, which is not atomic on PSRAM (ADR-0039).
+audit-psram-atomics elf output:
+    bazel run //scripts:audit_psram_atomics -- --elf "{{ elf }}" --output "{{ output }}"
+
 audit-link-stack elf output:
     bazel run //scripts:audit_link_stack -- --elf "{{ elf }}" --output "{{ output }}"
 

@@ -1587,6 +1587,48 @@ js_test(
 )
 
 js_binary(
+    name = "audit_psram_atomics",
+    entry_point = "audit-psram-atomics.mjs",
+    data = [
+        "audit-stack-realignment.mjs",
+        "bap-stack-audit.mjs",
+        "control-stack-audit.mjs",
+        "http-stack-audit.mjs",
+        "link-stack-audit.mjs",
+        "psram-atomics-audit.mjs",
+        "stack-realignment-audit.mjs",
+        "verify-firmware-stack-audits.mjs",
+        "verify-psram-atomics.mjs",
+        "writer-stack-audit.mjs",
+        ":virtual_emulator_sources",
+    ],
+)
+
+# No Rust hardware compare-exchange in the built ELF (ADR-0039); uses the espup objdump.
+js_test(
+    name = "firmware_psram_atomics_test",
+    args = ["$(rootpath //firmware/bitaxe:firmware)"],
+    data = [
+        "bap-stack-audit.mjs",
+        "control-stack-audit.mjs",
+        "http-stack-audit.mjs",
+        "link-stack-audit.mjs",
+        "psram-atomics-audit.mjs",
+        "verify-firmware-stack-audits.mjs",
+        "writer-stack-audit.mjs",
+        ":virtual_emulator_sources",
+        "//firmware/bitaxe:firmware",
+    ],
+    entry_point = "verify-psram-atomics.mjs",
+)
+
+js_test(
+    name = "psram_atomics_audit_test",
+    entry_point = "psram-atomics-audit.test.mjs",
+    data = ["psram-atomics-audit.mjs"],
+)
+
+js_binary(
     name = "audit_startup_frames",
     entry_point = "audit-startup-frames.mjs",
     data = ["audit-stack-realignment.mjs", "stack-realignment-audit.mjs", "startup-frame-audit.mjs", "startup-frame-budget.json"],

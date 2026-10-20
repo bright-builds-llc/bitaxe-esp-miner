@@ -1,5 +1,9 @@
 [target.xtensa-esp32s3-espidf]
 linker = "ldproxy"
+# S32C1I is not atomic on PSRAM, and Rust heap objects live there. ESP-IDF builds its C code
+# with -mdisable-hardware-atomics (CONFIG_STDATOMIC_S32C1I_SPIRAM_WORKAROUND); without S32C1I,
+# Rust atomics become the same IRAM libcalls, which lock for PSRAM addresses (ADR-0039).
+rustflags = ["-C", "target-feature=-s32c1i"]
 
 [env]
 MCU = "esp32s3"

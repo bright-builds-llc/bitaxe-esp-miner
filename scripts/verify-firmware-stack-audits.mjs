@@ -31,7 +31,7 @@ export function stackAuditRows(disassembly, { usbOwner, preparedLink, httpServer
 }
 
 /** The espup-managed objdump, found as `verify-native-usb-symbols.mjs` finds its `nm`. */
-function managedObjdump() {
+export function managedObjdump() {
   const user = process.env.USER;
   if (!user) throw Error('stack_audit_gate_user');
   const toolRoot = join('/Users', user, '.rustup/toolchains/esp/xtensa-esp-elf');
