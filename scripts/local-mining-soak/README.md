@@ -2,8 +2,12 @@
 
 `just local-mining-soak preflight|run|pause` runs one local mining soak on the admitted
 Ultra 205 (ADR-0038 task 6). Each soak needs its own exact enable line,
-`Ultra 205 local mining soak <id> hardware: enabled.`, in the active
-`task-local-mining-evidence-soaks` block. `--soak` at preflight chooses it:
+`Ultra 205 local mining soak <id> hardware: enabled.` (or the soak's own
+`enableLine`), in the active block of the task that owns it. A soak names
+its task in `SOAKS` (`task`); otherwise it is the archived
+`task-local-mining-evidence-soaks`, so soaks 001 to 005 now refuse. The
+handover loop and the lease check belong to `task-handover-panic-diagnosis`.
+`--soak` at preflight chooses the soak:
 - `001` mines 30 continuous minutes;
 - `002` accumulates 2 hours of mining within 2 h 30 min and must show a
   nonzero hashrate. It tolerates outages the device recovers from on its
@@ -40,6 +44,10 @@ operator resumes it, and stops when paused. The soak:
 5. pauses on every path from the resume on, then waits up to 180 s for the
    ordered safe-stop: two samples in a row with fresh input power at most
    5 W, both journaled. Then it judges.
+
+**Crash tripwire:** a run refuses (`soak_previous_panic`) before any write
+when the device's last reset was a panic. That boot's dump waits in the
+core-dump partition, so read it first under `task-handover-panic-diagnosis`.
 
 `just local-mining-soak pause --private-root P/attempt-NNN` is the recovery
 action for a run that died. It pauses the device and confirms the ASIC

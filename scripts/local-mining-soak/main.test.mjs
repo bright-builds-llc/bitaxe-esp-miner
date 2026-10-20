@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readLeaseResult, requireSoakTask, SOAK_TASK, soakTaskLine } from "./main.mjs";
+import { readLeaseResult, requireSoakTask, SOAK_TASK, soakTask, soakTaskLine } from "./main.mjs";
 
 const tasks = (section, line = soakTaskLine("001")) => `## ${section}\n\n### ${SOAK_TASK} | 2026-10-16 | Soak\n\n${line}\n\n## Other\n`;
 
@@ -24,7 +24,7 @@ test("the lease check is enabled by the same line as the Gate's interruption che
   const { INTERRUPT_TASK, INTERRUPT_TASK_LINE } = await import("../fixed-usb-soak/contract.mjs");
   // Act / Assert
   assert.equal(soakTaskLine("lease-001"), INTERRUPT_TASK_LINE);
-  assert.equal(SOAK_TASK, INTERRUPT_TASK);
+  assert.equal(soakTask("lease-001"), INTERRUPT_TASK);
 });
 
 test("the lease result reads only a complete Gate soak result", async () => {
@@ -39,4 +39,13 @@ test("the lease result reads only a complete Gate soak result", async () => {
   assert.equal(await readLeaseResult(root), null);
   await writeFile(resolve(root, "result.json"), JSON.stringify({ result: { result: "passed", failures: ["a_b", "Not A Category"] }, sha256: "x" }));
   assert.deepEqual(await readLeaseResult(root), { result: "passed", failures: ["a_b"] });
+});
+
+test("a soak with its own task is enabled only in that task", () => {
+  // Arrange
+  const own = `## Active\n\n### ${soakTask("handover-001")} | x\n\n${soakTaskLine("handover-001")}\n\n## Other\n`;
+  const shared = tasks("Active", soakTaskLine("handover-001"));
+  // Act / Assert
+  assert.doesNotThrow(() => requireSoakTask(own, "handover-001"));
+  assert.throws(() => requireSoakTask(shared, "handover-001"), { code: "soak_task_ambiguous" });
 });

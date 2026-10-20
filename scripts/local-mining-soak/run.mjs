@@ -26,6 +26,10 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
   const note = async (event) => { try { await record(event); } catch { journalFailed = true; } };
 
   const baselineInfo = await client.info();
+  // Crash tripwire: a boot after a panic means a dump waits in the core-dump partition. Refuse before
+  // any write, so the operator reads it first (task-handover-panic-diagnosis) instead of losing the
+  // boot's evidence to later runs.
+  requireCondition(baselineInfo.resetReasonCategory !== "panic", "soak_previous_panic");
   requireCondition(baselineInfo.sourceCommit === expected.firmwareCommit && baselineInfo.appElfSha256 === expected.appElfSha256,
     "soak_firmware_identity");
   requireCondition(baselineInfo.bootOrdinal === expected.bootOrdinal, "soak_boot_changed");

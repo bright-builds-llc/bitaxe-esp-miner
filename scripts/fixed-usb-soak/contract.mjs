@@ -12,7 +12,7 @@ export const SOAK_TASK_LINE = "Ultra 205 upstream-default soak hardware: enabled
  * A soak whose lease interrupts local mining (ADR-0038 task 6) is gated by its own task and line,
  * so enabling one never enables the other.
  */
-export const INTERRUPT_TASK = "task-local-mining-evidence-soaks";
+export const INTERRUPT_TASK = "task-handover-panic-diagnosis";
 export const INTERRUPT_TASK_LINE = "Ultra 205 lease interruption check hardware: enabled.";
 export const SOAK_WORK_GATE_MS = 600000;
 /** 36 renewals at 20 s, the Gate's soak bound, cover up to 120 s of preparation plus the 600 s gate. */

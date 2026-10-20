@@ -268,3 +268,13 @@ test("soak 005 accumulates eight hours within its nine-hour deadline", async () 
   assert.ok(verdict.metrics.accumulated_active_ms >= SOAKS["005"].activeMs);
   assert.ok(device.clock.now <= runDeadlineMs(SOAKS["005"]));
 });
+
+test("a device whose last reset was a panic refuses before any write", async () => {
+  // Arrange
+  const device = fakeDevice();
+  const info = device.client.info;
+  device.client.info = async () => ({ ...(await info()), resetReasonCategory: "panic" });
+  // Act / Assert
+  await assert.rejects(run(device), { code: "soak_previous_panic" });
+  assert.deepEqual(device.state.calls, []);
+});

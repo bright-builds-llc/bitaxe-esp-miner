@@ -45,7 +45,7 @@ pub(super) fn admit_mode(tasks: &str, clear: bool) -> Result<ProofKind> {
             },
         ),
         (
-            "task-local-mining-evidence-soaks",
+            "task-handover-panic-diagnosis",
             if clear {
                 "Local mining core-dump clearing: enabled (private archive verified)."
             } else {

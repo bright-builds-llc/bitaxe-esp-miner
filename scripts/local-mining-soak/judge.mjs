@@ -27,10 +27,10 @@ export const SOAKS = Object.freeze({
     maybeDeadlineMs: 150 * 60_000 }),
   "005": Object.freeze({ id: "005", activeMs: 480 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
     maybeDeadlineMs: 540 * 60_000 }),
-  "handover-001": Object.freeze({ id: "handover-001", kind: "handover", cycles: 20, breakBoundMs: 10 * 60_000,
+  "handover-001": Object.freeze({ id: "handover-001", kind: "handover", task: "task-handover-panic-diagnosis", cycles: 20, breakBoundMs: 10 * 60_000,
     unreachableStopMs: 60_000, requireHashrate: true, maybeMaximumOutageMs: null, maybeDeadlineMs: 150 * 60_000,
     enableLine: "Ultra 205 local mining handover loop hardware: enabled." }),
-  "lease-001": Object.freeze({ id: "lease-001", kind: "lease", activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true,
+  "lease-001": Object.freeze({ id: "lease-001", kind: "lease", task: "task-handover-panic-diagnosis", activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true,
     maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 90 * 60_000, restoreBoundMs: 180_000,
     enableLine: "Ultra 205 lease interruption check hardware: enabled." }),
 });

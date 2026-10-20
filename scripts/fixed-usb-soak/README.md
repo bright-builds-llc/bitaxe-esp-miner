@@ -84,7 +84,7 @@ local mining (ADR-0038 task 6). It pairs with `just local-mining-soak` lease
 check `lease-001`, which watches this soak's `R/result.json`. It refuses live
 changes and other profiles. It needs its own enable line,
 `Ultra 205 lease interruption check hardware: enabled.`, in the active
-`task-local-mining-evidence-soaks` block; the standard line never enables
+`task-handover-panic-diagnosis` block; the standard line never enables
 it, and its line never enables a standard soak.
 
 - **The first Connect is refused.** The device mines locally, so it ignores

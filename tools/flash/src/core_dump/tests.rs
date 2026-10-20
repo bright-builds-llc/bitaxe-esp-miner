@@ -175,7 +175,7 @@ const LOCAL_LINE: &str =
     "Local mining core-dump acquisition: enabled (fresh stopped proof required).";
 
 fn local_mining_task(line: &str) -> String {
-    format!("## Active\n### task-local-mining-evidence-soaks | now\n{line}\n")
+    format!("## Active\n### task-handover-panic-diagnosis | now\n{line}\n")
 }
 
 #[test]

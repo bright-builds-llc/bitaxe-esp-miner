@@ -19,6 +19,8 @@ import { pauseAndConfirm, runSoak } from "./run.mjs";
 import { SOAKS } from "./judge.mjs";
 
 export const SOAK_TASK = "task-local-mining-evidence-soaks";
+/** The task that owns a soak: its own `task`, or the evidence soaks' task. */
+export const soakTask = (soakId) => SOAKS[soakId]?.task ?? SOAK_TASK;
 /** Each soak has its own enable line in the active task. */
 export const soakTaskLine = (soakId) => SOAKS[soakId]?.enableLine ?? `Ultra 205 local mining soak ${soakId} hardware: enabled.`;
 const CONTEXT_SCHEMA = "local-mining-soak-context-v1";
@@ -44,12 +46,12 @@ function argumentsFor(argv) {
 
 /** The soak task must be active exactly once and carry the exact enable line in its own block. */
 export function requireSoakTask(tasksText, soakId) {
-  const enableLine = soakTaskLine(soakId);
+  const enableLine = soakTaskLine(soakId), task = soakTask(soakId);
   let section = "", inBlock = false, count = 0, enabled = false;
   for (const line of tasksText.split(/\r?\n/u)) {
     if (line.startsWith("## ")) { section = line; inBlock = false; }
     if (line.startsWith("### ")) {
-      inBlock = section === "## Active" && line.slice(4).split(/\s/u)[0] === SOAK_TASK;
+      inBlock = section === "## Active" && line.slice(4).split(/\s/u)[0] === task;
       if (inBlock) count += 1;
     }
     if (inBlock && line.trim() === enableLine) enabled = true;
