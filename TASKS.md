@@ -1186,17 +1186,68 @@ Hardware verification: pending. Soak 004 of
 
 Completion review: pending.
 
+### task-local-mining-atomics-soak | 2026-10-20 | Measure the PSRAM atomics fix over a 4-hour soak
+
+Owner decision 2026-10-20: "Yes, 4-hour soak first". ADR-0039 turned every
+Rust atomic into a libcall; a PSRAM one takes a shared spinlock.
+Boot-resume attempt 002 showed no hashrate loss over 5 minutes. This soak
+measures it over hours, and runs before the overheat check.
+
+- [ ] `--soak 006`, owned by this task; README.
+- [ ] Full gate, independent review, commit and push.
+- [ ] Hardware run under the contract below; evidence, review and record.
+
+Soak 006 contract (attempt ordinals 001 onward). Soak 003's contract
+(archived `task-local-mining-evidence-soaks`) applies except as stated.
+- **Objective:**
+  - 14,400 s (4 hours) of hashing accumulated within 300 minutes of the
+    resume, judged by the hashing-aware rules (`05f1772c`);
+  - every outage recovered within 60 s;
+  - at least one nonzero hashrate, at least one accepted share, no reset,
+    the live limits, and the powered-down proof after the pause.
+- **Measured against soak 005** (`be2ad02a`, before the fix):
+  - hashrate percentiles and median power after the first minute;
+  - response time, estimated for both as each sample interval minus the
+    2 s sleep;
+  - `status_only_samples` and outages.
+- **Run deadline:** 300 minutes after the resume, on the monotonic clock.
+  Mining past it is prohibited.
+- **Package:** a fresh package at the clean, pushed HEAD carrying this
+  contract (it contains the fix `6f9a77d8`), installed state-preserving.
+  Preserve the ELF and map privately.
+- **Commands:**
+  - `just detect-ultra205 --port <port>` and `espflash board-info`;
+  - the install, then the endpoint handoff;
+  - `just local-mining-soak preflight|run --soak 006`, with the run detached
+    in its own session under `caffeinate -is`, on AC power with the lid
+    open;
+  - a final named-port detector and a serial-holder check.
+- **Afterwards:** paused, mining on boot off, the owner's pool saved.
+- **Unchanged:** the private input, allowed and prohibited effects, live
+  stops (an outage past 60 s, or unreachable for 60 s), evidence, recovery
+  (including notifying the owner when the device may still be mining), the
+  retry bound and the accepted outcomes. Under the owner's re-run rule, a
+  failure followed by a root-cause fix is re-run without asking.
+
+Ultra 205 local mining soak 006 hardware: enabled.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-local-mining-overheat-check | 2026-10-20 | Check local mining's overheat recovery on hardware
 
-Blocked on an owner decision about the stimulus (2026-10-20). ADR-0038
-sub-decision 1 is that upstream restarts at 100 mV and 100 MHz lower once
-the chip reads 45 C or less, within the catalog range. It has unit and
-fake-device coverage but no hardware evidence. The candidate safe stimulus
-is a test-only build with a lowered overheat threshold that is never
-packaged for release, so the overheat path fires at normal temperatures.
-The owner must accept or reject that before a contract is written.
+ADR-0038 sub-decision 2: after an overheat stop, upstream restarts at
+100 mV and 100 MHz lower once the chip reads 45 C or less, within the
+catalog range. It has unit and fake-device coverage but no hardware
+evidence. The existing THR-001 `thermal_fault_stimulus` cannot exercise it:
+it fakes an invalid reading rather than a hot chip, and its boot never
+mines locally.
+
+Stimulus: the owner chose a test-only build whose overheat trip is lowered,
+never packaged for release, so the overheat path fires at normal mining
+temperatures (owner decision 2026-10-20). It runs after soak 006. A
+contract and a repo-owned command come first.
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 

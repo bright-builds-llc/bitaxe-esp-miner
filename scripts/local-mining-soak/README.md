@@ -18,6 +18,8 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   with their break logs.
 - `005` runs overnight: 8 hours of mining accumulated within 9 hours, with
   the same outage tolerance and break logs.
+- `006` repeats soak 003 (4 hours within 5) on the PSRAM atomics fix
+  (ADR-0039), owned by `task-local-mining-atomics-soak`.
 - `handover-001` is the handover loop. Its enable line is `Ultra 205 local
   mining handover loop hardware: enabled.` It mines locally while the
   operator repeats a lease-free handover: a refused Gate Connect, an admitted

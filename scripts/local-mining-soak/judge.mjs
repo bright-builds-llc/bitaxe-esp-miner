@@ -11,6 +11,7 @@
  * - Soak 003 is soak 002 at several hours: 4 hours of mining accumulated within 5 hours.
  * - Soak 004 repeats soak 002 to catch outages, now that each break's retained log is journaled.
  * - Soak 005 runs overnight on the Wi-Fi power-save fix: 8 hours of mining accumulated within 9.
+ * - Soak 006 measures the PSRAM atomics fix (ADR-0039): soak 003's rule, 4 hours within 5.
  * - Handover loop 001 (`handover.mjs`) counts 20 lease-free handovers, to reproduce a panic.
  * - Lease check 001 (`lease.mjs`) mines locally for 5 minutes, then a Gate lease interrupts local
  *   mining. Local mining must come back within 3 minutes of the lease's end and mine 5 more
@@ -31,6 +32,8 @@ export const SOAKS = Object.freeze({
     maybeDeadlineMs: 150 * 60_000 }),
   "005": Object.freeze({ id: "005", activeMs: 480 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
     maybeDeadlineMs: 540 * 60_000 }),
+  "006": Object.freeze({ id: "006", task: "task-local-mining-atomics-soak", activeMs: 240 * 60_000, requireHashrate: true,
+    maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 300 * 60_000 }),
   "handover-001": Object.freeze({ id: "handover-001", kind: "handover", task: "task-handover-panic-diagnosis", cycles: 20, breakBoundMs: 10 * 60_000,
     unreachableStopMs: 60_000, requireHashrate: true, maybeMaximumOutageMs: null, maybeDeadlineMs: 150 * 60_000,
     enableLine: "Ultra 205 local mining handover loop hardware: enabled." }),
