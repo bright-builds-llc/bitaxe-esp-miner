@@ -4,7 +4,8 @@
 // Connect is refused and stops local mining, and the lease runs (`interrupt`), until the Gate soak's
 // result exists. It requires local mining back within a bound (`restore`), then mines locally
 // again (`after`). Outages count in the local phases only.
-import { finalFailures, increases, limitMetrics, liveStop, mining, miningLog, START_ALLOWANCE_MS, wifiMetrics } from "./judge.mjs";
+import { finalFailures, hashing, increases, limitMetrics, liveStop, mining, miningLog, START_ALLOWANCE_MS, statusOnlySamples,
+  wifiMetrics } from "./judge.mjs";
 
 /** The lease check's phases for `sampleLoop`; `marks` records when each phase began. */
 export function leasePhases({ soak, samples, resumedAt, marks, note, leaseResult }) {
@@ -20,7 +21,7 @@ export function leasePhases({ soak, samples, resumedAt, marks, note, leaseResult
   const steps = {
     async before(sample) {
       const current = samples.slice(phaseStart);
-      if (!current.some(mining) && sample.atMs - resumedAt > START_ALLOWANCE_MS) return "soak_mining_not_started";
+      if (!current.some(hashing) && sample.atMs - resumedAt > START_ALLOWANCE_MS) return "soak_mining_not_started";
       if (outage(current, sample)) return "soak_outage_unrecovered";
       if (miningLog(current).activeMs < soak.activeMs) return undefined;
       marks.leaseReadyAtMs = sample.atMs;
@@ -28,7 +29,7 @@ export function leasePhases({ soak, samples, resumedAt, marks, note, leaseResult
       return undefined;
     },
     async interrupt(sample) {
-      if (marks.localStoppedAtMs === undefined && !mining(sample)) {
+      if (marks.localStoppedAtMs === undefined && !hashing(sample)) {
         marks.localStoppedAtMs = sample.atMs;
         await note({ event: "local_stopped", atMs: sample.atMs });
       }
@@ -40,7 +41,7 @@ export function leasePhases({ soak, samples, resumedAt, marks, note, leaseResult
       return marks.localStoppedAtMs === undefined ? "lease_check_never_interrupted" : undefined;
     },
     async restore(sample) {
-      if (!mining(sample)) return sample.atMs - marks.leaseEndedAtMs > soak.restoreBoundMs ? "lease_check_not_restored" : undefined;
+      if (!hashing(sample)) return sample.atMs - marks.leaseEndedAtMs > soak.restoreBoundMs ? "lease_check_not_restored" : undefined;
       marks.localRestoredAtMs = sample.atMs;
       await begin("after", "local_restored", sample.atMs);
       // The restored sample opens the after phase, so its mining counts.
@@ -86,8 +87,8 @@ export function judgeLease({ baseline, samples, maybeFinal, maybeStop, soak, mar
   // Over HTTP the lease's mining reads like local mining, so the hashrate and shares that prove
   // local mining come from the local phases only; the Gate soak judges the lease's own.
   const local = [...beforeSamples, ...afterSamples];
-  const active = samples.filter(mining);
-  if (soak.requireHashrate && !local.some((sample) => mining(sample) && sample.hashRate !== null && sample.hashRate > 0)) fail("soak_no_hashrate");
+  const active = samples.filter(hashing);
+  if (soak.requireHashrate && !local.some((sample) => hashing(sample) && sample.hashRate !== null && sample.hashRate > 0)) fail("soak_no_hashrate");
   const accepted = increases(beforeSamples, "sharesAccepted") + increases(afterSamples, "sharesAccepted");
   if (accepted < 1) fail("soak_no_accepted_share");
   finalFailures(baseline, maybeFinal).forEach(fail);
@@ -109,10 +110,12 @@ export function judgeLease({ baseline, samples, maybeFinal, maybeStop, soak, mar
       maximum_outage_ms: Math.max(0, ...outagesMs),
       ...wifiMetrics(samples),
       active_samples: active.length,
+      status_only_samples: statusOnlySamples(samples),
       samples: samples.length,
       local_shares_accepted: accepted,
       local_shares_rejected: increases(beforeSamples, "sharesRejected") + increases(afterSamples, "sharesRejected"),
-      ...limitMetrics(active),
+      // The maxima cover every sample the live limits judged.
+      ...limitMetrics(samples.filter(mining)),
     },
   };
 }

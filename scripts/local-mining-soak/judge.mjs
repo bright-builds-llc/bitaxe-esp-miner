@@ -100,8 +100,22 @@ export const readingsFresh = (sample) => Object.values(sample.fresh).every(Boole
 export const hardwareStopped = (sample) =>
   sample.miningPaused && !mining(sample) && sample.fresh.power && sample.powerW !== null && sample.powerW <= IDLE_POWER_W;
 
-/** Whether the device reports active mining in this sample. */
+/** Whether the device reports active mining in this sample. The live limits key on this. */
 export const mining = (sample) => sample.miningActivity === "active" && !sample.miningPaused;
+
+/**
+ * Whether the ASIC is actually hashing: the status reports mining and no fresh input power reading
+ * shows it idle. Status alone read `active` at 0.8-4.8 W while the ASIC idled: for 13-18 s once in
+ * soak 005 and around every lease check's interrupt, and for single samples in the handover loop.
+ * Ramps read from 5.03 W, so 5 W has little margin there; that moves a break's edge by a sample at
+ * most. Plain soaks hash above 10 W. A stale reading counts as hashing: the stale-readings live stop
+ * bounds staleness, as for the limits. Mining time, outages and breaks count this.
+ */
+export const hashing = (sample) =>
+  mining(sample) && !(sample.fresh.power && (sample.powerW === null || sample.powerW <= IDLE_POWER_W));
+
+/** Samples whose status reports mining while the ASIC is not hashing. */
+export const statusOnlySamples = (samples) => samples.filter((sample) => mining(sample) && !hashing(sample)).length;
 
 /**
  * The first live stop this sample trips against the run's baseline, or null. A reset, a device
@@ -130,13 +144,13 @@ export function liveStop(sample, baseline, maybePrevious = null) {
   return null;
 }
 
-/** Continuous active mining measured from the first active sample, broken by any gap or idle sample. */
+/** Continuous hashing measured from the first hashing sample, broken by any gap or other sample. */
 export function activeSpanMs(samples) {
   let longest = 0, maybeStart = null, maybeLast = null;
   for (const sample of samples) {
     const continuous = maybeLast !== null && sample.atMs - maybeLast.atMs <= MAXIMUM_SAMPLE_GAP_MS;
-    if (mining(sample)) {
-      if (maybeStart === null || !continuous || !mining(maybeLast)) maybeStart = sample.atMs;
+    if (hashing(sample)) {
+      if (maybeStart === null || !continuous || !hashing(maybeLast)) maybeStart = sample.atMs;
       longest = Math.max(longest, sample.atMs - maybeStart);
     } else {
       maybeStart = null;
@@ -147,15 +161,15 @@ export function activeSpanMs(samples) {
 }
 
 /**
- * Mining accumulated across samples: each step between two mining samples at most the gap bound
- * apart counts. Outages are the intervals from one mining sample to the next mining sample when a
- * non-mining sample or a longer gap lies between; they start only once mining has begun.
+ * Mining accumulated across samples: each step between two hashing samples at most the gap bound
+ * apart counts. Outages are the intervals from one hashing sample to the next hashing sample when
+ * another sample or a longer gap lies between; they start only once hashing has begun.
  */
 export function miningLog(samples) {
   let activeMs = 0, maybeLastMining = null, broken = false;
   const outagesMs = [];
   for (const sample of samples) {
-    if (!mining(sample)) { if (maybeLastMining !== null) broken = true; continue; }
+    if (!hashing(sample)) { if (maybeLastMining !== null) broken = true; continue; }
     if (maybeLastMining !== null) {
       const stepMs = sample.atMs - maybeLastMining.atMs;
       if (broken || stepMs > MAXIMUM_SAMPLE_GAP_MS) outagesMs.push(stepMs); else activeMs += stepMs;
@@ -164,7 +178,7 @@ export function miningLog(samples) {
   }
   // An outage still open at the last sample counts too, so a stop during one is reported.
   const maybeLastSample = samples.at(-1);
-  const maybeOpenOutageMs = maybeLastMining !== null && maybeLastSample !== undefined && !mining(maybeLastSample)
+  const maybeOpenOutageMs = maybeLastMining !== null && maybeLastSample !== undefined && !hashing(maybeLastSample)
     ? maybeLastSample.atMs - maybeLastMining.atMs : null;
   return { activeMs, outagesMs, maybeOpenOutageMs, maybeLastMiningAtMs: maybeLastMining?.atMs ?? null };
 }
@@ -187,7 +201,7 @@ export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["
   const fail = (code) => { if (!failures.includes(code)) failures.push(code); };
   if (maybeStop) fail(maybeStop);
   samples.forEach((sample, index) => { const stop = liveStop(sample, baseline, samples[index - 1] ?? null); if (stop) fail(stop); });
-  const active = samples.filter(mining);
+  const active = samples.filter(hashing);
   const span = activeSpanMs(samples);
   const log = miningLog(samples);
   const tolerant = soak.maybeMaximumOutageMs !== null;
@@ -214,11 +228,13 @@ export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["
       maximum_outage_ms: Math.max(0, ...log.outagesMs, log.maybeOpenOutageMs ?? 0),
       ...wifiMetrics(samples),
       active_samples: active.length,
+      status_only_samples: statusOnlySamples(samples),
       samples: samples.length,
       maximum_sample_gap_ms: maximumGapMs,
       shares_accepted: accepted,
       shares_rejected: rejected,
-      ...limitMetrics(active),
+      // The maxima cover every sample the live limits judged.
+      ...limitMetrics(samples.filter(mining)),
     },
   };
 }

@@ -4,7 +4,7 @@
 // pause and confirm the ASIC powered down. From the resume on, every path pauses the device. The
 // device, clock, journal and lease result are injected, so the sequence is tested without hardware.
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { activeSpanMs, hardwareStopped, judge, liveStop, mining, miningLog, runDeadlineMs, sampleFromInfo,
+import { activeSpanMs, hardwareStopped, hashing, judge, liveStop, mining, miningLog, runDeadlineMs, sampleFromInfo,
   SAMPLE_INTERVAL_MS, SOAKS, START_ALLOWANCE_MS, STOP_ALLOWANCE_MS } from "./judge.mjs";
 import { judgeLease, leasePhases } from "./lease.mjs";
 import { handoverPhases, judgeHandover } from "./handover.mjs";
@@ -82,7 +82,7 @@ export function localPhases({ soak, samples, resumedAt }) {
   return {
     outageSamples: () => samples,
     onSample(sample) {
-      if (!samples.some(mining) && sample.atMs - resumedAt > START_ALLOWANCE_MS) return "soak_mining_not_started";
+      if (!samples.some(hashing) && sample.atMs - resumedAt > START_ALLOWANCE_MS) return "soak_mining_not_started";
       if (soak.maybeMaximumOutageMs === null) return activeSpanMs(samples) >= soak.activeMs ? null : undefined;
       const log = miningLog(samples);
       if (log.maybeLastMiningAtMs !== null && sample.atMs - log.maybeLastMiningAtMs > soak.maybeMaximumOutageMs) {
@@ -123,7 +123,7 @@ export async function sampleLoop({ client, baseline, samples, resumedAt, now, sl
     await note({ event: "sample", sample });
     const maybeStop = liveStop(sample, baseline, maybePrevious);
     if (maybeStop !== null) return maybeStop;
-    await watcher?.observe(sample, mining(sample));
+    await watcher?.observe(sample, hashing(sample));
     // A log read can take seconds; it never counts against the unreachable bound.
     maybeLastReachedAt = Math.max(maybeLastReachedAt, now());
     const outcome = await phases.onSample(sample);

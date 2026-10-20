@@ -5,8 +5,8 @@
 // device. Each boot's limits count from the first sample of that boot the check sees. Each restart is requested once; an ambiguous response is resolved by observing the new
 // boot, never by a second request.
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { finalFailures, hardwareStopped, increases, limitMetrics, liveStop, mining, miningLog, sampleFromInfo,
-  SAMPLE_INTERVAL_MS, STOP_ALLOWANCE_MS, wifiMetrics } from "./judge.mjs";
+import { finalFailures, hardwareStopped, hashing, increases, limitMetrics, liveStop, mining, miningLog, sampleFromInfo,
+  SAMPLE_INTERVAL_MS, statusOnlySamples, STOP_ALLOWANCE_MS, wifiMetrics } from "./judge.mjs";
 import { admitBaseline, localPhases, pauseAndConfirm, sampleLoop, UNREACHABLE_STOP_MS } from "./run.mjs";
 import { breakWatcher } from "./break-log.mjs";
 
@@ -189,7 +189,7 @@ export function judgeBootResume({ baseline, marks, miningSamples, holdSamples, m
   const log = miningLog(miningSamples);
   if (log.activeMs < soak.activeMs) fail("soak_active_time_short");
   if (log.outagesMs.some((outageMs) => outageMs > soak.maybeMaximumOutageMs)) fail("soak_outage_unrecovered");
-  const active = miningSamples.filter(mining);
+  const active = miningSamples.filter(hashing);
   if (!active.some((sample) => sample.hashRate !== null && sample.hashRate > 0)) fail("soak_no_hashrate");
   const accepted = increases(miningSamples, "sharesAccepted");
   if (accepted < 1) fail("soak_no_accepted_share");
@@ -226,8 +226,10 @@ export function judgeBootResume({ baseline, marks, miningSamples, holdSamples, m
       hold_samples: holdSamples.length,
       ...wifiMetrics([...miningSamples, ...holdSamples]),
       active_samples: active.length,
+      status_only_samples: statusOnlySamples(miningSamples),
       samples: miningSamples.length,
-      ...limitMetrics(active),
+      // The maxima cover every sample the live limits judged.
+      ...limitMetrics(miningSamples.filter(mining)),
     },
   };
 }

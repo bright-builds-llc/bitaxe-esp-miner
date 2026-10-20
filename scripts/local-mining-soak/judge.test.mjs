@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { activeSpanMs, hardwareStopped, increases, judge, miningLog, LIMITS, liveStop, MAXIMUM_SAMPLE_GAP_MS, sampleFromInfo, SOAKS } from "./judge.mjs";
+import { activeSpanMs, hardwareStopped, hashing, increases, judge, mining, miningLog, LIMITS, liveStop, MAXIMUM_SAMPLE_GAP_MS, sampleFromInfo,
+  SOAKS, statusOnlySamples } from "./judge.mjs";
 
 const SOAK_ACTIVE_MS = SOAKS["001"].activeMs;
 
@@ -229,4 +230,98 @@ test("soak 002 fails an outage past 60 s and accepts one at the bound", () => {
   // Act / Assert: the shifted gap is 2 s plus the outage.
   assert.ok(!run(58_000).failures.includes("soak_outage_unrecovered"));
   assert.ok(run(60_000).failures.includes("soak_outage_unrecovered"));
+});
+
+/** Soak 005's stall: the status still reads active while the ASIC idles. */
+const stalled = (atMs) => sampleFromInfo(info({ power: 1.4 }), atMs);
+
+test("a status-active sample at idle power is not hashing", () => {
+  // Arrange
+  const sample = stalled(0);
+  // Act / Assert
+  assert.equal(mining(sample), true);
+  assert.equal(hashing(sample), false);
+});
+
+test("a status-active sample with stale power counts as hashing; the stale rule bounds it", () => {
+  // Arrange
+  const sample = sampleFromInfo(info({ powerStatus: { state: "stale" } }), 0);
+  // Act / Assert
+  assert.equal(hashing(sample), true);
+});
+
+test("a fresh reading at exactly the idle level is not hashing", () => {
+  // Arrange
+  const sample = sampleFromInfo(info({ power: 5 }), 0);
+  // Act / Assert
+  assert.equal(hashing(sample), false);
+});
+
+test("a fresh power status with no value is not hashing", () => {
+  // Arrange
+  const sample = sampleFromInfo(info({ power: null }), 0);
+  // Act / Assert
+  assert.equal(hashing(sample), false);
+});
+
+test("a status-active sample above idle power is hashing", () => {
+  // Arrange
+  const sample = sampleFromInfo(info(), 0);
+  // Act / Assert
+  assert.equal(hashing(sample), true);
+});
+
+test("a stall between hashing samples is an outage, not mining time", () => {
+  // Arrange
+  const samples = [sampleFromInfo(info(), 0), stalled(2000), stalled(4000), sampleFromInfo(info(), 6000)];
+  // Act
+  const log = miningLog(samples);
+  // Assert
+  assert.equal(log.activeMs, 0);
+  assert.deepEqual(log.outagesMs, [6000]);
+});
+
+test("a stall breaks the continuous span", () => {
+  // Arrange
+  const samples = [...activeRun(10_000), stalled(12_000), ...activeRun(10_000).map((sample) => ({ ...sample, atMs: sample.atMs + 14_000 }))];
+  // Act
+  const span = activeSpanMs(samples);
+  // Assert
+  assert.equal(span, 10_000);
+});
+
+test("the verdict counts status-only samples", () => {
+  // Arrange
+  const samples = [...activeRun(SOAK_ACTIVE_MS), stalled(SOAK_ACTIVE_MS + 2000)];
+  // Act
+  const verdict = judge({ baseline: samples[0], samples, maybeFinal: paused(), maybeStop: null });
+  // Assert
+  assert.equal(verdict.metrics.status_only_samples, 1);
+});
+
+test("status-only samples are counted apart from hashing ones", () => {
+  // Arrange
+  const samples = [sampleFromInfo(info(), 0), stalled(2000), stalled(4000), paused()];
+  // Act
+  const count = statusOnlySamples(samples);
+  // Assert
+  assert.equal(count, 2);
+});
+
+test("the limit maxima cover a status-only sample the limits judged", () => {
+  // Arrange
+  const samples = [...activeRun(SOAK_ACTIVE_MS), sampleFromInfo(info({ power: 1.4, temp: 70 }), SOAK_ACTIVE_MS + 2000)];
+  // Act
+  const verdict = judge({ baseline: samples[0], samples, maybeFinal: paused(), maybeStop: null });
+  // Assert
+  assert.equal(verdict.metrics.maximum_chip_temp_c, 70);
+});
+
+test("the live limits still apply to a status-active sample at idle power", () => {
+  // Arrange
+  const sample = sampleFromInfo(info({ power: 1.4, temp: LIMITS.maximumChipTempC }), 0);
+  // Act
+  const stop = liveStop(sample, sample);
+  // Assert
+  assert.equal(stop, "soak_chip_temperature");
 });

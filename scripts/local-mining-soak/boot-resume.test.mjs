@@ -12,7 +12,7 @@ const SETTINGS = { stratumURL: "pool.invalid", stratumPort: 3333, stratumUser: "
  * preference (unless `honorPreference(boot)` says otherwise) and mines `startAfterMs` later.
  */
 function fakeDevice({ downMs = 20_000, startAfterMs = 30_000, restartCategory = "software_cpu", rebootOnRestart = true,
-  restartThrows = false, honorPreference = () => true, ordinalStep = 1 } = {}) {
+  restartThrows = false, honorPreference = () => true, ordinalStep = 1, stall = () => false } = {}) {
   const clock = { now: 0 };
   const state = { paused: true, mineOnBoot: false, boot: 0, bootOrdinal: EXPECTED.bootOrdinal, reset: "power_on",
     runningSince: null, downUntil: null, pool: {}, calls: [] };
@@ -33,7 +33,7 @@ function fakeDevice({ downMs = 20_000, startAfterMs = 30_000, restartCategory = 
       bootSession: `session-${state.boot}`, resetReasonCategory: state.reset, uptimeSeconds: 40,
       miningPaused: state.paused, miningActivity: active ? "active" : "paused", startMiningOnBoot: state.mineOnBoot,
       hashRate: active ? 500 : 0, sharesAccepted: Math.floor(minedMs / 60_000), sharesRejected: 0,
-      temp: 55, vrTemp: 50, voltage: 5100, power: active ? 12 : 1, fanrpm: 4000, overheat_mode: 0, ...state.pool,
+      temp: 55, vrTemp: 50, voltage: 5100, power: active && !stall(clock.now) ? 12 : 1, fanrpm: 4000, overheat_mode: 0, ...state.pool,
       powerStatus: { state: "fresh" }, voltageStatus: { state: "fresh" }, chipTempStatus: { state: "fresh" }, fanRpmStatus: { state: "fresh" },
     };
   };
@@ -289,4 +289,15 @@ test("recovery re-sends a failed pause before each restore write", async () => {
   const calls = device.state.calls;
   assert.equal(calls[0], "pause");
   assert.ok(calls.indexOf("pause") < calls.indexOf("mine_on_boot_false"));
+});
+
+test("a status-only stall on the mining boot is an outage, not mining time", async () => {
+  // Arrange
+  const device = fakeDevice({ stall: (t) => t >= 150_000 && t < 170_000 });
+  // Act
+  const { verdict } = await run(device);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.metrics.outage_count, 1);
+  assert.ok(verdict.metrics.status_only_samples > 0);
 });

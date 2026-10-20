@@ -278,3 +278,25 @@ test("a device whose last reset was a panic refuses before any write", async () 
   await assert.rejects(run(device), { code: "soak_previous_panic" });
   assert.deepEqual(device.state.calls, []);
 });
+
+test("a status that reads active while the ASIC idles never starts the soak", async () => {
+  // Arrange
+  const device = fakeDevice({ overrides: () => ({ power: 1.4 }) });
+  // Act
+  const { verdict } = await run(device);
+  // Assert
+  assert.ok(verdict.failures.includes("soak_mining_not_started"));
+  assert.equal(device.state.paused, true);
+});
+
+test("a status-only stall past the outage bound stops a tolerant soak", async () => {
+  // Arrange
+  const device = fakeDevice({ overrides: (now) => (now >= 600_000 && now < 700_000 ? { power: 1.4 } : {}) });
+  // Act
+  const verdict = await runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, soak: SOAKS["002"],
+    now: () => device.clock.now, sleep: async (ms) => { device.clock.now += ms; }, record: async () => {} });
+  // Assert
+  assert.ok(verdict.failures.includes("soak_outage_unrecovered"));
+  assert.ok(device.clock.now < 700_000 + 200_000);
+  assert.equal(device.state.paused, true);
+});

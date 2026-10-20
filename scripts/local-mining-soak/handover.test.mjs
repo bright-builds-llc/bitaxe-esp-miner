@@ -8,7 +8,7 @@ const SETTINGS = { stratumURL: "pool.invalid", stratumPort: 3333, stratumUser: "
 const LOOP = SOAKS["handover-001"];
 
 /** Local mining from 4 s after the resume, idle while `idle(t)`, and `reset(t)` changes the boot session. */
-function fakeLoop({ idle = (t) => t % 180_000 >= 120_000, reset = () => false } = {}) {
+function fakeLoop({ idle = (t) => t % 180_000 >= 120_000, reset = () => false, stall = () => false } = {}) {
   const clock = { now: 0 };
   const state = { paused: true, resumedAt: null, logReads: 0 };
   const client = {
@@ -18,7 +18,7 @@ function fakeLoop({ idle = (t) => t % 180_000 >= 120_000, reset = () => false } 
         bootSession: reset(clock.now) ? "b".repeat(32) : "a".repeat(32), uptimeSeconds: Math.floor(clock.now / 1000),
         miningPaused: state.paused, miningActivity: active ? "active" : state.paused ? "paused" : "safe_blocked", startMiningOnBoot: false,
         hashRate: active ? 500 : 0, sharesAccepted: Math.floor(clock.now / 60_000), sharesRejected: 0, temp: 55, vrTemp: 0,
-        voltage: 5100, power: active ? 12 : 1, fanrpm: 4000, overheat_mode: 0, stratumURL: SETTINGS.stratumURL,
+        voltage: 5100, power: active && !stall(clock.now) ? 12 : 1.4, fanrpm: 4000, overheat_mode: 0, stratumURL: SETTINGS.stratumURL,
         stratumPort: SETTINGS.stratumPort, stratumUser: SETTINGS.stratumUser, wifiStatus: "connected", wifiRSSI: -40,
         powerStatus: { state: "fresh" }, voltageStatus: { state: "fresh" }, chipTempStatus: { state: "fresh" }, fanRpmStatus: { state: "fresh" } };
     },
@@ -83,4 +83,26 @@ test("a stop during a break reads the log once more before the pause", async () 
   await run(device);
   // Assert
   assert.equal(device.state.logReads, 1);
+});
+
+/** Runs the loop on a device whose status stays active through each break while the ASIC idles. */
+async function runStalledLoop() {
+  const device = fakeLoop({ idle: () => false, stall: (t) => t % 180_000 >= 120_000 });
+  const verdict = await runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, soak: LOOP,
+    now: () => device.clock.now, sleep: async (ms) => { device.clock.now += ms; }, record: async () => {} });
+  return { device, verdict };
+}
+
+test("a status-only stall counts as a break", async () => {
+  // Arrange / Act
+  const { verdict } = await runStalledLoop();
+  // Assert
+  assert.equal(verdict.metrics.cycles, LOOP.cycles);
+});
+
+test("the log of a status-only stall is read when hashing resumes", async () => {
+  // Arrange / Act
+  const { device } = await runStalledLoop();
+  // Assert
+  assert.ok(device.state.logReads >= LOOP.cycles);
 });

@@ -13,7 +13,7 @@ const LEASE = SOAKS["lease-001"];
  * reads the same as local mining. `leaseEndsAtMs` is when the Gate soak's result appears.
  */
 function fakeLease({ idle = (t) => (t >= 400_000 && t < 450_000) || (t >= 1_050_000 && t < 1_100_000), leaseEndsAtMs = 1_070_000,
-  lease = { result: "passed", failures: [] } } = {}) {
+  lease = { result: "passed", failures: [] }, stall = () => false } = {}) {
   const clock = { now: 0 };
   const state = { paused: true, resumedAt: null, calls: [] };
   const info = () => {
@@ -22,7 +22,7 @@ function fakeLease({ idle = (t) => (t >= 400_000 && t < 450_000) || (t >= 1_050_
       sourceCommit: EXPECTED.firmwareCommit, appElfSha256: EXPECTED.appElfSha256, bootOrdinal: EXPECTED.bootOrdinal,
       bootSession: "s".repeat(32), miningPaused: state.paused, miningActivity: active ? "active" : state.paused ? "paused" : "safe_blocked",
       startMiningOnBoot: false, hashRate: active ? 500 : 0, sharesAccepted: Math.floor(clock.now / 60_000), sharesRejected: 0,
-      temp: 55, vrTemp: 0, voltage: 5100, power: active ? 12 : 1, fanrpm: 4000, overheat_mode: 0,
+      temp: 55, vrTemp: 0, voltage: 5100, power: active && !stall(clock.now) ? 12 : 1, fanrpm: 4000, overheat_mode: 0,
       stratumURL: SETTINGS.stratumURL, stratumPort: SETTINGS.stratumPort, stratumUser: SETTINGS.stratumUser,
       wifiStatus: "connected", wifiRSSI: -40,
       powerStatus: { state: "fresh" }, voltageStatus: { state: "fresh" }, chipTempStatus: { state: "fresh" }, fanRpmStatus: { state: "fresh" },
@@ -131,4 +131,15 @@ test("a hashrate seen only under the lease does not prove local mining", async (
   const { verdict } = await run(device);
   // Assert
   assert.ok(verdict.failures.includes("soak_no_hashrate"));
+});
+
+test("a status-only stall before the interrupt marks local mining stopped at its start", async () => {
+  // Arrange
+  const device = fakeLease({ stall: (t) => t >= 384_000 && t < 400_000 });
+  // Act
+  const { verdict, events } = await run(device);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  const stopped = events.find((event) => event.event === "local_stopped");
+  assert.ok(stopped.atMs >= 384_000 && stopped.atMs < 400_000);
 });

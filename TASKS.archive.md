@@ -33543,3 +33543,59 @@ Residual risks:
   untested.
 - The crash-loop guard has no hardware evidence (inducing panics is out of
   scope).
+
+### task-local-mining-hashing-judge | 2026-10-20 | Count soak mining by hashing, not status
+
+Owner request 2026-10-20 ("Go ahead with the hashing-aware judge"). In soak
+005 the status read `active` for 13 s while the ASIC idled (1.3–1.6 W,
+hashrate frozen), and the judge counted that time as mining. Software only;
+no hardware effect.
+
+Data (every journal of this tool, all status-active samples):
+- Power was always fresh.
+- **Plain soaks** (32,415 samples): every sample read above 10.2 W, except
+  soak 005's six stalled samples at 1.3–1.6 W.
+- **Lease checks:** each had runs of 7–9 samples (13–18 s) at or below
+  5 W around the interrupt, with status still `active`.
+- **Handover loop:** single samples at or below 5 W.
+- **Lease and handover ramps:** 33 samples between 5.03 and 8 W.
+- Rejudged, the lease checks, the handover loop and boot-resume attempt 002
+  keep their verdicts. `local_stopped` now marks 15.5–17.9 s earlier.
+
+- [x] `hashing(sample)`: status active, and no fresh input power reading
+      at or below the 5 W idle level (a stale reading counts as hashing;
+      the stale-readings stop bounds it). Mining time, outages, spans, breaks, start and
+      restore checks and break logs use it; the live limits stay keyed to
+      the status, so they apply as early as before.
+- [x] A `status_only_samples` metric in every verdict; the limit maxima
+      cover every status-active sample the limits judged.
+- [x] Tests, README, a rejudge of soak 005's journal.
+      Rejudged, every recorded plain soak keeps its verdict except soak 005:
+      28,787,052 ms, 12,948 ms short of 8 hours, with one 47 s outage. Its
+      evidence doc gains a dated note; the recorded verdict stands under
+      its contract. NET-001 cites soak 005 only for its disconnect count.
+- [x] Full gate, independent review, commit and push.
+
+Verification:
+- The full gate passed twice (fmt, clippy, build, tests, `just test`, the
+  stack and atomics audits, redaction, parity, Bright Builds). After the
+  last wording fixes and a test split, the five changed soak test targets
+  passed under Bazel, along with redaction and Bright Builds.
+- An independent review, then a re-review: no code bugs. The first review
+  found the data claim incomplete (the lease and handover journals); it
+  was corrected. Every new stall test fails under the old status-based
+  rule.
+
+Completion review (2026-10-20):
+- Soak mining now counts hashing, not status. Every recorded verdict holds
+  except soak 005, whose evidence doc gains a dated rejudge note
+  (7 h 59 min 47 s of hashing).
+- Each verdict reports `status_only_samples`.
+
+Residual risks:
+- The 5 W threshold has little margin on ramps (5.03 W seen); that moves a
+  break's edge by a sample at most.
+- `first_mining_*` and `local_stopped_after_ready_ms` measure hashing from
+  now on, so they do not compare directly with earlier runs.
+- The firmware status reading `active` while the ASIC idles is unchanged;
+  a status that tracked the ASIC would remove the gap at its source.

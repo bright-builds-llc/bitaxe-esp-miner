@@ -58,6 +58,23 @@ action for a run that died. It pauses the device, turns mining on boot off
 if it reads on, and confirms the ASIC powered down. Before the resume, the soak requires that same proof on the
 paused baseline, and each limit judges only a fresh reading.
 
+**Mining** in every soak means hashing: the status reads `active`, not
+paused, and no fresh input power reading shows the ASIC idle (5 W or
+less). A stale power reading counts as hashing; the stale-readings live
+stop bounds staleness. Mining time, outages, spans, breaks, the start and
+restore checks and the break logs all count hashing, and so do
+`first_mining_*` and `local_stopped_after_ready_ms`. Runs recorded before
+2026-10-20 counted the status.
+
+The status alone read `active` at 0.8–4.8 W while the ASIC idled: for
+13–18 s once in soak 005 and around every lease check's interrupt, and for
+single samples in the handover loop. Ramps have read from 5.03 W, so the
+5 W threshold has little margin there; at most it moves a break's edge by
+one sample. Plain soaks hash above 10 W. Each verdict reports `status_only_samples`, the
+samples where the status said mining but the ASIC was not hashing. The
+live limits below still apply whenever the status says mining, and the
+limit maxima in each verdict cover those samples.
+
 Live stops: a reset, a device pause (`pauseReason`), a hardware or power fault,
 an overheat. While mining it also stops on input outside 4.5–5.5 V, more than
 15 W, an ASIC at 75 C or above, a stopped fan, or readings stale on two
