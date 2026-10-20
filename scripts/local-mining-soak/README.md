@@ -30,6 +30,10 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   soak's interruption line, `Ultra 205 lease interruption check hardware:
   enabled.`, so one line enables both halves. See [Lease interruption
   check](#lease-interruption-check).
+- `overheat-001` is the overheat check, owned by
+  `task-local-mining-overheat-check`. Its enable line is `Ultra 205 local
+  mining overheat check hardware: enabled.` It runs only on the test-only
+  firmware variant. See [Overheat check](#overheat-check).
 - `boot-resume-001` is the boot-resume check, owned by
   `task-local-mining-boot-resume`. Its enable line is `Ultra 205 local mining
   boot resume check hardware: enabled.` See [Boot-resume
@@ -57,7 +61,9 @@ core-dump partition, so read it first under `task-handover-panic-diagnosis`.
 
 `just local-mining-soak pause --private-root P/attempt-NNN` is the recovery
 action for a run that died. It pauses the device, turns mining on boot off
-if it reads on, and confirms the ASIC powered down. Before the resume, the soak requires that same proof on the
+if it reads on, and confirms the ASIC powered down. For the overheat
+check it also waits for the recovery to settle and restores the settings
+that the journaled baseline recorded. Before the resume, the soak requires that same proof on the
 paused baseline, and each limit judges only a fresh reading.
 
 **Mining** in every soak means hashing: the status reads `active`, not
@@ -170,6 +176,50 @@ second request. While mining on boot is on, the Gate refuses Connect, so
 only the handed-off endpoint can reach the device. Every stop from step 2
 on therefore pauses at once, then turns mining on boot off if it does not
 read off (retried for up to 180 s), then confirms the ASIC powered down.
+
+## Overheat check
+
+`--soak overheat-001` needs the test-only firmware variant
+`overheat-trip-test` (`just package-overheat-trip-test`, ADR-0040). Its
+local overheat trip is 55 C instead of 75 C, so the recovery fires at
+normal mining temperatures, about 60 C. Preflight refuses a package whose
+`firmware_variant` does not match the soak: this check runs only on the
+test variant, and every other soak only on production.
+
+1. It admits the paused baseline and saves the pool, as every soak does,
+   and saves 500 MHz / 1200 mV. From the default 485 MHz the lowered pair
+   would leave the catalog (400 MHz floor), so recovery could not restart.
+2. It resumes. The chip reaches 55 C within about two minutes of hashing,
+   and the trip sets `overheat_mode` and the fan to manual 100%
+   (`overheat_tripped`).
+3. After 30 s of readings at 45 C or less, mining must restart at
+   400 MHz / 1100 mV (`overheat_restarted`) and hash 5 more minutes. If it
+   trips again, the next step would leave the catalog, so the device must
+   pause itself (`overheat_stays_stopped`). Both outcomes pass.
+   While cooling it reads the retained log once (kept privately) and
+   requires the trip's cause: the revocation detail before the overheat
+   `run_ended` line must name no failing fact (`trigger=unsafe_sample
+   fact=none`), which only the lowered trip produces.
+4. It pauses, then waits until the firmware's recovery has settled, for up
+   to 15 minutes: the recovery continues while paused, and could otherwise
+   save its lowered pair over the restored one. Settled means:
+   - the settings it writes have not changed for 150 s;
+   - the chip has read 45 C or less for the last 40 s;
+   - the retained log shows the latest overheat entry followed by
+     `overheat_recovered` or `overheat_stopped`, with no failed save after
+     it.
+   Then it restores the original frequency, core voltage, fan mode and
+   speed, and `overheat_mode` 0, and watches them hold for 60 s. A device that paused itself
+   is resumed once to clear its stop, which starts a short run, then
+   paused again.
+
+Live stops are soak 002's, except that the overheat and the device's own
+overheat pause are expected. A break may last 180 s, the stop allowance,
+because a trip's ordered safe-stop proves the chip cool before
+`overheat_mode` shows; an unreachable device still stops it after 60 s. A hashing chip at 60 C means the lowered trip
+did not fire, and stops the check at once (`overheat_trip_missed`). The
+trip must come within 10 minutes of hashing, and the restart or the device
+pause within 10 minutes of the trip. The run deadline is 45 minutes.
 
 `P/attempt-NNN` holds `context.json`, `journal.ndjson` and `result.json`.
 These hold metadata only: the endpoint stays in `P/endpoint`, and no pool

@@ -1,6 +1,7 @@
 // The local mining soak's HTTP client for the station endpoint handed off in the same
-// session. It only reads system info, saves the soak's pool or mining on boot, and sends pause,
-// resume or (the boot-resume check) restart.
+// session. It reads system info and the retained log, saves the soak's pool, mining on boot or (the
+// overheat check) its frequency, core voltage, fan and `overheat_mode`, and sends pause, resume or
+// (the boot-resume check) restart.
 import { isIP } from "node:net";
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
 import { PRIVATE_FIRST_OCTETS } from "../fixed-usb-soak/observer.mjs";

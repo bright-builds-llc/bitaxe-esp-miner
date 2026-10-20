@@ -98,7 +98,8 @@ export function localPhases({ soak, samples, resumedAt }) {
  * a stop code, or undefined to go on; `phases.outageSamples` names the samples whose outage counts
  * while the device cannot be reached.
  */
-export async function sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases, watcher }) {
+export async function sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases, watcher,
+  stopRule = liveStop }) {
   let maybeLastReachedAt = resumedAt;
   // A tolerant soak waits out a recovering outage up to its bound; a strict one stops sooner.
   const unreachableStopMs = soak.unreachableStopMs ?? soak.maybeMaximumOutageMs ?? UNREACHABLE_STOP_MS;
@@ -121,7 +122,7 @@ export async function sampleLoop({ client, baseline, samples, resumedAt, now, sl
     const maybePrevious = samples.at(-1) ?? null;
     samples.push(sample);
     await note({ event: "sample", sample });
-    const maybeStop = liveStop(sample, baseline, maybePrevious);
+    const maybeStop = stopRule(sample, baseline, maybePrevious);
     if (maybeStop !== null) return maybeStop;
     await watcher?.observe(sample, hashing(sample));
     // A log read can take seconds; it never counts against the unreachable bound.

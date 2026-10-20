@@ -1241,8 +1241,6 @@ Ultra 205 local mining soak 006 hardware: enabled.
 
 Verification: pending. Completion review: pending.
 
-## Future
-
 ### task-local-mining-overheat-check | 2026-10-20 | Check local mining's overheat recovery on hardware
 
 ADR-0038 decision 2: after an overheat stop, the firmware restarts 100 mV
@@ -1256,6 +1254,144 @@ Stimulus: the owner chose a test-only build whose overheat trip is lowered,
 never packaged for release, so the overheat path fires at normal mining
 temperatures (owner decision 2026-10-20). It runs after soak 006. A
 contract and a repo-owned command come first.
+
+Facts (code reading 2026-10-20):
+- **What stops the ASIC:** the 75 C stop is the shared mining-safety
+  verdict (`bitaxe-api` `observation.rs`), run by the revocation gate on
+  every sensor sample for local runs and leases alike.
+- **What labels it an overheat:** `is_overheat` only labels the ended
+  local run, from the chip reading recorded with the revocation.
+- **Why lowering the shared constant won't do:** it would weaken every
+  other protection.
+- **The catalog floor:** the Ultra 205 catalog is 400-575 MHz and
+  1100-1300 mV. From the default 485/1200, the lowered pair (385 MHz) falls
+  below it, so recovery stays stopped at once. From 500/1200 it restarts
+  at 400/1100. A second trip would fall below the floor, so the device
+  then pauses itself (`pauseReason` `overheat`).
+- **What the API shows:** `overheat_mode`, `blockedReason`
+  (`local_overheat`), `autofanspeed`/`manualFanSpeed` (manual 100%), and
+  the saved `frequency`/`coreVoltage`.
+- **What the retained log misses:** the recovery's own log lines reach
+  only USB serial.
+
+Plan:
+- [x] Runtime: `LOCAL_OVERHEAT_TRIP_C`, upstream's 75 C, or 55 C under the
+      `bitaxe-runtime` feature `overheat-trip-test`. The gate revokes a
+      local generation whose latest fresh chip reading reaches it, and
+      `is_overheat` labels with it. A production build keeps 75 C, the same
+      boundary as the shared verdict, so its behaviour is unchanged.
+      Host tests: a local generation trips, a lease does not, and the
+      constant stays above the 45 C restart.
+- [x] Firmware: the feature `overheat-trip-test`, with a marker string and
+      a retained boot line in that build only. `build.rs` refuses it with a
+      release tag. The recovery's lines become retained.
+- [x] Build: a Bazel flag `--//firmware/bitaxe:firmware_variant`
+      (`production` or `overheat-trip-test`), as the web UI variant does.
+      The test variant builds in its own Cargo target directory.
+      - The package manifest records `firmware_variant`, checked against
+        the ELF marker.
+      - The flash tool refuses a non-production variant unless
+        `--allow-test-firmware <variant>`.
+      - A test keeps the marker out of the production ELF.
+- [x] Soak tool: `--soak overheat-001`.
+      - The device runs the test variant; the pool and 500 MHz/1200 mV are
+        saved, then the resume.
+      - It observes the trip, cooling, the restart at 400/1100, and mining
+        at the lowered pair, or the device pausing itself if it trips
+        again.
+      - Then the pause, and restoring 485/1200, auto fan and
+        `overheat_mode` 0.
+- [ ] Contract with its enable line; full gate; independent review;
+      commit and push.
+- [ ] Hardware: install the test variant, run, then reinstall production
+      and confirm it; evidence, review and record.
+
+Overheat check contract (attempt ordinals 001 onward). Soak 002's contract
+and amendment (archived `task-local-mining-evidence-soaks`) apply except as
+stated.
+- **Objective** (`--soak overheat-001`, the test variant only):
+  1. Admit the paused baseline, save the pool, save 500 MHz / 1200 mV, and
+     resume.
+  2. The lowered trip fires within 10 minutes of hashing: `overheat_mode`
+     set, the fan manual at 100%. The retained revocation detail before
+     the overheat `run_ended` line names no failing fact, so the stop was
+     the lowered trip, not another unsafe fact on a hot chip.
+  3. After at least 28 s of sampled readings at 45 C or less, mining
+     restarts at 400 MHz / 1100 mV within 10 minutes of the trip.
+  4. Then either 5 minutes of hashing at the lowered pair, or a second
+     trip and the device pausing itself (`pauseReason` `overheat`).
+  5. The pause, then a wait until the firmware's recovery has settled
+     (it continues while paused), for up to 15 minutes: settings quiet for
+     150 s, the chip at 45 C or less for 40 s, and the retained log showing
+     the recovery finished with no failed save after it. Then the original
+     frequency, core voltage, fan mode and speed, and `overheat_mode` 0,
+     read back and held for 60 s. A device pause is cleared by one resume, which starts a
+     short local run at the restored pair, and a second pause.
+  6. A powered-down final sample on the same boot, mining on boot off.
+- **Packages:** both at the same clean, pushed HEAD.
+  - The test variant: `just package-overheat-trip-test`. Its manifest
+    says `firmware_variant: overheat-trip-test`. Preserve its ELF and map
+    privately.
+  - Production, afterwards: `just package`.
+- **Commands:**
+  1. `just detect-ultra205 --port <port>` and `espflash board-info`.
+  2. `just flash-monitor --board 205 ... --allow-test-firmware
+     overheat-trip-test` with the test manifest, state-preserving.
+  3. The endpoint handoff, then `just local-mining-soak preflight --soak
+     overheat-001 ...`.
+  4. `nohup perl -MPOSIX=setsid -e 'setsid; exec @ARGV' -- caffeinate -is
+     just local-mining-soak run ...`, on AC power with the lid open.
+  5. Afterwards, on every outcome:
+     - the production package and a detector/board-info;
+     - `just flash-monitor` with it, state-preserving;
+     - a fresh handoff and `just local-mining-soak stopped-proof` against
+       the production manifest;
+     - `just local-mining-soak pause --private-root P/attempt-NNN`, which
+       re-reads the settings on production and restores any that drifted
+       (`settings_restored`, `recovery_settled`);
+     - a final named-port detector and a serial-holder check.
+- **Allowed effects:**
+  - those of soak 002;
+  - two state-preserving installs, the test variant then production;
+  - the settings writes of steps 1 and 5;
+  - one or two overheat trips, at about 55 C, below the chip's normal
+    60 C;
+  - cooling with the fan at 100%, and a restart at 400/1100;
+  - one resume and pause to clear a device pause, with the short local
+    run at the restored pair that it starts;
+  - retained-log reads while cooling, kept privately.
+- **Prohibited effects:**
+  - any heating, airflow obstruction or other physical stimulus;
+  - a Gate Connect during the run;
+  - any factory reset;
+  - publishing or releasing the test variant;
+  - leaving the test variant installed;
+  - everything soak 002 prohibits.
+- **Live stops:**
+  - soak 002's, except that the overheat and the device's own overheat
+    pause are expected, and a break may last 180 s (a trip's safe-stop);
+  - a hashing chip at 60 C (`overheat_trip_missed`);
+  - no trip within 10 minutes of hashing;
+  - no restart or device pause within 10 minutes of a trip;
+  - the 45-minute run deadline.
+- **Recovery:** `just local-mining-soak pause --private-root P/attempt-NNN`
+  pauses, turns mining on boot off, and restores the settings that the
+  journaled baseline recorded. If production cannot be reinstalled, stop
+  (`stop_hardware_blocker`) and notify the owner.
+- **Evidence:** as soak 002, with the same aggregate allowance as soak 006.
+  The private journal holds the samples; committed summaries pass
+  `just verify-redaction`.
+- **Retries:** the progress-gated attempt policy; a fresh ordinal for each
+  attempt.
+- **Accepted outcomes:**
+  - `complete` when the run passes, production is back and confirmed, and
+    an independent review agrees;
+  - a failure with its root cause recorded.
+
+Ultra 205 local mining overheat check hardware: enabled.
+
+
+## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 

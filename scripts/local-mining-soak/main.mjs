@@ -18,6 +18,7 @@ import { deviceClient } from "./device.mjs";
 import { poolSettings } from "./pool.mjs";
 import { runSoak } from "./run.mjs";
 import { pauseThenRestore, runBootResume } from "./boot-resume.mjs";
+import { restoreAndStop, runOverheat, settingsOf } from "./overheat.mjs";
 import { SOAKS } from "./judge.mjs";
 
 export const SOAK_TASK = "task-local-mining-evidence-soaks";
@@ -44,6 +45,11 @@ function argumentsFor(argv) {
   }
   requireCondition(ACTIONS[action].every((key) => Object.hasOwn(options, key)), "soak_option");
   return { action, options };
+}
+
+/** A test-only firmware runs only the check made for it, and that check only on it (ADR-0040). */
+export function requireFirmwareVariant(manifest, soak) {
+  requireCondition((manifest.firmware_variant ?? "production") === (soak.firmwareVariant ?? "production"), "soak_firmware_variant");
 }
 
 /** The soak task must be active exactly once and carry the exact enable line in its own block. */
@@ -83,6 +89,7 @@ async function preflight(firmwareRoot, root, options) {
   requireCondition(/^[0-9a-f]{40}$/u.test(manifest.source_commit) && /^[0-9a-f]{64}$/u.test(manifest.app_elf_sha256) &&
     manifest.build_identity?.source_dirty === false, "soak_package");
   requireCondition(git(firmwareRoot, ["rev-parse", "HEAD"]).trim() === manifest.source_commit, "soak_package_not_head");
+  requireFirmwareVariant(manifest, SOAKS[soakId]);
   await readPoolForSigning(firmwareRoot, resolve(firmwareRoot, options["--pool-credentials"]));
   await mkdir(root, { mode: 0o700 });
   await writeNew(resolve(root, "context.json"), { schema: CONTEXT_SCHEMA, soak: soakId, firmware_commit: manifest.source_commit,
@@ -108,7 +115,8 @@ async function run(firmwareRoot, root, options) {
   const interrupt = () => { interrupted = true; };
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(signal, interrupt);
   try {
-    const runner = SOAKS[context.soak].kind === "boot-resume" ? runBootResume : runSoak;
+    const kind = SOAKS[context.soak].kind;
+    const runner = kind === "boot-resume" ? runBootResume : kind === "overheat" ? runOverheat : runSoak;
     const verdict = await runner({
       client: deviceClient(endpoint), settings: poolSettings(pool),
       expected: { firmwareCommit: context.firmware_commit, appElfSha256: context.app_elf_sha256, bootOrdinal: context.boot_ordinal },
@@ -125,6 +133,26 @@ async function run(firmwareRoot, root, options) {
     await journal.close();
     for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.removeListener(signal, interrupt);
   }
+}
+
+/**
+ * The run's journaled baseline sample, or null when it never admitted one: such a run changed no
+ * setting, because the baseline is journaled before any write.
+ */
+export async function maybeJournaledBaseline(root) {
+  let text;
+  try { text = await readFile(resolve(root, "journal.ndjson"), "utf8"); } catch { return null; }
+  return baselineOfJournal(text);
+}
+
+/** The baseline sample of journal text; a torn last line, from a run that died mid-append, is skipped. */
+export function baselineOfJournal(text) {
+  for (const line of text.split("\n").filter(Boolean)) {
+    let event;
+    try { event = JSON.parse(line); } catch { continue; }
+    if (event.event === "baseline") return event.sample;
+  }
+  return null;
 }
 
 /** Raw text in a new mode-0600 file; it never overwrites. */
@@ -185,11 +213,19 @@ async function pause(root) {
   const events = [];
   const recovery = { client: deviceClient(endpoint), now: Date.now, sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
     note: async (event) => { events.push(event.event); } };
-  const { mineOnBootOff, maybeFinal } = await pauseThenRestore(recovery);
+  let { mineOnBootOff, maybeFinal } = await pauseThenRestore(recovery);
+  // An overheat check that died may have left its raised pair, the fan at 100% or a device pause:
+  // restore the settings its journaled baseline recorded.
+  const maybeBaseline = SOAKS[context.soak]?.kind === "overheat" ? await maybeJournaledBaseline(root) : null;
+  const overheat = maybeBaseline !== null;
+  let settled = true;
+  if (overheat) ({ settled, maybeFinal } = await restoreAndStop({ ...recovery, original: settingsOf(maybeBaseline) }));
   const outcome = { schema: "local-mining-soak-recovery-v1", mine_on_boot_off: mineOnBootOff, paused: events.includes("paused"),
-    asic_stopped: maybeFinal !== undefined };
+    asic_stopped: maybeFinal !== undefined,
+    ...(overheat ? { recovery_settled: settled, settings_restored: events.includes("settings_restored") } : {}) };
   await writeNew(resolve(root, `recovery-${Date.now()}.json`), outcome);
-  requireCondition(outcome.mine_on_boot_off && outcome.asic_stopped, "soak_recovery_unconfirmed");
+  requireCondition(outcome.mine_on_boot_off && outcome.asic_stopped && outcome.recovery_settled !== false &&
+    outcome.settings_restored !== false, "soak_recovery_unconfirmed");
   return outcome;
 }
 

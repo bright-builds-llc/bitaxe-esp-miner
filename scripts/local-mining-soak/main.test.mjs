@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readLeaseResult, requireSoakTask, SOAK_TASK, soakTask, soakTaskLine } from "./main.mjs";
+import { baselineOfJournal, readLeaseResult, requireFirmwareVariant, requireSoakTask, SOAK_TASK, soakTask, soakTaskLine } from "./main.mjs";
+import { SOAKS } from "./judge.mjs";
 
 const tasks = (section, line = soakTaskLine("001")) => `## ${section}\n\n### ${SOAK_TASK} | 2026-10-16 | Soak\n\n${line}\n\n## Other\n`;
 
@@ -48,4 +49,38 @@ test("a soak with its own task is enabled only in that task", () => {
   // Act / Assert
   assert.doesNotThrow(() => requireSoakTask(own, "handover-001"));
   assert.throws(() => requireSoakTask(shared, "handover-001"), { code: "soak_task_ambiguous" });
+});
+
+test("a production soak runs on a production package", () => {
+  // Act / Assert
+  assert.doesNotThrow(() => requireFirmwareVariant({ firmware_variant: "production" }, SOAKS["006"]));
+});
+
+test("a manifest without a variant is production", () => {
+  // Act / Assert
+  assert.doesNotThrow(() => requireFirmwareVariant({}, SOAKS["006"]));
+});
+
+test("a production soak refuses the test-only firmware", () => {
+  // Act / Assert
+  assert.throws(() => requireFirmwareVariant({ firmware_variant: "overheat-trip-test" }, SOAKS["006"]), { code: "soak_firmware_variant" });
+});
+
+test("the overheat check refuses production firmware", () => {
+  // Act / Assert
+  assert.throws(() => requireFirmwareVariant({ firmware_variant: "production" }, SOAKS["overheat-001"]), { code: "soak_firmware_variant" });
+});
+
+test("a torn last journal line still yields the baseline", () => {
+  // Arrange
+  const text = `${JSON.stringify({ event: "baseline", sample: { frequencyMhz: 485 } })}\n{"event":"sam`;
+  // Act
+  const baseline = baselineOfJournal(text);
+  // Assert
+  assert.deepEqual(baseline, { frequencyMhz: 485 });
+});
+
+test("a journal without a baseline yields none", () => {
+  // Act / Assert
+  assert.equal(baselineOfJournal(`${JSON.stringify({ event: "pool_saved" })}\n`), null);
 });

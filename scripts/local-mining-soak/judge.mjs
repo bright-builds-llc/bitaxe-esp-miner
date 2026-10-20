@@ -12,6 +12,9 @@
  * - Soak 004 repeats soak 002 to catch outages, now that each break's retained log is journaled.
  * - Soak 005 runs overnight on the Wi-Fi power-save fix: 8 hours of mining accumulated within 9.
  * - Soak 006 measures the PSRAM atomics fix (ADR-0039): soak 003's rule, 4 hours within 5.
+ * - Overheat check 001 (`overheat.mjs`) needs the test-only firmware whose local trip is 55 C
+ *   (ADR-0040). At 500 MHz / 1200 mV it must trip, cool, restart at 400 MHz / 1100 mV and mine
+ *   5 minutes there, or trip again and pause itself; then the original settings come back.
  * - Handover loop 001 (`handover.mjs`) counts 20 lease-free handovers, to reproduce a panic.
  * - Lease check 001 (`lease.mjs`) mines locally for 5 minutes, then a Gate lease interrupts local
  *   mining. Local mining must come back within 3 minutes of the lease's end and mine 5 more
@@ -34,6 +37,12 @@ export const SOAKS = Object.freeze({
     maybeDeadlineMs: 540 * 60_000 }),
   "006": Object.freeze({ id: "006", task: "task-local-mining-atomics-soak", activeMs: 240 * 60_000, requireHashrate: true,
     maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 300 * 60_000 }),
+  "overheat-001": Object.freeze({ id: "overheat-001", kind: "overheat", task: "task-local-mining-overheat-check",
+    firmwareVariant: "overheat-trip-test", frequencyMhz: 500, coreVoltageMv: 1200, tripBoundMs: 10 * 60_000,
+    // A trip's ordered safe-stop can take up to 120 s before `overheat_mode` shows, so breaks get the
+    // 180 s stop allowance; an unreachable device still stops it after 60 s.
+    restartBoundMs: 10 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 180_000,
+    unreachableStopMs: 60_000, maybeDeadlineMs: 45 * 60_000, enableLine: "Ultra 205 local mining overheat check hardware: enabled." }),
   "handover-001": Object.freeze({ id: "handover-001", kind: "handover", task: "task-handover-panic-diagnosis", cycles: 20, breakBoundMs: 10 * 60_000,
     unreachableStopMs: 60_000, requireHashrate: true, maybeMaximumOutageMs: null, maybeDeadlineMs: 150 * 60_000,
     enableLine: "Ultra 205 local mining handover loop hardware: enabled." }),
@@ -81,6 +90,8 @@ export function sampleFromInfo(info, atMs) {
     frequencyMhz: number(info?.frequency),
     coreVoltageMv: number(info?.coreVoltage),
     overheatMode: number(info?.overheat_mode) === 1,
+    autoFanSpeed: number(info?.autofanspeed) === 1,
+    manualFanSpeed: number(info?.manualFanSpeed),
     pauseReason: typeof info?.pauseReason === "string" ? info.pauseReason : null,
     hardwareFault: typeof info?.hardware_fault === "string",
     powerFault: typeof info?.power_fault === "string",
