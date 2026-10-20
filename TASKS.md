@@ -1330,9 +1330,12 @@ definition. An independent review agrees.
 - The fix: one disconnect in about 10 hours since it, against about 6.6
   expected at the old rate (roughly 1–5% by chance). Markedly fewer, not
   none.
-- NET-001: the evidence supports adding the `connect.c` power-save
-  breadcrumb under an owner-authorized revision, with the residual
-  disconnect stated. That waits for the owner.
+- NET-001 (owner authorization 2026-10-20): the row stays `verified` and
+  gains `soak` plus one passage. The passage carries the `connect.c`
+  power-save breadcrumb, the soak 004 attempt 002 and soak 005 evidence,
+  and the residual disconnect as a stated non-claim.
+  - Authority: `docs/parity/verified-revisions/2026-10-20-wifi-power-save.json`.
+  - Transition: `20261020T120000Z-NET-001`; progress synced.
 - The soak 005 enable line was removed.
 
 Verification: pending. Completion review: pending.

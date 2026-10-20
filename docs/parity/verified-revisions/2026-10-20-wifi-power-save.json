@@ -1,0 +1,26 @@
+{
+  "schema_version": "parity-verified-revision-authority-v1",
+  "authority_id": "2026-10-20-wifi-power-save",
+  "authorized_by": "owner",
+  "authorized_on": "2026-10-20",
+  "rationale": "Local mining soaks traced recurring outages to a Wi-Fi beacon_timeout with modem power save on; the firmware now turns power save off as upstream does, and soaks 004 and 005 show markedly fewer disconnects. The owner authorized on 2026-10-20 appending that evidence to NET-001, once, with the status and the original notes unchanged.",
+  "evidence": [
+    {
+      "path": "docs/parity/evidence/20261019-ultra205-handover-loop-and-wifi-power-save.md",
+      "sha256": "3f218aae189176f15f015a99003b63be9f0447d25f9bb930d0b88d28ade16d9a"
+    },
+    {
+      "path": "docs/parity/evidence/20261020-ultra205-local-mining-soak-005.md",
+      "sha256": "8d8eef63a8bc964872f4b674844deb05387c35196b7bbec32155cb3b0d44f535"
+    }
+  ],
+  "rows": [
+    {
+      "row_id": "NET-001",
+      "added_evidence": [
+        "soak"
+      ],
+      "after_notes_sha256": "89ddf846d97c4c2cf0d8699214ecf78a141aef046c27243fa9c804fba09a40fc"
+    }
+  ]
+}

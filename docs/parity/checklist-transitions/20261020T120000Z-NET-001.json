@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261020T120000Z-NET-001",
+  "predecessor_sha256": "b8179e9aff0aeda9fbe5dfac22ec34f6c0a7ad95a46e8ca70103c7aae4a78a2c",
+  "result_sha256": "9b0b2263e579b181cfeb29f324b5f15042d0f329332329ae4818ba3f999d7422",
+  "row_id": "NET-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261020T120000Z-NET-001/PLAN.md",
+  "plan_sha256": "c725cbc0cbc5bd8f3a19080c39c6c3611fea1f1e107377772ae143fde383d05f",
+  "result_path": "docs/parity/work-plans/20261020T120000Z-NET-001/RESULT.md",
+  "result_document_sha256": "27d16800711aba3b1289b91b57d1bce78c273622b00d4f46504babd06876352e",
+  "verified_revision_authority_path": "docs/parity/verified-revisions/2026-10-20-wifi-power-save.json",
+  "verified_revision_authority_sha256": "be558d42a9008e29bb902ae9498aa08fa8f125d18dbbc83e97959cddd2e70ffb",
+  "before_rust_owned_target": "`crates/bitaxe-core/src/wifi_reconnect.rs`, `firmware/bitaxe/src/wifi_adapter.rs`, `firmware/bitaxe/src/wifi_adapter/reconnect.rs`, `crates/bitaxe-config/src/nvs/schema/network.rs`, `tools/automation/src/network-reconnect-evidence.ts`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/wifi_reconnect.rs`, `firmware/bitaxe/src/wifi_adapter.rs`, `firmware/bitaxe/src/wifi_adapter/reconnect.rs`, `crates/bitaxe-config/src/nvs/schema/network.rs`, `tools/automation/src/network-reconnect-evidence.ts`",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,hardware-smoke",
+  "after_evidence": "unit,workflow,hardware-smoke,soak",
+  "before_notes": "Exact-package Ultra 205 attempt-002 proves one post-boot station disconnect, immediate AP fallback, first retry after the configured 5,000-ms delay, same-boot DHCP recovery, retry reset, client-only restoration, 15,000-ms stability, final same-origin HTTP/build quorum, disabled mining/control, cleanup, private modes, independent validation, and redaction; see docs/parity/work-plans/20260812T034058Z-NET-001/RESULT.md and docs/parity/evidence/net001-reconnect/network-reconnect-projection.json. Repeated/long-running reconnects, provisioning-client suppression, IPv6, router/RF failures, other boards, mining, hardware control, updates, recovery, and release readiness remain non-claims.",
+  "after_notes": "Exact-package Ultra 205 attempt-002 proves one post-boot station disconnect, immediate AP fallback, first retry after the configured 5,000-ms delay, same-boot DHCP recovery, retry reset, client-only restoration, 15,000-ms stability, final same-origin HTTP/build quorum, disabled mining/control, cleanup, private modes, independent validation, and redaction; see docs/parity/work-plans/20260812T034058Z-NET-001/RESULT.md and docs/parity/evidence/net001-reconnect/network-reconnect-projection.json. Repeated/long-running reconnects, provisioning-client suppression, IPv6, router/RF failures, other boards, mining, hardware control, updates, recovery, and release readiness remain non-claims. Later evidence, outside the projection above, adds Wi-Fi modem power save off as upstream sets it: `reference/esp-miner/components/connect/connect.c` calls `esp_wifi_set_ps(WIFI_PS_NONE)` in both of its branches, and `firmware/bitaxe/src/wifi_adapter.rs` now sets it after each driver start, before any association, confirmed on hardware by the retained line `wifi_power_save=none`. Before it, local mining soaks met six outages in about 9.1 hours, one logged as a `beacon_timeout` station disconnect. With it, exact-package Ultra 205 soak 004 attempt 002 (2 hours) and soak 005 (8 hours) met one `beacon_timeout` in about 10 hours; the station reconnected in about 10 s on the same boot and local mining recovered; see docs/parity/evidence/20261019-ultra205-handover-loop-and-wifi-power-save.md and docs/parity/evidence/20261020-ultra205-local-mining-soak-005.md. This narrows the long-running reconnect non-claim to markedly fewer disconnects, each recovered, over 10 hours; the cause of the remaining disconnect, router/RF failures, and the remaining non-claims above still apply."
+}
