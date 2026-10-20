@@ -1,5 +1,6 @@
 // The local mining soak's HTTP client for the station endpoint handed off in the same
-// session. It only reads system info, saves the soak's pool and sends pause or resume.
+// session. It only reads system info, saves the soak's pool or mining on boot, and sends pause,
+// resume or (the boot-resume check) restart.
 import { isIP } from "node:net";
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
 import { PRIVATE_FIRST_OCTETS } from "../fixed-usb-soak/observer.mjs";
@@ -32,7 +33,7 @@ export function deviceClient(endpoint, fetchImpl = fetch) {
       return response.text();
     },
     async command(name) {
-      requireCondition(name === "pause" || name === "resume", "soak_device_command");
+      requireCondition(name === "pause" || name === "resume" || name === "restart", "soak_device_command");
       const response = await call(`/api/system/${name}`, { method: "POST" });
       requireCondition(response.ok, `soak_device_${name}`);
     },

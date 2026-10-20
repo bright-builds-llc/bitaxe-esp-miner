@@ -24,24 +24,7 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
   // A journal failure must never stop the pause; it is noted in the verdict instead.
   let journalFailed = false;
   const note = async (event) => { try { await record(event); } catch { journalFailed = true; } };
-
-  const baselineInfo = await client.info();
-  // Crash tripwire: a boot after a panic means a dump waits in the core-dump partition. Refuse before
-  // any write, so the operator reads it first (task-handover-panic-diagnosis) instead of losing the
-  // boot's evidence to later runs.
-  requireCondition(baselineInfo.resetReasonCategory !== "panic", "soak_previous_panic");
-  requireCondition(baselineInfo.sourceCommit === expected.firmwareCommit && baselineInfo.appElfSha256 === expected.appElfSha256,
-    "soak_firmware_identity");
-  requireCondition(baselineInfo.bootOrdinal === expected.bootOrdinal, "soak_boot_changed");
-  const baseline = sampleFromInfo(baselineInfo, now());
-  requireCondition(baseline.miningPaused && !mining(baseline) && !baseline.startMiningOnBoot && baseline.pauseReason === null,
-    "soak_baseline_not_paused");
-  // The stopped proof must be reachable before anything starts, or no run could end judged.
-  requireCondition(hardwareStopped(baseline), "soak_baseline_not_stopped");
-  await note({ event: "baseline", sample: baseline });
-  await client.patch(settings);
-  requireCondition(poolSaved(await client.info(), settings), "soak_pool_not_saved");
-  await note({ event: "pool_saved" });
+  const baseline = await admitBaseline({ client, expected, settings, now, note });
 
   const samples = [];
   const marks = {};
@@ -69,8 +52,33 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
   return verdict;
 }
 
+/**
+ * Admits the run's paused baseline and saves the owner's pool; refuses before any write unless the
+ * device runs the expected firmware on the handed-off boot, paused, with the ASIC shown powered down.
+ */
+export async function admitBaseline({ client, expected, settings, now, note }) {
+  const baselineInfo = await client.info();
+  // Crash tripwire: a boot after a panic means a dump waits in the core-dump partition. Refuse before
+  // any write, so the operator reads it first (task-handover-panic-diagnosis) instead of losing the
+  // boot's evidence to later runs.
+  requireCondition(baselineInfo.resetReasonCategory !== "panic", "soak_previous_panic");
+  requireCondition(baselineInfo.sourceCommit === expected.firmwareCommit && baselineInfo.appElfSha256 === expected.appElfSha256,
+    "soak_firmware_identity");
+  requireCondition(baselineInfo.bootOrdinal === expected.bootOrdinal, "soak_boot_changed");
+  const baseline = sampleFromInfo(baselineInfo, now());
+  requireCondition(baseline.miningPaused && !mining(baseline) && !baseline.startMiningOnBoot && baseline.pauseReason === null,
+    "soak_baseline_not_paused");
+  // The stopped proof must be reachable before anything starts, or no run could end judged.
+  requireCondition(hardwareStopped(baseline), "soak_baseline_not_stopped");
+  await note({ event: "baseline", sample: baseline });
+  await client.patch(settings);
+  requireCondition(poolSaved(await client.info(), settings), "soak_pool_not_saved");
+  await note({ event: "pool_saved" });
+  return baseline;
+}
+
 /** A plain soak's phases: mine until its mining time, continuous or, if tolerant, accumulated. */
-function localPhases({ soak, samples, resumedAt }) {
+export function localPhases({ soak, samples, resumedAt }) {
   return {
     outageSamples: () => samples,
     onSample(sample) {
@@ -90,7 +98,7 @@ function localPhases({ soak, samples, resumedAt }) {
  * a stop code, or undefined to go on; `phases.outageSamples` names the samples whose outage counts
  * while the device cannot be reached.
  */
-async function sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases, watcher }) {
+export async function sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases, watcher }) {
   let maybeLastReachedAt = resumedAt;
   // A tolerant soak waits out a recovering outage up to its bound; a strict one stops sooner.
   const unreachableStopMs = soak.unreachableStopMs ?? soak.maybeMaximumOutageMs ?? UNREACHABLE_STOP_MS;

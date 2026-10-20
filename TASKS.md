@@ -1186,6 +1186,105 @@ Hardware verification: pending. Soak 004 of
 
 Completion review: pending.
 
+### task-local-mining-boot-resume | 2026-10-20 | Check on hardware that mining on boot resumes local mining
+
+Owner approval 2026-10-20 ("Yes, this sounds right. Please proceed.", for
+"turning resume on, rebooting, seeing mining resume, then turning it back
+off"). ADR-0038: with `startMiningOnBoot` on, a boot starts local mining
+without a resume command. With it off, a boot stays paused. There is unit
+and fake-device coverage, but no hardware evidence.
+
+Facts the contract rests on (code reading at `1b1348d5`):
+- `PATCH /api/system` accepts `{"startMiningOnBoot": bool}` alone and
+  persists it (`v12_settings.rs`, `http_api/settings.rs`).
+- `POST /api/system/restart` answers, then restarts (`restart_plan`,
+  `RestartAfterResponse`). It reports reset category `software_cpu`, which
+  clears the crash-loop streak (`next_streak`), so two restarts never
+  trip the guard.
+- At boot, `boot_guard::boot_preference` applies the saved preference
+  unless the crash-loop guard pauses the device.
+- **While mining on boot is on, the Gate refuses Connect** (`admit`,
+  `claim`, `claim_noise_fence` and `qualification_restart` all reject).
+  So no endpoint handoff can find the device in that window; only the
+  handed-off endpoint can reach it. That endpoint stayed the same across
+  all 16 handoffs on record (2026-10-06 to 2026-10-19), across installs
+  and resets.
+
+- [x] Soak tool: `--soak boot-resume-001` (`boot-resume.mjs`), the
+      `restart` command, the recovery `pause` turning mining on boot off
+      when it reads on, tests and README.
+- [ ] Full gate, independent review, commit and push.
+- [ ] Hardware run under the contract below; evidence, review and record.
+
+Boot resume check contract (attempt ordinals 001 onward). Soak 002's
+contract and amendment (archived `task-local-mining-evidence-soaks`) apply
+except as stated.
+- **Objective:**
+  1. Admit the paused baseline as every soak does: crash tripwire,
+     installed identity, handed-off boot, paused, powered down. Save the
+     owner's pool.
+  2. Turn mining on boot on, and read it back.
+  3. Request one restart. Within 180 s, a new boot session must report
+     `software_cpu`, the same firmware, and the next boot ordinal.
+  4. With no resume command, local mining must start within 5 minutes. It
+     must then accumulate 5 minutes of mining within 15 minutes, with
+     outages up to 60 s, a nonzero hashrate, an accepted share and the
+     usual live limits. Both limits count from the check's first sample
+     of that boot.
+  5. Turn mining on boot off, and read it back. Pause, and confirm the
+     ASIC powered down on the same boot.
+  6. Request one more restart, observed as in step 3. Until a sample
+     120 s after that boot's first, every sample must be paused, not
+     mining, with mining on boot off. The last two must show the ASIC
+     powered down.
+- **Package:** a fresh package at the clean, pushed HEAD, installed
+  state-preserving. Preserve the ELF and map privately.
+- **Commands:**
+  - `just detect-ultra205 --port <port>` and `espflash board-info`
+    before the install;
+  - the install, then the endpoint handoff (`just otawww-endpoint`);
+  - `just local-mining-soak preflight --soak boot-resume-001 ...`, then
+    `run`, detached in its own session under `caffeinate -is`;
+  - `owner-finish --port` and a final named-port detector afterwards.
+- **Allowed effects:**
+  - those of soak 002;
+  - two `startMiningOnBoot` writes, plus the restore below;
+  - exactly two `POST /api/system/restart` requests, one per restart.
+    An ambiguous response is resolved by watching for the new boot, never
+    by a second request.
+- **Prohibited effects:** a third restart, a resume command, a Gate
+  Connect while mining on boot is on, induced panics or watchdog resets
+  (the crash-loop guard is out of scope), any factory reset, and
+  everything soak 002 prohibits.
+- **Live stops:** the restart not observed within 180 s; a reset category
+  other than `software_cpu`, another firmware or a skipped boot ordinal;
+  mining not started 5 minutes after the boot; the 15-minute deadline;
+  soak 002's live stops and limits, measured against each boot; after the
+  second restart, any sample that mines or shows mining on boot on.
+- **Recovery:**
+  - every stop from step 2 on pauses at once, then turns mining on boot
+    off if it does not read off (retried for up to 180 s), then confirms
+    the ASIC powered down;
+  - `just local-mining-soak pause --private-root P/attempt-NNN` does the
+    same for a run that died. For other soaks it writes the setting only
+    when it reads on, which no other soak allows;
+  - if the device cannot be reached at the endpoint while mining on boot
+    may be on, stop (`stop_hardware_blocker`) and notify the owner. The
+    device keeps its own limits; the Gate cannot reach it until that
+    setting is off.
+- **Evidence:** as soak 002. The journal holds samples and value-free
+  events, the raw break logs stay private, and committed summaries pass
+  `just verify-redaction`. Boot sessions stay private.
+- **Retries:** the progress-gated attempt policy; a fresh ordinal for each
+  attempt.
+- **Accepted outcomes:** `complete` when the run passes and an independent
+  review agrees; a failure with its root cause recorded.
+- **Afterwards:** paused, mining on boot off, the owner's pool saved.
+
+Ultra 205 local mining boot resume check hardware: enabled.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-handover-panic-diagnosis | 2026-10-20 | Diagnose the lease handover panic once it recurs

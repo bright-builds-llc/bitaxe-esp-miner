@@ -1993,6 +1993,7 @@ js_binary(
     data = [":local_mining_soak_sources"],
     entry_point = "local-mining-soak/%s.test.mjs" % name,
 ) for name in [
+    "boot-resume",
     "break-log",
     "handover",
     "judge",

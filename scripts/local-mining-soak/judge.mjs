@@ -15,6 +15,10 @@
  * - Lease check 001 (`lease.mjs`) mines locally for 5 minutes, then a Gate lease interrupts local
  *   mining. Local mining must come back within 3 minutes of the lease's end and mine 5 more
  *   minutes. Outages are tolerated as in soak 002, in the local phases only.
+ * - Boot resume check 001 (`boot-resume.mjs`) turns mining on boot on and restarts: mining must
+ *   come back with no resume command and accumulate 5 minutes within 15 of first seeing the boot,
+ *   outages tolerated as in soak 002. It then turns mining on boot off, pauses and restarts: the
+ *   device must stay paused for 2 minutes.
  */
 export const SOAKS = Object.freeze({
   "001": Object.freeze({ id: "001", activeMs: 30 * 60_000, requireHashrate: false, maybeMaximumOutageMs: null,
@@ -33,6 +37,9 @@ export const SOAKS = Object.freeze({
   "lease-001": Object.freeze({ id: "lease-001", kind: "lease", task: "task-handover-panic-diagnosis", activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true,
     maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 90 * 60_000, restoreBoundMs: 180_000,
     enableLine: "Ultra 205 lease interruption check hardware: enabled." }),
+  "boot-resume-001": Object.freeze({ id: "boot-resume-001", kind: "boot-resume", task: "task-local-mining-boot-resume",
+    activeMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
+    enableLine: "Ultra 205 local mining boot resume check hardware: enabled." }),
 });
 export const SAMPLE_INTERVAL_MS = 2000;
 /** A longer gap between successive samples breaks continuity. */

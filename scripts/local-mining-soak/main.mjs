@@ -1,6 +1,7 @@
-// `just local-mining-soak preflight|run|pause`: the local mining soaks and the lease interruption
-// check (ADR-0038 task 6), each gated by an exact line in the active task. `pause` is the recovery
-// action: it pauses the device and confirms the ASIC powered down, for a run that died. The
+// `just local-mining-soak preflight|run|pause`: the local mining soaks, the lease interruption
+// check and the boot-resume check (ADR-0038), each gated by an exact line in the active task. `pause`
+// is the recovery action for a run that died: it pauses the device, turns mining on boot off if it
+// reads on, and confirms the ASIC powered down. The
 // station endpoint comes from a completed `just otawww-endpoint` handoff in the same session; the
 // pool from the ignored pool-credentials file, used at run time only. A lease check watches the
 // `just ultra205-soak --interrupt-local-mining` private root for its result.
@@ -15,7 +16,8 @@ import { parseDetector } from "../hardware-operator/detector.mjs";
 import { DETECTOR_FRESH_MS, stoppedProof } from "./stopped-proof.mjs";
 import { deviceClient } from "./device.mjs";
 import { poolSettings } from "./pool.mjs";
-import { pauseAndConfirm, runSoak } from "./run.mjs";
+import { runSoak } from "./run.mjs";
+import { pauseThenRestore, runBootResume } from "./boot-resume.mjs";
 import { SOAKS } from "./judge.mjs";
 
 export const SOAK_TASK = "task-local-mining-evidence-soaks";
@@ -106,7 +108,8 @@ async function run(firmwareRoot, root, options) {
   const interrupt = () => { interrupted = true; };
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(signal, interrupt);
   try {
-    const verdict = await runSoak({
+    const runner = SOAKS[context.soak].kind === "boot-resume" ? runBootResume : runSoak;
+    const verdict = await runner({
       client: deviceClient(endpoint), settings: poolSettings(pool),
       expected: { firmwareCommit: context.firmware_commit, appElfSha256: context.app_elf_sha256, bootOrdinal: context.boot_ordinal },
       // Monotonic, so a wall-clock correction never stretches the run deadline.
@@ -171,17 +174,22 @@ async function writeStoppedProof(firmwareRoot, root, options) {
   return { stopped_proof: "written", device_effects: false };
 }
 
-/** Recovery: pause the device a run left mining, and confirm the ASIC powered down. */
+/**
+ * Recovery: pause the device a run left mining, turn mining on boot off only if it reads on (the
+ * boot-resume check may have left it on), and confirm the ASIC powered down.
+ */
 async function pause(root) {
   await privateRoot(root);
   const context = (await proof(root, "context.json")).value; requireCondition(context.schema === CONTEXT_SCHEMA, "soak_context");
   const endpoint = (await proof(context.endpoint_root, "endpoint.private.json")).value;
   const events = [];
-  const maybeFinal = await pauseAndConfirm({ client: deviceClient(endpoint), now: Date.now,
-    sleep: (ms) => new Promise((done) => setTimeout(done, ms)), note: async (event) => { events.push(event.event); } });
-  const outcome = { schema: "local-mining-soak-recovery-v1", paused: events.includes("paused"), asic_stopped: maybeFinal !== undefined };
+  const recovery = { client: deviceClient(endpoint), now: Date.now, sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
+    note: async (event) => { events.push(event.event); } };
+  const { mineOnBootOff, maybeFinal } = await pauseThenRestore(recovery);
+  const outcome = { schema: "local-mining-soak-recovery-v1", mine_on_boot_off: mineOnBootOff, paused: events.includes("paused"),
+    asic_stopped: maybeFinal !== undefined };
   await writeNew(resolve(root, `recovery-${Date.now()}.json`), outcome);
-  requireCondition(outcome.asic_stopped, "soak_recovery_unconfirmed");
+  requireCondition(outcome.mine_on_boot_off && outcome.asic_stopped, "soak_recovery_unconfirmed");
   return outcome;
 }
 

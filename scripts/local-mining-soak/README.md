@@ -28,6 +28,10 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   soak's interruption line, `Ultra 205 lease interruption check hardware:
   enabled.`, so one line enables both halves. See [Lease interruption
   check](#lease-interruption-check).
+- `boot-resume-001` is the boot-resume check, owned by
+  `task-local-mining-boot-resume`. Its enable line is `Ultra 205 local mining
+  boot resume check hardware: enabled.` See [Boot-resume
+  check](#boot-resume-check).
 
 There is no Gate lease. The device mines the pool saved in its NVS once the
 operator resumes it, and stops when paused. The soak:
@@ -50,8 +54,8 @@ when the device's last reset was a panic. That boot's dump waits in the
 core-dump partition, so read it first under `task-handover-panic-diagnosis`.
 
 `just local-mining-soak pause --private-root P/attempt-NNN` is the recovery
-action for a run that died. It pauses the device and confirms the ASIC
-powered down. Before the resume, the soak requires that same proof on the
+action for a run that died. It pauses the device, turns mining on boot off
+if it reads on, and confirms the ASIC powered down. Before the resume, the soak requires that same proof on the
 paused baseline, and each limit judges only a fresh reading.
 
 Live stops: a reset, a device pause (`pauseReason`), a hardware or power fault,
@@ -121,6 +125,32 @@ the run intent. The requested pause still holds, and the device stops when
 the lease ends; run the recovery `pause` to confirm it. The run deadline is 90 minutes. The verdict
 passes only when every phase happened in order, the Gate soak `passed`, and
 every soak 002 criterion holds over the whole run.
+
+## Boot-resume check
+
+`--soak boot-resume-001` checks `startMiningOnBoot` across two software
+restarts, journaling each step:
+
+1. It admits the paused baseline and saves the pool, as every soak does.
+2. It turns mining on boot on and reads it back (`mine_on_boot_enabled`).
+3. It requests one restart. Within 180 s a new boot session must report
+   reset category `software_cpu`, the same firmware and the next boot
+   ordinal (`rebooted`).
+4. With no resume command, mining must start within 5 minutes and
+   accumulate 5 minutes within 15, with outages up to 60 s. Both limits
+   count from the check's first sample of that boot.
+5. It turns mining on boot off, reads it back, pauses and confirms the ASIC
+   powered down.
+6. It requests a second restart, observed as in step 3. The new boot must
+   stay paused, not mining, with mining on boot off, until a sample 120 s
+   after its first, and end powered down.
+
+Each restart is requested once. An ambiguous response
+(`restart_ambiguous`) is resolved by watching for the new boot, never by a
+second request. While mining on boot is on, the Gate refuses Connect, so
+only the handed-off endpoint can reach the device. Every stop from step 2
+on therefore pauses at once, then turns mining on boot off if it does not
+read off (retried for up to 180 s), then confirms the ASIC powered down.
 
 `P/attempt-NNN` holds `context.json`, `journal.ndjson` and `result.json`.
 These hold metadata only: the endpoint stays in `P/endpoint`, and no pool
