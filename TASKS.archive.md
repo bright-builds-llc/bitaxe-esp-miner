@@ -33867,3 +33867,140 @@ Residual risks:
   fake-device coverage only.
 - A test-variant image can still be uploaded by hand through the web UI
   or the device-session HTTP update (ADR-0040).
+
+### task-local-mining-overheat-stays-stopped | 2026-10-21 | Check the overheat stop that stays stopped on hardware
+
+Owner approval 2026-10-21 ("please proceed with 1 and 2", item 2 being "Run
+the 'stays stopped' overheat path on hardware"). ADR-0038 decision 2: when
+the lowered pair would leave the catalog, the overheat stop stays stopped
+and the device pauses itself (`pauseReason` `overheat`) until the operator
+resumes. The archived `task-local-mining-overheat-check` showed the restart
+path on hardware; this path has unit and fake-device coverage only.
+
+- [x] `--soak overheat-002`: the overheat check from the default
+      485 MHz / 1200 mV, accepting only the `stays_stopped` outcome. Each
+      overheat soak now lists the outcomes it accepts. Tests and README.
+- [x] Full gate, independent review, commit and push.
+- [x] Hardware: install the test variant, run, then reinstall production
+      and confirm it; evidence, review and record.
+
+Overheat stays-stopped contract (attempt ordinals 001 onward). The overheat
+check contract (archived `task-local-mining-overheat-check`) applies except
+as stated.
+- **Objective** (`--soak overheat-002`, the test variant only):
+  1. Admit the paused baseline, save the pool, keep 485 MHz / 1200 mV
+     (saved again and read back), and resume.
+  2. The lowered trip fires within 10 minutes of hashing. The retained
+     revocation detail names no failing fact. The fan goes manual 100%.
+  3. With no restart, the device pauses itself (`pauseReason` `overheat`)
+     within 10 minutes of the trip, after at least 28 s of sampled
+     readings at 45 C or less. The retained log, kept privately and
+     judged, shows `local_mining=overheat stays_stopped=true` followed by
+     `overheat_stopped paused_by_device=true`.
+  4. Cleanup, as in the overheat check:
+     - the pause, then the recovery settling;
+     - the original settings and `overheat_mode` 0 restored and held
+       60 s;
+     - one operator resume to clear the device's pause and its stop
+       marker. It starts a short local run at 485/1200, which the second
+       pause stops. The retained log must show no failed marker clear. If
+       the device is lost after that resume, the check pauses again.
+  5. A powered-down final sample on the same boot, mining on boot off.
+- **Packages, commands, recovery, evidence, retries and accepted
+  outcomes:** as the overheat check contract, with `--soak overheat-002`.
+  Afterwards production is reinstalled and confirmed (stopped proof and
+  the recovery `pause`). The summary goes in `docs/parity/evidence/`.
+- **Allowed effects:**
+  - those of the overheat check, with 485 MHz / 1200 mV saved instead of
+    500/1200;
+  - one overheat trip, at about 55 C, with no restart;
+  - the device's own pause;
+  - the cleanup's resume and pause, with its short local run at 485/1200.
+- **Prohibited effects:** as the overheat check, and any restart after the
+  trip.
+- **Live stops:** as the overheat check, and the first hashing sample after
+  the trip (`overheat_unexpected_restart`). No device pause within
+  10 minutes of the trip fails as `overheat_not_stopped`.
+- **Residual risk:** the cleanup's clearing resume runs on hardware for the
+  first time.
+- **Amendment (2026-10-21, after attempt 001):** only the production
+  reinstall is deferred to the end of the session.
+  - Each attempt still packages the test variant at its exact HEAD and
+    installs it state-preserving, as the attempt policy requires.
+  - The session ends at the last attempt, at any stop or report to the
+    owner, or at any change of task. Production is reinstalled and
+    confirmed then, on every outcome. The test variant is never left
+    installed.
+
+Attempt 001 result (2026-10-21): `failed` (`overheat_stopped_before_cooling`),
+outcome `continue_after_verified_fix`.
+- Test variant `a2ef1fd2`; the handoff succeeded on its first attempt.
+- Device behaviour matched the stays-stopped path in full:
+  - the trip from the lowered trip;
+  - the fan manual 100%;
+  - no restart;
+  - the device paused itself (`pauseReason` `overheat`) 29.0 s after
+    `overheat_mode` showed, with the retained log showing
+    `stays_stopped=true` and then the stop.
+- The cleanup's first hardware run worked: the recovery settled; the
+  settings were restored and held; one resume and pause cleared the
+  device pause and the stop marker, with no failed marker save.
+- **Root cause, a judge bug:**
+  - The check's own log read after the trip left a 5,975 ms sampling gap,
+    which broke the measured cool run (5 s continuity limit).
+  - The pause sample, also cool, was left out. So 23.0 s was measured,
+    though every reading from the trip to the pause was at 45 C or less
+    (28.96 s).
+- **Fix** (after an independent review): the judge takes the longest
+  cooling consistent with the samples, and requires the full 30 s.
+  - The firmware's window starts no earlier than its overheat entry,
+    which follows the last pre-trip sample, and restarts at any warm or
+    stale reading. So the bound runs from the latest such sample to the
+    action sample, whose own reading follows the action and counts for
+    time only.
+  - A gap over 5 s just before the action, or just after the start
+    sample, makes the result inconclusive (`overheat_cooling_inconclusive`)
+    rather than overstated.
+  - A correct device always meets the 30 s. Tests replay the hardware gap.
+    The hardware journals measure 31,088 ms (attempt 001) and 40,154 ms
+    (overheat check 001).
+
+
+Attempt 002 result (2026-10-21): `passed`, `complete`. An independent
+review recomputed the verdict from the private journal and kept logs and
+agrees, after small corrections to the summary.
+- Summary: `docs/parity/evidence/20261021-ultra205-local-mining-overheat-stays-stopped.md`.
+- Test variant `16d3141c`, installed state-preserving with
+  `--allow-test-firmware`.
+- From 485/1200, `overheat_mode` showed 108.1 s after the first hashing
+  sample. The cause was the lowered trip, and the fan went to manual 100%.
+- No restart. The device paused itself (`pauseReason` `overheat`) 30.4 s
+  after the trip showed; the cooling bound was 32.4 s.
+- The kept log shows `stays_stopped=true` then `overheat_stopped
+  paused_by_device=true`.
+- Cleanup:
+  - the recovery settled after 154.2 s;
+  - one resume cleared the device pause and the stop marker, with no
+    failed save;
+  - the settings were restored and held.
+- Session end: production `16d3141c` was reinstalled. Its boot showed no
+  variant line and no overheat resume, so the marker was clear. The
+  stopped proof passed, and the recovery `pause` confirmed the settings.
+  The same device, with no serial holder.
+- The enable line was removed.
+
+Verification:
+- `result.json` `passed`; the independent review agrees.
+- Every software change passed the full gate, with 358 tests and every
+  audit at zero findings, and an independent review before its run.
+
+Completion review (2026-10-21):
+- Both branches of ADR-0038 decision 2 now have hardware evidence, from
+  the test-lowered trip:
+  - restart at the lowered pair (the archived overheat check);
+  - stay stopped, with the device pausing itself (this task).
+- The clearing resume and its stop-marker clear worked on hardware.
+
+Residual risks:
+- The production 75 C trip, the VR trip, a second trip after a restart,
+  and recovery across a reboot have no hardware evidence.
