@@ -961,6 +961,7 @@ rust_test(
         "src/production_mining_session/hashrate.rs",
         "src/production_mining_session/owner_loop.rs",
         "src/production_mining_session/owner_progress.rs",
+        "src/production_mining_session/status_publication.rs",
         "src/runtime_snapshot.rs",
         "src/runtime_health_adapter.rs",
         "src/task_watchdog_observation.rs",

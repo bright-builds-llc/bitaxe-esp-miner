@@ -3,6 +3,8 @@ const OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_lo
 const OWNER_PROGRESS_SOURCE: &str = include_str!("production_mining_session/owner_progress.rs");
 const WORKER_SOURCE: &str = include_str!("production_mining_session/asic_worker.rs");
 const HASHRATE_SOURCE: &str = include_str!("production_mining_session/hashrate.rs");
+const STATUS_PUBLICATION_SOURCE: &str =
+    include_str!("production_mining_session/status_publication.rs");
 const CAMPAIGN_STATUS_SOURCE: &str =
     include_str!("production_mining_session/campaign_status/publication.rs");
 const TASK_WATCHDOG_OBSERVATION_SOURCE: &str = include_str!("task_watchdog_observation.rs");
@@ -29,6 +31,32 @@ fn sole_production_owner_schedules_active_only_hashrate_reads() {
     assert!(OWNER_SOURCE.contains("AsicWorkerCommand::ReadHashrateRegisters"));
     assert!(!OWNER_SOURCE.contains("std::thread::Builder::new().name(\"hashrate"));
     assert!(!OWNER_LOOP_SOURCE.contains("std::thread::Builder::new().name(\"hashrate"));
+}
+
+#[test]
+fn a_publication_that_ends_hashing_zeroes_the_hashrate_with_it() {
+    // Arrange: the session orders that publication before its safe-stop (session tests).
+    let publish = OWNER_SOURCE
+        .find("ProductionSessionEffect::Publish(snapshot) =>")
+        .expect("publish arm");
+    let arm = &OWNER_SOURCE[publish..];
+    let (_, guard) = STATUS_PUBLICATION_SOURCE
+        .split_once("fn zero_hashrate_on_inactive_publish(")
+        .expect("zeroing guard");
+    let guard = guard.split_once("\n    }\n").expect("guard body").0;
+
+    // Act
+    let zero = arm
+        .find("self.zero_hashrate_on_inactive_publish(&snapshot, now_ms);")
+        .expect("zeroed with the publication");
+    let published = arm
+        .find("publish_production_session_snapshot(snapshot);")
+        .expect("snapshot published");
+
+    // Assert: zeroed before the publication, and only once the snapshot ends hashing.
+    assert!(zero < published);
+    assert!(guard.contains("!= bitaxe_stratum::v1::state::MiningActivityStatus::Active"));
+    assert!(guard.contains("self.service_hashrate_monitor(snapshot, now_ms);"));
 }
 
 #[test]

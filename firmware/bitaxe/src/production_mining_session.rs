@@ -266,6 +266,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 }
                 let mut snapshot = *snapshot;
                 self.local.label_hold(&mut snapshot);
+                self.zero_hashrate_on_inactive_publish(&snapshot, now_ms);
                 crate::runtime_snapshot::publish_production_session_snapshot(snapshot);
                 None
             }

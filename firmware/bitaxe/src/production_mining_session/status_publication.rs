@@ -7,6 +7,21 @@ use bitaxe_safety::observation::Observation;
 use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
 
 impl OrdinaryEspProductionSessionAdapter {
+    /// Publishes the zero hashrate with the snapshot that ends hashing. A stop's power-down
+    /// then holds this thread for seconds (the frequency ramp) before the loop services the
+    /// monitor, which left the last rate showing (stopping check 002).
+    pub(super) fn zero_hashrate_on_inactive_publish(
+        &mut self,
+        snapshot: &ProductionSessionSnapshot,
+        now_ms: u64,
+    ) {
+        if snapshot.mining.mining_activity
+            != bitaxe_stratum::v1::state::MiningActivityStatus::Active
+        {
+            self.service_hashrate_monitor(snapshot, now_ms);
+        }
+    }
+
     pub(super) fn publish_campaign_status(
         &mut self,
         snapshot: &bitaxe_stratum::v1::production_session::ProductionSessionSnapshot,

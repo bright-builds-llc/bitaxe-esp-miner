@@ -1232,6 +1232,32 @@ except as stated.
 
 Ultra 205 polled cooling stopping check hardware: enabled.
 
+Attempt 001 result (2026-10-21): `failed` (`stop_hashrate_frozen`), outcome
+`continue_after_verified_fix`.
+- Production `ba22b7fb`, installed state-preserving from the built
+  manifest; the handoff succeeded on its first attempt.
+- Mining: 180,957 ms of hashing, 11 accepted shares and 0 rejected,
+  within the live limits.
+- The stop: `active` at 69 ms, then `stopping` from 2.1 s (10 samples),
+  then `paused` from 22.9 s at 45 C. No sample read `active` at idle
+  power.
+- The hashrate: still 470.9 GH/s in the first three `stopping` samples
+  (to 6.3 s), then 0 from 8.4 s through the cooling. In `stopping-001` it
+  stayed frozen for the whole 22 s.
+- **Root cause:** the polled proof removed the freeze during cooling. The
+  stop's power-down still runs synchronously in the effect arm, and its
+  frequency ramp (485 to 50 MHz in 100 ms steps, about 7 s) holds the
+  owner thread. The loop services the monitor only after it.
+- **Fix:** the `Publish` arm zeroes the hashrate with the snapshot that
+  ends hashing (`zero_hashrate_on_inactive_publish`). The `stopping`
+  publication precedes the stop effect in the same cascade. A source pin
+  covers the call and the guard's body. An independent review confirmed
+  the cause and the fix. The full gate passed; one gate run met a flaky
+  crash in `//tools/device-session:tests`, which passed on an uncached
+  rerun.
+- Afterwards: paused, powered down, mining on boot off; the same physical
+  device; no serial holder.
+
 ## Future
 
 ### task-preparation-rollback-cooling-watchdog | 2026-10-21 | Feed the watchdog through a preparation rollback's cooling proof
