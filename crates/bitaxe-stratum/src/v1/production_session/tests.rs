@@ -355,6 +355,7 @@ mod difficulty_hint;
 mod job_transition;
 mod lifecycle;
 mod local;
+mod mid_stop;
 mod readiness_recovery;
 mod recovery;
 mod restart;

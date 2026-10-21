@@ -9,9 +9,11 @@ const RANK = Object.freeze({ active: 0, stopping: 1, paused: 2 });
 /**
  * The stop phase's failures and metrics over every sample from the pause to the final one, in
  * order. The status must move forward only, show `stopping` at least once, and never read
- * `active` while fresh power shows the ASIC idle.
+ * `active` while fresh power shows the ASIC idle. With `requireHashrateZeroed` (stopping-002,
+ * after the cooling proof stopped blocking the owner), every `stopping` sample after the first
+ * must read a zero hashrate rather than the value frozen at the stop.
  */
-export function judgeStopPhase(stopSamples) {
+export function judgeStopPhase(stopSamples, { requireHashrateZeroed = false } = {}) {
   const failures = [];
   const fail = (code) => { if (!failures.includes(code)) failures.push(code); };
   if (stopSamples.length === 0) fail("stop_samples_missing");
@@ -28,6 +30,9 @@ export function judgeStopPhase(stopSamples) {
   if (maximumGapMs > MAXIMUM_SAMPLE_GAP_MS) fail("stop_sample_gap");
   const stopping = stopSamples.filter((sample) => sample.miningActivity === "stopping");
   if (stopping.length === 0) fail("stop_stopping_not_seen");
+  // The first `stopping` sample may precede the owner's next hashrate tick.
+  const frozen = stopping.slice(1).filter((sample) => sample.hashRate !== 0).length;
+  if (requireHashrateZeroed && frozen > 0) fail("stop_hashrate_frozen");
   const firstAt = stopSamples[0]?.atMs ?? null;
   const maybeFirstPaused = stopSamples.find((sample) => sample.miningActivity === "paused");
   return {
@@ -41,6 +46,7 @@ export function judgeStopPhase(stopSamples) {
       stop_first_stopping_ms: stopping.length === 0 ? null : stopping[0].atMs - firstAt,
       stop_first_paused_ms: maybeFirstPaused === undefined ? null : maybeFirstPaused.atMs - firstAt,
       stop_maximum_sample_gap_ms: maximumGapMs,
+      stop_hashrate_frozen_samples: frozen,
     },
   };
 }

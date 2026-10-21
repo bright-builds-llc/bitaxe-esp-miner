@@ -52,7 +52,7 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
   const judged = { baseline, samples, maybeFinal, soak, maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) };
   const verdict = soak.kind === "lease" ? judgeLease({ ...judged, marks }) : soak.kind === "handover" ? judgeHandover(judged) : judge(judged);
   if (maybeStopSamples !== null) {
-    const stopPhase = judgeStopPhase(maybeStopSamples);
+    const stopPhase = judgeStopPhase(maybeStopSamples, { requireHashrateZeroed: soak.requireHashrateZeroed === true });
     // After a live stop the pause starts from another state, so only its metrics are kept.
     if (judged.maybeStop === null) {
       stopPhase.failures.filter((code) => !verdict.failures.includes(code)).forEach((code) => verdict.failures.push(code));

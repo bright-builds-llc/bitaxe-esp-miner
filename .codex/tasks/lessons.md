@@ -67,3 +67,10 @@
 2. What went wrong: A dated note added to the soak 005 evidence file, which a verified-revision authority pins by SHA-256, made `just parity` fail ("verified revision evidence ... changed"). The failure went unnoticed for hours because the local gate script grepped the parity output without checking its exit status.
 3. Preventive rule: Before editing anything under `docs/parity/evidence/`, search `docs/parity/verified-revisions/*.json` for its path. If an authority pins it, add a new sibling evidence file that references it instead. Gate scripts record every command's exit status, never only filtered output.
 4. Trigger signal: Editing an existing evidence file, `just parity` reporting a changed evidence digest, or a gate summary that prints output lines but no exit codes.
+
+## lesson-register-new-rust-modules-in-explicit-bazel-srcs | 2026-10-21
+
+1. Date: 2026-10-21
+2. What went wrong: A new session test module (`production_session/tests/mid_stop.rs`) passed under Cargo but failed `just test` with `E0583 file not found`, because `//crates/bitaxe-stratum:tests` lists its sources explicitly. The full gate had to run again.
+3. Preventive rule: After adding any `.rs` file, `grep` the package's `BUILD.bazel` for a sibling file's path. If the target lists sources explicitly, add the new file in the same change and build that Bazel target before the full gate.
+4. Trigger signal: A new `mod <name>;` or `.rs` file next to siblings named in a `srcs = [...]` list, or Cargo passing while `just test` reports `FAILED TO BUILD`.

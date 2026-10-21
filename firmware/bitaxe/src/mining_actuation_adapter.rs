@@ -26,7 +26,7 @@ use bitaxe_stratum::v1::production_session::{
 use crate::mining_actuation::{
     execute_preparation, execute_safe_stop_with_progress, MiningActuationBackend,
     PreparationExecutionFailure, PreparationStep, SafeShutdownFailure, SafeShutdownStep,
-    CORE_VOLTAGE_STABILIZATION_MS,
+    COOLING_PROOF_TIMEOUT_MS, CORE_VOLTAGE_STABILIZATION_MS,
 };
 use crate::safety_adapter::{
     FanDutyPercent, PendingSafetyActuation, SafetyActuationCommand, SafetyActuationPollOutcome,
@@ -36,10 +36,10 @@ use crate::safety_adapter::{
 mod clock;
 use clock::ProductionClock;
 mod live;
+mod polled_stop;
 
 const FAN_PROOF_TIMEOUT_MS: u64 = 3_000;
 const FAN_PROOF_POLL_MS: u64 = 50;
-const COOLING_PROOF_TIMEOUT_MS: u64 = 120_000;
 const COOLING_PROOF_POLL_MS: u64 = 500;
 const SAFE_COOLING_THRESHOLD_C: f64 = 45.0;
 
@@ -396,26 +396,10 @@ impl Ultra205MiningActuationAdapter {
         &mut self,
         progress: &mut dyn FnMut(SafeShutdownStep),
     ) -> Result<(), MiningActuationAdapterError> {
-        if !self.cooling_fan_full_applied {
-            return Err(MiningActuationAdapterError::CoolingProofRequired);
-        }
-        let started_at_ms = self
-            .maybe_cooling_started_at_ms
-            .ok_or(MiningActuationAdapterError::CoolingProofRequired)?;
+        self.cooling_window_started_at_ms()?;
         let deadline_ms = crate::runtime_uptime::millis().saturating_add(COOLING_PROOF_TIMEOUT_MS);
         loop {
-            let observations = crate::safety_adapter::observation_snapshot();
-            let maybe_temperature = observations.chip_temp_celsius.maybe_last_good();
-            if observations
-                .is_ultra_205_mining_safe_at(MonotonicMillis::new(crate::runtime_uptime::millis()))
-                && observations.chip_temp_celsius.is_fresh()
-                && maybe_temperature.is_some_and(|sample| {
-                    sample.acquired_at().get() > started_at_ms
-                        && sample.value().is_finite()
-                        && *sample.value() <= SAFE_COOLING_THRESHOLD_C
-                })
-            {
-                self.cooling_proven = true;
+            if self.observe_cooling_proof() {
                 return Ok(());
             }
             if crate::runtime_uptime::millis() >= deadline_ms {

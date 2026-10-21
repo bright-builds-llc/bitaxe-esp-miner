@@ -48,6 +48,11 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   only from `active` to `stopping` to `paused`, show `stopping` at least
   once, and never read `active` while fresh power shows the ASIC idle
   (5 W or less). Before the fix it read `active` there for 13-18 s.
+- `stopping-002` repeats `stopping-001` on the polled cooling proof
+  (ADR-0016), owned by `task-safe-stop-polled-cooling`. Its enable line is
+  `Ultra 205 polled cooling stopping check hardware: enabled.` Every
+  `stopping` sample after the first must also read a zero hashrate, not
+  the value frozen at the stop (`stop_hashrate_frozen`).
 - `boot-resume-001` is the boot-resume check, owned by
   `task-local-mining-boot-resume`. Its enable line is `Ultra 205 local mining
   boot resume check hardware: enabled.` See [Boot-resume

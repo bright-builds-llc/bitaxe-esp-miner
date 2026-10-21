@@ -15,7 +15,8 @@ const sample = (atMs, miningActivity, powerW, fresh = FRESH) => ({ atMs, miningA
  * A fake device whose pause idles the ASIC at once, then confirms the stop after `stopMs`;
  * meanwhile it reads `during` (`stopping` as fixed, `active` as before the fix).
  */
-function fakeDevice({ during = "stopping", stopMs = 14_000, loseFirstPauseResponse = false, startAfterMs = 4000 } = {}) {
+function fakeDevice({ during = "stopping", stopMs = 14_000, loseFirstPauseResponse = false, startAfterMs = 4000,
+  frozenHashrate = false } = {}) {
   const clock = { now: 0 };
   const state = { paused: true, resumedAt: null, pausedAt: null, pool: {}, calls: [] };
   const activity = () => {
@@ -28,7 +29,7 @@ function fakeDevice({ during = "stopping", stopMs = 14_000, loseFirstPauseRespon
     return {
       sourceCommit: EXPECTED.firmwareCommit, appElfSha256: EXPECTED.appElfSha256, bootOrdinal: EXPECTED.bootOrdinal,
       bootSession: "s".repeat(32), miningPaused: state.paused, miningActivity, startMiningOnBoot: false,
-      hashRate: hashing ? 500 : 0, sharesAccepted: hashing ? Math.floor((clock.now - state.resumedAt) / 30_000) : 0, sharesRejected: 0,
+      hashRate: hashing || (frozenHashrate && miningActivity === "stopping") ? 500 : 0, sharesAccepted: hashing ? Math.floor((clock.now - state.resumedAt) / 30_000) : 0, sharesRejected: 0,
       temp: 55, vrTemp: 50, voltage: 5100, power: hashing ? 12 : 1, fanrpm: 4000, overheat_mode: 0, ...state.pool,
       powerStatus: { state: "fresh" }, voltageStatus: { state: "fresh" }, chipTempStatus: { state: "fresh" }, fanRpmStatus: { state: "fresh" },
     };
@@ -209,4 +210,47 @@ test("a status named like an object property is unexpected", () => {
   const { failures } = judgeStopPhase(samples);
   // Assert
   assert.deepEqual(failures, ["stop_unexpected_status"]);
+});
+
+test("stopping-002 passes when the hashrate reads zero while stopping", async () => {
+  // Arrange
+  const device = fakeDevice();
+  // Act
+  const { verdict } = await run(device, SOAKS["stopping-002"]);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.metrics.stop_hashrate_frozen_samples, 0);
+});
+
+test("stopping-002 fails on a hashrate frozen while stopping", async () => {
+  // Arrange: the owner blocked through the cooling proof, as before ADR-0016's polled proof.
+  const device = fakeDevice({ frozenHashrate: true });
+  // Act
+  const { verdict } = await run(device, SOAKS["stopping-002"]);
+  // Assert
+  assert.deepEqual(verdict.failures, ["stop_hashrate_frozen"]);
+});
+
+test("stopping-001 only measures a frozen hashrate", async () => {
+  // Arrange
+  const device = fakeDevice({ frozenHashrate: true });
+  // Act
+  const { verdict } = await run(device);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.ok(verdict.metrics.stop_hashrate_frozen_samples > 0);
+});
+
+test("the first stopping sample may still show the hashrate", () => {
+  // Arrange
+  const samples = [
+    { ...sample(0, "stopping", 10), hashRate: 430 },
+    { ...sample(2000, "stopping", 1), hashRate: 0 },
+    { ...sample(4000, "paused", 1), hashRate: 0 },
+  ];
+  // Act
+  const { failures, metrics } = judgeStopPhase(samples, { requireHashrateZeroed: true });
+  // Assert
+  assert.deepEqual(failures, []);
+  assert.equal(metrics.stop_hashrate_frozen_samples, 0);
 });

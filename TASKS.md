@@ -1186,7 +1186,66 @@ Hardware verification: pending. Soak 004 of
 
 Completion review: pending.
 
+### task-safe-stop-polled-cooling | 2026-10-21 | Poll the terminal safe-stop's cooling proof instead of blocking the owner
+
+Owner decision 2026-10-21 ("make the cooling wait non-blocking"). A
+terminal safe-stop blocked the production owner thread for up to 120 s
+while the board cooled. The hashrate froze (429 GH/s through the stopping
+check), the inbox waited, and Gate requests timed out. Power is already
+off before that wait, which only proves cooling. Plan:
+`delightful-foraging-quill` (owner approved).
+
+- [x] `bitaxe-runtime`: `begin_safe_stop_with_progress` and
+      `poll_cooling_proof` (`mining_actuation/polled_stop.rs`). The steps,
+      their order, the earliest-failure rule and the 120 s bound are the
+      blocking plan's. A resumable pause completes at once. Tests.
+- [x] Adapter: one cooling predicate shared by the blocking wait and the
+      poll (`mining_actuation_adapter/polled_stop.rs`).
+- [x] Owner:
+  - the stop's power-down runs in the effect arm;
+  - the loop polls the proof each tick (watchdog subphase 24);
+  - no idle fan grant while a stop is pending;
+  - each loop exit finishes a pending stop first
+    (`production_mining_session/safe_stop.rs`, `owner_loop.rs`).
+- [x] Session: the stop's purpose is fixed at emission. A pause that
+      arrives while a terminal stop cools no longer re-arms the lease.
+      Regression tests (`tests/mid_stop.rs`).
+- [x] Source pins, the ADR-0016 amendment, and `--soak stopping-002`
+      (README).
+- [x] Full gate, independent review, commit and push.
+- [ ] Hardware run under the contract below; evidence, review and record.
+
+Polled cooling stopping check contract (attempt ordinals 001 onward). The
+stopping check contract (archived `task-mining-activity-stopping`) applies
+except as stated.
+- **Objective** (`--soak stopping-002`, production firmware): as
+  `stopping-001`. In addition, every `stopping` sample after the first
+  reads a zero hashrate (`stop_hashrate_frozen`). The evidence records the
+  chip temperature at the first `paused` sample; the judge does not check it.
+- **Package:** a fresh production package at the clean, pushed HEAD
+  carrying this contract and the polled proof, installed state-preserving
+  from the built manifest.
+- **Commands:** as `stopping-001`, with `--soak stopping-002`, detached in
+  their own session.
+- **Allowed and prohibited effects, evidence, recovery and accepted
+  outcomes:** as `stopping-001`.
+
+Ultra 205 polled cooling stopping check hardware: enabled.
+
 ## Future
+
+### task-preparation-rollback-cooling-watchdog | 2026-10-21 | Feed the watchdog through a preparation rollback's cooling proof
+
+Found while planning `task-safe-stop-polled-cooling`. When preparation
+fails, `execute_preparation` rolls back through `execute_safe_shutdown`,
+which reaches the blocking cooling proof (up to 120 s) without progress
+callbacks, so the owner feeds no watchdog meanwhile. The ESP-IDF default
+task watchdog is 5 s. Polled stops do not change this path.
+
+- [ ] Confirm whether the owner's task watchdog subscription can expire
+      during a rollback's cooling proof, from source and a host test.
+- [ ] If so, give the rollback progress callbacks or reuse the polled stop,
+      keeping the original preparation failure primary.
 
 ### task-device-response-time-measurement | 2026-10-21 | Explain the slower HTTP responses since the PSRAM atomics fix
 

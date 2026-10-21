@@ -72,6 +72,7 @@ rust_library(
         "src/v1/production_session/tests/job_transition.rs",
         "src/v1/production_session/tests/lifecycle.rs",
         "src/v1/production_session/tests/local.rs",
+        "src/v1/production_session/tests/mid_stop.rs",
         "src/v1/production_session/tests/difficulty_hint.rs",
         "src/v1/production_session/tests/restart.rs",
         "src/v1/production_session/tests/share_counters.rs",

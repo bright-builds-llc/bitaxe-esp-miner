@@ -23,6 +23,8 @@
  *   minutes. Outages are tolerated as in soak 002, in the local phases only.
  * - Stopping check 001 (`stopping.mjs`) mines 3 minutes, then pauses: every sample until the stop
  *   confirms must read `active`, then `stopping`, then `paused`, never `active` at idle power.
+ * - Stopping check 002 repeats it on the polled cooling proof (ADR-0016): the hashrate must also
+ *   read zero while stopping, not the value frozen at the stop.
  * - Boot resume check 001 (`boot-resume.mjs`) turns mining on boot on and restarts: mining must
  *   come back with no resume command and accumulate 5 minutes within 15 of first seeing the boot,
  *   outages tolerated as in soak 002. It then turns mining on boot off, pauses and restarts: the
@@ -64,6 +66,9 @@ export const SOAKS = Object.freeze({
   "stopping-001": Object.freeze({ id: "stopping-001", kind: "stopping", task: "task-mining-activity-stopping",
     activeMs: 3 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
     enableLine: "Ultra 205 mining activity stopping check hardware: enabled." }),
+  "stopping-002": Object.freeze({ id: "stopping-002", kind: "stopping", task: "task-safe-stop-polled-cooling",
+    activeMs: 3 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
+    requireHashrateZeroed: true, enableLine: "Ultra 205 polled cooling stopping check hardware: enabled." }),
   "boot-resume-001": Object.freeze({ id: "boot-resume-001", kind: "boot-resume", task: "task-local-mining-boot-resume",
     activeMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
     enableLine: "Ultra 205 local mining boot resume check hardware: enabled." }),

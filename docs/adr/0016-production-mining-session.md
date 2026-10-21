@@ -63,6 +63,23 @@ unchanged.
     recovery.
   - A safe-stop that fails publishes `safe_blocked` with reason
     `hardware_safe_stop_failed` at once, never a lasting `stopping`.
+- Amendment (2026-10-21, owner decision): the owner no longer blocks on a
+  terminal stop's cooling proof.
+  - The stop's power-down (steps 1-6) runs at once. The owner loop then checks
+    the proof once per tick, and the paused fan duty follows the proof, as
+    before. The steps, their order, the earliest-failure rule and the 120 s
+    bound are unchanged. A resumable pause has no proof and still completes
+    at once.
+  - While the board cools, the owner keeps serving its inbox, readiness,
+    hashrate monitor and campaign status. The fan stays at 100 %: no idle fan
+    grant is made while a stop is pending.
+  - Gate Start, Renew and cooling requests are rejected at once instead of
+    timing out.
+  - The terminal snapshot is still published only after the stop completes.
+    Events handled meanwhile cannot change the stop: its purpose is fixed
+    when it is emitted, so a pause that arrives while a terminal stop cools
+    leaves the lease consumed.
+  - Before the owner exits, it finishes a pending stop.
 - Production recovery policy is virtual-time testable without hardware or pool
   access.
 - ASIC dispatch and polling effects carry their pool generation and valid-job

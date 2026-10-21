@@ -20,6 +20,7 @@ mod qualification;
 mod readiness;
 mod readiness_trace;
 pub(crate) mod revocation;
+mod safe_stop;
 mod scoreboard;
 pub(crate) mod shutdown_budget;
 mod status_publication;
@@ -117,6 +118,7 @@ struct OrdinaryEspProductionSessionAdapter {
     maybe_bwg_session: Option<bwg::OwnerSession>,
     maybe_bwg_reply: Option<bwg::PendingReply>,
     maybe_cooling_generation: Option<revocation::WorkerGeneration>,
+    maybe_pending_safe_stop: Option<safe_stop::PendingSafeStop>,
     live_hardware: live_hardware::LiveHardwareOwner,
     local: local_owner::LocalOwner,
     boot_guard: crate::boot_guard::BootGuardShell,
@@ -182,6 +184,7 @@ impl OrdinaryEspProductionSessionAdapter {
             maybe_bwg_session: None,
             maybe_bwg_reply: None,
             maybe_cooling_generation: None,
+            maybe_pending_safe_stop: None,
             live_hardware: live_hardware::LiveHardwareOwner::default(),
             local: local_owner::LocalOwner::default(),
             boot_guard: crate::boot_guard::BootGuardShell::default(),
@@ -242,6 +245,7 @@ impl OrdinaryEspProductionSessionAdapter {
                         );
                     }
                 } else if revocation::permits(None)
+                    && !self.safe_stop_pending()
                     && cooling_core::baseline_safe(
                         &crate::safety_adapter::observation_snapshot(),
                         now_ms,
@@ -507,28 +511,8 @@ impl OrdinaryEspProductionSessionAdapter {
                     status.note_safe_stop_pending();
                 }
                 let mut safe_stop_progress = |step| progress(safe_stop_subphase(step));
-                match self
-                    .mining_actuation
-                    .safe_stop(purpose, &mut safe_stop_progress)
-                {
-                    Ok(()) => {
-                        Some(ProductionSessionEvent::HardwareSafeStopConfirmed { lease_id, now_ms })
-                    }
-                    Err(failure) => {
-                        admission_diagnostics::fail(admission_diagnostics::Failure::Cleanup);
-                        log::error!(
-                            "production_mining_session=fail_closed action=hardware_safe_stop failed_step={:?} category={}",
-                            failure.step(),
-                            failure.source().category(),
-                        );
-                        Some(ProductionSessionEvent::EffectFailed {
-                            maybe_pool: None,
-                            reason:
-                                bitaxe_stratum::v1::production_session::HARDWARE_SAFE_STOP_FAILED,
-                            now_ms,
-                        })
-                    }
-                }
+                // A terminal stop returns once power is off; the owner loop polls its cooling proof.
+                self.begin_hardware_safe_stop(lease_id, purpose, now_ms, &mut safe_stop_progress)
             }
             ProductionSessionEffect::RecordScoreboard { candidate } => {
                 if let Some(session) = self.maybe_bwg_session.as_mut() {

@@ -3,6 +3,7 @@ use crate::v1::production_session::campaign::{
     MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState, MiningCampaignStopCondition,
     MiningHardwareState,
 };
+use crate::v1::production_session::types::HardwareSafeStopPurpose;
 use crate::v1::recovery_policy::{ProductionSessionBlocker, ProductionSessionPhase};
 
 impl ProductionMiningSession {
@@ -87,7 +88,9 @@ impl ProductionMiningSession {
             return;
         }
         self.hardware_state = MiningHardwareState::Stopped;
-        if self.resumable_pause_pending {
+        let terminal_in_flight =
+            self.maybe_safe_stop_purpose == Some(HardwareSafeStopPurpose::Terminal);
+        if self.resumable_pause_pending && !terminal_in_flight {
             if let Some(active_since_ms) = self.maybe_active_since_ms.take() {
                 self.resumable_active_ms = self
                     .resumable_active_ms
@@ -103,6 +106,8 @@ impl ProductionMiningSession {
     }
 
     pub(super) fn finish_terminal_safe_stop(&mut self, lease_id: MiningCampaignLeaseId) {
+        // A pause that arrived while the stop cooled must not choose the next lease's stop.
+        self.resumable_pause_pending = false;
         self.maybe_pool_set = None;
         self.recovery.discard_pool_configuration();
         self.primary = None;

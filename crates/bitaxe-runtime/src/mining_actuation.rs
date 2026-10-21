@@ -7,6 +7,12 @@
 use bitaxe_config::{AsicFrequencyMhz, CoreVoltageMv};
 use bitaxe_stratum::v1::production_session::{HardwareSafeStopPurpose, MiningHardwareProfile};
 
+mod polled_stop;
+pub use polled_stop::{
+    begin_safe_stop_with_progress, poll_cooling_proof, CoolingProofBackend, PendingCoolingProof,
+    SafeStopProgress, COOLING_PROOF_TIMEOUT_MS,
+};
+
 /// Required stabilization interval after applying the core-voltage setpoint.
 pub const CORE_VOLTAGE_STABILIZATION_MS: u16 = 500;
 

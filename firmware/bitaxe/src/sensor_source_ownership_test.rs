@@ -13,6 +13,8 @@ const I2C_RETRY_SOURCE: &str = include_str!("safety_adapter/i2c_retry.rs");
 const EMC2101_SOURCE: &str = include_str!("safety_adapter/emc2101.rs");
 const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
+const POLLED_STOP_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter/polled_stop.rs");
+const PRODUCTION_SAFE_STOP_SOURCE: &str = include_str!("production_mining_session/safe_stop.rs");
 const PRODUCTION_ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const BWG_SOURCE: &str = include_str!("production_mining_session/bwg.rs");
 const LIVE_HARDWARE_SOURCE: &str = include_str!("production_mining_session/live_hardware.rs");
@@ -130,7 +132,7 @@ fn a_lease_safe_stop_revokes_then_takes_the_fan_before_its_first_fan_command() {
         .find("set_fan_controller_owner(None);")
         .expect("owner cleared");
     let stop = effect
-        .find(".safe_stop(purpose")
+        .find(".begin_hardware_safe_stop(lease_id, purpose")
         .expect("ordered safe-stop");
 
     // Assert: a revoked lease's controller writes are refused before safe-stop's 100%.
@@ -424,11 +426,30 @@ fn production_safe_stop_binds_the_typed_pause_purpose_without_sensor_waiting() {
     // Arrange / Act / Assert
     assert!(PRODUCTION_SESSION_SOURCE
         .contains("ProductionSessionEffect::SafeStopHardware { lease_id, purpose }"));
-    assert!(PRODUCTION_SESSION_SOURCE.contains(".safe_stop(purpose, &mut safe_stop_progress)"));
+    assert!(PRODUCTION_SESSION_SOURCE
+        .contains(".begin_hardware_safe_stop(lease_id, purpose, now_ms, &mut safe_stop_progress)"));
+    assert!(PRODUCTION_SAFE_STOP_SOURCE.contains(".begin_safe_stop(purpose, progress)"));
+    assert!(POLLED_STOP_ADAPTER_SOURCE.contains("begin_safe_stop_with_progress(self, purpose"));
     assert!(MINING_ACTUATION_ADAPTER_SOURCE
         .contains("execute_safe_stop_with_progress(self, purpose, progress)"));
     assert!(MINING_ACTUATION_ADAPTER_SOURCE
         .contains("self.wait_for_cooling_proof_with_progress(progress)"));
+}
+
+#[test]
+fn a_cooling_stop_keeps_the_fan_and_finishes_before_the_owner_exits() {
+    // Arrange
+    let finish = "finish_pending_safe_stop(&mut session, &mut adapter, &mut task_watchdog);";
+    let exits = PRODUCTION_OWNER_LOOP_SOURCE
+        .matches("record_owner_phase(TaskWatchdogOwnerPhase::Shutdown);")
+        .count();
+
+    // Act
+    let finishes = PRODUCTION_OWNER_LOOP_SOURCE.matches(finish).count();
+
+    // Assert: no idle fan grant while a stop cools, and every exit finishes the stop first.
+    assert!(PRODUCTION_SESSION_SOURCE.contains("&& !self.safe_stop_pending()"));
+    assert_eq!(finishes, exits);
 }
 
 #[test]
@@ -538,7 +559,7 @@ fn safe_stop_takes_the_hardware_from_the_live_owner_first() {
         .find("self.live_hardware.stopped();")
         .expect("live owner stopped");
     let stop = effect
-        .find(".safe_stop(purpose")
+        .find(".begin_hardware_safe_stop(lease_id, purpose")
         .expect("ordered safe-stop");
 
     // Assert

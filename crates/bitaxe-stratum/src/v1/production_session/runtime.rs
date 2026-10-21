@@ -57,6 +57,9 @@ pub struct ProductionMiningSession {
     pub(super) resumable_active_ms: u64,
     pub(super) maybe_active_since_ms: Option<u64>,
     pub(super) resumable_pause_pending: bool,
+    /// The purpose of the safe-stop in flight, fixed when it is emitted. Events that
+    /// arrive while a terminal stop cools must not turn it into a resumable pause.
+    pub(super) maybe_safe_stop_purpose: Option<HardwareSafeStopPurpose>,
     /// Work reached the ASIC since the last power-up; a local run uses it.
     pub(super) dispatched_since_power_up: bool,
     pub(super) job_transition: JobTransitionTracker,
@@ -124,6 +127,7 @@ impl ProductionMiningSession {
             resumable_active_ms: 0,
             maybe_active_since_ms: None,
             resumable_pause_pending: false,
+            maybe_safe_stop_purpose: None,
             dispatched_since_power_up: false,
             job_transition: JobTransitionTracker::default(),
             asic_diagnostics: AsicBridgeDiagnosticsTracker::default(),
@@ -533,6 +537,7 @@ impl ProductionMiningSession {
         } else {
             HardwareSafeStopPurpose::Terminal
         };
+        self.maybe_safe_stop_purpose = Some(purpose);
         effects.push(ProductionSessionEffect::SafeStopHardware { lease_id, purpose });
         Ok(())
     }

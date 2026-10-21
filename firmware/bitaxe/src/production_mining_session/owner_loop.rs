@@ -39,6 +39,9 @@ pub(super) fn run_owner(
                 revocation::finish_shutdown(generation);
             }
         }
+        if adapter.safe_stop_pending() {
+            poll_pending_safe_stop(&mut session, &mut adapter, &mut task_watchdog);
+        }
         let another_owner_mines = adapter.maybe_bwg_session.is_some()
             || adapter
                 .maybe_campaign_status
@@ -160,6 +163,7 @@ pub(super) fn run_owner(
                     event,
                     now_ms,
                 );
+                finish_pending_safe_stop(&mut session, &mut adapter, &mut task_watchdog);
                 record_owner_phase(TaskWatchdogOwnerPhase::PublishingCampaignStatus);
                 let _ = adapter.publish_campaign_status(&session.snapshot(), now_ms);
                 record_owner_phase(TaskWatchdogOwnerPhase::Shutdown);
@@ -198,6 +202,7 @@ pub(super) fn run_owner(
                 event,
                 now_ms,
             );
+            finish_pending_safe_stop(&mut session, &mut adapter, &mut task_watchdog);
             record_owner_phase(TaskWatchdogOwnerPhase::Shutdown);
             return;
         }
@@ -206,11 +211,53 @@ pub(super) fn run_owner(
         adapter.service_hashrate_monitor(&snapshot, now_ms);
         adapter.service_live_hardware_settings(&snapshot, now_ms);
         if shutdown_requested {
+            finish_pending_safe_stop(&mut session, &mut adapter, &mut task_watchdog);
             record_owner_phase(TaskWatchdogOwnerPhase::Shutdown);
             return;
         }
     }
 }
+
+/// Checks a terminal stop's cooling proof once, and drives its outcome when it completes.
+// Kept out of line, so the owner entry frame stays within its audited budget.
+#[inline(never)]
+fn poll_pending_safe_stop(
+    session: &mut ProductionMiningSession,
+    adapter: &mut OrdinaryEspProductionSessionAdapter,
+    task_watchdog: &mut watchdog::ProductionTaskWatchdog,
+) {
+    let now_ms = crate::runtime_uptime::millis();
+    task_watchdog.feed_owner_progress(
+        now_ms,
+        TaskWatchdogOwnerSubphase::SafeStopWaitForCoolingProof,
+    );
+    let maybe_event = adapter.poll_pending_safe_stop(&mut |step| {
+        task_watchdog
+            .feed_owner_progress(crate::runtime_uptime::millis(), safe_stop_subphase(step));
+    });
+    if let Some(event) = maybe_event {
+        drive_session(session, adapter, task_watchdog, event, now_ms);
+    }
+}
+
+/// Completes a cooling stop before the owner exits, so it never leaves the board mid-stop.
+/// The proof's own 120 s bound ends the wait.
+#[inline(never)]
+fn finish_pending_safe_stop(
+    session: &mut ProductionMiningSession,
+    adapter: &mut OrdinaryEspProductionSessionAdapter,
+    task_watchdog: &mut watchdog::ProductionTaskWatchdog,
+) {
+    while adapter.safe_stop_pending() {
+        poll_pending_safe_stop(session, adapter, task_watchdog);
+        if adapter.safe_stop_pending() {
+            std::thread::sleep(SAFE_STOP_DRAIN_POLL);
+        }
+    }
+}
+
+/// The blocking wait's poll interval, used only to finish a stop before the owner exits.
+const SAFE_STOP_DRAIN_POLL: Duration = Duration::from_millis(500);
 
 fn record_owner_phase(phase: TaskWatchdogOwnerPhase) {
     crate::task_watchdog_observation::record_owner_phase(phase);
