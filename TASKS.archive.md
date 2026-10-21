@@ -33599,3 +33599,86 @@ Residual risks:
   now on, so they do not compare directly with earlier runs.
 - The firmware status reading `active` while the ASIC idles is unchanged;
   a status that tracked the ASIC would remove the gap at its source.
+
+### task-local-mining-atomics-soak | 2026-10-20 | Measure the PSRAM atomics fix over a 4-hour soak
+
+Owner decision 2026-10-20: "Yes, 4-hour soak first". ADR-0039 turned every
+Rust atomic into a libcall; a PSRAM one takes a shared spinlock.
+Boot-resume attempt 002 showed no hashrate loss over 5 minutes. This soak
+measures it over hours, and runs before the overheat check.
+
+- [x] `--soak 006`, owned by this task; README.
+- [x] Full gate, independent review, commit and push (`f79a5a8e`).
+- [x] Hardware run under the contract below; evidence, review and record.
+
+Soak 006 contract (attempt ordinals 001 onward). Soak 003's contract
+(archived `task-local-mining-evidence-soaks`) applies except as stated.
+- **Objective:**
+  - 14,400 s (4 hours) of hashing accumulated within 300 minutes of the
+    resume, judged by the hashing-aware rules (`05f1772c`);
+  - every outage recovered within 60 s;
+  - at least one nonzero hashrate, at least one accepted share, no reset,
+    the live limits, and the powered-down proof after the pause.
+- **Measured against soak 005** (`be2ad02a`, before the fix), over each
+  run's first 4 hours of hashing, from 60 s after its first hashing sample:
+  - hashrate percentiles and median power;
+  - response time, estimated for both journals as each sample interval
+    minus the 2 s sleep. Only pairs of hashing samples at most 10 s apart
+    count, and none next to a break-log read. Percentiles are reported,
+    with intervals over 4 s apart, and RSSI beside them. It is a host-side
+    proxy (round trip plus host work), not a device measurement;
+  - `status_only_samples` and outages.
+- **Run deadline:** 300 minutes after the resume, on the monotonic clock.
+  Mining past it is prohibited.
+- **Package:** a fresh package at the clean, pushed HEAD carrying this
+  contract (it contains the fix `6f9a77d8`), installed state-preserving.
+  Preserve the ELF and map privately.
+- **Commands:**
+  - `just detect-ultra205 --port <port>` and `espflash board-info`;
+  - the install, then the endpoint handoff;
+  - `just local-mining-soak preflight --soak 006 ...`, then
+    `nohup perl -MPOSIX=setsid -e 'setsid; exec @ARGV' -- caffeinate -is just
+    local-mining-soak run ...`, detached in its own session, on AC power
+    with the lid open;
+  - a final named-port detector and a serial-holder check.
+- **Afterwards:** paused, mining on boot off, the owner's pool saved.
+- **Evidence:** besides the numeric categories of `result.json`, committed
+  summaries may hold value-free numeric aggregates of both journals
+  (percentiles, counts, durations), after `just verify-redaction`.
+- **Unchanged:** the private input, allowed and prohibited effects, live
+  stops (an outage past 60 s, or unreachable for 60 s), evidence, recovery
+  (including notifying the owner when the device may still be mining), the
+  retry bound and the accepted outcomes. Under the owner's re-run rule, a
+  failure followed by a root-cause fix is re-run without asking.
+
+Attempt 001 result (2026-10-21): `passed`, `complete`. An independent
+review recomputed the verdict and the comparison from the private journals
+and agrees, after two corrections to the summary.
+- Summary: `docs/parity/evidence/20261021-ultra205-local-mining-soak-006.md`.
+- Firmware `78bcc988` (contains the fix), installed state-preserving; the
+  handoff succeeded on its first attempt.
+- Mining: 14,402,050 ms of hashing in one unbroken span, no outages, Wi-Fi
+  connected throughout, 424 accepted shares and 0 rejected, within every
+  live limit. Afterwards: paused, powered down, mining on boot off, the
+  same device, no serial holder.
+- Against soak 005:
+  - hashrate p50 432 GH/s in both;
+  - median power 12.20 W against 12.17 W;
+  - the response-time proxy rose from p50 77 / p95 104 ms to 90 / 152 ms,
+    with an unchanged minimum. The visible host load does not explain it
+    (the proxy was no lower after the builds stopped). The fix is a
+    plausible cause; it is unproven either way.
+- The enable line was removed.
+
+Verification:
+- `result.json` `passed`; the independent review agrees.
+- The soak tool change passed the full gate and a review before the run.
+
+Completion review (2026-10-21):
+- The PSRAM atomics fix costs no hashing over 4 hours.
+- Request handling may have slowed by tens of milliseconds. That is
+  harmless for mining, but unexplained.
+
+Residual risks:
+- The response-time rise is unexplained. A device-side measurement of
+  HTTP request handling would settle whether the fix causes it.
