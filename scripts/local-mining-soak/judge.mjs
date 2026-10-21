@@ -21,6 +21,8 @@
  * - Lease check 001 (`lease.mjs`) mines locally for 5 minutes, then a Gate lease interrupts local
  *   mining. Local mining must come back within 3 minutes of the lease's end and mine 5 more
  *   minutes. Outages are tolerated as in soak 002, in the local phases only.
+ * - Stopping check 001 (`stopping.mjs`) mines 3 minutes, then pauses: every sample until the stop
+ *   confirms must read `active`, then `stopping`, then `paused`, never `active` at idle power.
  * - Boot resume check 001 (`boot-resume.mjs`) turns mining on boot on and restarts: mining must
  *   come back with no resume command and accumulate 5 minutes within 15 of first seeing the boot,
  *   outages tolerated as in soak 002. It then turns mining on boot off, pauses and restarts: the
@@ -59,6 +61,9 @@ export const SOAKS = Object.freeze({
   "lease-001": Object.freeze({ id: "lease-001", kind: "lease", task: "task-handover-panic-diagnosis", activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true,
     maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 90 * 60_000, restoreBoundMs: 180_000,
     enableLine: "Ultra 205 lease interruption check hardware: enabled." }),
+  "stopping-001": Object.freeze({ id: "stopping-001", kind: "stopping", task: "task-mining-activity-stopping",
+    activeMs: 3 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
+    enableLine: "Ultra 205 mining activity stopping check hardware: enabled." }),
   "boot-resume-001": Object.freeze({ id: "boot-resume-001", kind: "boot-resume", task: "task-local-mining-boot-resume",
     activeMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
     enableLine: "Ultra 205 local mining boot resume check hardware: enabled." }),
@@ -126,8 +131,10 @@ export const readingsFresh = (sample) => Object.values(sample.fresh).every(Boole
  * ASIC already idles.
  */
 export const hardwareStopped = (sample) =>
-  sample.miningPaused && !mining(sample) && sample.miningActivity !== "stopping" && sample.fresh.power && sample.powerW !== null &&
-  sample.powerW <= IDLE_POWER_W;
+  sample.miningPaused && !mining(sample) && sample.miningActivity !== "stopping" && idlePower(sample);
+
+/** Whether a fresh input power reading shows the ASIC idle. */
+export const idlePower = (sample) => sample.fresh.power && sample.powerW !== null && sample.powerW <= IDLE_POWER_W;
 
 /** Whether the device reports active mining in this sample. The live limits key on this. */
 export const mining = (sample) => sample.miningActivity === "active" && !sample.miningPaused;

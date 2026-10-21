@@ -40,6 +40,14 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   enabled.` The lowered step (385 MHz) would leave the catalog, so the
   trip must leave the device paused by itself (`pauseReason` `overheat`),
   with no restart.
+- `stopping-001` is the stopping check, owned by
+  `task-mining-activity-stopping`. Its enable line is `Ultra 205 mining
+  activity stopping check hardware: enabled.` It mines 3 minutes (outages
+  tolerated as in soak 002), then pauses. It journals every sample from
+  the pause until the stop confirms (`stop_sample`). The status must move
+  only from `active` to `stopping` to `paused`, show `stopping` at least
+  once, and never read `active` while fresh power shows the ASIC idle
+  (5 W or less). Before the fix it read `active` there for 13-18 s.
 - `boot-resume-001` is the boot-resume check, owned by
   `task-local-mining-boot-resume`. Its enable line is `Ultra 205 local mining
   boot resume check hardware: enabled.` See [Boot-resume

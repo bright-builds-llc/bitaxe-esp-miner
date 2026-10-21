@@ -2053,6 +2053,7 @@ js_binary(
     "pool",
     "run",
     "stopped-proof",
+    "stopping",
 ]]
 
 js_library(

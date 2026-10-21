@@ -9,6 +9,7 @@ import { activeSpanMs, hardwareStopped, hashing, judge, liveStop, mining, mining
 import { judgeLease, leasePhases } from "./lease.mjs";
 import { handoverPhases, judgeHandover } from "./handover.mjs";
 import { breakWatcher } from "./break-log.mjs";
+import { judgeStopPhase } from "./stopping.mjs";
 import { poolSaved } from "./pool.mjs";
 
 /** The device stays unreachable this long before the soak stops. */
@@ -45,9 +46,20 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
   // An outage that never recovered still gets its log, before the pause; this never throws.
   if (maybeStop !== null) await watcher?.stopped(now());
   if (maybeStop !== null) await note({ event: "live_stop", code: maybeStop });
-  const maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
+  // The stopping check journals and judges every sample of the pause.
+  const maybeStopSamples = soak.kind === "stopping" ? [] : null;
+  const maybeFinal = await pauseAndConfirm({ client, now, sleep, note, maybeStopSamples });
   const judged = { baseline, samples, maybeFinal, soak, maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) };
   const verdict = soak.kind === "lease" ? judgeLease({ ...judged, marks }) : soak.kind === "handover" ? judgeHandover(judged) : judge(judged);
+  if (maybeStopSamples !== null) {
+    const stopPhase = judgeStopPhase(maybeStopSamples);
+    // After a live stop the pause starts from another state, so only its metrics are kept.
+    if (judged.maybeStop === null) {
+      stopPhase.failures.filter((code) => !verdict.failures.includes(code)).forEach((code) => verdict.failures.push(code));
+    }
+    Object.assign(verdict.metrics, stopPhase.metrics);
+    verdict.result = verdict.failures.length === 0 ? "passed" : "failed";
+  }
   await note({ event: "verdict", result: verdict.result, failures: verdict.failures });
   return verdict;
 }
@@ -134,9 +146,11 @@ export async function sampleLoop({ client, baseline, samples, resumedAt, now, sl
 
 /**
  * Pauses, then waits for the ordered safe-stop: two samples in a row with the ASIC shown powered
- * down. Never throws; the pause is retried while the allowance lasts.
+ * down. Never throws; the pause is retried while the allowance lasts. With `maybeStopSamples`,
+ * every sample from the first pause attempt on is journaled and kept there: a request whose
+ * response is lost may still have paused the device.
  */
-export async function pauseAndConfirm({ client, now, sleep, note }) {
+export async function pauseAndConfirm({ client, now, sleep, note, maybeStopSamples = null }) {
   const pausedAt = now();
   let pauseSent = false, maybeLastPauseAt = null, maybeStopped = null;
   while (now() - pausedAt <= STOP_ALLOWANCE_MS) {
@@ -148,6 +162,7 @@ export async function pauseAndConfirm({ client, now, sleep, note }) {
     }
     try {
       const sample = sampleFromInfo(await client.info(), now());
+      if (maybeLastPauseAt !== null && maybeStopSamples !== null) { maybeStopSamples.push(sample); await note({ event: "stop_sample", sample }); }
       if (pauseSent && hardwareStopped(sample)) {
         if (maybeStopped !== null) { await note({ event: "final", sample }); return sample; }
         maybeStopped = sample;
