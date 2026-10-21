@@ -34449,5 +34449,3 @@ tests, not by hardware.
 Residual risks: the original intermittent failure was not reproduced on
 hardware, so its cause stays unconfirmed. The retry and the failure
 records cover it if it recurs.
-
-## Future

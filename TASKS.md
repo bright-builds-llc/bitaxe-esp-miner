@@ -1106,10 +1106,28 @@ which reaches the blocking cooling proof (up to 120 s) without progress
 callbacks, so the owner feeds no watchdog meanwhile. The ESP-IDF default
 task watchdog is 5 s. Polled stops do not change this path.
 
-- [ ] Confirm whether the owner's task watchdog subscription can expire
+- [x] Confirm whether the owner's task watchdog subscription can expire
       during a rollback's cooling proof, from source and a host test.
 - [ ] If so, give the rollback progress callbacks or reuse the polled stop,
       keeping the original preparation failure primary.
+
+Findings (2026-10-21, source and today's kept hardware logs):
+- **Watchdog config:** the ESP-IDF task watchdog runs at 5 s with
+  `CONFIG_ESP_TASK_WDT_PANIC` unset. An unfed owner gets a console warning
+  and `runtime_health` reports `task_watchdog_reason=feed_stale`; the
+  board does not reset.
+- **The gap is wider than the rollback.** Every successful preparation
+  leaves the owner unfed for 9.3-10.1 s. All 89 `feed_stale` readings in
+  today's kept logs (with 12,729 `feed_fresh`) are in subphase
+  `effect_prepare_hardware`. The watchdog therefore fires at the start of
+  every local mining run.
+- **Cause:** `execute_preparation` and its rollback take no progress
+  callback. The safe-stop path has one, down to each ASIC action
+  (`execute_adapter_actions_on_state_with_progress`).
+- **A failed preparation's rollback** would add the frequency ramp (about
+  7 s) and up to 120 s of cooling, unfed.
+
+## Future
 
 ### task-device-response-time-measurement | 2026-10-21 | Explain the slower HTTP responses since the PSRAM atomics fix
 

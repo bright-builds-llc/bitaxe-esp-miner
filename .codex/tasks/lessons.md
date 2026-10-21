@@ -74,3 +74,10 @@
 2. What went wrong: A new session test module (`production_session/tests/mid_stop.rs`) passed under Cargo but failed `just test` with `E0583 file not found`, because `//crates/bitaxe-stratum:tests` lists its sources explicitly. The full gate had to run again.
 3. Preventive rule: After adding any `.rs` file, `grep` the package's `BUILD.bazel` for a sibling file's path. If the target lists sources explicitly, add the new file in the same change and build that Bazel target before the full gate.
 4. Trigger signal: A new `mod <name>;` or `.rs` file next to siblings named in a `srcs = [...]` list, or Cargo passing while `just test` reports `FAILED TO BUILD`.
+
+## lesson-bound-a-task-block-by-the-next-heading-of-any-level | 2026-10-21
+
+1. Date: 2026-10-21
+2. What went wrong: An archiving script took a task block from its `### ` heading to the next `### ` heading. The block was the last under `## Active`, so the `## Future` heading went into `TASKS.archive.md` with it. The future tasks then read as active until the loss was noticed while activating one of them.
+3. Preventive rule: End a task block at the next line starting with `## ` or `### `, whichever comes first. Before committing an archive move, check that the `## ` headings of `TASKS.md` are unchanged and that the moved text contains no `## ` line.
+4. Trigger signal: A script slices `TASKS.md` with `index('\n### ')`, or a `TASKS.md` diff removes a `## ` line.
