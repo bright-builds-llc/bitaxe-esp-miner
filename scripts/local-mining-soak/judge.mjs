@@ -15,6 +15,8 @@
  * - Overheat check 001 (`overheat.mjs`) needs the test-only firmware whose local trip is 55 C
  *   (ADR-0040). At 500 MHz / 1200 mV it must trip, cool, restart at 400 MHz / 1100 mV and mine
  *   5 minutes there, or trip again and pause itself; then the original settings come back.
+ * - Overheat check 002 starts at the default 485 MHz, so the lowered step leaves the catalog: the
+ *   trip must leave the device paused by itself, with no restart.
  * - Handover loop 001 (`handover.mjs`) counts 20 lease-free handovers, to reproduce a panic.
  * - Lease check 001 (`lease.mjs`) mines locally for 5 minutes, then a Gate lease interrupts local
  *   mining. Local mining must come back within 3 minutes of the lease's end and mine 5 more
@@ -42,7 +44,15 @@ export const SOAKS = Object.freeze({
     // A trip's ordered safe-stop can take up to 120 s before `overheat_mode` shows, so breaks get the
     // 180 s stop allowance; an unreachable device still stops it after 60 s.
     restartBoundMs: 10 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 180_000,
-    unreachableStopMs: 60_000, maybeDeadlineMs: 45 * 60_000, enableLine: "Ultra 205 local mining overheat check hardware: enabled." }),
+    unreachableStopMs: 60_000, maybeDeadlineMs: 45 * 60_000, enableLine: "Ultra 205 local mining overheat check hardware: enabled.",
+    outcomes: ["restarted", "restarted_then_stays_stopped"] }),
+  // From the default 485 MHz the lowered step would leave the catalog (400 MHz floor), so the trip
+  // must leave the device paused by itself, with no restart.
+  "overheat-002": Object.freeze({ id: "overheat-002", kind: "overheat", task: "task-local-mining-overheat-stays-stopped",
+    firmwareVariant: "overheat-trip-test", frequencyMhz: 485, coreVoltageMv: 1200, tripBoundMs: 10 * 60_000,
+    restartBoundMs: 10 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 180_000,
+    unreachableStopMs: 60_000, maybeDeadlineMs: 45 * 60_000,
+    enableLine: "Ultra 205 local mining overheat stays-stopped check hardware: enabled.", outcomes: ["stays_stopped"] }),
   "handover-001": Object.freeze({ id: "handover-001", kind: "handover", task: "task-handover-panic-diagnosis", cycles: 20, breakBoundMs: 10 * 60_000,
     unreachableStopMs: 60_000, requireHashrate: true, maybeMaximumOutageMs: null, maybeDeadlineMs: 150 * 60_000,
     enableLine: "Ultra 205 local mining handover loop hardware: enabled." }),

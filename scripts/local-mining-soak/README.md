@@ -34,6 +34,12 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   `task-local-mining-overheat-check`. Its enable line is `Ultra 205 local
   mining overheat check hardware: enabled.` It runs only on the test-only
   firmware variant. See [Overheat check](#overheat-check).
+- `overheat-002` is the same check from the default 485 MHz / 1200 mV,
+  owned by `task-local-mining-overheat-stays-stopped`. Its enable line is
+  `Ultra 205 local mining overheat stays-stopped check hardware:
+  enabled.` The lowered step (385 MHz) would leave the catalog, so the
+  trip must leave the device paused by itself (`pauseReason` `overheat`),
+  with no restart.
 - `boot-resume-001` is the boot-resume check, owned by
   `task-local-mining-boot-resume`. Its enable line is `Ultra 205 local mining
   boot resume check hardware: enabled.` See [Boot-resume

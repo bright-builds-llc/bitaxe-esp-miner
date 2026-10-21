@@ -1186,6 +1186,66 @@ Hardware verification: pending. Soak 004 of
 
 Completion review: pending.
 
+### task-local-mining-overheat-stays-stopped | 2026-10-21 | Check the overheat stop that stays stopped on hardware
+
+Owner approval 2026-10-21 ("please proceed with 1 and 2", item 2 being "Run
+the 'stays stopped' overheat path on hardware"). ADR-0038 decision 2: when
+the lowered pair would leave the catalog, the overheat stop stays stopped
+and the device pauses itself (`pauseReason` `overheat`) until the operator
+resumes. The archived `task-local-mining-overheat-check` showed the restart
+path on hardware; this path has unit and fake-device coverage only.
+
+- [x] `--soak overheat-002`: the overheat check from the default
+      485 MHz / 1200 mV, accepting only the `stays_stopped` outcome. Each
+      overheat soak now lists the outcomes it accepts. Tests and README.
+- [x] Full gate, independent review, commit and push.
+- [ ] Hardware: install the test variant, run, then reinstall production
+      and confirm it; evidence, review and record.
+
+Overheat stays-stopped contract (attempt ordinals 001 onward). The overheat
+check contract (archived `task-local-mining-overheat-check`) applies except
+as stated.
+- **Objective** (`--soak overheat-002`, the test variant only):
+  1. Admit the paused baseline, save the pool, keep 485 MHz / 1200 mV
+     (saved again and read back), and resume.
+  2. The lowered trip fires within 10 minutes of hashing. The retained
+     revocation detail names no failing fact. The fan goes manual 100%.
+  3. With no restart, the device pauses itself (`pauseReason` `overheat`)
+     within 10 minutes of the trip, after at least 28 s of sampled
+     readings at 45 C or less. The retained log, kept privately and
+     judged, shows `local_mining=overheat stays_stopped=true` followed by
+     `overheat_stopped paused_by_device=true`.
+  4. Cleanup, as in the overheat check:
+     - the pause, then the recovery settling;
+     - the original settings and `overheat_mode` 0 restored and held
+       60 s;
+     - one operator resume to clear the device's pause and its stop
+       marker. It starts a short local run at 485/1200, which the second
+       pause stops. The retained log must show no failed marker clear. If
+       the device is lost after that resume, the check pauses again.
+  5. A powered-down final sample on the same boot, mining on boot off.
+- **Packages, commands, recovery, evidence, retries and accepted
+  outcomes:** as the overheat check contract, with `--soak overheat-002`.
+  Afterwards production is reinstalled and confirmed (stopped proof and
+  the recovery `pause`). The summary goes in `docs/parity/evidence/`.
+- **Allowed effects:**
+  - those of the overheat check, with 485 MHz / 1200 mV saved instead of
+    500/1200;
+  - one overheat trip, at about 55 C, with no restart;
+  - the device's own pause;
+  - the cleanup's resume and pause, with its short local run at 485/1200.
+- **Prohibited effects:** as the overheat check, and any restart after the
+  trip.
+- **Live stops:** as the overheat check, and the first hashing sample after
+  the trip (`overheat_unexpected_restart`). No device pause within
+  10 minutes of the trip fails as `overheat_not_stopped`.
+- **Residual risk:** the cleanup's clearing resume runs on hardware for the
+  first time.
+
+Ultra 205 local mining overheat stays-stopped check hardware: enabled.
+
+Verification: pending. Completion review: pending.
+
 ## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions

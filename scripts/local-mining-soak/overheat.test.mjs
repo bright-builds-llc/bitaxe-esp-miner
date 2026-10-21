@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { sampleFromInfo, SOAKS } from "./judge.mjs";
-import { overheatLiveStop, recoveryFinished, runOverheat, tripCause } from "./overheat.mjs";
+import { overheatLiveStop, recoveryFinished, runOverheat, stopLogged, tripCause } from "./overheat.mjs";
 
 const SOAK = SOAKS["overheat-001"];
 const EXPECTED = { firmwareCommit: "c".repeat(40), appElfSha256: "e".repeat(64), bootOrdinal: 7 };
@@ -19,7 +19,7 @@ const OTHER_DETAIL = "worker_revocation_detail schema=v1 generation=3 reason=uns
  * - a trip whose next step leaves the catalog pauses the device; only a resume clears that pause.
  */
 function fakeOverheat({ hotC = 60, loweredHotC = 50, coolC = 35, tripC = 55, restartAfterMs = null, lowerBy = 100, safeStopMs = 90_000,
-  detail = TRIP_DETAIL, overwriteAfterRestoreMs = null } = {}) {
+  detail = TRIP_DETAIL, overwriteAfterRestoreMs = null, floorMhz = 400 } = {}) {
   const clock = { now: 0 };
   const state = { paused: true, frequency: 485, coreVoltage: 1200, autofan: 1, manualFan: 70, overheat: 0, pauseReason: null,
     chip: 40, runningSince: null, trippedAt: null, entered: false, coolSince: null, pool: {}, log: [], calls: [], overwriteAt: null };
@@ -33,18 +33,20 @@ function fakeOverheat({ hotC = 60, loweredHotC = 50, coolC = 35, tripC = 55, res
     if (!state.entered) {
       if (clock.now - state.trippedAt < safeStopMs) return;
       state.entered = true; state.overheat = 1; state.autofan = 0; state.manualFan = 100; state.coolSince = null;
-      const staysStopped = state.frequency - 100 < 400;
-      state.log.push(detail, "local_mining=run_ended generation=3 ending=Some(Overheat)", `local_mining=overheat stays_stopped=${staysStopped}`);
-      if (staysStopped) {
-        state.paused = true; state.pauseReason = "overheat"; state.trippedAt = null;
-        state.log.push("local_mining=overheat_stopped paused_by_device=true");
-      }
+      state.staysStopped = state.frequency - 100 < floorMhz;
+      state.log.push(detail, "local_mining=run_ended generation=3 ending=Some(Overheat)", `local_mining=overheat stays_stopped=${state.staysStopped}`);
       return;
     }
     if (state.chip <= 45) state.coolSince ??= clock.now; else state.coolSince = null;
     const cooled = restartAfterMs === null ? state.coolSince !== null && clock.now - state.coolSince >= 30_000
       : clock.now - state.trippedAt >= restartAfterMs;
     if (!cooled) return;
+    // As in the firmware, a stop that stays stopped pauses the device only once it has cooled.
+    if (state.staysStopped) {
+      state.paused = true; state.pauseReason = "overheat"; state.trippedAt = null;
+      state.log.push("local_mining=overheat_stopped paused_by_device=true");
+      return;
+    }
     state.frequency -= lowerBy; state.coreVoltage -= lowerBy; state.trippedAt = null;
     state.log.push("local_mining=overheat_recovered");
     if (!state.paused) { state.runningSince = clock.now - 4000; state.overheat = 0; }
@@ -96,9 +98,9 @@ async function idle(device, ms) {
   }
 }
 
-async function run(device, isInterrupted = () => false) {
+async function run(device, isInterrupted = () => false, soak = SOAK) {
   const events = [];
-  const verdict = await runOverheat({ client: device.client, expected: EXPECTED, settings: SETTINGS, soak: SOAK, isInterrupted,
+  const verdict = await runOverheat({ client: device.client, expected: EXPECTED, settings: SETTINGS, soak, isInterrupted,
     now: () => device.clock.now, sleep: async (ms) => { device.clock.now += ms; }, record: async (event) => { events.push(event); } });
   return { verdict, events };
 }
@@ -315,4 +317,116 @@ test("a restore watched while the device is unreachable is not confirmed", async
   const { events } = await run(device);
   // Assert
   assert.ok(events.some((event) => event.event === "settings_restore_unconfirmed"));
+});
+
+test("from the default pair, a trip whose device pauses itself after cooling passes check 002", async () => {
+  // Arrange
+  const device = fakeOverheat();
+  // Act
+  const { verdict } = await run(device, () => false, SOAKS["overheat-002"]);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.metrics.outcome, "stays_stopped");
+});
+
+test("check 002 clears the device's own pause and restores the settings", async () => {
+  // Arrange
+  const device = fakeOverheat();
+  // Act
+  await run(device, () => false, SOAKS["overheat-002"]);
+  // Assert
+  const { state } = device;
+  assert.deepEqual([state.pauseReason, state.paused, state.frequency, state.overheat, state.autofan], [null, true, 485, 0, 1]);
+});
+
+test("a restart where check 002 expects the device to stay stopped fails", async () => {
+  // Arrange: a device that wrongly takes 385 MHz as inside the catalog.
+  const device = fakeOverheat({ floorMhz: 300 });
+  // Act
+  const { verdict } = await run(device, () => false, SOAKS["overheat-002"]);
+  // Assert
+  assert.ok(verdict.failures.includes("overheat_unexpected_outcome"));
+});
+
+test("check 002 stops at the first restart", async () => {
+  // Arrange: a device that wrongly takes 385 MHz as inside the catalog.
+  const device = fakeOverheat({ floorMhz: 300 });
+  // Act
+  const { verdict } = await run(device, () => false, SOAKS["overheat-002"]);
+  // Assert
+  assert.ok(verdict.failures.includes("overheat_unexpected_restart"));
+  assert.equal(verdict.metrics.after_active_ms, 0);
+});
+
+test("check 002 confirms the stop from the retained log", async () => {
+  // Arrange
+  const device = fakeOverheat();
+  // Act
+  const { verdict } = await run(device, () => false, SOAKS["overheat-002"]);
+  // Assert
+  assert.equal(verdict.metrics.stop_logged, true);
+});
+
+test("a failed stop-marker clear fails the check", async () => {
+  // Arrange
+  const device = fakeOverheat();
+  const { command } = device.client;
+  device.client.command = async (name) => {
+    await command(name);
+    if (name === "resume" && device.state.log.some((line) => line.includes("overheat_stopped"))) {
+      device.state.log.push("local_mining=save_failed what=overheat_marker_clear error=nvs");
+    }
+  };
+  // Act
+  const { verdict } = await run(device, () => false, SOAKS["overheat-002"]);
+  // Assert
+  assert.ok(verdict.failures.includes("overheat_stop_marker_not_cleared"));
+});
+
+test("a device lost after the clearing resume is paused again", async () => {
+  // Arrange: the device stops answering right after the resume that clears its stop.
+  const device = fakeOverheat();
+  const { command, info } = device.client;
+  let resumedToClear = false;
+  device.client.command = async (name) => {
+    await command(name);
+    if (name === "resume" && device.state.log.some((line) => line.includes("overheat_stopped"))) resumedToClear = true;
+  };
+  let failures = 0;
+  device.client.info = async () => {
+    if (resumedToClear && failures < 3) { failures += 1; throw new Error("unreachable"); }
+    return info();
+  };
+  // Act
+  const { verdict } = await run(device, () => false, SOAKS["overheat-002"]);
+  // Assert
+  assert.equal(device.state.paused, true);
+  assert.ok(verdict.failures.includes("overheat_settings_restore_failed"));
+});
+
+test("a log whose latest entry stays stopped and is followed by the pause shows the stop", () => {
+  // Act / Assert
+  assert.equal(stopLogged("local_mining=overheat stays_stopped=true\nlocal_mining=overheat_stopped paused_by_device=true\n"), true);
+});
+
+test("a log whose entry would restart does not show the stop", () => {
+  // Act / Assert
+  assert.equal(stopLogged("local_mining=overheat stays_stopped=false\nlocal_mining=overheat_stopped paused_by_device=true\n"), false);
+});
+
+test("a stop line logged just after the pause reason is still confirmed", async () => {
+  // Arrange: the first logs read after the pause misses the stop line, as the firmware sets the
+  // pause reason just before logging it.
+  const device = fakeOverheat();
+  const { logs } = device.client;
+  let hidden = false;
+  device.client.logs = async () => {
+    const log = await logs();
+    if (!hidden && log.includes("overheat_stopped")) { hidden = true; return log.replace("local_mining=overheat_stopped paused_by_device=true", ""); }
+    return log;
+  };
+  // Act
+  const { verdict } = await run(device, () => false, SOAKS["overheat-002"]);
+  // Assert
+  assert.equal(verdict.metrics.stop_logged, true);
 });
