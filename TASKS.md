@@ -1186,6 +1186,69 @@ Hardware verification: pending. Soak 004 of
 
 Completion review: pending.
 
+### task-mining-activity-stopping | 2026-10-21 | Stop the status reading active while the ASIC idles
+
+Owner decision 2026-10-21 ("Add `stopping`"). `miningActivity` read
+`active` for 13-18 s while the ASIC idled. This happened in soak 005 after
+a Wi-Fi drop, and around every lease interrupt.
+
+Root cause: a terminal hardware safe-stop sets
+`terminal_publication_pending` and pushes `SafeStopHardware` without a
+publish (`production_session/runtime.rs`). The firmware runs the stop
+synchronously on the owner thread. Its cooling proof waits for the chip to
+reach 45 C, up to 120 s. Only the confirmation publishes the terminal
+snapshot (ADR-0016). Meanwhile the API kept the last `active` snapshot, and
+the blocked owner thread froze the hashrate monitor.
+
+- [x] `MiningActivityStatus::Stopping` (`"stopping"`):
+  - the snapshot reports it, with work submission blocked
+    (`hardware_safe_stopping`), whenever the hardware is safe-stopping;
+  - the session publishes it once, before the terminal snapshot is held
+    back;
+  - `blockedReason` shows the reason;
+  - labels in `bitaxe-api` and the firmware's command surface;
+  - tests for the order, the snapshot, the pause path and the wire label;
+  - the ADR-0016 amendment.
+- [x] After an independent review, the failure path and the tools:
+  - a failed safe-stop publishes `safe_blocked` with reason
+    `hardware_safe_stop_failed` at once, instead of a lasting `stopping`;
+  - tools that took anything other than `active` for a completed stop now
+    wait through `stopping` or reject it:
+    - the soak judge's powered-down proof;
+    - the campaign network observer;
+    - the scoreboard and operator-snapshot evidence;
+    - the HTTP transport soak judge;
+    - display recovery.
+  - The stratum-v2 single-read tools are unchanged, since `stopping`
+    cannot appear on their fresh-boot readings.
+  - Known fragility: `label_hold` would overwrite `stopping`, but it only
+    fires with no local run, so no path reaches it today.
+- [ ] Full gate, independent review, commit and push.
+- [ ] Hardware: a short check that the status reads `stopping`, not
+      `active`, during a stop, under its own contract.
+
+Not changed: the hashrate monitor still freezes during the cooling proof.
+Making the cooling wait non-blocking is a separate change.
+
+### task-parity-local-mining-hardware-revision | 2026-10-21 | Revise verified rows with the October local mining hardware evidence
+
+Owner approval 2026-10-21 ("please proceed with 1", the parity rows, and
+"Allow passage-only"). Every candidate row is already `verified`, so the
+revisions append one owner-authorized passage each and keep the status.
+
+- [x] Parity tool: an authority may grant a passage-only revision, with
+      empty `added_evidence` and the evidence cell unchanged. Every other
+      check stays.
+- [x] The soak 005 evidence file was restored to its pinned text. Its
+      rejudge note now lives in
+      `docs/parity/evidence/20261021-ultra205-local-mining-soak-005-rejudged.md`.
+      The note had broken `just parity` since `05f1772c`, because the
+      NET-001 authority pins that file. The local gate now checks every
+      command's exit status.
+- [ ] The authority, plans, results and transitions for API-009, THR-002,
+      SAFE-12, STR-006, STR-007 and STAT-001; then `sync-progress` and
+      `just parity`; then an independent claim review, commit and push.
+
 ## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions

@@ -4,8 +4,12 @@ Automatic transitions out of `verified` are forbidden. To refine a verified
 row's notes, the owner records an authority here: a JSON file in schema
 `parity-verified-revision-authority-v1`. It lists:
 - the committed evidence documents, each digest-bound;
-- for each row, the evidence tokens to add and the SHA-256 of the exact new
-  notes.
+- for each row, the evidence tokens to add (`added_evidence`) and the SHA-256
+  of the exact new notes (`after_notes_sha256`).
+
+`added_evidence` may be empty for a passage-only revision of a row that
+already holds every evidence token it needs. Its evidence cell must then stay
+exactly unchanged; the revision changes only the notes.
 
 A transition binds it with
 `transition-item ... --to verified --verified-revision-authority <file>`.
@@ -17,9 +21,11 @@ The parity tool
 accepts only the pinned, additive revision:
 - the status stays `verified`;
 - the owned target is unchanged;
-- the evidence gains exactly the granted tokens;
-- the new notes keep the old notes verbatim, add a separated printable
-  suffix, and match the granted digest.
+- the evidence gains exactly the granted tokens, or stays unchanged when
+  none are granted;
+- the new notes keep the old notes verbatim, add a non-empty, separated,
+  printable suffix, and match the granted digest. Identical notes are
+  refused, so every revision changes something.
 
 Because the notes digest is pinned, each row's grant applies once.
 

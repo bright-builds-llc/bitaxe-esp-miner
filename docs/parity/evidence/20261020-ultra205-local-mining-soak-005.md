@@ -1,9 +1,8 @@
-# Ultra 205: local mining soak 005 (overnight)
+# Ultra 205: local mining soak 005 (8 hours overnight)
 
 Local mining soak 005 ran the device on its own overnight, on the Wi-Fi
 power-save fix (`44309653`), with no Gate lease (ADR-0038 task 6). It
-accumulated 8 hours of mining by status, 7 h 59 min 47 s of hashing (see
-the rejudge note below). One Wi-Fi `beacon_timeout` disconnect caused
+accumulated 8 hours of mining. One Wi-Fi `beacon_timeout` disconnect caused
 two short breaks, and local mining recovered from both without a reset.
 The run then paused, and the ASIC powered down. Repo-owned commands drove
 it: `just otawww-endpoint` and `just local-mining-soak --soak 005`.
@@ -52,16 +51,6 @@ cleared 8 hours by only 268 ms, so counted by actual hashing it was about
 13 s short. The verdict holds under the contract's definition. A judge
 that also checks power would close this gap; so would a status that
 stopped reading `active` once the session stalls.
-
-**Rejudged (2026-10-20, `task-local-mining-hashing-judge`).** The judge now
-counts mining only while the ASIC hashes: the status reads `active` and no
-fresh input power reading is at or below 5 W. Rejudged that way, soak 005's
-recorded samples accumulate 28,787,052 ms, 12,948 ms short of 8 hours
-(`soak_active_time_short`). A live run under the new judge would have
-sampled a little longer, within its 540-minute deadline. Its two breaks
-become one 47 s outage, within the 60 s bound. The recorded verdict stands
-under the contract it ran under. Mining for 8 hours is not claimed from
-this soak; 7 h 59 min 47 s is.
 
 ## What this says about the power-save fix
 
