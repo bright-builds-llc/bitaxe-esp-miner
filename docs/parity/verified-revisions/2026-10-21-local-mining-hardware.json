@@ -1,0 +1,61 @@
+{
+  "schema_version": "parity-verified-revision-authority-v1",
+  "authority_id": "2026-10-21-local-mining-hardware",
+  "authorized_by": "owner",
+  "authorized_on": "2026-10-21",
+  "rationale": "October local mining hardware evidence: boot resume and software restart, overheat recovery in both branches from a test-only lowered trip, and a 4-hour soak on the PSRAM atomics fix. The owner authorized on 2026-10-21 appending one passage to each of these verified rows, with the status, the evidence tokens and the original notes unchanged (passage-only revisions).",
+  "evidence": [
+    {
+      "path": "docs/parity/evidence/20261020-ultra205-boot-resume-check.md",
+      "sha256": "05f6eb8458803853277ccb37cbfa1bd3a8387850f48ca0b4086acc7fb83a8648"
+    },
+    {
+      "path": "docs/parity/evidence/20261021-ultra205-local-mining-overheat-check.md",
+      "sha256": "498efdd8633e43ce1f64eb1e1f96c428c83a81078a5627c4c9e6340fc94204a2"
+    },
+    {
+      "path": "docs/parity/evidence/20261021-ultra205-local-mining-overheat-stays-stopped.md",
+      "sha256": "11bd280e2e4d1f891e45446e9772afe82f48b52370cb25610df8a2832edad927"
+    },
+    {
+      "path": "docs/parity/evidence/20261021-ultra205-local-mining-soak-006.md",
+      "sha256": "5982526bee46049929873fccc4feb22027a1454e2a696ef61071d495a0cce300"
+    },
+    {
+      "path": "docs/parity/evidence/20261021-ultra205-local-mining-soak-005-rejudged.md",
+      "sha256": "8cdbdb28ea4ccfbe3762ef9c141e68e9ffce0779a684fbb50509cd30888c61d2"
+    }
+  ],
+  "rows": [
+    {
+      "row_id": "API-009",
+      "added_evidence": [],
+      "after_notes_sha256": "4f704c0bc3b870b00f88ffb50762f5e493790c776dd673c4187b7a1779d2469c"
+    },
+    {
+      "row_id": "THR-002",
+      "added_evidence": [],
+      "after_notes_sha256": "d33daa8583d94ea252ffc34dde13b97da7dbe8fd7a787376a10a693b5eebc390"
+    },
+    {
+      "row_id": "SAFE-12",
+      "added_evidence": [],
+      "after_notes_sha256": "c92a3fb17e25542fec29b1aeb8d08bcc6812941cadde5945e9e1718edc1f8e96"
+    },
+    {
+      "row_id": "STR-006",
+      "added_evidence": [],
+      "after_notes_sha256": "d060b5bf36490522696e86db86869c6167e131a480360816bbb9b389c35952d1"
+    },
+    {
+      "row_id": "STR-007",
+      "added_evidence": [],
+      "after_notes_sha256": "28331ebd7dbe4e81cea8343831206862378e86ed22fd7008d30817044505f52f"
+    },
+    {
+      "row_id": "STAT-001",
+      "added_evidence": [],
+      "after_notes_sha256": "ba3e16e37b10e0763e2b87f05a2141cf731d979d91740e029dcb8b7e106e5ca1"
+    }
+  ]
+}

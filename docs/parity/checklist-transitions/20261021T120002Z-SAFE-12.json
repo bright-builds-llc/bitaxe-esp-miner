@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261021T120002Z-SAFE-12",
+  "predecessor_sha256": "1ef951c814a368b5bfa4bedd02e02b0e5b77791ff4d34ab358b1b8e4af672456",
+  "result_sha256": "491019693ea6cf80ce271eabfd702589cc007b26bf26582a3e91dcaa46b4f948",
+  "row_id": "SAFE-12",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261021T120002Z-SAFE-12/PLAN.md",
+  "plan_sha256": "6b37e4656e5b5ad95dee212b379667c33df94d50d6909d93185612542ae94d38",
+  "result_path": "docs/parity/work-plans/20261021T120002Z-SAFE-12/RESULT.md",
+  "result_document_sha256": "5b6bbcfe9940259bccd9591f5819e2f458594ca6e8bbdb92a8ef475dbb6b637b",
+  "verified_revision_authority_path": "docs/parity/verified-revisions/2026-10-21-local-mining-hardware.json",
+  "verified_revision_authority_sha256": "ec11b16e343a44df3c90238f047d8ec15314ff5baf136a88850ac24848289530",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/safe-stop.md`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/safe-stop.md`",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Verified at 5224ef05c73d631f170bc90436a24d2d27566787: detector-gated live safety hardware proof joins independently validated SAFE-10, STR-006, PWR-002, and PWR-003 evidence for an accepted campaign, ordered production stop, complete rollback, ASIC/core-rail disable, consumed terminal state, cleanup, current tests, and redaction; see [SAFE-12 result](work-plans/20260820T052841Z-SAFE-12/RESULT.md), [summary](evidence/safe12-production-safe-stop/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: fault-injected safe stop on hardware, per-step electrical timing or waveform measurement, power-loss interruption, automatic thermal or fan fault recovery, arbitrary profiles/pools, other boards/ASICs, unbounded mining, OTA/recovery, SAFE-13, and release readiness.",
+  "after_notes": "Verified at 5224ef05c73d631f170bc90436a24d2d27566787: detector-gated live safety hardware proof joins independently validated SAFE-10, STR-006, PWR-002, and PWR-003 evidence for an accepted campaign, ordered production stop, complete rollback, ASIC/core-rail disable, consumed terminal state, cleanup, current tests, and redaction; see [SAFE-12 result](work-plans/20260820T052841Z-SAFE-12/RESULT.md), [summary](evidence/safe12-production-safe-stop/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: fault-injected safe stop on hardware, per-step electrical timing or waveform measurement, power-loss interruption, automatic thermal or fan fault recovery, arbitrary profiles/pools, other boards/ASICs, unbounded mining, OTA/recovery, SAFE-13, and release readiness. Later evidence narrows the exact_non_claims entry automatic thermal or fan fault recovery, for the overheat case only: from a test-only lowered trip (55 C, ADR-0040) on exact Ultra 205 packages, a local overheat safe stop was followed by the ADR-0038 recovery, restarting 100 MHz and 100 mV lower after the firmware's 30 s cooling window at 45 C or less (cooling bounds consistent with the samples of 40.2 s for the restart and 32.4 s for the pause), or staying stopped with the device paused by itself when that pair would leave the catalog; see docs/parity/evidence/20261021-ultra205-local-mining-overheat-check.md and docs/parity/evidence/20261021-ultra205-local-mining-overheat-stays-stopped.md. The production 75 C trip, the VR temperature trip, a second trip after a restart, fan fault recovery, recovery across a reboot and the remaining exact_non_claims above still apply."
+}

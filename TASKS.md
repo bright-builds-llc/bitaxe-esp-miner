@@ -1230,25 +1230,6 @@ the blocked owner thread froze the hashrate monitor.
 Not changed: the hashrate monitor still freezes during the cooling proof.
 Making the cooling wait non-blocking is a separate change.
 
-### task-parity-local-mining-hardware-revision | 2026-10-21 | Revise verified rows with the October local mining hardware evidence
-
-Owner approval 2026-10-21 ("please proceed with 1", the parity rows, and
-"Allow passage-only"). Every candidate row is already `verified`, so the
-revisions append one owner-authorized passage each and keep the status.
-
-- [x] Parity tool: an authority may grant a passage-only revision, with
-      empty `added_evidence` and the evidence cell unchanged. Every other
-      check stays.
-- [x] The soak 005 evidence file was restored to its pinned text. Its
-      rejudge note now lives in
-      `docs/parity/evidence/20261021-ultra205-local-mining-soak-005-rejudged.md`.
-      The note had broken `just parity` since `05f1772c`, because the
-      NET-001 authority pins that file. The local gate now checks every
-      command's exit status.
-- [ ] The authority, plans, results and transitions for API-009, THR-002,
-      SAFE-12, STR-006, STR-007 and STAT-001; then `sync-progress` and
-      `just parity`; then an independent claim review, commit and push.
-
 ## Future
 
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions

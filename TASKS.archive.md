@@ -34004,3 +34004,53 @@ Completion review (2026-10-21):
 Residual risks:
 - The production 75 C trip, the VR trip, a second trip after a restart,
   and recovery across a reboot have no hardware evidence.
+
+### task-parity-local-mining-hardware-revision | 2026-10-21 | Revise verified rows with the October local mining hardware evidence
+
+Owner approval 2026-10-21 ("please proceed with 1", the parity rows, and
+"Allow passage-only"). Every candidate row is already `verified`, so the
+revisions append one owner-authorized passage each and keep the status.
+
+- [x] Parity tool: an authority may grant a passage-only revision, with
+      empty `added_evidence` and the evidence cell unchanged. Every other
+      check stays.
+- [x] The soak 005 evidence file was restored to its pinned text. Its
+      rejudge note now lives in
+      `docs/parity/evidence/20261021-ultra205-local-mining-soak-005-rejudged.md`.
+      The note had broken `just parity` since `05f1772c`, because the
+      NET-001 authority pins that file. The local gate now checks every
+      command's exit status.
+- [x] The authority, plans, results and transitions for API-009, THR-002,
+      SAFE-12, STR-006, STR-007 and STAT-001; then `sync-progress` and
+      `just parity`; then an independent claim review, commit and push.
+
+Result (2026-10-21):
+- **Authority:** `docs/parity/verified-revisions/2026-10-21-local-mining-hardware.json`
+  pins five evidence files and each row's new notes digest. Every grant
+  is passage-only.
+- **Transitions:** `20261021T120000Z-API-009` to
+  `20261021T120005Z-STAT-001`; progress synced (verified 94 of 96 active).
+- **Passages:**
+  - **API-009:** restart with mining on boot.
+  - **THR-002:** overheat behavior, narrowed for the test-lowered trip
+    only.
+  - **SAFE-12:** the overheat case of the thermal-recovery non-claim,
+    narrowed.
+  - **STR-006:** 4 continuous hours on the ADR-0039 firmware, and resume
+    on boot.
+  - **STR-007:** soak 006, and soak 005 rejudged.
+  - **STAT-001:** soak 006's hashrate.
+  Each keeps the row's non-claims and adds its own.
+- **Review:** an independent claim review found two passages overstated
+  (SAFE-12's cooling window, STR-007's soak 005 claim). They were
+  corrected and regenerated before commit.
+
+Verification: `just parity` reports `validation_errors: none`;
+`just verify-redaction` passes; the claim review agrees.
+
+Completion review (2026-10-21): the October hardware evidence is in the
+verified rows without any status change, through a new passage-only
+revision path. The pinned-evidence breakage of `05f1772c` is repaired.
+
+Residual risks: the parity tool now allows passage-only revisions; each
+still needs an owner-authorized authority pinning the exact new notes.
