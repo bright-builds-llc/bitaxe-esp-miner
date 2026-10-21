@@ -34449,3 +34449,93 @@ tests, not by hardware.
 Residual risks: the original intermittent failure was not reproduced on
 hardware, so its cause stays unconfirmed. The retry and the failure
 records cover it if it recurs.
+
+### task-preparation-rollback-cooling-watchdog | 2026-10-21 | Feed the watchdog through a preparation rollback's cooling proof
+
+Found while planning `task-safe-stop-polled-cooling`. When preparation
+fails, `execute_preparation` rolls back through `execute_safe_shutdown`,
+which reaches the blocking cooling proof (up to 120 s) without progress
+callbacks, so the owner feeds no watchdog meanwhile. The ESP-IDF default
+task watchdog is 5 s. Polled stops do not change this path.
+
+- [x] Confirm whether the owner's task watchdog subscription can expire
+      during a rollback's cooling proof, from source and a host test.
+- [x] Preparation and its rollback report progress
+      (`execute_preparation_with_progress`, `PreparationProgress`). The
+      adapter reports from inside the fan proof, the voltage request and
+      each ASIC action of chip detection and mining-ready init. The owner,
+      the Stratum v2 session and self-test feed their watchdogs; the
+      original failure stays primary. Tests and source pins. Plan
+      `delightful-foraging-quill` (owner approved).
+- [x] `--soak watchdog-001`: `stopping-002` plus a fresh task watchdog in
+      every sample (`watchdog_not_fresh`). Tests and README.
+- [x] Full gate, independent review, commit and push.
+- [x] Hardware run under the contract below; evidence, review and record.
+
+Findings (2026-10-21, source and the kept hardware logs of 19-20 October):
+- **Watchdog config:** the ESP-IDF task watchdog runs at 5 s with
+  `CONFIG_ESP_TASK_WDT_PANIC` unset. An unfed owner gets a console warning
+  and `runtime_health` reports `task_watchdog_reason=feed_stale`; the
+  board does not reset.
+- **The gap is wider than the rollback.** Each of the six preparations the
+  kept logs captured left the owner unfed for 9.3-10.1 s.
+  - The logs hold 66 distinct `feed_stale` readings (89 raw, counting the
+    overlapping break logs), all in subphase `effect_prepare_hardware`,
+    among 9,200 distinct `feed_fresh`.
+  - The watchdog therefore fired at every preparation captured.
+- **Cause:** `execute_preparation` and its rollback take no progress
+  callback. The safe-stop path has one, down to each ASIC action
+  (`execute_adapter_actions_on_state_with_progress`).
+- **A failed preparation's rollback** would add the frequency ramp (about
+  7 s) and up to 120 s of cooling, unfed.
+Preparation watchdog check contract (attempt ordinals 001 onward). The
+polled cooling stopping check contract (archived
+`task-safe-stop-polled-cooling`) applies except as stated.
+- **Objective** (`--soak watchdog-001`, production firmware): as
+  `stopping-002`. In addition, every sample from the resume to the final
+  one reads runtime health `taskWatchdogReason` `feed_fresh`. A missing
+  reading or a failed feed fails too. Before the change, every
+  preparation left 2-3 `feed_stale` samples at 2 s sampling.
+- **Package:** a fresh production package at the clean, pushed HEAD
+  carrying this contract and the change, installed state-preserving from
+  the built manifest.
+- **Commands, allowed and prohibited effects, evidence, recovery and
+  accepted outcomes:** as `stopping-002`, with `--soak watchdog-001`.
+- **Not covered:** a failed preparation's rollback cannot be triggered
+  safely on hardware; it has unit coverage only.
+
+Attempt 001 result (2026-10-21): `passed`, `complete`. An independent
+review recomputed the verdict from the private journal and agrees, after
+corrections to the summary's figures for before the change.
+- Summary: `docs/parity/evidence/20261021-ultra205-preparation-watchdog-check.md`.
+- Production `5166eeb5`, installed state-preserving from the built
+  manifest; the handoff succeeded on its first attempt.
+- **Watchdog:** `feed_fresh` in all 105 samples from the resume to the
+  final one. That includes 4 during preparation (2.1-8.3 s,
+  `effect_prepare_hardware`) and 4 during the stop's frequency ramp-down.
+- **Mining:** 180,187 ms of hashing, 12 accepted shares and 0 rejected,
+  within the live limits.
+- **The stop:** 12 `stopping` samples with the hashrate at 0, then
+  `paused`.
+- **Afterwards:** paused, powered down, mining on boot off; the same
+  physical device; no serial holder.
+- The enable line was removed.
+
+Verification:
+- `result.json` `passed`; the independent review agrees.
+- The change passed the full gate (360 tests, every audit at zero
+  findings, owner entry frame unchanged at 3,408 B) and two review rounds
+  before the run.
+
+Completion review (2026-10-21): hardware preparation now feeds the task
+watchdog throughout, as the safe-stop does. On hardware no sample read
+stale, where every captured preparation had been unfed for about 10 s.
+The rollback's cooling proof is fed too.
+
+Residual risks:
+- A failed preparation's rollback has unit coverage only. It still holds
+  the owner, now fed, for up to about 127 s.
+- Chip detection's drain is one action of up to 5 s (about 1.2 s
+  normally).
+- Self-test reports its rollback under `effect_prepare_hardware`. The
+  Stratum v2 session and self-test preparations were not run on hardware.
