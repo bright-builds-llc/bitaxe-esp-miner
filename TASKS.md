@@ -1117,7 +1117,7 @@ task watchdog is 5 s. Polled stops do not change this path.
       `delightful-foraging-quill` (owner approved).
 - [x] `--soak watchdog-001`: `stopping-002` plus a fresh task watchdog in
       every sample (`watchdog_not_fresh`). Tests and README.
-- [ ] Full gate, independent review, commit and push.
+- [x] Full gate, independent review, commit and push.
 - [ ] Hardware run under the contract below; evidence, review and record.
 
 Findings (2026-10-21, source and today's kept hardware logs):
