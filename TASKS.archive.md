@@ -34231,3 +34231,115 @@ Residual risks:
 - Little headroom: the next append over 2,556 bytes triggers an audit.
 - The managed Bright Builds check sees only the core; the repo test
   covers the area files.
+
+### task-safe-stop-polled-cooling | 2026-10-21 | Poll the terminal safe-stop's cooling proof instead of blocking the owner
+
+Owner decision 2026-10-21 ("make the cooling wait non-blocking"). A
+terminal safe-stop blocked the production owner thread for up to 120 s
+while the board cooled. The hashrate froze (429 GH/s through the stopping
+check), the inbox waited, and Gate requests timed out. Power is already
+off before that wait, which only proves cooling. Plan:
+`delightful-foraging-quill` (owner approved).
+
+- [x] `bitaxe-runtime`: `begin_safe_stop_with_progress` and
+      `poll_cooling_proof` (`mining_actuation/polled_stop.rs`). The steps,
+      their order, the earliest-failure rule and the 120 s bound are the
+      blocking plan's. A resumable pause completes at once. Tests.
+- [x] Adapter: one cooling predicate shared by the blocking wait and the
+      poll (`mining_actuation_adapter/polled_stop.rs`).
+- [x] Owner:
+  - the stop's power-down runs in the effect arm;
+  - the loop polls the proof each tick (watchdog subphase 24);
+  - no idle fan grant while a stop is pending;
+  - each loop exit finishes a pending stop first
+    (`production_mining_session/safe_stop.rs`, `owner_loop.rs`).
+- [x] Session: the stop's purpose is fixed at emission. A pause that
+      arrives while a terminal stop cools no longer re-arms the lease.
+      Regression tests (`tests/mid_stop.rs`).
+- [x] Source pins, the ADR-0016 amendment, and `--soak stopping-002`
+      (README).
+- [x] Full gate, independent review, commit and push.
+- [x] Hardware run under the contract below; evidence, review and record.
+
+Polled cooling stopping check contract (attempt ordinals 001 onward). The
+stopping check contract (archived `task-mining-activity-stopping`) applies
+except as stated.
+- **Objective** (`--soak stopping-002`, production firmware): as
+  `stopping-001`. In addition, every `stopping` sample after the first
+  reads a zero hashrate (`stop_hashrate_frozen`). The evidence records the
+  chip temperature at the first `paused` sample; the judge does not check it.
+- **Package:** a fresh production package at the clean, pushed HEAD
+  carrying this contract and the polled proof, installed state-preserving
+  from the built manifest.
+- **Commands:** as `stopping-001`, with `--soak stopping-002`, detached in
+  their own session.
+- **Allowed and prohibited effects, evidence, recovery and accepted
+  outcomes:** as `stopping-001`.
+
+
+Attempt 001 result (2026-10-21): `failed` (`stop_hashrate_frozen`), outcome
+`continue_after_verified_fix`.
+- Production `ba22b7fb`, installed state-preserving from the built
+  manifest; the handoff succeeded on its first attempt.
+- Mining: 180,957 ms of hashing, 11 accepted shares and 0 rejected,
+  within the live limits.
+- The stop: `active` at 69 ms, then `stopping` from 2.1 s (10 samples),
+  then `paused` from 22.9 s at 45 C. No sample read `active` at idle
+  power.
+- The hashrate: still 470.9 GH/s in the first three `stopping` samples
+  (to 6.3 s), then 0 from 8.4 s through the cooling. In `stopping-001` it
+  stayed frozen for the whole 22 s.
+- **Root cause:** the polled proof removed the freeze during cooling. The
+  stop's power-down still runs synchronously in the effect arm, and its
+  frequency ramp (485 to 50 MHz in 100 ms steps, about 7 s) holds the
+  owner thread. The loop services the monitor only after it.
+- **Fix:** the `Publish` arm zeroes the hashrate with the snapshot that
+  ends hashing (`zero_hashrate_on_inactive_publish`). The `stopping`
+  publication precedes the stop effect in the same cascade. A source pin
+  covers the call and the guard's body. An independent review confirmed
+  the cause and the fix. The full gate passed; one gate run met a flaky
+  crash in `//tools/device-session:tests`, which passed on an uncached
+  rerun.
+- Afterwards: paused, powered down, mining on boot off; the same physical
+  device; no serial holder.
+
+Attempt 002 result (2026-10-21): `passed`, `complete`. An independent
+review recomputed both verdicts from the private journals and agrees,
+after wording corrections to the summary.
+- Summary: `docs/parity/evidence/20261021-ultra205-polled-cooling-stopping-check.md`.
+- Production `38b9e932`, installed state-preserving from the built
+  manifest; the handoff succeeded on its first attempt.
+- Mining: 180,705 ms of hashing, 16 accepted shares and 0 rejected,
+  within the live limits.
+- The stop:
+  - `active` at 71 ms, still hashing;
+  - `stopping` from 2.1 s, 10 samples, with the hashrate 0 in every one
+    while power fell to 1.22-1.64 W and the chip cooled from 59 C to
+    46 C;
+  - `paused` from 22.9 s, at 45 C;
+  - no sample read `active` at idle power.
+- Afterwards: paused, powered down, mining on boot off; the same physical
+  device; no serial holder.
+- The enable line was removed.
+
+Verification:
+- `result.json` `passed`; the independent review agrees.
+- Every firmware change passed the full gate (360 tests, every audit at
+  zero findings, the owner entry frame unchanged at 3,408 B) and an
+  independent review before its run.
+
+Completion review (2026-10-21): a terminal safe-stop no longer holds the
+owner thread through its cooling proof. On hardware the API's hashrate
+read 0 through the whole stop, where it used to stay frozen for 22 s. The
+session can no longer re-arm a lease when a pause arrives while a
+terminal stop cools.
+
+Residual risks:
+- The power-down itself still blocks the owner for about 7 s (the
+  frequency ramp). The hashrate no longer shows it, but campaign status
+  and live-hardware service stall for that time.
+- During the cooling, owner work other than the hashrate (inbox commands,
+  Gate rejections, readiness) has unit and session coverage, not hardware
+  evidence.
+- A cooling proof that times out has unit coverage only. So does a stop
+  pending when the owner exits.
