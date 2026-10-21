@@ -1612,6 +1612,16 @@ js_test(
     entry_point = "verify-firmware-variant-isolation.mjs",
 )
 
+# The active lesson files' format, unique IDs and budget (AGENTS.md, Deterministic Active-Lesson Loading).
+js_test(
+    name = "lesson_areas_test",
+    data = [
+        "lesson-areas.mjs",
+        "//:lesson_inputs",
+    ],
+    entry_point = "lesson-areas.test.mjs",
+)
+
 # No Rust hardware compare-exchange in the built ELF (ADR-0039); uses the espup objdump.
 js_test(
     name = "firmware_psram_atomics_test",

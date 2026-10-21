@@ -94,6 +94,16 @@ filegroup(
     ],
 )
 
+# Active lessons (core and area files) and their archive, for //scripts:lesson_areas_test.
+js_library(
+    name = "lesson_inputs",
+    srcs = [
+        ".codex/tasks/lessons.archive.md",
+        ".codex/tasks/lessons.md",
+    ] + glob([".codex/tasks/lessons/*.md"]),
+    visibility = ["//scripts:__pkg__"],
+)
+
 js_library(
     name = "native_usb_ownership_guard_inputs",
     srcs = [

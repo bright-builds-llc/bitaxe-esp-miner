@@ -34178,3 +34178,56 @@ Residual risks:
 - A failed safe-stop's `safe_blocked` has fake-device coverage only.
 - The hashrate monitor still freezes during the cooling proof
   (`hashRate` held 429 GH/s while stopping).
+
+### task-lesson-areas-and-budget | 2026-10-21 | Scope lessons by area and raise the lesson budget
+
+Owner decision 2026-10-21, after a lesson audit: "Scope lessons by area
+and raise the budget to about 40k bytes". The audit found nothing
+obsolete or duplicate, yet the active set (about 33 KB) exceeded the
+managed 24,000-byte / 8,000-token budget. Five lessons were waiting:
+three pending since the 2026-10-17 audit and two from today.
+
+- [x] Split `.codex/tasks/lessons.md` into an always-loaded core of
+      guardrails and cross-cutting lessons, plus area files under
+      `.codex/tasks/lessons/`, each with a `Scope:` line. Blocks move
+      verbatim; IDs stay unique.
+- [x] AGENTS.md loading rule: the core always, an area file when the task
+      touches its scope (when unsure, load it). The budget becomes
+      40,000 bytes / 13,500 estimated tokens over the full active set.
+      Audit triggers and append placement follow.
+- [x] `standards-overrides.md` records the override of the managed
+      budget, and the area files the managed check does not see.
+- [x] A repo-owned check (Bazel test) validates the area files' format,
+      ID uniqueness across core, areas and archive, and the 40,000 / 13,500
+      budget.
+- [x] The audit record in `.codex/tasks/lesson-audits.md`, then the five
+      pending lessons appended to their files.
+- [x] Verification: the new check, `bun scripts/bright-builds-check.ts
+      all`, `just verify-redaction`, then commit and push.
+
+Result (2026-10-21):
+- **Audit:** `audit-lesson-areas-and-raised-budget` in
+  `.codex/tasks/lesson-audits.md`. No lesson was obsolete, duplicate or
+  superseded; none was archived or consolidated.
+- **Split:** 29 blocks moved verbatim into four files:
+  - the core: 8 guardrail and cross-area lessons;
+  - `hardware-sessions.md`: 7;
+  - `firmware-runtime.md`: 5;
+  - `automation-tools.md`: 9.
+- **New lessons:** 5 appended (34 repository lessons). The full active
+  set, with the global file, is 37,444 bytes / 12,482 estimated tokens,
+  within 40,000 / 13,500.
+- **Rules:** the AGENTS.md loading rule and the `standards-overrides.md`
+  row; `//scripts:lesson_areas_test` checks the area files.
+
+Verification: the full gate passed (360 tests, every audit at zero
+findings), along with Bright Builds and redaction.
+
+Completion review (2026-10-21): lessons load by area. A typical task reads
+the core, the global file and one or two areas (about 16-23 KB). The
+whole set fits the raised budget.
+
+Residual risks:
+- Little headroom: the next append over 2,556 bytes triggers an audit.
+- The managed Bright Builds check sees only the core; the repo test
+  covers the area files.

@@ -186,3 +186,33 @@
   - Bytes and estimates: global `5,230` / `1,744`, repository `26,443` / `8,815`, combined `31,673` / `10,559`
   - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `7f728c00d149b7343ed2ac31ebd32bff8b823682be25eace9a257ceb52f6067a`
   - Threshold state: above both hard loading limits; startup loading uses the priority-ordered whole-block rule, and this trigger is consumed
+
+## audit-lesson-areas-and-raised-budget | 2026-10-21T16:29:17Z
+
+- Audit timestamp: `2026-10-21T16:29:17Z`
+- Trigger: the owner's explicit request on 2026-10-21, with five pending lessons (three held by the 2026-10-17 audit, two from 2026-10-21) whose append would keep the active set over the `24,000`-byte and `8,000`-token limits. The repository file was unchanged since the last baseline (SHA-256 `7f728c00…`). The global file had changed (`664021be…` to `955a5158…`, `7` to `9` lessons, all on unrelated video-editing work).
+- Active source paths:
+  - Global: `/Users/peterryszkiewicz/.codex/tasks/lessons.md` (read only; not modified)
+  - Repository: `/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/.codex/tasks/lessons.md`
+- Review: every repository block was read in full and checked against the current code, AGENTS.md and the policy documents it requires. Every identifier, script and path a lesson names still exists (`deviceRecordAttemptId`, `startGeneration`, `recovery-error-row`, `typed-failure`, `safe10ProductionFragments`, `internal-heap-series`, `runtime_origin`, the host admission mirror). No lesson's rule is now stated by AGENTS.md or enforced by a test, so none is fully superseded. The global macOS lesson complements, but does not duplicate, `lesson-distinguish-agent-runtime-from-host-runtime` and `lesson-macos-holds-fresh-executables-at-launch`.
+- Before: global `9` lessons, `6,898` bytes / `2,300`; repository `29` lessons, `26,443` bytes / `8,815`; combined `38`, `33,341` bytes / `11,115` summed estimated tokens.
+- Consolidated lesson IDs: none. Archived lesson IDs: none.
+- Owner decision (2026-10-21): "Scope lessons by area and raise the budget to about 40k bytes". Recorded in AGENTS.md (Deterministic Active-Lesson Loading and Audits) and `standards-overrides.md`; tracked by `task-lesson-areas-and-budget`.
+  - The repository lessons are now an always-loaded core (`.codex/tasks/lessons.md`) plus area files under `.codex/tasks/lessons/`, each with a `Scope:` line, loaded when a task touches that scope.
+  - The budget is `40,000` bytes / `13,500` estimated tokens over the full active set.
+  - `//scripts:lesson_areas_test` validates the area files' format, ID uniqueness across core, areas and archive, and the repository's part of the budget.
+- Restructure: the 29 blocks moved verbatim (whitespace between blocks normalized; verified block by block), with no ID, date or field changed.
+  - Core (`8`): `lesson-esp-idf-service-ownership-and-redaction`, `lesson-cross-process-tests-use-real-boundaries`, `lesson-separate-flash-effect-from-monitor-proof`, `lesson-never-invite-ready-before-live-checkpoint`, `lesson-surface-preflight-exit-before-advancing`, `lesson-distinguish-agent-runtime-from-host-runtime`, `lesson-independent-review-before-parity-promotion`, `lesson-gate-each-hardware-step-on-the-previous-result`. These are the safety, privacy, authorization and evidence guardrails and the cross-area lessons.
+  - `hardware-sessions.md` (`7`): native-USB capture pre-arm, HTTP response readiness, receive-only raw termios, core-dump clearing, the retained log ring, fixed Serial/JTAG log markers, per-boot fresh attempts.
+  - `firmware-runtime.md` (`5`): main-task capacity, the internal DMA heap budget, passive heap series, telemetry ranges by operating state, legacy wire units.
+  - `automation-tools.md` (`9`): opaque handoff, transitive validator identity, stop rules proving later events, sealed-run shapes, served module graphs, `--flag=value` argv, validator scope lists, typed-failure registration, macOS first-exec holds.
+- Added lesson IDs (`5`):
+  - core: `lesson-never-edit-under-a-running-gate` (2026-10-17; it recurred on 2026-10-21), `lesson-pinned-evidence-is-immutable` (2026-10-21; evidence guardrail);
+  - `firmware-runtime.md`: `lesson-update-the-host-mirror-with-the-production-adapter`, `lesson-keep-safe10-pinned-fragments-byte-identical` (both 2026-10-17, text as held pending);
+  - `hardware-sessions.md`: `lesson-flash-the-built-package-manifest` (2026-10-21).
+- After: global `9`, `6,898` / `2,300`; repository `34` lessons in four files, `30,546` bytes / `10,182` (core `8,871` / `2,957`; hardware sessions `7,173` / `2,391`; firmware runtime `6,627` / `2,209`; automation tools `7,875` / `2,625`); full active set `43` lessons, `37,444` bytes / `12,482` summed estimated tokens.
+- Next baseline:
+  - Timestamp: `2026-10-21T16:29:17Z`; the 90-day changed-lessons trigger becomes eligible on `2027-01-19T16:29:17Z`
+  - Counts: global `9`, repository `34`, full active set `43`, with `0` new active lessons accumulated
+  - Active source SHA-256 values for change detection: global `955a5158ba5f3fbc1d57d30a66463fb6cecf8ebfc84c6009ef69404f9210b7bd`; core `8eac60028265f2319cb826b5d9e8775e7ce075a85706f30252ab3fe170f05b9b`; `hardware-sessions.md` `8e6e8aa662a50e1817f4d32e942e3fe055548a4aa2484ba9cad6d81c38c40fdd`; `firmware-runtime.md` `11c49f328f4cdbfbe089abcc2cecaf52fddfc62e81c46e14609cfb7cd95f9d82`; `automation-tools.md` `9e13bb2fadbd74a730c0ac2e73ea422f61279d4d603c887e59ad5bb5a86462c2`
+  - Threshold state: within both raised limits, at `93.6%` of the byte limit and `92.5%` of the token limit; this audit consumes the 75% first-crossing trigger. A typical task loads the core, the global file and one or two area files (about `16,000` to `23,000` bytes). The next append over `2,556` bytes, or past `1,018` estimated tokens, triggers an audit.

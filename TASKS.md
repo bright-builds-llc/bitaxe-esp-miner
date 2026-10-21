@@ -1188,6 +1188,26 @@ Completion review: pending.
 
 ## Future
 
+### task-device-response-time-measurement | 2026-10-21 | Explain the slower HTTP responses since the PSRAM atomics fix
+
+Owner decision 2026-10-21: record and defer. Soak 006 (ADR-0039
+firmware) estimated request handling at p50 90 ms and p95 152 ms. Soak
+005, before the fix, gave 77 ms and 104 ms, with an unchanged minimum.
+The estimate is a host-side proxy: each sample interval minus the 2 s
+sleep, so it includes the network round trip and host work. Visible host
+load did not explain the rise. The fix, which turns every Rust atomic into
+a libcall and takes a shared spinlock for PSRAM atomics, is a plausible
+cause, but that is unproven either way. Mining was unaffected: the median
+hashrate and power were unchanged.
+
+- [ ] A device-side measurement of HTTP request handling (for example,
+      handler time in the retained log or the response headers), on
+      firmware with and without the ADR-0039 flag, under its own
+      contract.
+- [ ] If the fix is the cause, find the hot atomics (for example, in the
+      HTTP or telemetry path), and keep the ones that need PSRAM-safe
+      handling.
+
 ### task-telemetry-descriptive-extensions | 2026-10-15 | Add descriptive, unambiguous telemetry names as post-parity extensions
 
 Owner request (2026-10-15). Start only after the parity work is complete.
