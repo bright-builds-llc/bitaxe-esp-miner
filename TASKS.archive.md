@@ -34054,3 +34054,127 @@ revision path. The pinned-evidence breakage of `05f1772c` is repaired.
 
 Residual risks: the parity tool now allows passage-only revisions; each
 still needs an owner-authorized authority pinning the exact new notes.
+
+### task-mining-activity-stopping | 2026-10-21 | Stop the status reading active while the ASIC idles
+
+Owner decision 2026-10-21 ("Add `stopping`"). `miningActivity` read
+`active` for 13-18 s while the ASIC idled. This happened in soak 005 after
+a Wi-Fi drop, and around every lease interrupt.
+
+Root cause: a terminal hardware safe-stop sets
+`terminal_publication_pending` and pushes `SafeStopHardware` without a
+publish (`production_session/runtime.rs`). The firmware runs the stop
+synchronously on the owner thread. Its cooling proof waits for the chip to
+reach 45 C, up to 120 s. Only the confirmation publishes the terminal
+snapshot (ADR-0016). Meanwhile the API kept the last `active` snapshot, and
+the blocked owner thread froze the hashrate monitor.
+
+- [x] `MiningActivityStatus::Stopping` (`"stopping"`):
+  - the snapshot reports it, with work submission blocked
+    (`hardware_safe_stopping`), whenever the hardware is safe-stopping;
+  - the session publishes it once, before the terminal snapshot is held
+    back;
+  - `blockedReason` shows the reason;
+  - labels in `bitaxe-api` and the firmware's command surface;
+  - tests for the order, the snapshot, the pause path and the wire label;
+  - the ADR-0016 amendment.
+- [x] After an independent review, the failure path and the tools:
+  - a failed safe-stop publishes `safe_blocked` with reason
+    `hardware_safe_stop_failed` at once, instead of a lasting `stopping`;
+  - tools that took anything other than `active` for a completed stop now
+    wait through `stopping` or reject it:
+    - the soak judge's powered-down proof;
+    - the campaign network observer;
+    - the scoreboard and operator-snapshot evidence;
+    - the HTTP transport soak judge;
+    - display recovery.
+  - The stratum-v2 single-read tools are unchanged, since `stopping`
+    cannot appear on their fresh-boot readings.
+  - Known fragility: `label_hold` would overwrite `stopping`, but it only
+    fires with no local run, so no path reaches it today.
+- [x] Full gate, independent review, commit and push (`d95d7002`).
+- [x] `--soak stopping-001`: a short local run, then a pause whose every
+      sample is journaled and judged (`stopping.mjs`); tests and README.
+      Then the full gate, independent review, commit and push.
+- [x] Hardware run under the contract below; evidence, review and record.
+
+Stopping check contract (attempt ordinals 001 onward). Soak 006's contract
+(archived `task-local-mining-atomics-soak`) applies except as stated.
+- **Objective** (`--soak stopping-001`, production firmware):
+  1. Admit the paused baseline, save the pool and resume.
+  2. Accumulate 3 minutes of hashing within 15 minutes of the resume,
+     with at least one nonzero hashrate and one accepted share, each
+     outage recovered within 60 s.
+  3. Pause. From the pause until two powered-down samples confirm the
+     stop (within 180 s), every sample is journaled. The status must:
+     - move only forward, from `active` to `stopping` to `paused`;
+     - read `stopping` in at least one sample;
+     - never read `active` while fresh power shows 5 W or less.
+     Any other status, including `safe_blocked`, fails. So does a gap of
+     more than 10 s between stop samples. Sampling starts at the first
+     pause attempt, since a request whose response is lost may still have
+     paused the device. After a live stop, the stop phase is measured but
+     not judged.
+  4. A powered-down final sample on the same boot, with mining on boot
+     off and no pause reason.
+- **Package:** a fresh production package at the clean, pushed HEAD
+  carrying this contract (it contains `d95d7002`), installed
+  state-preserving.
+- **Commands:** as soak 006, with `--soak stopping-001`, detached in its
+  own session as there.
+- **Allowed effects:**
+  - those of soak 006, for up to 15 minutes of local mining;
+  - one pause, resent idempotently every 30 s until the stop confirms;
+  - the recovery `pause` if a run dies.
+- **Evidence:** `result.json` holds only categories and numeric
+  metrics. The committed summary holds those, plus value-free counts and
+  durations from the journal, after `just verify-redaction`.
+- **Accepted outcomes:** as soak 006, with no unchanged retry. The
+  sampler-limit case is `stop_impossible_contract`: `stop_stopping_not_seen`
+  as the only failure, with `stop_active_idle_samples` 0 and
+  `stop_first_paused_ms` of 2,000 ms or less. It means the stop confirmed
+  within one 2 s sample, a limit of the sampler rather than a firmware
+  failure, so it is recorded and reported, not retried.
+
+
+Not changed: the hashrate monitor still freezes during the cooling proof.
+Making the cooling wait non-blocking is a separate change.
+
+Attempt 001 result (2026-10-21): `passed`, `complete`. An independent
+review recomputed the verdict from the private journal and agrees, after
+small corrections to the summary.
+- Summary: `docs/parity/evidence/20261021-ultra205-mining-activity-stopping-check.md`.
+- Production `91a4e40c`, installed state-preserving
+  (`observed_exact_package`); the handoff succeeded on its first attempt.
+  A first install try failed on the host before any device write (the
+  copied manifest's relative ELF path); its endpoint server was stopped
+  before any page attempt.
+- Mining: 180,745 ms of hashing in one span, 16 accepted shares and 0
+  rejected, within the live limits.
+- The pause: 14 samples, at most 2,087 ms apart.
+  - The first, 75 ms after the pause, read `active` at 12.22 W (still
+    hashing).
+  - From 2.1 s, 11 samples read `stopping`, while power fell to
+    1.25–1.48 W and the chip cooled from 60 C to 46 C.
+  - From 24.9 s, at 45 C, the status read `paused`.
+  - No sample read `active` at idle power.
+- Afterwards: paused, powered down, mining on boot off; the same physical
+  device.
+- The enable line was removed.
+
+Verification:
+- `result.json` `passed`; the independent review agrees.
+- The soak tool change passed the full gate (359 tests, every audit at
+  zero findings) and two review rounds before the run.
+
+Completion review (2026-10-21): the API no longer reports active mining
+while the ASIC idles through an ordered safe-stop. On hardware, a pause
+read `stopping` for its whole 23 s cooling proof.
+
+Residual risks:
+- Only the pause path ran on hardware. Lease interrupts, network
+  outages, overheat trips and faults share the publication path, but
+  have no hardware evidence of `stopping`.
+- A failed safe-stop's `safe_blocked` has fake-device coverage only.
+- The hashrate monitor still freezes during the cooling proof
+  (`hashRate` held 429 GH/s while stopping).
