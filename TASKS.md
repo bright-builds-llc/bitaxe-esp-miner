@@ -101,6 +101,59 @@ hardware regression, safe-stop proof, and redaction remain outstanding.
 Automatic selection may treat ASIC-010 as hardware-blocked until those
 prerequisites exist and continue to the next software-actionable row.
 
+## Future
+
+### task-gamma-601-bring-up | 2026-10-21 | Bring up the Bitaxe Gamma 601 (BM1370)
+
+Owner note 2026-10-21: the owner obtained a Bitaxe 601. Per the pinned upstream
+reference (`reference/esp-miner/main/device_config.h`), board 601 is the Gamma
+family:
+- one BM1370 ASIC (chip id 1370, default 525 MHz / 1150 mV);
+- a TPS546 power controller;
+- an EMC2101 fan and temperature controller (ideality factor 0x24);
+- a 19 W power target, with an ESP32-S3 controller as on the Ultra 205.
+
+The repository supports only the Ultra 205 (BM1366). The deferred parity rows
+are CFG-002 (Gamma 601 defaults), ASIC-008 (BM1370) and PWR-004 (TPS546).
+`tools/flash` rejects `board=601`, and `just detect-ultra205` admits only the
+Ultra 205.
+
+- [ ] Plan the bring-up order with the owner: the pure BM1370 core first (as
+      ASIC-009/010), then TPS546, the board profile and defaults, detection
+      and flashing, and hardware-gated control.
+- [ ] A detector or identification step for the 601 under its own task
+      contract, before any effect on it. Standing USB authorization covers
+      only the Ultra 205.
+- [ ] Keep the Ultra 205 workflows unambiguous with two boards attached (port
+      selection, detector admission).
+
+### task-stop-paths-hardware-evidence | 2026-10-21 | Hardware evidence for stops other than a pause
+
+The `stopping` status (`d95d7002`), the zeroed hashrate (`38b9e932`), the
+polled cooling proof (`ba22b7fb`) and the fed task watchdog (`bf98d091`) have
+hardware evidence for a local pause only. A Gate lease interrupt, a network or
+pool outage, an overheat trip and a fault share the same paths.
+
+- [ ] One batched run under its own contract. The lease interruption check
+      (`lease-001`) could gain the `stopping-002` and `watchdog-001` rules.
+- [ ] Then cite the October firmware evidence in the parity checklist (a
+      passage-only revision), together with the stopping, polled-cooling and
+      preparation-watchdog summaries.
+
+### task-owner-blocking-followups | 2026-10-21 | Remaining owner-thread stalls and progress cleanups
+
+Residuals of `task-safe-stop-polled-cooling` and
+`task-preparation-rollback-cooling-watchdog`:
+- [ ] The stop's power-down still blocks the owner for about 7 s (the
+      frequency ramp-down). The hashrate is zeroed first, but campaign status
+      and live-hardware service stall. Consider an incremental ramp.
+- [ ] Chip detection's drain is one ASIC action of up to 5 s (about 1.2 s
+      normally); progress before it bounds the gap to that action.
+- [ ] Self-test reports its rollback under `effect_prepare_hardware`. The
+      Stratum v2 session maps preparation progress inline; share one mapping.
+- [ ] A failed preparation's rollback still holds the owner, now fed, for up
+      to about 127 s.
+
 ### task-ultra205-virtual-board-validation | 2026-09-30 | Full functional virtual Ultra 205 and pre-flash validation
 
 Status: Verified software milestone; full qualification blocked by missing actual
@@ -1098,7 +1151,13 @@ reply serialization, Hello strings and other unmarked allocations still abort on
 exhaustion; firmware recoverable marking is not hardware-verified. The parent's
 named-phase allocation profile item stays open. Qualification stays false.
 
-## Future
+Deferral (2026-10-21): the owner deferred this task. Its increments 1-7 are
+complete; the open parent items above remain: the seeded virtual BM1366 and
+peripheral models, the named-phase allocation profile, the composed
+startup/Start/status/Stop/recovery runs, QEMU integration and the
+pre-flash commands. Before resuming, re-check the device model against the
+polled cooling proof (`ba22b7fb`) and the progress-reporting preparation
+(`bf98d091`).
 
 ### task-device-response-time-measurement | 2026-10-21 | Explain the slower HTTP responses since the PSRAM atomics fix
 
