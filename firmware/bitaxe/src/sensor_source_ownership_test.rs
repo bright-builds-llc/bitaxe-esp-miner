@@ -14,6 +14,7 @@ const EMC2101_SOURCE: &str = include_str!("safety_adapter/emc2101.rs");
 const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
 const POLLED_STOP_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter/polled_stop.rs");
+const PREPARATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter/preparation.rs");
 const PRODUCTION_SAFE_STOP_SOURCE: &str = include_str!("production_mining_session/safe_stop.rs");
 const PRODUCTION_ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const BWG_SOURCE: &str = include_str!("production_mining_session/bwg.rs");
@@ -437,6 +438,23 @@ fn production_safe_stop_binds_the_typed_pause_purpose_without_sensor_waiting() {
 }
 
 #[test]
+fn preparation_reports_progress_through_its_long_waits() {
+    // Arrange / Act / Assert: the owner's watchdog is fed through the frequency ramp, chip
+    // detection, the fan proof, the voltage request and a failure's rollback.
+    assert!(PREPARATION_ADAPTER_SOURCE
+        .contains("execute_preparation_with_progress(self, profile, progress)"));
+    assert!(MINING_ACTUATION_ADAPTER_SOURCE
+        .contains("execute_mining_ready_actions_guarded_with_progress("));
+    assert!(MINING_ACTUATION_ADAPTER_SOURCE
+        .contains("execute_chip_detection_actions_guarded_with_progress("));
+    assert!(MINING_ACTUATION_ADAPTER_SOURCE.contains("self.wait_for_post_command_fan_proof(progress)"));
+    assert!(MINING_ACTUATION_ADAPTER_SOURCE
+        .contains("self.request_preparation_voltage(Self::core_voltage(voltage)?, progress)"));
+    assert!(PRODUCTION_SESSION_SOURCE
+        .contains("progress(preparation_subphase(prepared))"));
+}
+
+#[test]
 fn a_cooling_stop_keeps_the_fan_and_finishes_before_the_owner_exits() {
     // Arrange
     let finish = "finish_pending_safe_stop(&mut session, &mut adapter, &mut task_watchdog);";
@@ -475,7 +493,8 @@ fn unsupported_ultra205_vr_truth_is_projected_but_not_required_for_mining() {
         .contains("AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard)"));
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains("vr_temp_celsius: project_observation("));
     assert!(READINESS_SOURCE.contains("observations.is_ultra_205_mining_safe_at(now())"));
-    assert!(PRODUCTION_SESSION_SOURCE.contains("self.mining_actuation.prepare(profile)"));
+    assert!(PRODUCTION_SESSION_SOURCE
+        .contains("self.mining_actuation.prepare(profile, &mut preparation_progress)"));
     assert!(READINESS_SOURCE.contains("safety_prerequisites_fresh"));
     assert!(READINESS_SOURCE.contains("actuation_qualified"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("ProductionSessionEffect::DispatchAsic"));

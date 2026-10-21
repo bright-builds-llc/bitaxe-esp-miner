@@ -9,7 +9,7 @@ import { activeSpanMs, hardwareStopped, hashing, judge, liveStop, mining, mining
 import { judgeLease, leasePhases } from "./lease.mjs";
 import { handoverPhases, judgeHandover } from "./handover.mjs";
 import { breakWatcher } from "./break-log.mjs";
-import { judgeStopPhase } from "./stopping.mjs";
+import { judgeStopPhase, watchdogNotFresh } from "./stopping.mjs";
 import { poolSaved } from "./pool.mjs";
 
 /** The device stays unreachable this long before the soak stops. */
@@ -58,6 +58,13 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
       stopPhase.failures.filter((code) => !verdict.failures.includes(code)).forEach((code) => verdict.failures.push(code));
     }
     Object.assign(verdict.metrics, stopPhase.metrics);
+    if (soak.requireWatchdogFresh === true) {
+      // Preparation, mining and the stop: every sample from the resume to the final one.
+      const notFresh = watchdogNotFresh([...samples, ...maybeStopSamples]);
+      Object.assign(verdict.metrics, { watchdog_not_fresh_samples: notFresh.count, watchdog_not_fresh_reasons: notFresh.reasons,
+        watchdog_not_fresh_subphases: notFresh.subphases });
+      if (notFresh.count > 0 && !verdict.failures.includes("watchdog_not_fresh")) verdict.failures.push("watchdog_not_fresh");
+    }
     verdict.result = verdict.failures.length === 0 ? "passed" : "failed";
   }
   await note({ event: "verdict", result: verdict.result, failures: verdict.failures });

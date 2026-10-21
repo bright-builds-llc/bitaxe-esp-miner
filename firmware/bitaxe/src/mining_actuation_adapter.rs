@@ -24,9 +24,8 @@ use bitaxe_stratum::v1::production_session::{
 };
 
 use crate::mining_actuation::{
-    execute_preparation, execute_safe_stop_with_progress, MiningActuationBackend,
-    PreparationExecutionFailure, PreparationStep, SafeShutdownFailure, SafeShutdownStep,
-    COOLING_PROOF_TIMEOUT_MS, CORE_VOLTAGE_STABILIZATION_MS,
+    execute_safe_stop_with_progress, MiningActuationBackend, PreparationStep, SafeShutdownFailure,
+    SafeShutdownStep, COOLING_PROOF_TIMEOUT_MS, CORE_VOLTAGE_STABILIZATION_MS,
 };
 use crate::safety_adapter::{
     FanDutyPercent, PendingSafetyActuation, SafetyActuationCommand, SafetyActuationPollOutcome,
@@ -37,6 +36,7 @@ mod clock;
 use clock::ProductionClock;
 mod live;
 mod polled_stop;
+mod preparation;
 
 const FAN_PROOF_TIMEOUT_MS: u64 = 3_000;
 const FAN_PROOF_POLL_MS: u64 = 50;
@@ -131,17 +131,6 @@ impl Ultra205MiningActuationAdapter {
         }
     }
 
-    pub fn prepare(
-        &mut self,
-        profile: MiningHardwareProfile,
-    ) -> Result<(), PreparationExecutionFailure<MiningActuationAdapterError>> {
-        self.maybe_requested_profile = Some(profile);
-        // A profile from an earlier preparation must not choose this rollback's ramp.
-        self.maybe_asic_profile = None;
-        self.fan_proof_confirmed = false;
-        execute_preparation(self, profile)
-    }
-
     pub fn set_worker_generation(
         &mut self,
         maybe_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
@@ -192,6 +181,7 @@ impl Ultra205MiningActuationAdapter {
     fn request_preparation_voltage(
         &self,
         voltage: Ultra205CoreVoltage,
+        progress: &mut dyn FnMut(),
     ) -> Result<(), MiningActuationAdapterError> {
         self.check_preparation_admission()?;
         let pending = match crate::safety_adapter::queue_safety_actuation(
@@ -229,6 +219,7 @@ impl Ultra205MiningActuationAdapter {
             if crate::runtime_uptime::millis() >= deadline {
                 return Err(MiningActuationAdapterError::SafetyReplyTimedOut);
             }
+            progress();
             self.cancellable_delay(50)?;
         }
     }
@@ -296,7 +287,10 @@ impl Ultra205MiningActuationAdapter {
         }
     }
 
-    fn wait_for_post_command_fan_proof(&mut self) -> Result<(), MiningActuationAdapterError> {
+    fn wait_for_post_command_fan_proof(
+        &mut self,
+        progress: &mut dyn FnMut(),
+    ) -> Result<(), MiningActuationAdapterError> {
         let deadline_ms = crate::runtime_uptime::millis().saturating_add(FAN_PROOF_TIMEOUT_MS);
         let mut actuation_applied = false;
         loop {
@@ -361,6 +355,7 @@ impl Ultra205MiningActuationAdapter {
                 }
                 return Err(MiningActuationAdapterError::FanRpmProofTimedOut);
             }
+            progress();
             thread::sleep(Duration::from_millis(FAN_PROOF_POLL_MS));
         }
     }
@@ -450,6 +445,14 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
     }
 
     fn execute_preparation_step(&mut self, step: PreparationStep) -> Result<(), Self::Error> {
+        self.execute_preparation_step_with_progress(step, &mut || {})
+    }
+
+    fn execute_preparation_step_with_progress(
+        &mut self,
+        step: PreparationStep,
+        progress: &mut dyn FnMut(),
+    ) -> Result<(), Self::Error> {
         self.check_preparation_admission()?;
         self.record_preparation_started(step);
         log_preparation_progress(step, "started");
@@ -469,9 +472,11 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 Ok(())
             }
             PreparationStep::SetFanDutyTo100Percent => self.set_fan_full(),
-            PreparationStep::RequireFreshNonzeroFanRpm => self.wait_for_post_command_fan_proof(),
+            PreparationStep::RequireFreshNonzeroFanRpm => {
+                self.wait_for_post_command_fan_proof(progress)
+            }
             PreparationStep::SetCoreVoltage(voltage) => {
-                self.request_preparation_voltage(Self::core_voltage(voltage)?)
+                self.request_preparation_voltage(Self::core_voltage(voltage)?, progress)
             }
             PreparationStep::WaitForCoreVoltageStabilization500Ms => {
                 self.cancellable_delay(u64::from(CORE_VOLTAGE_STABILIZATION_MS))
@@ -495,9 +500,10 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 if decision.maybe_fail_closed_action().is_some() {
                     return Err(MiningActuationAdapterError::AsicPlanInvalid);
                 }
-                crate::asic_adapter::production::execute_chip_detection_actions_guarded(
+                crate::asic_adapter::production::execute_chip_detection_actions_guarded_with_progress(
                     decision.actions(),
                     self.maybe_worker_generation,
+                    progress,
                 )
                 .map_err(MiningActuationAdapterError::Asic)
             }
@@ -513,9 +519,10 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 if decision.maybe_fail_closed_action().is_some() {
                     return Err(MiningActuationAdapterError::AsicPlanInvalid);
                 }
-                crate::asic_adapter::production::execute_mining_ready_actions_guarded(
+                crate::asic_adapter::production::execute_mining_ready_actions_guarded_with_progress(
                     decision.actions(),
                     self.maybe_worker_generation,
+                    progress,
                 )
                 .map_err(MiningActuationAdapterError::Asic)
             }

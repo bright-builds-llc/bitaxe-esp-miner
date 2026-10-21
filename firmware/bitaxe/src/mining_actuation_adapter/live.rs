@@ -27,7 +27,7 @@ impl Ultra205MiningActuationAdapter {
     ) -> Result<(), MiningActuationAdapterError> {
         let voltage = Ultra205CoreVoltage::ultra_205(millivolts)
             .ok_or(MiningActuationAdapterError::UnsupportedProfile)?;
-        self.request_preparation_voltage(voltage)?;
+        self.request_preparation_voltage(voltage, &mut || {})?;
         applied.core_voltage_mv = millivolts;
         Ok(())
     }

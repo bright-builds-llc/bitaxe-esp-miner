@@ -53,6 +53,12 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   `Ultra 205 polled cooling stopping check hardware: enabled.` Every
   `stopping` sample after the first must also read a zero hashrate, not
   the value frozen at the stop (`stop_hashrate_frozen`).
+- `watchdog-001` repeats `stopping-002` and also requires the owner's
+  task watchdog fresh in every sample, through preparation, mining and the
+  stop: every sample must read `feed_fresh` (`watchdog_not_fresh`). Samples record runtime health's
+  `taskWatchdogReason` and owner subphase. It is owned by
+  `task-preparation-rollback-cooling-watchdog`; its enable line is
+  `Ultra 205 preparation watchdog check hardware: enabled.`
 - `boot-resume-001` is the boot-resume check, owned by
   `task-local-mining-boot-resume`. Its enable line is `Ultra 205 local mining
   boot resume check hardware: enabled.` See [Boot-resume

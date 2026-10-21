@@ -355,6 +355,18 @@ fn effect_subphase(effect: &ProductionSessionEffect) -> TaskWatchdogOwnerSubphas
     }
 }
 
+/// The owner subphase for a preparation's progress: its own, or its rollback's safe-stop step.
+pub(super) fn preparation_subphase(
+    progress: crate::mining_actuation::PreparationProgress,
+) -> TaskWatchdogOwnerSubphase {
+    match progress {
+        crate::mining_actuation::PreparationProgress::Step(_) => {
+            TaskWatchdogOwnerSubphase::EffectPrepareHardware
+        }
+        crate::mining_actuation::PreparationProgress::Rollback(step) => safe_stop_subphase(step),
+    }
+}
+
 pub(super) fn safe_stop_subphase(step: SafeShutdownStep) -> TaskWatchdogOwnerSubphase {
     match step {
         SafeShutdownStep::StopDispatch => TaskWatchdogOwnerSubphase::SafeStopStopDispatch,

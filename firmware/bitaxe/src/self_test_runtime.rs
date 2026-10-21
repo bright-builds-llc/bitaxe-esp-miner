@@ -189,7 +189,12 @@ fn run_inner(
     enter(admission, schedule, HardwareSelfTestStage::Preparing, None)?;
     watchdog.feed(TaskWatchdogOwnerSubphase::EffectPrepareHardware);
     actuation
-        .prepare(MiningHardwareProfilePreset::UpstreamDefault.profile())
+        .prepare(
+            MiningHardwareProfilePreset::UpstreamDefault.profile(),
+            &mut |_| {
+                watchdog.feed(TaskWatchdogOwnerSubphase::EffectPrepareHardware);
+            },
+        )
         .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
     crate::asic_adapter::production::execute_self_test_command(Bm1366Command::SetDifficultyMask(
         difficulty_mask_value(f64::from(HARDWARE_SELF_TEST_DIFFICULTY)),

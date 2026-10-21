@@ -189,9 +189,9 @@ pub fn production_ready() -> bool {
 mod admission;
 pub use admission::{
     block_production_dispatch, execute_chip_detection_actions,
-    execute_chip_detection_actions_guarded, execute_live_actions_guarded,
-    execute_mining_ready_actions, execute_mining_ready_actions_guarded, set_asic_power_enabled,
-    set_asic_power_enabled_guarded, set_production_work_permit,
+    execute_chip_detection_actions_guarded_with_progress, execute_live_actions_guarded,
+    execute_mining_ready_actions, execute_mining_ready_actions_guarded_with_progress,
+    set_asic_power_enabled, set_asic_power_enabled_guarded, set_production_work_permit,
 };
 
 /// Executes the typed frequency-down, nonce-reset, and reset-low plan while

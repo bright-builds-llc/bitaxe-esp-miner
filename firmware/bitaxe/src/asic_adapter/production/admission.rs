@@ -74,6 +74,15 @@ pub fn execute_chip_detection_actions_guarded(
     actions: &[Bm1366AdapterAction],
     maybe_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
 ) -> Result<(), ProductionAsicBlocker> {
+    execute_chip_detection_actions_guarded_with_progress(actions, maybe_generation, &mut || {})
+}
+
+/// Executes chip detection, reporting progress before every action.
+pub fn execute_chip_detection_actions_guarded_with_progress(
+    actions: &[Bm1366AdapterAction],
+    maybe_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
+    progress: &mut dyn FnMut(),
+) -> Result<(), ProductionAsicBlocker> {
     let Ok(mut state) = production_state().lock() else {
         return Err(ProductionAsicBlocker::UartFailed);
     };
@@ -84,7 +93,7 @@ pub fn execute_chip_detection_actions_guarded(
     if let Some(uart) = state.maybe_uart.as_mut() {
         uart.set_worker_generation(maybe_generation);
     }
-    execute_adapter_actions_on_state(actions, &mut state)
+    execute_adapter_actions_on_state_with_progress(actions, &mut state, progress)
 }
 
 /// Executes mining-ready initialization and admits UART work only after every
@@ -99,6 +108,16 @@ pub fn execute_mining_ready_actions_guarded(
     actions: &[Bm1366AdapterAction],
     maybe_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
 ) -> Result<(), ProductionAsicBlocker> {
+    execute_mining_ready_actions_guarded_with_progress(actions, maybe_generation, &mut || {})
+}
+
+/// Executes mining-ready initialization, reporting progress before every action, such as
+/// each 100 ms step of the frequency ramp.
+pub fn execute_mining_ready_actions_guarded_with_progress(
+    actions: &[Bm1366AdapterAction],
+    maybe_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
+    progress: &mut dyn FnMut(),
+) -> Result<(), ProductionAsicBlocker> {
     let Ok(mut state) = production_state().lock() else {
         return Err(ProductionAsicBlocker::UartFailed);
     };
@@ -109,7 +128,7 @@ pub fn execute_mining_ready_actions_guarded(
     if let Some(uart) = state.maybe_uart.as_mut() {
         uart.set_worker_generation(maybe_generation);
     }
-    execute_adapter_actions_on_state(actions, &mut state)?;
+    execute_adapter_actions_on_state_with_progress(actions, &mut state, progress)?;
     if !crate::production_mining_session::revocation::permits(maybe_generation) {
         return Err(ProductionAsicBlocker::AsicInitFailed);
     }

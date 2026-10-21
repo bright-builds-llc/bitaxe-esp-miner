@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { SOAKS } from "./judge.mjs";
 import { runSoak } from "./run.mjs";
-import { judgeStopPhase } from "./stopping.mjs";
+import { judgeStopPhase, watchdogNotFresh } from "./stopping.mjs";
 
 const SOAK = SOAKS["stopping-001"];
 const EXPECTED = { firmwareCommit: "c".repeat(40), appElfSha256: "e".repeat(64), bootOrdinal: 7 };
@@ -16,7 +16,7 @@ const sample = (atMs, miningActivity, powerW, fresh = FRESH) => ({ atMs, miningA
  * meanwhile it reads `during` (`stopping` as fixed, `active` as before the fix).
  */
 function fakeDevice({ during = "stopping", stopMs = 14_000, loseFirstPauseResponse = false, startAfterMs = 4000,
-  frozenHashrate = false } = {}) {
+  frozenHashrate = false, staleForMs = 0 } = {}) {
   const clock = { now: 0 };
   const state = { paused: true, resumedAt: null, pausedAt: null, pool: {}, calls: [] };
   const activity = () => {
@@ -32,6 +32,10 @@ function fakeDevice({ during = "stopping", stopMs = 14_000, loseFirstPauseRespon
       hashRate: hashing || (frozenHashrate && miningActivity === "stopping") ? 500 : 0, sharesAccepted: hashing ? Math.floor((clock.now - state.resumedAt) / 30_000) : 0, sharesRejected: 0,
       temp: 55, vrTemp: 50, voltage: 5100, power: hashing ? 12 : 1, fanrpm: 4000, overheat_mode: 0, ...state.pool,
       powerStatus: { state: "fresh" }, voltageStatus: { state: "fresh" }, chipTempStatus: { state: "fresh" }, fanRpmStatus: { state: "fresh" },
+      // Preparation follows the resume; `staleForMs` models it leaving the watchdog unfed.
+      runtimeHealth: state.resumedAt !== null && clock.now - state.resumedAt < staleForMs
+        ? { taskWatchdogReason: "feed_stale", taskWatchdogOwnerSubphase: "effect_prepare_hardware" }
+        : { taskWatchdogReason: "feed_fresh", taskWatchdogOwnerSubphase: "unavailable" },
     };
   };
   const client = {
@@ -253,4 +257,52 @@ test("the first stopping sample may still show the hashrate", () => {
   // Assert
   assert.deepEqual(failures, []);
   assert.equal(metrics.stop_hashrate_frozen_samples, 0);
+});
+
+test("watchdog-001 passes when the watchdog stays fresh", async () => {
+  // Arrange
+  const device = fakeDevice();
+  // Act
+  const { verdict } = await run(device, SOAKS["watchdog-001"]);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.metrics.watchdog_not_fresh_samples, 0);
+});
+
+test("watchdog-001 fails on a watchdog left unfed through preparation", async () => {
+  // Arrange: about 10 s unfed after the resume, as before preparation reported progress.
+  const device = fakeDevice({ staleForMs: 10_000 });
+  // Act
+  const { verdict } = await run(device, SOAKS["watchdog-001"]);
+  // Assert
+  assert.deepEqual(verdict.failures, ["watchdog_not_fresh"]);
+  assert.deepEqual(verdict.metrics.watchdog_not_fresh_subphases, ["effect_prepare_hardware"]);
+});
+
+test("stopping-002 does not judge the watchdog", async () => {
+  // Arrange
+  const device = fakeDevice({ staleForMs: 10_000 });
+  // Act
+  const { verdict } = await run(device, SOAKS["stopping-002"]);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.metrics.watchdog_not_fresh_samples, undefined);
+});
+
+test("every reading other than feed_fresh counts, including none", () => {
+  // Arrange
+  const samples = [
+    { watchdogReason: "feed_fresh", watchdogSubphase: "unavailable" },
+    { watchdogReason: "feed_stale", watchdogSubphase: "effect_prepare_hardware" },
+    { watchdogReason: "feed_failed", watchdogSubphase: "unavailable" },
+    { watchdogReason: null, watchdogSubphase: null },
+  ];
+  // Act
+  const notFresh = watchdogNotFresh(samples);
+  // Assert
+  assert.deepEqual(notFresh, {
+    count: 3,
+    reasons: ["feed_failed", "feed_stale", "missing"],
+    subphases: ["effect_prepare_hardware", "missing", "unavailable"],
+  });
 });

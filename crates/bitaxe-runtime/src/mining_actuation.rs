@@ -8,6 +8,8 @@ use bitaxe_config::{AsicFrequencyMhz, CoreVoltageMv};
 use bitaxe_stratum::v1::production_session::{HardwareSafeStopPurpose, MiningHardwareProfile};
 
 mod polled_stop;
+#[cfg(test)]
+mod preparation_tests;
 pub use polled_stop::{
     begin_safe_stop_with_progress, poll_cooling_proof, CoolingProofBackend, PendingCoolingProof,
     SafeStopProgress, COOLING_PROOF_TIMEOUT_MS,
@@ -114,6 +116,15 @@ pub trait MiningActuationBackend {
 
     /// Establishes the state described by one preparation step.
     fn execute_preparation_step(&mut self, step: PreparationStep) -> Result<(), Self::Error>;
+
+    /// Executes one preparation step while allowing long-running adapters to report progress.
+    fn execute_preparation_step_with_progress(
+        &mut self,
+        step: PreparationStep,
+        _progress: &mut dyn FnMut(),
+    ) -> Result<(), Self::Error> {
+        self.execute_preparation_step(step)
+    }
 
     /// Establishes the state described by one idempotent safe-shutdown step.
     fn execute_safe_shutdown_step(&mut self, step: SafeShutdownStep) -> Result<(), Self::Error>;
@@ -238,6 +249,15 @@ pub const fn resumable_pause_shutdown_plan() -> [SafeShutdownStep; 6] {
     ]
 }
 
+/// Where a preparation is, reported while it runs so a caller can feed its task watchdog.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PreparationProgress {
+    /// Preparation is at, or within, this step.
+    Step(PreparationStep),
+    /// A failed preparation's rollback is at, or within, this step.
+    Rollback(SafeShutdownStep),
+}
+
 /// Executes preparation and rolls every partial failure through safe shutdown.
 ///
 /// If rollback also fails, both failures are returned while the original
@@ -249,10 +269,28 @@ pub fn execute_preparation<B>(
 where
     B: MiningActuationBackend,
 {
+    execute_preparation_with_progress(backend, profile, &mut |_| {})
+}
+
+/// Executes preparation, reporting each step and each heartbeat within it, and each step
+/// of a failure's rollback, without changing the order, admission or failure rule.
+pub fn execute_preparation_with_progress<B>(
+    backend: &mut B,
+    profile: MiningHardwareProfile,
+    progress: &mut dyn FnMut(PreparationProgress),
+) -> Result<(), PreparationExecutionFailure<B::Error>>
+where
+    B: MiningActuationBackend,
+{
     for step in preparation_plan(profile) {
+        progress(PreparationProgress::Step(step));
         let outcome = backend
             .check_preparation_admission()
-            .and_then(|()| backend.execute_preparation_step(step))
+            .and_then(|()| {
+                backend.execute_preparation_step_with_progress(step, &mut || {
+                    progress(PreparationProgress::Step(step));
+                })
+            })
             .and_then(|()| backend.check_preparation_admission());
         let Err(source) = outcome else {
             continue;
@@ -260,7 +298,11 @@ where
 
         backend.observe_preparation_rejection(step, &source);
         let original = PreparationStepFailure { step, source };
-        let maybe_safe_shutdown_failure = execute_safe_shutdown(backend).err();
+        let maybe_safe_shutdown_failure =
+            execute_safe_shutdown_steps_with_progress(backend, safe_shutdown_plan(), &mut |step| {
+                progress(PreparationProgress::Rollback(step));
+            })
+            .err();
         return Err(PreparationExecutionFailure {
             original,
             maybe_safe_shutdown_failure,

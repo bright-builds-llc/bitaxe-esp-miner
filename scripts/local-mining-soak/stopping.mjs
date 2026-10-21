@@ -3,6 +3,16 @@
 // fix it read `active` for 13-18 s at idle power, until the cooling proof confirmed the stop.
 import { idlePower, MAXIMUM_SAMPLE_GAP_MS } from "./judge.mjs";
 
+/**
+ * The owner's task watchdog over a run's samples: how many do not read `feed_fresh` (unfed past
+ * its 5 s timeout, a failed feed, or no reading at all), with their reasons and owner subphases.
+ */
+export function watchdogNotFresh(samples) {
+  const notFresh = samples.filter((sample) => sample.watchdogReason !== "feed_fresh");
+  const labels = (key) => [...new Set(notFresh.map((sample) => sample[key] ?? "missing"))].sort();
+  return { count: notFresh.length, reasons: labels("watchdogReason"), subphases: labels("watchdogSubphase") };
+}
+
 /** The only order a pause may show: still mining, then stopping, then paused. */
 const RANK = Object.freeze({ active: 0, stopping: 1, paused: 2 });
 

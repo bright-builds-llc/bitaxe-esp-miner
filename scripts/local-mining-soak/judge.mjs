@@ -25,6 +25,8 @@
  *   confirms must read `active`, then `stopping`, then `paused`, never `active` at idle power.
  * - Stopping check 002 repeats it on the polled cooling proof (ADR-0016): the hashrate must also
  *   read zero while stopping, not the value frozen at the stop.
+ * - Watchdog check 001 repeats stopping check 002 and also requires the owner's task watchdog
+ *   fresh in every sample, through preparation, mining and the stop.
  * - Boot resume check 001 (`boot-resume.mjs`) turns mining on boot on and restarts: mining must
  *   come back with no resume command and accumulate 5 minutes within 15 of first seeing the boot,
  *   outages tolerated as in soak 002. It then turns mining on boot off, pauses and restarts: the
@@ -69,6 +71,10 @@ export const SOAKS = Object.freeze({
   "stopping-002": Object.freeze({ id: "stopping-002", kind: "stopping", task: "task-safe-stop-polled-cooling",
     activeMs: 3 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
     requireHashrateZeroed: true, enableLine: "Ultra 205 polled cooling stopping check hardware: enabled." }),
+  "watchdog-001": Object.freeze({ id: "watchdog-001", kind: "stopping", task: "task-preparation-rollback-cooling-watchdog",
+    activeMs: 3 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
+    requireHashrateZeroed: true, requireWatchdogFresh: true,
+    enableLine: "Ultra 205 preparation watchdog check hardware: enabled." }),
   "boot-resume-001": Object.freeze({ id: "boot-resume-001", kind: "boot-resume", task: "task-local-mining-boot-resume",
     activeMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
     enableLine: "Ultra 205 local mining boot resume check hardware: enabled." }),
@@ -118,6 +124,10 @@ export function sampleFromInfo(info, atMs) {
     // Wi-Fi state, to diagnose outages; the status label is reduced to a boolean.
     wifiConnected: info?.wifiStatus === "connected",
     wifiRssi: number(info?.wifiRSSI),
+    // The owner's task watchdog, as runtime health reports it: its category labels only.
+    watchdogReason: typeof info?.runtimeHealth?.taskWatchdogReason === "string" ? info.runtimeHealth.taskWatchdogReason : null,
+    watchdogSubphase: typeof info?.runtimeHealth?.taskWatchdogOwnerSubphase === "string"
+      ? info.runtimeHealth.taskWatchdogOwnerSubphase : null,
     fresh: {
       power: info?.powerStatus?.state === "fresh",
       input: info?.voltageStatus?.state === "fresh",

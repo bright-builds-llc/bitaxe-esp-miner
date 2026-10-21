@@ -888,6 +888,7 @@ rust_test(
         "src/asic_adapter/production/self_test.rs",
         "src/mining_actuation_adapter.rs",
         "src/mining_actuation_adapter/polled_stop.rs",
+        "src/mining_actuation_adapter/preparation.rs",
         "src/fan_controller_plan.rs",
         "src/fan_controller_runtime.rs",
         "src/operator_sensor_runtime.rs",

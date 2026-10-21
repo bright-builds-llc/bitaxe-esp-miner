@@ -245,7 +245,8 @@ function requireVoltagePreparation(adapter: string, actuation: string, delegated
     ]
     : ["crate::mining_actuation::wait_with_cancellation(\n            duration_ms,\n            crate::runtime_uptime::millis,\n            |milliseconds| thread::sleep(Duration::from_millis(milliseconds)),\n            || self.check_preparation_admission(),\n        )"];
   const fragments = cancellable ? [
-    "self.request_preparation_voltage(Self::core_voltage(voltage)?)",
+    // The call gained a progress argument (preparation watchdog); both forms share this prefix.
+    "self.request_preparation_voltage(Self::core_voltage(voltage)?",
     "SafetyActuationCommand::SetCoreVoltageForGeneration {\n                voltage,\n                permit: crate::production_mining_session::revocation::stamp(\n                    self.maybe_worker_generation,\n                ),\n            }",
     "PreparationStep::WaitForCoreVoltageStabilization500Ms => {\n                self.cancellable_delay(u64::from(CORE_VOLTAGE_STABILIZATION_MS))\n            }",
     ...cancellableWait,

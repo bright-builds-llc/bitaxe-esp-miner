@@ -31,7 +31,7 @@ use self::asic_worker::{AsicWorker, AsicWorkerCommand, AsicWorkerEvent};
 use self::campaign_status::publication::CampaignStatusPublicationSchedule;
 use self::campaign_status::CampaignStatusTracker;
 use self::hashrate::ProductionHashrateMonitor;
-use self::owner_loop::{run_owner, safe_stop_subphase};
+use self::owner_loop::{preparation_subphase, run_owner, safe_stop_subphase};
 use self::readiness_trace::ReadinessTransitionTracker;
 use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWorkers};
 use crate::mining_actuation::SafeShutdownStep;
@@ -290,7 +290,10 @@ impl OrdinaryEspProductionSessionAdapter {
                 self.note_worker_preparation_started();
                 self.mining_actuation
                     .set_worker_generation(self.maybe_owner_generation());
-                match self.mining_actuation.prepare(profile) {
+                // Preparation takes about 10 s (the frequency ramp alone about 7 s), so it
+                // feeds the task watchdog throughout, as the safe-stop does.
+                let mut preparation_progress = |prepared| progress(preparation_subphase(prepared));
+                match self.mining_actuation.prepare(profile, &mut preparation_progress) {
                     Ok(()) if revocation::permits(self.maybe_owner_generation()) => {
                         // Preparation proved the fan at 100%; the lease's controller now
                         // follows the device's fan settings until its permit ends.
