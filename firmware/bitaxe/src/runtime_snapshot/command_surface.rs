@@ -214,5 +214,6 @@ const fn mining_activity_label(activity: MiningActivityStatus) -> &'static str {
         MiningActivityStatus::Paused => "paused",
         MiningActivityStatus::Active => "active",
         MiningActivityStatus::SafeBlocked => "safe_blocked",
+        MiningActivityStatus::Stopping => "stopping",
     }
 }

@@ -84,12 +84,19 @@ export function requiredBoolean(value: JsonObject, field: string, context: strin
   return candidate;
 }
 
+/**
+ * A stop is confirmed only once firmware leaves `stopping` (a hardware safe stop
+ * still in progress) for `paused` or `safe_blocked`.
+ */
+export function miningStopConfirmed(miningActivity: string): boolean {
+  return miningActivity === "paused" || miningActivity === "safe_blocked";
+}
+
 export function bootMiningDisabled(
   startMiningOnBoot: boolean,
   miningActivity: string,
 ): boolean {
-  return !startMiningOnBoot
-    && (miningActivity === "paused" || miningActivity === "safe_blocked");
+  return !startMiningOnBoot && miningStopConfirmed(miningActivity);
 }
 
 const fractionMask = (1n << 52n) - 1n;

@@ -240,13 +240,15 @@ fn counters_regress(
     })
 }
 
-/// Mining observed stopped within `TERMINAL_WINDOW_MS` of the gate closing.
+/// Mining observed stopped within `TERMINAL_WINDOW_MS` of the gate closing. A safe stop
+/// still in progress (`stopping`) is not a confirmed stop.
 fn terminal_confirmed(samples: &[Timed<'_>], transport: SoakTransport) -> bool {
     let end = i128::from(WORK_GATE_MS);
     samples.iter().any(|value| {
         value.transport == transport
             && (end..end + i128::from(TERMINAL_WINDOW_MS)).contains(&value.active_ms)
             && !value.sample.mining_active
+            && !value.sample.mining_stopping
             && !value.sample.start_mining_on_boot
     })
 }
@@ -265,6 +267,7 @@ fn final_baseline(
             value.active_ms >= i128::from(WORK_GATE_MS)
                 && value.sample.mining_paused == (baseline == FinalBaseline::Paused)
                 && !value.sample.mining_active
+                && !value.sample.mining_stopping
                 && !value.sample.start_mining_on_boot
         })
 }

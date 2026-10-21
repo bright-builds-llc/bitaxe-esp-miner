@@ -325,3 +325,10 @@ test("the live limits still apply to a status-active sample at idle power", () =
   // Assert
   assert.equal(stop, "soak_chip_temperature");
 });
+
+test("a stop that has not yet confirmed is not powered down, though the ASIC idles", () => {
+  // Arrange
+  const sample = paused({ miningActivity: "stopping", power: 0.8 });
+  // Act / Assert
+  assert.equal(hardwareStopped(sample), false);
+});

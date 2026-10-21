@@ -523,7 +523,8 @@ impl OrdinaryEspProductionSessionAdapter {
                         );
                         Some(ProductionSessionEvent::EffectFailed {
                             maybe_pool: None,
-                            reason: "hardware_safe_stop_failed",
+                            reason:
+                                bitaxe_stratum::v1::production_session::HARDWARE_SAFE_STOP_FAILED,
                             now_ms,
                         })
                     }

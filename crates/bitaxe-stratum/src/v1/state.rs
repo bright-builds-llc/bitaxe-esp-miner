@@ -25,6 +25,9 @@ pub enum MiningActivityStatus {
     Paused,
     Active,
     SafeBlocked,
+    /// The ASIC is being stopped: work submission ended, and the ordered safe-stop has not yet
+    /// confirmed. Neither paused nor blocked holds until it does.
+    Stopping,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -57,6 +57,7 @@ impl ProductionMiningSession {
         self.bridge.invalidate_session();
         self.recovery.reset_after_probe();
         self.hardware_state = MiningHardwareState::Preparing;
+        self.hardware_safe_stop_failed = false;
         self.campaign_state = MiningCampaignState::Preparing;
         self.maybe_prepared_at_ms = None;
         self.maybe_active_since_ms = None;

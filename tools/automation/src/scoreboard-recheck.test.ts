@@ -99,6 +99,33 @@ test("tampered protected inputs withhold scoreboard projection", async () => {
   }
 });
 
+test("a pre-restart capture still stopping is not a confirmed safe stop", async () => {
+  // Arrange
+  const fixture = await scoreboardRecheckFixture("stopping");
+  const systemPath = path.join(
+    fixture.root,
+    fixture.options.privateRoot,
+    "post-campaign-system.private.json",
+  );
+  const system = JSON.parse(await readFile(systemPath, "utf8")) as Record<string, unknown>;
+  await writeFile(systemPath, `${JSON.stringify({ ...system, miningActivity: "stopping" })}\n`);
+  try {
+    // Act / Assert
+    await assert.rejects(runFixture(
+      fixture.root,
+      fixture.base,
+      fixture.options,
+      fixture.identity,
+    ), (error: unknown) => error instanceof ScoreboardEvidenceError
+      && error.message === "pre-restart safe stop is invalid");
+    await assert.rejects(readFile(path.join(fixture.root, fixture.options.projection), "utf8"), {
+      code: "ENOENT",
+    });
+  } finally {
+    await rm(fixture.root, { recursive: true });
+  }
+});
+
 test("protected symlink and secret-bearing terminal output fail closed", async () => {
   for (const candidate of ["symlink", "secret"] as const) {
     // Arrange

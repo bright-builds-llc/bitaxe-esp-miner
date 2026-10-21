@@ -215,7 +215,12 @@ pub(crate) fn run_display_recovery_start(
     let usb_receipt_bytes = json_line(&usb_receipt)?;
     write_private_new_bytes(&root.join("usb-admission.private.json"), &usb_receipt_bytes)?;
     let client = StrictHttpClient::new(&origin.origin())?;
-    let baseline = read_json_until(&client, DisplayRead::System, Duration::from_secs(60));
+    let baseline = read_json_until(
+        &client,
+        DisplayRead::System,
+        Duration::from_secs(60),
+        any_response,
+    );
     let Ok((baseline, _baseline_read_count)) = baseline else {
         let marker = serde_json::json!({
             "schema_version": "bitaxe-native-usb-display-origin-retry-v1",
@@ -260,12 +265,20 @@ pub(crate) fn run_display_recovery_start(
     ) {
         bail!("display_recovery=blocked reason=theme_request_failed");
     }
-    let (confirmed, system_read_count) =
-        read_json_until(&client, DisplayRead::System, Duration::from_secs(30))
-            .context("display_recovery=blocked reason=restoration_uncertain")?;
-    let (confirmed_theme, theme_read_count) =
-        read_json_until(&client, DisplayRead::Theme, Duration::from_secs(30))
-            .context("display_recovery=blocked reason=restoration_uncertain")?;
+    let (confirmed, system_read_count) = read_json_until(
+        &client,
+        DisplayRead::System,
+        Duration::from_secs(30),
+        display_recovery_runtime_settled,
+    )
+    .context("display_recovery=blocked reason=restoration_uncertain")?;
+    let (confirmed_theme, theme_read_count) = read_json_until(
+        &client,
+        DisplayRead::Theme,
+        Duration::from_secs(30),
+        any_response,
+    )
+    .context("display_recovery=blocked reason=restoration_uncertain")?;
     if display_mac_sha256(
         confirmed
             .get("macAddr")
@@ -482,13 +495,17 @@ enum DisplayRead {
     Theme,
 }
 
+/// Reads until a JSON response is `settled`; at the deadline the last unsettled
+/// response is returned for the caller's own judgement.
 fn read_json_until(
     client: &StrictHttpClient,
     kind: DisplayRead,
     timeout: Duration,
+    settled: fn(&Value) -> bool,
 ) -> Result<(Value, u8)> {
     let deadline = Instant::now() + timeout;
     let mut count = 0_u8;
+    let mut maybe_unsettled = None;
     while Instant::now() < deadline {
         count = count.saturating_add(1);
         let request_deadline = (Instant::now() + Duration::from_secs(10)).min(deadline);
@@ -497,11 +514,27 @@ fn read_json_until(
             DisplayRead::Theme => client.get_theme(request_deadline)?,
         };
         if let Some(value) = read_json_response(&observation) {
-            return Ok((value, count));
+            if settled(&value) {
+                return Ok((value, count));
+            }
+            maybe_unsettled = Some(value);
         }
         std::thread::sleep(Duration::from_millis(500));
     }
-    bail!("display_recovery=blocked reason=origin_unreachable")
+    let Some(unsettled) = maybe_unsettled else {
+        bail!("display_recovery=blocked reason=origin_unreachable");
+    };
+    Ok((unsettled, count))
+}
+
+fn any_response(_: &Value) -> bool {
+    true
+}
+
+/// `stopping` is a hardware safe stop still in progress, so the runtime state has
+/// not settled yet: keep reading rather than judging it.
+pub(crate) fn display_recovery_runtime_settled(system: &Value) -> bool {
+    system.get("miningActivity").and_then(Value::as_str) != Some("stopping")
 }
 
 pub(crate) fn display_recovery_identity_matches(

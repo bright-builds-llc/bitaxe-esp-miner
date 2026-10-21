@@ -101,6 +101,33 @@ fn a_journal_sample_from_before_the_new_fields_still_parses() {
 }
 
 #[test]
+fn a_sample_records_a_safe_stop_in_progress_as_neither_active_nor_stopped() {
+    // Arrange
+    let mut wire = wire();
+    wire.mining_paused = false;
+    wire.mining_activity = "stopping".to_owned();
+    // Act
+    let sample = SoakSample::from_wire(&wire, None);
+    // Assert
+    assert_eq!(
+        (sample.mining_active, sample.mining_stopping),
+        (false, true)
+    );
+}
+
+#[test]
+fn a_journal_sample_from_before_the_stopping_state_parses_as_not_stopping() {
+    // Arrange
+    let mut value = serde_json::to_value(sample(0, 1)).expect("sample json");
+    let object = value.as_object_mut().expect("object");
+    object.remove("miningStopping").expect("field present");
+    // Act
+    let parsed: SoakSample = serde_json::from_value(value).expect("older sample parses");
+    // Assert
+    assert!(!parsed.mining_stopping);
+}
+
+#[test]
 fn a_soak_005_journal_sample_without_the_counts_still_parses() {
     // Arrange: soak 005 and 006 samples carry recent worst and failures only.
     let mut value = serde_json::to_value(sample(0, 1)).expect("sample json");

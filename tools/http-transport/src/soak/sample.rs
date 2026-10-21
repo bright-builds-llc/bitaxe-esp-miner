@@ -22,6 +22,10 @@ pub struct SoakSample {
     pub source_dirty: bool,
     pub mining_active: bool,
     pub mining_paused: bool,
+    /// A hardware safe stop is in progress (`miningActivity` `stopping`): not active,
+    /// and not yet a confirmed stop. Defaulted so journals from before the state still parse.
+    #[serde(default)]
+    pub mining_stopping: bool,
     pub start_mining_on_boot: bool,
     pub safety_valid: bool,
     pub maybe_watchdog_feed_sequence: Option<u64>,
@@ -90,6 +94,7 @@ impl SoakSample {
             source_dirty: wire.source_dirty,
             mining_active: !wire.mining_paused && wire.mining_activity == "active",
             mining_paused: wire.mining_paused,
+            mining_stopping: wire.mining_activity == "stopping",
             start_mining_on_boot: wire.start_mining_on_boot,
             safety_valid: safety_valid(wire),
             maybe_watchdog_feed_sequence: wire.runtime_health.maybe_task_watchdog_feed_sequence,

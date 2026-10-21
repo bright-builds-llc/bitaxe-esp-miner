@@ -267,6 +267,27 @@ test("same-epoch session and revision mismatches are rejected before publication
   }
 });
 
+test("a safe stop still in progress is not a confirmed safe operator state", async () => {
+  // Arrange
+  const value = await fixture("stopping");
+  const stopping = (document: Record<string, unknown>, index: number) => {
+    if (index === 0) document["miningActivity"] = "stopping";
+  };
+  const restore = installHttp(stopping);
+
+  try {
+    // Act
+    const error = await captureError(capture(value, fakePort(), websocketFactory(stopping)));
+
+    // Assert
+    assert.equal(error.category, "evidence_invalid");
+    assert.match(error.message, /safe operator state is not confirmed/u);
+    await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+  } finally {
+    restore();
+  }
+});
+
 test("failed final contract validation never publishes the candidate projection", async () => {
   // Arrange
   const value = await fixture("final-validation");

@@ -55,6 +55,9 @@ const stableFields = [
   "axeOSVersion", "idfVersion", "miningPaused", "miningActivity", "startMiningOnBoot",
 ] as const;
 
+/** `stopping` is a hardware safe stop still in progress, not a confirmed safe state. */
+const confirmedSafeOperatorActivities: ReadonlySet<string> = new Set(["paused", "safe_blocked"]);
+
 export class OperatorSnapshotEvidenceError extends Error {
   public constructor(
     public readonly category: FailureCategory,
@@ -279,7 +282,7 @@ async function captureEpoch(
   if (JSON.stringify(apiStable) !== JSON.stringify(websocketStable)) {
     throw failure("evidence_invalid", "operator snapshot substantive projections differ");
   }
-  if (apiStable["miningActivity"] === "active") {
+  if (!confirmedSafeOperatorActivities.has(String(apiStable["miningActivity"]))) {
     throw failure("evidence_invalid", "operator snapshot safe operator state is not confirmed");
   }
   const apiDocument = path.join(epochRoot, "api-validation.private.txt");

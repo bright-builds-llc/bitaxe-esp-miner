@@ -144,3 +144,28 @@ fn display_recovery_identity_and_final_state_require_every_bound_field() {
         expected.as_object().expect("expected identity")
     ));
 }
+
+#[test]
+fn display_recovery_keeps_reading_while_a_safe_stop_is_stopping() {
+    // Arrange
+    let stopping = serde_json::json!({ "miningActivity": "stopping" });
+
+    // Act
+    let settled = display_recovery_runtime_settled(&stopping);
+
+    // Assert
+    assert!(!settled);
+}
+
+#[test]
+fn display_recovery_judges_confirmed_stop_states() {
+    // Arrange
+    let states = ["paused", "safe_blocked", "active"]
+        .map(|activity| serde_json::json!({ "miningActivity": activity }));
+
+    // Act
+    let settled = states.each_ref().map(display_recovery_runtime_settled);
+
+    // Assert
+    assert_eq!(settled, [true, true, true]);
+}

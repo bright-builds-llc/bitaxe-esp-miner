@@ -17,6 +17,7 @@ import {
   bootMiningDisabled,
   expectedProjection,
   failure,
+  miningStopConfirmed,
   object,
   requiredBoolean,
   requiredInteger,
@@ -380,7 +381,7 @@ export async function recheckScoreboardEvidence(
     "pre-restart system info",
   )).value;
   const before = capturedSystemIdentity(beforeValue, identity);
-  if (before.startMiningOnBoot || before.miningActivity === "active") {
+  if (before.startMiningOnBoot || !miningStopConfirmed(before.miningActivity)) {
     throw failure("evidence_invalid", "pre-restart safe stop is invalid");
   }
   let after: CapturedSystemIdentity | undefined;

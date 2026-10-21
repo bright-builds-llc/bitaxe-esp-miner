@@ -12,6 +12,7 @@ import {
   bootMiningDisabled,
   durableDifficulty,
   expectedPlanSha256,
+  miningStopConfirmed,
   requiredBoolean,
   scoreboardRestartPersists,
   scoreboardView,
@@ -149,6 +150,33 @@ test("paused post-restart state with disabled boot mining publishes", async () =
     assert.equal(evidence.scoreboard.boot_mining_disabled, true);
     assert.equal(evidence.scoreboard.post_restart_persistence, true);
     assert.equal((await stat(path.join(fixture.root, fixture.options.projection))).mode & 0o777, 0o644);
+  } finally {
+    await server.close();
+    await rm(fixture.root, { recursive: true });
+  }
+});
+
+test("a post-campaign device still stopping is not safely stopped", async () => {
+  // Arrange
+  const fixture = await scoreboardFixture("stopping-post-campaign");
+  const server = await startScoreboardServer({ preRestartMiningActivity: "stopping" });
+  const child = await scoreboardChild(fixture, server.origin);
+  try {
+    // Act
+    const error = await captureError(captureScoreboardEvidence(
+      fixture.root,
+      fixture.options,
+      createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" }),
+      child,
+      child,
+      child,
+      fixture.planSha256,
+      async () => {},
+    ));
+
+    // Assert
+    assert.equal(error.category, "hardware_blocked");
+    assert.equal(error.message, "post-campaign device is not safely stopped");
   } finally {
     await server.close();
     await rm(fixture.root, { recursive: true });
@@ -364,6 +392,7 @@ test("boot mining disabled accepts only closed non-active states with false inte
     { intent: false, activity: "paused", expected: true },
     { intent: false, activity: "safe_blocked", expected: true },
     { intent: false, activity: "active", expected: false },
+    { intent: false, activity: "stopping", expected: false },
     { intent: false, activity: "unknown", expected: false },
     { intent: true, activity: "paused", expected: false },
     { intent: true, activity: "safe_blocked", expected: false },
@@ -376,6 +405,17 @@ test("boot mining disabled accepts only closed non-active states with false inte
     // Assert
     assert.equal(result, candidate.expected);
   }
+});
+
+test("only paused and safe_blocked confirm a stop, never stopping", () => {
+  // Arrange
+  const activities = ["paused", "safe_blocked", "stopping", "active"] as const;
+
+  // Act
+  const confirmed = activities.map((activity) => miningStopConfirmed(activity));
+
+  // Assert
+  assert.deepEqual(confirmed, [true, true, false, false]);
 });
 
 test("current or archived immutable STAT-003 task and source inventory pass", async () => {

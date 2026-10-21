@@ -50,6 +50,19 @@ unchanged.
 - Safe stop has one idempotent ordering: block submissions, invalidate work and
   generations, stop ASIC interaction, close transports, request hardware
   safe-stop, and publish the terminal snapshot only after confirmation.
+- Amendment (2026-10-21, owner decision): just before the hardware safe-stop
+  is requested, the session publishes one non-terminal snapshot whose
+  activity is `stopping`, with work submission blocked
+  (`hardware_safe_stopping`). The ASIC stops within milliseconds, but the
+  terminal snapshot waits for the cooling proof, up to 120 s. Without this
+  the status read `active` for 13-18 s while the ASIC idled.
+  - `stopping` is neither `paused` nor `safe_blocked`.
+  - Tools that once took anything other than `active` for a completed stop
+    now wait through it or reject it: the soak judges, the campaign network
+    observer, the scoreboard and operator-snapshot evidence, and display
+    recovery.
+  - A safe-stop that fails publishes `safe_blocked` with reason
+    `hardware_safe_stop_failed` at once, never a lasting `stopping`.
 - Production recovery policy is virtual-time testable without hardware or pool
   access.
 - ASIC dispatch and polling effects carry their pool generation and valid-job

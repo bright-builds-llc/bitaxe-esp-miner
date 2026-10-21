@@ -3,6 +3,7 @@ mod campaign_state;
 mod lifecycle;
 mod local;
 mod protocol;
+mod publication;
 mod transport;
 mod v2;
 
@@ -61,61 +62,21 @@ pub struct ProductionMiningSession {
     pub(super) job_transition: JobTransitionTracker,
     pub(super) asic_diagnostics: AsicBridgeDiagnosticsTracker,
     pub(super) terminal_publication_pending: bool,
+    /// The hardware safe-stop itself failed: the device is no longer stopping, it failed to stop.
+    pub(super) hardware_safe_stop_failed: bool,
     pub(super) maybe_retained_mining: Option<crate::v1::state::MiningRuntimeState>,
     pub(super) maybe_last_snapshot: Option<ProductionSessionSnapshot>,
     pub(super) share_counters: super::types::ProductionShareCounters,
 }
 
+/// The `EffectFailed` reason of a hardware safe-stop that failed; firmware reports it.
+pub const HARDWARE_SAFE_STOP_FAILED: &str = "hardware_safe_stop_failed";
+
 impl ProductionMiningSession {
     #[must_use]
     pub fn snapshot(&self) -> ProductionSessionSnapshot {
         let projection = self.recovery.projection();
-        let mut mining = self
-            .maybe_runtime_for_projection(projection.maybe_active_pool)
-            .map(|session| session.protocol.state().clone())
-            .or_else(|| self.maybe_retained_mining.clone())
-            .unwrap_or_default();
-        mining.set_operator_intent(self.last_readiness.operator_intent);
-        mining.set_fallback_active(matches!(
-            projection.maybe_active_pool,
-            Some(ProductionPool::Fallback)
-        ));
-
-        if let Some(blocker) = projection.maybe_blocker {
-            mining.block_work_submission(blocker.label());
-            mining.set_mining_activity(if blocker == ProductionSessionBlocker::OperatorPaused {
-                MiningActivityStatus::Paused
-            } else {
-                MiningActivityStatus::SafeBlocked
-            });
-        }
-        match projection.phase {
-            ProductionSessionPhase::RecoveryPaused => {
-                mining.set_lifecycle(PoolLifecycleStatus::RecoveryPaused);
-                mining.set_mining_activity(MiningActivityStatus::SafeBlocked);
-            }
-            ProductionSessionPhase::WaitingForReadiness
-            | ProductionSessionPhase::SafeStopping
-            | ProductionSessionPhase::Shutdown
-                if projection.maybe_active_pool.is_none() =>
-            {
-                mining.set_lifecycle(PoolLifecycleStatus::Disconnected);
-            }
-            ProductionSessionPhase::ConnectingPrimary
-            | ProductionSessionPhase::ConnectingFallback
-                if projection.maybe_active_pool.is_none() =>
-            {
-                if self
-                    .maybe_runtime_for_projection(projection.maybe_active_pool)
-                    .is_none()
-                {
-                    mining.set_lifecycle(PoolLifecycleStatus::Connecting);
-                }
-                mining.block_work_submission("production_session_negotiating");
-                mining.set_mining_activity(MiningActivityStatus::SafeBlocked);
-            }
-            _ => {}
-        }
+        let mining = self.project_mining(projection);
 
         ProductionSessionSnapshot {
             phase: projection.phase,
@@ -167,6 +128,7 @@ impl ProductionMiningSession {
             job_transition: JobTransitionTracker::default(),
             asic_diagnostics: AsicBridgeDiagnosticsTracker::default(),
             terminal_publication_pending: false,
+            hardware_safe_stop_failed: false,
             maybe_retained_mining: None,
             maybe_last_snapshot: None,
             share_counters: super::types::ProductionShareCounters::default(),
@@ -426,17 +388,27 @@ impl ProductionMiningSession {
             }
             ProductionSessionEvent::EffectFailed {
                 maybe_pool,
-                reason: _,
+                reason,
                 now_ms,
             } => {
                 if let Some(pool) = maybe_pool {
                     self.handle_transport_failure(pool, now_ms, &mut effects)?;
                 } else {
+                    // Only the safe-stop's own failure; another failed effect queued ahead of its
+                    // confirmation (such as `asic_stop_failed`) is no failed stop.
+                    let stop_failed = self.hardware_state == MiningHardwareState::SafeStopping
+                        && reason == HARDWARE_SAFE_STOP_FAILED;
                     self.begin_terminal_safe_stop(
                         Some(ProductionSessionBlocker::ProductionAsicUnavailable),
                         false,
                         &mut effects,
                     )?;
+                    if stop_failed {
+                        // No confirmation will come, so the failure is published now, without
+                        // waiting for the terminal snapshot.
+                        self.hardware_safe_stop_failed = true;
+                        self.publish_now_if_changed(&mut effects);
+                    }
                 }
             }
         }
@@ -454,17 +426,6 @@ impl ProductionMiningSession {
 }
 
 impl ProductionMiningSession {
-    fn publish_if_changed(&mut self, effects: &mut Vec<ProductionSessionEffect>) {
-        if self.terminal_publication_pending {
-            return;
-        }
-        let snapshot = self.snapshot();
-        if self.maybe_last_snapshot.as_ref() != Some(&snapshot) {
-            self.maybe_last_snapshot = Some(snapshot.clone());
-            effects.push(ProductionSessionEffect::Publish(Box::new(snapshot)));
-        }
-    }
-
     fn handle_hardware_prepared(
         &mut self,
         lease_id: MiningCampaignLeaseId,
@@ -563,6 +524,9 @@ impl ProductionMiningSession {
         };
         self.hardware_state = MiningHardwareState::SafeStopping;
         self.campaign_state = MiningCampaignState::SafeStopping;
+        // Published before the terminal snapshot is held back, so status never reads `active`
+        // while the ASIC idles through the cooling proof.
+        self.publish_if_changed(effects);
         self.terminal_publication_pending = true;
         let purpose = if self.resumable_pause_pending {
             HardwareSafeStopPurpose::ResumablePause

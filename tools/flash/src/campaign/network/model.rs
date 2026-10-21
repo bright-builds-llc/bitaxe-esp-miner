@@ -10,8 +10,9 @@ use super::command_witness::CommandTransitionWitness;
 use super::hashrate::{CampaignHashrateEvidence, HashrateObservationPair};
 use super::terminal_settlement::TerminalSettlementDecision;
 use super::validation::{
-    active_mining_state_valid, regresses, update_gap, validate_active_prerequisites,
-    validate_sample, window_index, SampleValidationFailure,
+    active_mining_state_valid, regresses, safe_stop_in_progress, update_gap,
+    validate_active_prerequisites, validate_identity_and_safety, validate_sample, window_index,
+    SampleValidationFailure,
 };
 use super::watchdog::{
     sample_diagnostic, WatchdogDiagnostic, WatchdogFailure, WatchdogOwnerPhase,
@@ -225,6 +226,9 @@ impl NetworkAccumulator {
             self.record_validation_failure(failure, false);
             return;
         }
+        if safe_stop_in_progress(sample) {
+            return;
+        }
         if !active_mining_state_valid(sample) {
             if self.initial_active_observed(transport) {
                 self.active_state_valid = false;
@@ -290,6 +294,12 @@ impl NetworkAccumulator {
         sample: &SystemInfoWire,
     ) {
         if !self.observe_watchdog(sample) {
+            return;
+        }
+        if safe_stop_in_progress(sample) {
+            if let Err(failure) = validate_identity_and_safety(sample, &self.target) {
+                self.record_validation_failure(failure, true);
+            }
             return;
         }
         if let Err(failure) = validate_sample(sample, &self.target, true) {

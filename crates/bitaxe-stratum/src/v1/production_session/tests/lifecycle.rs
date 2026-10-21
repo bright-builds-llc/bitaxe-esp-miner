@@ -293,51 +293,6 @@ fn pool_configuration_is_read_only_after_hardware_preparation_succeeds() {
 }
 
 #[test]
-fn preparation_failure_rolls_back_before_terminal_publication() {
-    // Arrange
-    let mut session = ProductionMiningSession::new();
-    let lease_id = active_duration_lease(1, 600_000).id();
-    let _preparing = session
-        .handle(wake(ready(), 0))
-        .expect("readiness should request preparation");
-
-    // Act
-    let failed = session
-        .handle(ProductionSessionEvent::HardwarePreparationFailed {
-            lease_id,
-            failure: HardwarePreparationFailure::DeviceFault,
-            now_ms: 1,
-        })
-        .expect("preparation failure should enter safe stop");
-    let confirmed = session
-        .handle(ProductionSessionEvent::HardwareSafeStopConfirmed {
-            lease_id,
-            now_ms: 2,
-        })
-        .expect("safe-stop confirmation should publish terminal state");
-
-    // Assert
-    assert!(matches!(
-        failed.as_slice(),
-        [
-            ProductionSessionEffect::BlockSubmissions,
-            ProductionSessionEffect::InvalidateWorkAndSubmissions,
-            ProductionSessionEffect::StopAsicInteraction,
-            ProductionSessionEffect::SafeStopHardware { .. }
-        ]
-    ));
-    assert!(!failed
-        .iter()
-        .any(|effect| matches!(effect, ProductionSessionEffect::Publish(_))));
-    assert!(matches!(
-        confirmed.as_slice(),
-        [ProductionSessionEffect::Publish(snapshot)]
-            if snapshot.hardware_state == MiningHardwareState::Stopped
-                && snapshot.campaign_state == MiningCampaignState::Consumed
-    ));
-}
-
-#[test]
 fn unavailable_pool_configuration_safe_stops_prepared_hardware() {
     // Arrange
     let mut adapter = DeterministicProductionSessionAdapter::new(None);

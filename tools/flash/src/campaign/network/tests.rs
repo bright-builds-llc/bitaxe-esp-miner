@@ -19,6 +19,7 @@ mod terminal_handoff;
 mod terminal_settlement_evidence;
 
 mod startup;
+mod stopping;
 mod watchdog;
 
 const SOURCE: &str = "1111111111111111111111111111111111111111";

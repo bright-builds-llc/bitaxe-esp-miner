@@ -9,6 +9,7 @@ pub(super) mod campaign;
 mod job_transition;
 mod orchestration;
 mod runtime;
+pub use runtime::HARDWARE_SAFE_STOP_FAILED;
 mod types;
 
 pub use crate::v1::live_runtime::{LivePoolCredentials, LiveRuntimeConfig};

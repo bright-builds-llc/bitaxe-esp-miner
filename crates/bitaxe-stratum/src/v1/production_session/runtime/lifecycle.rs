@@ -97,6 +97,7 @@ impl ProductionMiningSession {
                 self.maybe_lease = Some(lease);
                 self.maybe_activation_started_at_ms.get_or_insert(now_ms);
                 self.hardware_state = MiningHardwareState::Preparing;
+                self.hardware_safe_stop_failed = false;
                 self.campaign_state = MiningCampaignState::Preparing;
                 self.maybe_prepared_at_ms = None;
                 self.maybe_active_since_ms = None;

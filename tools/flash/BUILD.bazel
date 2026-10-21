@@ -226,6 +226,7 @@ rust_binary(
         "src/campaign/network/tests.rs",
         "src/campaign/network/test_evidence.rs",
         "src/campaign/network/tests/startup.rs",
+        "src/campaign/network/tests/stopping.rs",
         "src/campaign/network/tests/terminal_settlement_evidence.rs",
         "src/campaign/network/tests/terminal_handoff.rs",
         "src/campaign/network/tests/watchdog.rs",

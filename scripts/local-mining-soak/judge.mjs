@@ -120,9 +120,14 @@ export function sampleFromInfo(info, atMs) {
 /** Whether every reading the limits use is fresh. */
 export const readingsFresh = (sample) => Object.values(sample.fresh).every(Boolean);
 
-/** Whether the ASIC is shown powered down: paused, not mining, and freshly measured idle power. */
+/**
+ * Whether the ASIC is shown powered down: paused, not mining, the stop confirmed, and freshly
+ * measured idle power. `stopping` means the ordered safe-stop has not yet confirmed, though the
+ * ASIC already idles.
+ */
 export const hardwareStopped = (sample) =>
-  sample.miningPaused && !mining(sample) && sample.fresh.power && sample.powerW !== null && sample.powerW <= IDLE_POWER_W;
+  sample.miningPaused && !mining(sample) && sample.miningActivity !== "stopping" && sample.fresh.power && sample.powerW !== null &&
+  sample.powerW <= IDLE_POWER_W;
 
 /** Whether the device reports active mining in this sample. The live limits key on this. */
 export const mining = (sample) => sample.miningActivity === "active" && !sample.miningPaused;

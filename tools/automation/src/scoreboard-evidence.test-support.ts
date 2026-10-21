@@ -134,6 +134,7 @@ export async function startScoreboardServer(
     changeAfterRestart?: boolean;
     changePostRestartRepeat?: boolean;
     postRestartMiningActivity?: string;
+    preRestartMiningActivity?: string;
   }> = {},
 ): Promise<ScoreboardServer> {
   let restarted = false;
@@ -154,7 +155,7 @@ export async function startScoreboardServer(
         resetReasonCategory: restarted ? "software_cpu" : "power_on",
         miningActivity: restarted
           ? options.postRestartMiningActivity ?? "safe_blocked"
-          : "safe_blocked",
+          : options.preRestartMiningActivity ?? "safe_blocked",
         startMiningOnBoot: false,
       }));
       return;

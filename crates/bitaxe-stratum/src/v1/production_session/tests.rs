@@ -360,6 +360,7 @@ mod recovery;
 mod restart;
 mod scoreboard;
 mod share_counters;
+mod stopping;
 mod terminal_expiry;
 
 fn v1_config(config: &mut ProductionPoolConfiguration) -> &mut LiveRuntimeConfig {

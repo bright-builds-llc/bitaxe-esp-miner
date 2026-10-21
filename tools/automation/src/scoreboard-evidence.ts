@@ -22,6 +22,7 @@ import {
   expectedReferenceCommit,
   expectedWrapperRoot,
   failure,
+  miningStopConfirmed,
   object,
   requiredBoolean,
   requiredInteger,
@@ -391,7 +392,7 @@ export async function captureScoreboardEvidence(
       path.join(privateRoot, "post-campaign-system.private.json"),
     ), "post-campaign system info");
     const beforeRestart = systemIdentity(systemValue, manifest);
-    if (beforeRestart.startMiningOnBoot || beforeRestart.miningActivity === "active") {
+    if (beforeRestart.startMiningOnBoot || !miningStopConfirmed(beforeRestart.miningActivity)) {
       throw failure("hardware_blocked", "post-campaign device is not safely stopped");
     }
     const scoreboard = await readScoreboard(origin, privateRoot, "scoreboard-before-restart-a");

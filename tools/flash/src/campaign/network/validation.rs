@@ -24,6 +24,13 @@ pub(super) fn active_mining_state_valid(sample: &SystemInfoWire) -> bool {
     !sample.mining_paused && sample.mining_activity == "active"
 }
 
+/// Firmware publishes `stopping` from the start of a hardware safe stop until the
+/// stop is confirmed (up to 120 s while the chip cools), so the sample is neither
+/// active evidence nor a completed stop: observers wait through it.
+pub(super) fn safe_stop_in_progress(sample: &SystemInfoWire) -> bool {
+    sample.mining_activity == "stopping"
+}
+
 pub(super) fn validate_sample(
     sample: &SystemInfoWire,
     target: &TrustedNetworkTarget,

@@ -156,6 +156,7 @@ fn mining_activity_label(status: MiningActivityStatus) -> &'static str {
         MiningActivityStatus::Paused => "paused",
         MiningActivityStatus::Active => "active",
         MiningActivityStatus::SafeBlocked => "safe_blocked",
+        MiningActivityStatus::Stopping => "stopping",
     }
 }
 
@@ -168,7 +169,10 @@ fn work_submission_label(gate: WorkSubmissionGate) -> &'static str {
 
 fn blocked_reason(state: &MiningRuntimeState) -> &'static str {
     if state.work_submission == WorkSubmissionGate::Blocked
-        && state.mining_activity == MiningActivityStatus::SafeBlocked
+        && matches!(
+            state.mining_activity,
+            MiningActivityStatus::SafeBlocked | MiningActivityStatus::Stopping
+        )
     {
         return state.maybe_blocked_reason.unwrap_or("");
     }
@@ -286,6 +290,22 @@ mod tests {
             assert_eq!(response.blocked_reason, expected_label);
             assert!(!response.mining_paused);
         }
+    }
+
+    #[test]
+    fn a_stopping_device_publishes_stopping_and_its_reason() {
+        // Arrange
+        let mut state = MiningRuntimeState::default();
+        state.block_work_submission("hardware_safe_stopping");
+        state.set_mining_activity(MiningActivityStatus::Stopping);
+
+        // Act
+        let response = mining_state_from_runtime(&state);
+
+        // Assert
+        assert_eq!(response.mining_activity, "stopping");
+        assert_eq!(response.work_submission, "blocked");
+        assert_eq!(response.blocked_reason, "hardware_safe_stopping");
     }
 
     #[test]

@@ -23,6 +23,7 @@ fn sample(active_ms: i64, sequence: u64) -> SoakSample {
         source_dirty: false,
         mining_active: active,
         mining_paused: !active,
+        mining_stopping: false,
         start_mining_on_boot: false,
         safety_valid: true,
         maybe_watchdog_feed_sequence: Some(sequence),
@@ -439,6 +440,35 @@ fn mining_never_observed_stopped_within_safe_stop_fails_the_terminal_check() {
     let judgement = judge(&lines, &clock(), &expected());
     // Assert
     assert!(judgement.failures.contains(&"terminal_http_unconfirmed"));
+}
+
+#[test]
+fn a_safe_stop_still_stopping_through_the_terminal_window_fails_the_terminal_check() {
+    // Arrange
+    let mut lines = complete();
+    for line in &mut lines {
+        let active = line.host_unix_ms as i64 - ORIGIN as i64;
+        if (600_000..760_000).contains(&active) {
+            line.sample.as_mut().expect("sample").mining_stopping = true;
+        }
+    }
+    // Act
+    let judgement = judge(&lines, &clock(), &expected());
+    // Assert
+    assert!(judgement.failures.contains(&"terminal_http_unconfirmed"));
+}
+
+#[test]
+fn a_final_sample_still_stopping_fails_the_final_baseline() {
+    // Arrange
+    let mut lines = complete();
+    for line in lines.iter_mut().rev().take(4) {
+        line.sample.as_mut().expect("sample").mining_stopping = true;
+    }
+    // Act
+    let judgement = judge(&lines, &clock(), &expected());
+    // Assert
+    assert!(judgement.failures.contains(&"final_state_not_paused"));
 }
 
 #[test]
