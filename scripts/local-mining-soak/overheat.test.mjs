@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { sampleFromInfo, SOAKS } from "./judge.mjs";
-import { overheatLiveStop, recoveryFinished, runOverheat, stopLogged, tripCause } from "./overheat.mjs";
+import { cooledBeforeMs, overheatLiveStop, recoveryFinished, runOverheat, stopLogged, tripCause } from "./overheat.mjs";
 
 const SOAK = SOAKS["overheat-001"];
 const EXPECTED = { firmwareCommit: "c".repeat(40), appElfSha256: "e".repeat(64), bootOrdinal: 7 };
@@ -429,4 +429,53 @@ test("a stop line logged just after the pause reason is still confirmed", async 
   const { verdict } = await run(device, () => false, SOAKS["overheat-002"]);
   // Assert
   assert.equal(verdict.metrics.stop_logged, true);
+});
+
+/** A cooling sample at `atMs` reading `chipC`. */
+const coolingSample = (atMs, chipC) => ({ atMs, chipTempC: chipC, fresh: { chipTemp: true } });
+
+/** Cool samples every 2 s from `fromMs` up to, not including, `toMs`. */
+const coolEvery2s = (fromMs, toMs) => Array.from({ length: Math.ceil((toMs - fromMs) / 2_000) }, (_, index) => coolingSample(fromMs + index * 2_000, 40));
+
+test("a correct device's cooling bound reaches back to the last sample before the trip", () => {
+  // Arrange: the firmware entered after the last pre-trip sample; the action sample reads warm, as a
+  // restarted chip does, so only its time counts.
+  const samples = [coolingSample(-2_000, 50), ...coolEvery2s(0, 30_000), coolingSample(30_000, 50)];
+  // Act / Assert
+  assert.equal(cooledBeforeMs(samples, 0, 30_000), 32_000);
+});
+
+test("the hardware attempt's log-read gap after the trip leaves the bound above 30 s", () => {
+  // Arrange: attempt 001's samples, with the check's own 6 s log-read gap after the trip sample.
+  const samples = [coolingSample(121_929, 46), coolingSample(124_054, 45), ...coolEvery2s(130_029, 153_017),
+    coolingSample(153_017, 36)];
+  // Act / Assert
+  assert.equal(cooledBeforeMs(samples, 124_054, 153_017), 31_088);
+});
+
+test("a warm reading after the trip restarts the cooling bound", () => {
+  // Arrange
+  const samples = [coolingSample(-2_000, 50), ...coolEvery2s(0, 10_000), coolingSample(10_000, 46),
+    ...coolEvery2s(12_000, 30_000), coolingSample(30_000, 40)];
+  // Act / Assert
+  assert.equal(cooledBeforeMs(samples, 0, 30_000), 20_000);
+});
+
+test("a long gap just before the action makes the cooling inconclusive", () => {
+  // Arrange
+  const samples = [coolingSample(-2_000, 50), ...coolEvery2s(0, 20_000), coolingSample(30_000, 40)];
+  // Act / Assert
+  assert.equal(cooledBeforeMs(samples, 0, 30_000), null);
+});
+
+test("a long gap just after the start sample makes the cooling inconclusive", () => {
+  // Arrange: the device was unreachable around the trip.
+  const samples = [coolingSample(-20_000, 50), ...coolEvery2s(0, 30_000), coolingSample(30_000, 40)];
+  // Act / Assert
+  assert.equal(cooledBeforeMs(samples, 0, 30_000), null);
+});
+
+test("no sample before the trip makes the cooling inconclusive", () => {
+  // Act / Assert
+  assert.equal(cooledBeforeMs([...coolEvery2s(0, 30_000), coolingSample(30_000, 40)], 0, 30_000), null);
 });

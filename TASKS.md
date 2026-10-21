@@ -1241,6 +1241,48 @@ as stated.
   10 minutes of the trip fails as `overheat_not_stopped`.
 - **Residual risk:** the cleanup's clearing resume runs on hardware for the
   first time.
+- **Amendment (2026-10-21, after attempt 001):** only the production
+  reinstall is deferred to the end of the session.
+  - Each attempt still packages the test variant at its exact HEAD and
+    installs it state-preserving, as the attempt policy requires.
+  - The session ends at the last attempt, at any stop or report to the
+    owner, or at any change of task. Production is reinstalled and
+    confirmed then, on every outcome. The test variant is never left
+    installed.
+
+Attempt 001 result (2026-10-21): `failed` (`overheat_stopped_before_cooling`),
+outcome `continue_after_verified_fix`.
+- Test variant `a2ef1fd2`; the handoff succeeded on its first attempt.
+- Device behaviour matched the stays-stopped path in full:
+  - the trip from the lowered trip;
+  - the fan manual 100%;
+  - no restart;
+  - the device paused itself (`pauseReason` `overheat`) 29.0 s after
+    `overheat_mode` showed, with the retained log showing
+    `stays_stopped=true` and then the stop.
+- The cleanup's first hardware run worked: the recovery settled; the
+  settings were restored and held; one resume and pause cleared the
+  device pause and the stop marker, with no failed marker save.
+- **Root cause, a judge bug:**
+  - The check's own log read after the trip left a 5,975 ms sampling gap,
+    which broke the measured cool run (5 s continuity limit).
+  - The pause sample, also cool, was left out. So 23.0 s was measured,
+    though every reading from the trip to the pause was at 45 C or less
+    (28.96 s).
+- **Fix** (after an independent review): the judge takes the longest
+  cooling consistent with the samples, and requires the full 30 s.
+  - The firmware's window starts no earlier than its overheat entry,
+    which follows the last pre-trip sample, and restarts at any warm or
+    stale reading. So the bound runs from the latest such sample to the
+    action sample, whose own reading follows the action and counts for
+    time only.
+  - A gap over 5 s just before the action, or just after the start
+    sample, makes the result inconclusive (`overheat_cooling_inconclusive`)
+    rather than overstated.
+  - A correct device always meets the 30 s. Tests replay the hardware gap.
+    The hardware journals measure 31,088 ms (attempt 001) and 40,154 ms
+    (overheat check 001).
+
 
 Ultra 205 local mining overheat stays-stopped check hardware: enabled.
 

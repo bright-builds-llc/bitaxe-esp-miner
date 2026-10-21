@@ -360,12 +360,15 @@ export function judgeOverheat({ baseline, samples, marks, original, cleanup, may
   if (marks.restartedAtMs !== undefined) {
     const restart = samples.find((sample) => sample.atMs === marks.restartedAtMs);
     if (restart.frequencyMhz !== lowered.frequencyMhz || restart.coreVoltageMv !== lowered.coreVoltageMv) fail("overheat_pair_not_lowered");
-    if (cooledMs(cooling) < COOLING_MS - SAMPLE_INTERVAL_MS) fail("overheat_restarted_before_cooling");
+    const cooled = cooledBeforeMs(samples, marks.trippedAtMs, marks.restartedAtMs);
+    if (cooled === null) fail("overheat_cooling_inconclusive");
+    else if (cooled < COOLING_MS) fail("overheat_restarted_before_cooling");
   } else if (marks.staysStoppedAtMs === undefined && soak.outcomes.some((outcome) => outcome.startsWith("restarted"))) {
     fail("overheat_not_restarted");
-  } else if (marks.staysStoppedAtMs !== undefined &&
-    cooledMs(cooling.filter((sample) => sample.atMs < marks.staysStoppedAtMs)) < COOLING_MS - SAMPLE_INTERVAL_MS) {
-    fail("overheat_stopped_before_cooling");
+  } else if (marks.staysStoppedAtMs !== undefined) {
+    const cooled = cooledBeforeMs(samples, marks.trippedAtMs, marks.staysStoppedAtMs);
+    if (cooled === null) fail("overheat_cooling_inconclusive");
+    else if (cooled < COOLING_MS) fail("overheat_stopped_before_cooling");
   }
   if (marks.staysStoppedAtMs !== undefined && marks.stopLogged !== true) fail("overheat_stop_unlogged");
   if (cleanup.markerCleared === false) fail("overheat_stop_marker_not_cleared");
@@ -394,7 +397,7 @@ export function judgeOverheat({ baseline, samples, marks, original, cleanup, may
       trip_chip_c: marks.tripChipC ?? null,
       first_hashing_to_trip_ms: marks.trippedAtMs === undefined || active.length === 0 ? null : marks.trippedAtMs - active[0].atMs,
       trip_to_restart_ms: marks.restartedAtMs === undefined ? null : marks.restartedAtMs - marks.trippedAtMs,
-      cooled_ms: cooledMs(cooling),
+      cooled_ms: cooledBeforeMs(samples, marks.trippedAtMs, marks.restartedAtMs ?? marks.staysStoppedAtMs),
       minimum_cooling_chip_c: minimum(cooling.map((sample) => sample.chipTempC)),
       // A pair below the catalog is never applied, so it is reported only once a restart used it.
       lowered_frequency_mhz: marks.restartedAtMs === undefined ? null : lowered.frequencyMhz,
@@ -414,18 +417,31 @@ export function judgeOverheat({ baseline, samples, marks, original, cleanup, may
   };
 }
 
-/** The longest unbroken run of fresh readings at or below the restart temperature, before the restart. */
-function cooledMs(cooling) {
-  let longest = 0, maybeStart = null, maybeLast = null;
-  for (const sample of cooling) {
-    const cool = sample.fresh.chipTemp && sample.chipTempC !== null && sample.chipTempC <= RESTART_TEMP_C;
-    const continuous = maybeLast !== null && sample.atMs - maybeLast.atMs <= 2 * SAMPLE_INTERVAL_MS + 1_000;
-    if (!cool) { maybeStart = null; maybeLast = sample; continue; }
-    if (maybeStart === null || !continuous) maybeStart = sample.atMs;
-    longest = Math.max(longest, sample.atMs - maybeStart);
-    maybeLast = sample;
-  }
-  return longest;
+/** The gap before the action sample beyond which the action's time is too uncertain to judge. */
+const ACTION_GAP_LIMIT_MS = 2 * SAMPLE_INTERVAL_MS + 1_000;
+
+/**
+ * The longest cooling consistent with the samples before the device acted (restarted or paused
+ * itself), or null when the samples cannot bound it. The firmware's 30 s window starts no earlier
+ * than its overheat entry, which comes after the last sample before the trip showed, and restarts
+ * at any warm or stale reading. So the window began after the latest such sample, and the action
+ * came no later than the sample that showed it. The action sample's reading follows the action, so
+ * only its time counts. A correct device always measures at least 30 s. A gap of more than
+ * `ACTION_GAP_LIMIT_MS` just before the action, or just after the start sample, could hide an early
+ * action, so either gives null.
+ */
+export function cooledBeforeMs(samples, maybeTrippedAtMs, maybeActionAtMs) {
+  if (maybeTrippedAtMs === undefined || maybeActionAtMs === undefined) return null;
+  const before = samples.filter((sample) => sample.atMs < maybeActionAtMs);
+  const maybeLastBefore = before.at(-1);
+  if (maybeLastBefore === undefined || maybeActionAtMs - maybeLastBefore.atMs > ACTION_GAP_LIMIT_MS) return null;
+  const warm = (sample) => !(sample.fresh.chipTemp && sample.chipTempC !== null && sample.chipTempC <= RESTART_TEMP_C);
+  const startIndex = before.findLastIndex((sample) => sample.atMs < maybeTrippedAtMs || warm(sample));
+  if (startIndex < 0) return null;
+  const maybeNext = before[startIndex + 1] ?? null;
+  const nextAtMs = maybeNext === null ? maybeActionAtMs : maybeNext.atMs;
+  if (nextAtMs - before[startIndex].atMs > ACTION_GAP_LIMIT_MS) return null;
+  return maybeActionAtMs - before[startIndex].atMs;
 }
 
 const minimum = (values) => { const kept = values.filter((value) => value !== null); return kept.length ? Math.min(...kept) : null; };
