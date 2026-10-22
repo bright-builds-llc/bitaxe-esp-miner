@@ -210,7 +210,8 @@ action.
       - the `usb_gamma601_safe_boot` record.
     - Isolation tests per board.
   - [ ] A 205 regression check on hardware (`stopping-002`) after C1.
-  - [ ] C3 on the 601: its own contract and a check-in first.
+  - [ ] C3 on the 601 (contract below; owner check-in 2026-10-22: the
+    install-window risk is accepted).
 - [ ] **D. TPS546.**
   - A pure PMBus core with the Gamma config plan, a clamp to 1.00-1.25 V
     and no `STORE_USER_ALL`.
@@ -272,6 +273,75 @@ Phase B identification contract (attempt ordinals 001 onward):
   - any refusal of the detector or the gate.
   Retries follow the progress-gated attempt policy.
 
+Phase C3 safe-boot contract (attempt ordinals 001 onward; owner accepted the
+install-window risk on 2026-10-22):
+
+Gamma 601 identification hardware: enabled.
+Gamma 601 safe-boot hardware: enabled.
+
+- **Objective:** install the 601 safe-boot package (`8a58c262` or a later
+  verified fix) state-preserving, observe the safe boot, then install the
+  same package again as the update cycle and observe it again.
+- **Commands, in order, each attempt:**
+  1. `just detect-ultra205 --port <port>`: exactly one Espressif
+     Serial/JTAG device.
+  2. `just identify-board --board 601 --port <port>` (no `--register`): the
+     records still name `601`/`BM1370`/`gamma`, and the digest is the
+     registered 601's.
+  3. `just flash-monitor --board 601 --port <port> --capture-timeout-seconds
+     360`: the flash tool builds the 601 package at HEAD, admits only the
+     registered 601, writes its five update segments state-preserving and
+     captures the receive-only console.
+  4. The detector again, then step 3 again (the update cycle).
+- **Precondition:** only the 601 attached, barrel power on, USB through the
+  USB-C hub. The working tree is clean and pushed.
+- **Allowed effects:**
+  - the ROM entries, the NVS read and the hard resets of steps 1 and 2;
+  - two state-preserving installs of the 601 package (bootloader, partition
+    table, application, `www`, otadata), each with its resets;
+  - the installed firmware's own effects (ADR-0041 item 5):
+    - the ASIC reset held low;
+    - the TPS546 commanded off;
+    - the EMC2101 diode configuration and fan duty;
+    - Wi-Fi with the stored settings.
+- **Prohibited effects:**
+  - a factory install, any NVS write from the host, `--wifi-credentials`;
+  - any TPS546 write other than the off writes, any VOUT enable, any ASIC
+    release or command, mining;
+  - network discovery, HTTP requests to the device;
+  - direct UART or pins.
+- **Pass, per install,** from the captured console:
+  - the boot line names `Gamma 601` and `BM1370`, and `firmware_board=601`
+    and `mining_owner=absent` appear;
+  - `usb_board_identity built=601 stored=601 identity=match`;
+  - `usb_gamma601_safe_boot` with `reset_held=true`, a recognised `tps546`
+    (`d24a` or `d24s`), and `off=confirmed` within 30 s of boot, staying
+    confirmed;
+  - `vout_mv` under 200, `fan_duty_pct=30`, `fan_rpm` above 0, and a board
+    temperature between 10 and 60 C.
+  - Wi-Fi joining is recorded but not required.
+  - `faults` is recorded but not judged: the safe boot never clears
+    latched bits, so they may predate this boot.
+- **Stops:**
+  - zero or several ports, an identification mismatch, or any refusal of
+    the flash tool;
+  - after 30 s of boot, `off` other than `confirmed`, a `tps546` other
+    than `d24a`/`d24s`, `reset_held=false`, or a VR temperature above 90 C
+    or a board temperature above 70 C. Then the owner removes barrel power
+    and the attempt stops (`stop_hardware_blocker`).
+  - Retries follow the progress-gated attempt policy.
+- **Evidence and privacy:**
+  - Each attempt runs in a new mode-0700 parent
+    `scratch/gamma-601-safe-boot/attempt-NNN/`, with distinct mode-0600
+    stdout and stderr files per command.
+  - The console may contain SSIDs, IPs and MACs, so it stays private.
+  - A committed summary names board 601, the commits, the commands,
+    categories and the readings above; it passes `just verify-redaction`.
+- **Recovery:**
+  - If the safe boot misbehaves, the owner removes barrel power.
+  - If the device stays in the ROM downloader, the owner power-cycles it.
+  - Returning to stock AxeOS (an upstream release flashed with upstream
+    tools) is the owner's choice and outside this contract.
 
 ## Future
 
