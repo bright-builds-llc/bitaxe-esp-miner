@@ -34539,3 +34539,84 @@ Residual risks:
   normally).
 - Self-test reports its rollback under `effect_prepare_hardware`. The
   Stratum v2 session and self-test preparations were not run on hardware.
+
+### task-gamma-601-wifi-provisioning | 2026-10-22 | Give the Gamma 601 real Wi-Fi credentials
+
+The 601 holds placeholder network values from stock AxeOS, so its station
+reports `access_point_unavailable` (`task-gamma-601-bring-up` follow-up,
+2026-10-22). The owner's local `wifi-credentials.json` should work.
+
+Owner decisions 2026-10-22:
+- the 601 factory install;
+- credentials may be applied whenever the owner asks (AGENTS.md).
+
+- [x] A 601 factory install that seeds the 601's upstream defaults
+  (`reference/esp-miner/config-601.cvs`) with the credentials file:
+  - `bitaxe_config::board_default_seed_values`, golden-tested against
+    `config-601.cvs` and `config-205.cvs`;
+  - `tools/flash` seeds the board's own defaults. A 601 factory install
+    must seed, and only the ordinary settings.
+- [x] Hardware under the contract below: the station joins (`wifi=connected`),
+  and the safe boot's readings still hold. Done 2026-10-22, attempt 001
+  (`fc4b572f`):
+  - `wifi=connected` in 54 of 55 records;
+  - `built=601 stored=601 identity=match`;
+  - the reset held, `off=confirmed` at 10 mV, the fan at 30 %;
+  - summary: `docs/parity/evidence/20261022-gamma601-wifi-provisioning.md`.
+
+Factory install contract (attempt ordinals 001 onward):
+
+Closed after attempt 001 passed (2026-10-22); no enable line remains.
+
+- **Objective:** factory-install the 601 safe-boot package with the 601's
+  upstream defaults and the owner's Wi-Fi credentials, then observe the
+  station join.
+- **Commands, in order:**
+  1. `just detect-ultra205`: exactly one device;
+  2. `just flash-monitor --board 601 --factory-reset --wifi-credentials
+     wifi-credentials.json --port <port> --capture-timeout-seconds 360`.
+     The credentials file is passed by path only.
+- **Precondition:** only the 601 attached, as in C3, and registered as
+  board 601 (`just identify-board`, phase B); the tree clean and pushed.
+- **Allowed effects, per attempt:**
+  - the detector check;
+  - one factory install of the 601 package, which erases NVS (the stock
+    placeholder settings) and seeds the 601's upstream defaults with the
+    credentials, with its resets;
+  - the safe boot's own effects (ADR-0041 item 5), including joining the
+    owner's network.
+- **Prohibited effects:**
+  - any TPS546 write beyond the off writes, any VOUT enable, any ASIC
+    release, mining;
+  - HTTP requests to the device, network discovery;
+  - reading, printing or copying the credentials file;
+  - direct UART or pins.
+- **Pass:**
+  - `wifi=connected` appears in the safe-boot records;
+  - `usb_board_identity built=601 stored=601 identity=match`;
+  - the C3 safety readings: reset held, `off=confirmed`, VOUT under 200 mV,
+    fan at 30 % with nonzero rpm, and the board between 10 and 60 C.
+- **Stops:** the C3 contract's stops, any refusal of the flash tool, and
+  no `connected` within the capture (`stop_hardware_blocker`, reported to
+  the owner). Retries follow the progress-gated attempt policy, each with
+  a fresh ordinal.
+- **Evidence and privacy:**
+  - Each attempt runs in a new mode-0700 parent
+    `scratch/gamma-601-wifi/attempt-NNN/`, with distinct mode-0600 stdout
+    and stderr files per command. The captures stay private: they may show
+    the network's name or the device's address.
+  - The committed summary carries categories and readings only.
+- **Recovery:** as in C3. If the station never joins, the board keeps
+  running its safe boot with the new settings. A further factory install
+  to reseed it is a new attempt, with a fresh ordinal.
+
+Completion review (2026-10-22):
+- **Done:** the 601 factory install seeds its upstream defaults and the
+  owner's credentials, and the station joined on the first attempt. The
+  safe boot's readings held.
+- **Residual risks:**
+  - a factory install leaves `selftest=1`, which upstream firmware would
+    act on (noted in `docs/release/gamma-601.md`);
+  - the seed CSV, holding the Wi-Fi password, sits in a private temporary
+    directory until the capture ends. This is the 205 flow's behaviour too.
+
