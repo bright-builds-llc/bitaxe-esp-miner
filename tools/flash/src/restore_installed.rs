@@ -537,6 +537,7 @@ pub(crate) fn run_restore_installed(
         &command.port,
         &command.wifi_credentials,
         WifiNvsSeedMode::Ordinary,
+        BoardId::Ultra205,
         environment,
     )?;
     emit_line("restore_installed", PROTECTED_OPERATIONAL)?;

@@ -27,9 +27,15 @@ pub(crate) fn prepare_flash_with_wifi_mode(
     wifi_mode: WifiNvsSeedMode,
     environment: &impl FlashEnvironment,
 ) -> Result<PreparedFlash> {
-    // A factory install seeds Ultra 205 defaults into NVS; the 601 keeps its own (ADR-0041).
-    if command.factory_reset && command.common.board != BoardId::Ultra205 {
-        bail!("identity_admission=blocked reason=factory_install_supports_205_only");
+    // A factory install seeds the board's own upstream defaults (ADR-0041). The 601's seeds the
+    // ordinary settings only, and always: an unseeded install would leave its records blank.
+    if command.factory_reset && command.common.board == BoardId::Gamma601 {
+        if !matches!(wifi_mode, WifiNvsSeedMode::Ordinary) {
+            bail!("identity_admission=blocked reason=factory_install_601_seeds_ordinary_only");
+        }
+        if command.wifi_credentials.is_none() {
+            bail!("identity_admission=blocked reason=factory_install_601_requires_seed");
+        }
     }
     let admitted_image = resolve_flash_image(command, environment)?;
     let package = match &admitted_image {
@@ -94,7 +100,9 @@ pub(crate) fn prepare_flash_with_wifi_mode(
         command
             .wifi_credentials
             .as_deref()
-            .map(|path| prepare_wifi_nvs_seed(&port, path, wifi_mode, environment))
+            .map(|path| {
+                prepare_wifi_nvs_seed(&port, path, wifi_mode, command.common.board, environment)
+            })
             .transpose()?
     } else {
         None

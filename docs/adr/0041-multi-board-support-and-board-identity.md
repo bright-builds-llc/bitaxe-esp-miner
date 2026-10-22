@@ -55,8 +55,11 @@ not a guard anyone designed.
      marker (`firmware_board=<board>`) to name the requested board, and no
      other board's marker. Packages are admitted only when built from the
      current source, so there is no allowance for older packages.
-   - A factory install seeds Ultra 205 defaults into NVS, so it stays 205
-     only. The 601 is installed state-preserving.
+   - A factory install seeds the board's own upstream defaults into NVS
+     (`board_default_seed_values`), golden-tested against
+     `config-<board>.cvs`. On the 601 it must seed, with the Wi-Fi
+     credentials, and only the ordinary settings. The self-test, thermal and
+     diagnostic seeds stay 205 only.
 3. **The firmware checks its board at run time** against the stored
    `boardversion` and refuses hardware control on a mismatch.
    - It reads the value once at boot and reports it, as a closed label

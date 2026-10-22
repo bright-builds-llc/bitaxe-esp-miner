@@ -2,11 +2,13 @@
 
 mod attestation;
 mod matrix;
+mod seed;
 
 pub use attestation::{
     ultra_205_default_seed_values, Ultra205DefaultsAttestation, ULTRA_205_DEFAULT_FIELD_COUNT,
 };
 pub use matrix::{board_profile_defaults, BoardProfileDefaults, BoardProfileSeedKind};
+pub use seed::board_default_seed_values;
 
 /// Upstream pool defaults for an Ultra 205 configuration seed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

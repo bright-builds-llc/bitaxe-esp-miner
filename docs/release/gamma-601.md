@@ -17,10 +17,17 @@ reset, and it does not mine:
 
 ## Installing it
 
-Install it only state-preserving, with
-`just flash-monitor --board 601 --port <port>`, under an active task
-contract. The flash tool admits it only to a device registered as board 601
-(`just identify-board`), and it refuses a factory install for the 601.
+Install it under an active task contract, in one of two ways:
+- state-preserving, with `just flash-monitor --board 601 --port <port>`;
+- as a factory install, adding `--factory-reset --wifi-credentials <path>`.
+  This erases NVS and seeds the 601's upstream defaults
+  (`reference/esp-miner/config-601.cvs`) with the Wi-Fi credentials.
+
+The flash tool admits the package only to a device registered as board 601
+(`just identify-board`).
 
 To return to upstream AxeOS, reflash an upstream Gamma release with the
-upstream tools.
+upstream tools. A factory install leaves the 601's upstream defaults in
+NVS, including `selftest=1`. Upstream firmware that keeps those settings
+runs its self-test on boot, which powers the ASIC, as a fresh upstream
+factory flash does.

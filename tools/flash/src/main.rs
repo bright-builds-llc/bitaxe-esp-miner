@@ -21,9 +21,8 @@ use bitaxe_automation_contracts::{
     INPUT_UAT_EVIDENCE_SCHEMA, RELEASE_RECOVERY_EVIDENCE_SCHEMA,
 };
 use bitaxe_config::{
-    apply_settings_patch, ultra_205_default_seed_values, ConfigValidationError, NvsWrite,
-    RawSettingValue, SettingsPatch, SettingsUpdateDecision, StoredValue, StoredValueKind,
-    NVS_NAMESPACE,
+    apply_settings_patch, ConfigValidationError, NvsWrite, RawSettingValue, SettingsPatch,
+    SettingsUpdateDecision, StoredValue, StoredValueKind, NVS_NAMESPACE,
 };
 use bitaxe_device_session::{
     admit_application_execution, admit_rom_downloader, board_info_reports_esp32s3,

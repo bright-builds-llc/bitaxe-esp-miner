@@ -354,7 +354,11 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - Standing authorization becomes effect-eligible only after an active `TASKS.md` block and a repo-owned command define the exact objective, command, evidence and privacy policy, allowed and prohibited effects, recovery and cleanup, retry bounds, and accepted stop conditions. Agents may create or update that complete contract as ordinary task work, verify it, commit it, and push it before the effect; doing so does not require another user confirmation.
 - Before autonomous hardware use, run `just detect-ultra205`. Treat inspection as successful only when it finds exactly one admitted physical device and classifies a known native-USB profile. Application ownership requires fresh serial protocol evidence; every flash, recovery, or other ROM-required effect must retain the same physical-device lease and pass `espflash board-info --chip esp32s3 --port <port> --non-interactive` before any write.
 - If detection succeeds, use the printed port path with repo commands such as `just flash-monitor --board 205 --port <path> --evidence-dir <path>` and record the detector output in evidence.
-- Existing ignored `wifi-credentials.json` may be supplied to repo-owned provisioning only within an explicitly authorized factory installation/reset contract. Ordinary state-preserving `just flash` and `just flash-monitor` reject `--wifi-credentials`; they retain the installed NVS configuration. Never add factory reset implicitly to an update or recovery. Do not read, print, summarize, or commit credential file contents.
+- Owner rule, 2026-10-22: existing ignored `wifi-credentials.json` may be supplied to repo-owned provisioning whenever the owner asks for credentials to be applied. The owner's request is the authority: an agent never decides on its own to apply credentials. Once the owner has asked, the effect still needs an active task contract, which the agent may write as ordinary task work.
+  - The repo-owned path today is a factory installation: `--factory-reset --wifi-credentials <path>`, which seeds the board's upstream defaults (ADR-0041).
+  - Ordinary state-preserving `just flash` and `just flash-monitor` reject `--wifi-credentials`; they retain the installed NVS configuration.
+  - Never add a factory reset implicitly to an update or recovery.
+  - Do not read, print, summarize, or commit credential file contents.
 - If detection succeeds and an ignored local `pool-credentials*.json` file exists, agents may pass it with `--pool-credentials <path>` only as local runtime input for repo-owned live mining test or verification commands. Use the committed `pool-credentials.json.example` file for shape only; the real local file may define `poolURL`, `poolPort`, `poolUser`, and `poolPassword`, with `poolUser` derived from the owner BTC address, for example `<owner-btc-address>.bitaxe`.
 - Treat pool owner addresses, worker strings, endpoints, ports, passwords, and credential file contents as sensitive local test inputs. Do not print, summarize, commit, copy into evidence, or expose the real file contents. Committed evidence may record category labels such as `pool_config: local-owner-supplied` only, never raw pool URLs, ports, users, workers, passwords, addresses, endpoints, tokens, or NVS secret values.
 - Local developer hardware evidence may keep USB-observed SSIDs, IP addresses, MAC addresses, and `device_url` values to make bring-up and UAT practical. Evidence intended for commit or sharing must be produced with `--redact-evidence` or otherwise redacted before promotion.
@@ -387,7 +391,9 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   and need a USB-A port or adapter (upstream readme, bitaxeGamma#37).
 - **601 builds.** `just build --board 601` and `just package --board 601`
   build the safe boot (ADR-0041 item 5). `just flash` and `just flash-monitor`
-  with `--board 601` build and admit only that package, state-preserving.
+  with `--board 601` build and admit only that package. They install it
+  state-preserving, or as a factory install that seeds the 601's upstream
+  defaults and the Wi-Fi credentials (`--factory-reset --wifi-credentials`).
 
 ### Iterative Hardware Fix Authorization
 

@@ -45,6 +45,7 @@ pub(crate) fn prepare_wifi_nvs_seed(
     port: &str,
     credentials_path: &Utf8Path,
     mode: WifiNvsSeedMode,
+    board: BoardId,
     environment: &impl FlashEnvironment,
 ) -> Result<NvsSeedOutcome> {
     let credentials_path = environment.workspace_path(credentials_path);
@@ -59,7 +60,10 @@ pub(crate) fn prepare_wifi_nvs_seed(
         })?;
     let csv_path = temp_dir_path.join("wifi-nvs.csv");
     let image_path = temp_dir_path.join("wifi-nvs.bin");
-    environment.write_file(&csv_path, &wifi_nvs_csv_for_mode(&credentials, mode))?;
+    environment.write_file(
+        &csv_path,
+        &wifi_nvs_csv_for_board(&credentials, mode, board),
+    )?;
     environment.generate_nvs_partition(&csv_path, &image_path, NVS_PARTITION_SIZE)?;
 
     Ok(NvsSeedOutcome {
@@ -185,19 +189,28 @@ pub(crate) fn wifi_nvs_csv(credentials: &WifiCredentials) -> String {
     wifi_nvs_csv_for_mode(credentials, WifiNvsSeedMode::Ordinary)
 }
 
+/// The Ultra 205's seed CSV, as the 205-only tests build it.
+#[cfg(test)]
 pub(crate) fn wifi_nvs_csv_for_mode(
     credentials: &WifiCredentials,
     mode: WifiNvsSeedMode,
+) -> String {
+    wifi_nvs_csv_for_board(credentials, mode, BoardId::Ultra205)
+}
+
+/// The NVS seed CSV for `board`: its upstream defaults (ADR-0041), then the credentials.
+pub(crate) fn wifi_nvs_csv_for_board(
+    credentials: &WifiCredentials,
+    mode: WifiNvsSeedMode,
+    board: BoardId,
 ) -> String {
     let mut rows = vec![
         "key,type,encoding,value".to_owned(),
         format!("{NVS_NAMESPACE},namespace,,"),
     ];
-    rows.extend(
-        ultra_205_default_seed_values()
-            .iter()
-            .map(private_nvs_csv_row),
-    );
+    let defaults = bitaxe_config::board_default_seed_values(board.registered().label())
+        .expect("every BoardId has an upstream seed");
+    rows.extend(defaults.iter().map(private_nvs_csv_row));
     rows.extend([
         private_nvs_csv_row(&StoredValue::string("wifissid", &credentials.ssid)),
         private_nvs_csv_row(&StoredValue::string("wifipass", &credentials.wifi_pass)),

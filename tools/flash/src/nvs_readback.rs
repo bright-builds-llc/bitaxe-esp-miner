@@ -58,6 +58,7 @@ pub(crate) fn run_nvs_readback(
         &command.port,
         &command.wifi_credentials,
         WifiNvsSeedMode::Ordinary,
+        BoardId::Ultra205,
         environment,
     )?;
     let python = validate_managed_nvs_python(environment)?;

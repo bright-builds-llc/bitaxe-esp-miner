@@ -104,3 +104,13 @@ fn application_bytes_carrying_both_boards_are_refused() {
     // Assert
     assert!(error.to_string().contains("firmware_board_mismatch"));
 }
+
+#[test]
+fn every_board_has_an_upstream_seed() {
+    // Act
+    let seeded = [BoardId::Ultra205, BoardId::Gamma601].map(|board| {
+        bitaxe_config::board_default_seed_values(board.registered().label()).is_some()
+    });
+    // Assert
+    assert_eq!(seeded, [true, true]);
+}

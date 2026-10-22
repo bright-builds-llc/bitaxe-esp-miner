@@ -33,6 +33,8 @@ rust_library(
         "src/defaults/attestation.rs",
         "src/defaults/matrix.rs",
         "src/defaults/matrix/tests.rs",
+        "src/defaults/seed.rs",
+        "src/defaults/seed/tests.rs",
         "src/display.rs",
         "src/golden_tests.rs",
         "src/lib.rs",
