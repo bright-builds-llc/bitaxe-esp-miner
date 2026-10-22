@@ -210,8 +210,22 @@ action.
       - the `usb_gamma601_safe_boot` record.
     - Isolation tests per board.
   - [ ] A 205 regression check on hardware (`stopping-002`) after C1.
-  - [ ] C3 on the 601 (contract below; owner check-in 2026-10-22: the
-    install-window risk is accepted).
+  - [x] C3 on the 601 (contract below; owner check-in 2026-10-22: the
+    install-window risk is accepted). Done 2026-10-22, attempt 001:
+    - two state-preserving installs (the second is the update cycle);
+    - both passed, judged under the pass criteria amended between them
+      (`8fce6458`): the reset held, the TPS546D24S output confirmed off at
+      10 mV from the first record (about 6.2 s of uptime), the fan at 30 %,
+      and `built=601 stored=601 identity=match`;
+    - Wi-Fi did not join, and the TPS546 reports a latched `CML` bit
+      (follow-ups below);
+    - summary: `docs/parity/evidence/20261022-gamma601-safe-boot.md`.
+  - [ ] Follow-up: why the 601 does not join Wi-Fi with its stock settings.
+    A key-presence report from the NVS read (names only, no values) would
+    show which stored keys differ from ours.
+  - [ ] Follow-up: find where the TPS546 `CML` status bit comes from. Read
+    `STATUS_CML` read-only, and check whether the safe boot's own reads
+    set it.
 - [ ] **D. TPS546.**
   - A pure PMBus core with the Gamma config plan, a clamp to 1.00-1.25 V
     and no `STORE_USER_ALL`.
@@ -276,8 +290,7 @@ Phase B identification contract (attempt ordinals 001 onward):
 Phase C3 safe-boot contract (attempt ordinals 001 onward; owner accepted the
 install-window risk on 2026-10-22):
 
-Gamma 601 identification hardware: enabled.
-Gamma 601 safe-boot hardware: enabled.
+Closed after attempt 001 passed (2026-10-22); no enable lines remain.
 
 - **Objective:** install the 601 safe-boot package (`8a58c262` or a later
   verified fix) state-preserving, observe the safe boot, then install the
