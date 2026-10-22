@@ -59,6 +59,7 @@ mod firmware_variant;
 mod flash_transfer;
 mod input_uat;
 mod installed_application;
+mod memory_fifo;
 mod model;
 mod monitor;
 mod noise_diagnostic;
@@ -185,6 +186,9 @@ fn main() -> Result<()> {
             CliCommand::DrainWorkerSerial(command) => drain_worker_serial::run(&command),
             CliCommand::UsbPresenceWatch(command) => usb_presence_watch::run(&command),
             CliCommand::RegisterBoard(command) => board_identity::run_register(&command),
+            CliCommand::IdentifyBoard(command) => {
+                board_identity::identify::run_identify(&command, &environment)
+            }
             CliCommand::CoreDumpClear(command) => core_dump::clearing::run(&command, &environment),
             CliCommand::CoreDumpRead(command) => core_dump::run(&command, &environment),
             CliCommand::Detect(command) => run_detect(&command, &environment),

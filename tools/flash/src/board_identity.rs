@@ -26,7 +26,7 @@ pub(crate) enum RegisteredBoard {
 }
 
 impl RegisteredBoard {
-    const fn label(self) -> &'static str {
+    pub(crate) const fn label(self) -> &'static str {
         match self {
             Self::Ultra205 => "205",
             Self::Gamma601 => "601",
@@ -214,7 +214,15 @@ pub(crate) fn register(
     let Some(board_info) = read_private(board_info_path, "board_info_not_private")? else {
         bail!("board_identity=blocked reason=board_info_missing");
     };
-    let digest = base_mac_digest(base_mac(&board_info)?);
+    register_digest(workspace, board, base_mac_digest(base_mac(&board_info)?))
+}
+
+/// Adds a digest for the board, or confirms it; a digest registered for another board refuses.
+pub(crate) fn register_digest(
+    workspace: &Utf8Path,
+    board: RegisteredBoard,
+    digest: String,
+) -> Result<&'static str> {
     let path = workspace.join(REGISTRY_FILE);
     let mut entries = load_registry(&path)?;
     match admission(&entries, board, &digest) {
@@ -245,6 +253,8 @@ pub(crate) fn register(
     fs::rename(staging.as_std_path(), path.as_std_path())?;
     Ok("added")
 }
+
+pub(crate) mod identify;
 
 #[cfg(test)]
 mod tests;

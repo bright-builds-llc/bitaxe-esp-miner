@@ -1,7 +1,7 @@
 use crate::*;
 
 const MANAGED_NVS_PYTHON: &str = ".embuild/espressif/python_env/idf5.5_py3.9_env/bin/python";
-const MANAGED_NVS_TOOL: &str =
+pub(crate) const MANAGED_NVS_TOOL: &str =
     ".embuild/espressif/esp-idf/v5.5.4/components/nvs_flash/nvs_partition_tool/nvs_tool.py";
 const WIFI_CREDENTIALS: &str = "wifi-credentials.json";
 pub(crate) const MAX_NVS_JSON_BYTES: usize = 1_048_576;
@@ -223,10 +223,10 @@ fn require_private_path(path: &Utf8Path, mode: u32, directory: bool) -> Result<(
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct NvsSemanticEntry {
-    namespace: String,
-    key: String,
+    pub(crate) namespace: String,
+    pub(crate) key: String,
     encoding: String,
-    data: serde_json::Value,
+    pub(crate) data: serde_json::Value,
     state: String,
     is_empty: Option<bool>,
 }
@@ -354,7 +354,7 @@ fn validate_private_wifi_credentials(
     read_wifi_credentials(path, environment).map(|_| ())
 }
 
-fn validate_managed_tool(
+pub(crate) fn validate_managed_tool(
     environment: &impl FlashEnvironment,
     relative: &str,
 ) -> Result<Utf8PathBuf> {
@@ -389,7 +389,9 @@ pub(crate) fn find_managed_esptool(environment: &impl FlashEnvironment) -> Resul
     .context("nvs_readback=blocked reason=esptool_missing")
 }
 
-fn validate_managed_nvs_python(environment: &impl FlashEnvironment) -> Result<Utf8PathBuf> {
+pub(crate) fn validate_managed_nvs_python(
+    environment: &impl FlashEnvironment,
+) -> Result<Utf8PathBuf> {
     let python = environment.workspace_path(Utf8Path::new(MANAGED_NVS_PYTHON));
     let metadata = fs::metadata(python.as_std_path())
         .context("nvs_readback=blocked reason=nvs_python_missing")?;
@@ -403,7 +405,22 @@ fn validate_managed_nvs_python(environment: &impl FlashEnvironment) -> Result<Ut
     Ok(python)
 }
 
-fn run_nvs_dump(python: &Utf8Path, nvs_tool: &Utf8Path, input: &Utf8Path) -> Result<Vec<u8>> {
+/// `nvs_tool`'s dump of an image held in memory, fed through a private pipe under `scratch`.
+pub(crate) fn run_nvs_dump_from_memory(
+    python: &Utf8Path,
+    nvs_tool: &Utf8Path,
+    image: Vec<u8>,
+    scratch: &Utf8Path,
+) -> Result<Vec<u8>> {
+    let fifo = crate::memory_fifo::PrivateFifo::create(scratch, "nvs.fifo")?;
+    crate::memory_fifo::feed_while(&fifo, image, || run_nvs_dump(python, nvs_tool, fifo.path()))
+}
+
+pub(crate) fn run_nvs_dump(
+    python: &Utf8Path,
+    nvs_tool: &Utf8Path,
+    input: &Utf8Path,
+) -> Result<Vec<u8>> {
     let output = Command::new(python.as_std_path())
         .args([
             nvs_tool.as_str(),

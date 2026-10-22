@@ -76,9 +76,15 @@ not a guard anyone designed.
     resets;
   - the device-session reset endurance;
   - the Stratum v2 restore snapshot's `read-flash`.
+- **Identification.** `just identify-board` enters the ROM downloader
+  without the gate, because the device may not be registered yet. It reads
+  the NVS partition and hard-resets back to the installed application,
+  writing nothing. The partition holds Wi-Fi and pool secrets, so it
+  passes only through private named pipes and memory, never a stored
+  file. It registers a board only when the board's own stored
+  `boardversion`, `asicmodel` and `devicemodel` all name it.
 - **One requested board for now.** The gate requests board 205 today.
-  Phase C threads the requested board through every command, which phase B
-  needs for its read of the 601's NVS.
+  Phase C threads the requested board through every command.
 - The registry holds digests only. A base MAC has little entropy under a
   known vendor prefix, so a digest can be reversed by search: the registry
   stays private (mode 0600, gitignored), and committed evidence names board

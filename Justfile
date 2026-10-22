@@ -16,6 +16,10 @@ detect-ultra205 *args:
 register-board *args:
     bazel run //tools/flash:flash -- register-board {{ args }}
 
+# Names an attached board from its chip, MAC and stored board fields, read-only (ADR-0041).
+identify-board *args:
+    bazel run //tools/flash:flash -- identify-board {{ args }}
+
 str005-failure-recovery action *args:
     bazel run //scripts:str005_failure_recovery -- {{ action }} {{ args }}
 

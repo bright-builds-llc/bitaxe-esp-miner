@@ -171,7 +171,11 @@ js_library(
 rust_binary(
     name = "flash",
     srcs = [
+        "src/memory_fifo.rs",
+        "src/memory_fifo/tests.rs",
         "src/board_identity.rs",
+        "src/board_identity/identify.rs",
+        "src/board_identity/identify/tests.rs",
         "src/board_identity/tests.rs",
         "src/core_dump.rs",
         "src/core_dump/contract.rs",

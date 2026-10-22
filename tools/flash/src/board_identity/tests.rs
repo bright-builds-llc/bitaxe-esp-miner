@@ -63,7 +63,7 @@ fn different_macs_have_different_digests() {
 fn rom_admission_checks_the_registry_before_its_reset_and_the_mac_before_any_effect() {
     // Arrange
     let source = include_str!("../environment/usb_ownership.rs");
-    let body = &source[source.find("fn ensure_bootloader").expect("admission")..];
+    let body = &source[source.find("fn enter_rom").expect("admission")..];
     let at = |text: &str| body.find(text).unwrap_or_else(|| panic!("missing {text}"));
     // Act
     let (pre_check, reset, admitted, gate, done) = (
@@ -71,7 +71,7 @@ fn rom_admission_checks_the_registry_before_its_reset_and_the_mac_before_any_eff
         at("\"usb-reset\""),
         at("admit_rom_downloader("),
         at("crate::board_identity::require_board("),
-        at("Ok(())"),
+        at("Ok(board_info)"),
     );
     // Assert
     assert!(pre_check < reset && reset < admitted && admitted < gate && gate < done);
@@ -325,4 +325,30 @@ fn rom_entry_refuses_first_when_no_device_is_registered_for_the_board() {
             .contains("reason=none_registered requested=205"),
         "{error}"
     );
+}
+
+#[test]
+fn ordinary_rom_admission_always_requests_the_205() {
+    // Arrange
+    let source = include_str!("../environment/usb_ownership.rs");
+    let body = &source[source.find("fn ensure_bootloader").expect("admission")..];
+    // Act
+    let call = &body[..body.find("fn enter_rom").expect("enter_rom")];
+    // Assert
+    assert!(call.contains("self.enter_rom(Some(crate::board_identity::RegisteredBoard::Ultra205))"));
+}
+
+#[test]
+fn only_identification_enters_rom_without_a_board() {
+    // Arrange
+    let environment = include_str!("../environment.rs");
+    let identify = include_str!("identify.rs");
+    // Act
+    let ungated = environment.matches("self.enter_rom(None)").count();
+    // Assert
+    assert_eq!(ungated, 1);
+    assert!(environment.contains(
+        "fn admit_rom_for_identification(&self) -> Result<Vec<u8>> {\n        self.enter_rom(None)"
+    ));
+    assert!(identify.contains("environment.admit_rom_for_identification()"));
 }

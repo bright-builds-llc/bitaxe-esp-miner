@@ -54,6 +54,15 @@ pub(crate) trait FlashEnvironment {
     fn admit_flash_read(&self) -> Result<()> {
         Ok(())
     }
+    /// Enters the ROM downloader without a board gate and returns the `board-info` output; only
+    /// `identify-board` uses it, and it writes nothing.
+    fn admit_rom_for_identification(&self) -> Result<Vec<u8>> {
+        bail!("board_identify=blocked reason=adapter_unavailable")
+    }
+    /// Runs a flash read whose output path is a pipe (`memory_fifo`), so nothing is stored.
+    fn execute_flash_read_to_pipe(&self, _read: &ManagedFlashRead) -> Result<()> {
+        bail!("board_identify=blocked reason=adapter_unavailable")
+    }
     fn execute_flash_read(&self, read: &ManagedFlashRead) -> Result<()>;
     fn restore_application_runtime(&self, esptool: &Utf8Path) -> Result<ProfileObservationCounts>;
     fn execute_owner_recovery_exit(

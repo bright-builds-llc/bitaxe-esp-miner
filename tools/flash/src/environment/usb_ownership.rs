@@ -5,6 +5,17 @@ const ESPTOOL_ADMITTED_ROM_BEFORE: &str = "no_reset";
 
 impl LocalFlashEnvironment {
     pub(super) fn ensure_bootloader(&self) -> Result<()> {
+        self.enter_rom(Some(crate::board_identity::RegisteredBoard::Ultra205))
+            .map(|_| ())
+    }
+
+    /// Enters the ROM downloader and returns the `board-info` output. With a board, it refuses
+    /// before the reset when none is registered, and after it when the device is not that
+    /// board. Without one, it only identifies the device, for `identify-board`.
+    pub(super) fn enter_rom(
+        &self,
+        maybe_board: Option<crate::board_identity::RegisteredBoard>,
+    ) -> Result<Vec<u8>> {
         let mut session_slot = self.usb_session.borrow_mut();
         let Some(session) = session_slot.as_mut() else {
             bail!("cleanup_failed: bootloader admission attempted without a repository session");
@@ -13,10 +24,9 @@ impl LocalFlashEnvironment {
         if inspection.physical_identity_digest != session.physical_identity_digest() {
             bail!("physical_identity_drift");
         }
-        crate::board_identity::require_registered(
-            &self.workspace_dir,
-            crate::board_identity::RegisteredBoard::Ultra205,
-        )?;
+        if let Some(board) = maybe_board {
+            crate::board_identity::require_registered(&self.workspace_dir, board)?;
+        }
         let intent = if session.operation() == UsbOperation::Recover {
             UsbIntent::Recover
         } else {
@@ -58,12 +68,10 @@ impl LocalFlashEnvironment {
         emit_line("usb_profile", "rom_downloader")?;
         // The port names no board (ADR-0041): the device's own MAC must be registered for the
         // board this tool serves before any write, erase or read.
-        crate::board_identity::require_board(
-            &self.workspace_dir,
-            crate::board_identity::RegisteredBoard::Ultra205,
-            &board_info,
-        )?;
-        Ok(())
+        if let Some(board) = maybe_board {
+            crate::board_identity::require_board(&self.workspace_dir, board, &board_info)?;
+        }
+        Ok(board_info)
     }
 
     pub(super) fn ensure_observable_runtime(&self, port: &str) -> Result<()> {

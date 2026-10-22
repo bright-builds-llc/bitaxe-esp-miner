@@ -415,6 +415,12 @@ impl FlashEnvironment for LocalFlashEnvironment {
     fn admit_flash_read(&self) -> Result<()> {
         self.ensure_bootloader()
     }
+    fn admit_rom_for_identification(&self) -> Result<Vec<u8>> {
+        self.enter_rom(None)
+    }
+    fn execute_flash_read_to_pipe(&self, read: &ManagedFlashRead) -> Result<()> {
+        flash_transfer::execute_read_to_pipe(self, read)
+    }
     fn restore_application_runtime(&self, esptool: &Utf8Path) -> Result<ProfileObservationCounts> {
         nvs_readback::restore_application_runtime(self, esptool)
     }

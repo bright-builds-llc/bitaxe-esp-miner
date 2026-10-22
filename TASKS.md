@@ -147,10 +147,9 @@ action.
   - The detector, one ROM admission (chip, MAC, flash, features), then a
     hard reset back to stock.
   - The NVS read in memory, extracting only `boardversion`, `asicmodel` and
-    `devicemodel`. It needs an identification admission that the gate does
-    not give today: the ROM gate requests board 205. That arrives with the
-    requested board threaded through (part of C), or as a dedicated
-    read-only identification mode.
+    `devicemodel`. `just identify-board` is the read-only identification
+    admission: the ROM gate requests board 205, so it enters ROM without
+    the gate, writes nothing, and registers only on a full match.
   - Register the 601's digest. No writes.
 - [ ] **C. Board seam and 601 safe boot.**
   - `BoardId::Gamma601`, a board build flag, per-board packages, platform
@@ -171,6 +170,54 @@ action.
 
 Each phase ends with the full gate, an independent review, commit and
 push. Each hardware step needs its own contract and enable line below.
+
+Phase B identification contract (attempt ordinals 001 onward):
+- **Objective:** name the attached board from its own records and register
+  it. `just identify-board --board 601 --port <port> --register` reports:
+  - the flash size from `board-info`;
+  - the stored `boardversion`, `asicmodel` and `devicemodel`, as known
+    values or the categories `other` / `missing`;
+  - whether they match the 601 (`601`, `BM1370`, `gamma`).
+  It registers the base-MAC digest only on a full match. The command
+  refuses unless this block is active and carries its enable line.
+- **Precondition:** only the 601 attached, with barrel power on and USB
+  through a USB-A host port or adapter. `just detect-ultra205 --port
+  <port>` finds exactly one Espressif Serial/JTAG device; it cannot tell
+  the boards apart.
+- **Allowed effects:**
+  - one reset into the ROM downloader (`board-info`);
+  - one read of the NVS partition (0x9000, 0x6000);
+  - one hard reset back to the installed stock AxeOS, which then runs as
+    before, including whatever its own settings do.
+- **Prohibited effects:** any flash write or erase, any NVS write, any
+  firmware install, any power, fan or ASIC command from the host, and
+  network discovery.
+- **Evidence and privacy:**
+  - The NVS partition holds Wi-Fi and pool secrets (`NeverPersistRaw`). It
+    passes from esptool to `nvs_tool` only through private named pipes
+    (`memory_fifo`) and memory; it is never a stored file.
+  - The command prints categories only, and the registry holds a digest.
+  - The device-session trace keeps the raw `board-info` output, MAC
+    included, as protected operational data in its private root. No MAC,
+    digest, SSID or other NVS value is printed to the terminal or
+    committed.
+- **Evidence capture:** each attempt runs in a new mode-0700 parent under
+  `scratch/gamma-601-identification/`, with distinct mode-0600 stdout and
+  stderr files for the detector and the command. The record names board
+  601, the selected port, the source and reference commits, the exact
+  commands, the categories reported and the conclusion.
+- **Recovery:** if the device stays in the ROM downloader after a failure,
+  the owner power-cycles it (barrel and USB). That is a non-invasive manual
+  remediation.
+- **Stops:**
+  - zero or several ports;
+  - records that are missing (`records_missing`) or name another board
+    (`records_name_another_board`);
+  - a digest registered for another board;
+  - any refusal of the detector or the gate.
+  Retries follow the progress-gated attempt policy.
+
+Gamma 601 identification hardware: enabled.
 
 ## Future
 

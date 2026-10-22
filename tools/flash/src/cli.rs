@@ -23,6 +23,8 @@ pub(crate) enum CliCommand {
     UsbPresenceWatch(crate::usb_presence_watch::UsbPresenceWatchCommand),
     #[command(name = "register-board")]
     RegisterBoard(crate::board_identity::RegisterBoardCommand),
+    #[command(name = "identify-board")]
+    IdentifyBoard(crate::board_identity::identify::IdentifyBoardCommand),
     Detect(DetectCommand),
     Flash(FlashCommand),
     Monitor(MonitorCommand),
