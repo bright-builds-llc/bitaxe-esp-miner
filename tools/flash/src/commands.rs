@@ -184,22 +184,7 @@ pub(crate) fn run_detect(
 }
 
 fn configuration_candidate_from_board_info(output: &[u8]) -> Result<String> {
-    let document = std::str::from_utf8(output).context("board-info output was not valid UTF-8")?;
-    let identities = document
-        .lines()
-        .filter_map(|line| line.trim().strip_prefix("MAC address:").map(str::trim))
-        .collect::<Vec<_>>();
-    let [identity] = identities.as_slice() else {
-        bail!("board-info output did not contain exactly one base MAC identity");
-    };
-    let octets = identity
-        .split(':')
-        .map(|octet| u8::from_str_radix(octet, 16))
-        .collect::<Result<Vec<_>, _>>()
-        .context("board-info base MAC identity was malformed")?;
-    let [_, _, _, _, penultimate, final_octet] = octets.as_slice() else {
-        bail!("board-info base MAC identity was malformed");
-    };
+    let [_, _, _, _, penultimate, final_octet] = crate::board_identity::base_mac(output)?;
     let soft_ap_final = final_octet
         .checked_add(1)
         .context("board-info base MAC identity cannot derive SoftAP identity")?;

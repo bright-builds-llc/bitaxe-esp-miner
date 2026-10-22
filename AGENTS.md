@@ -363,6 +363,29 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - Task-gated destructive or fault-injection verification is allowed only when an active `TASKS.md` block records the exact command, evidence policy, recovery path, retry bounds, and accepted stop conditions. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside that contract.
 - Every hardware run must record board `205`, selected port, source commit, reference commit, package manifest/artifacts when applicable, exact commands, `board-info` output, captured logs, observed behavior, and conclusion. Do not commit secrets, pool credentials, Wi-Fi credentials, private endpoints, or NVS secret values in evidence.
 
+### Gamma 601 Hardware Authorization
+
+- Owner rule, 2026-10-21: the standing authorization above extends to a
+  connected Bitaxe Gamma 601 (BM1370, TPS546), under the same gates: an
+  active `TASKS.md` contract, a repo-owned command, its detector, fresh
+  ordinals, the attempt policy and evidence privacy. ADR-0041 records the
+  multi-board decisions; `task-gamma-601-bring-up` owns the work.
+- **Board identity (ADR-0041).** Both boards enumerate as the same Espressif
+  USB device, and the detector's physical identity is the host USB port,
+  not the board. Before any ROM-downloader effect, admission must match the
+  device's registered base-MAC digest to the requested board. `tools/flash`
+  enforces this (`boards.local.json`, `just register-board`).
+  - Never write a package built for one board to the other.
+  - The detector still cannot tell the boards apart, and some paths reset
+    or read without the gate (ADR-0041). Keep only the board the task
+    names attached while running its workflow.
+- **No inherited verification.** The 601 does not inherit Ultra 205
+  verification (ADR-0014). Its power controller output, ASIC power, ASIC
+  initialization and mining each need their own contract and hardware
+  evidence. The direct UART and pin rules are unchanged.
+- **USB-C hosts.** Some Bitaxe boards do not enumerate on a USB-C host port
+  and need a USB-A port or adapter (upstream readme, bitaxeGamma#37).
+
 ### Iterative Hardware Fix Authorization
 
 - Once an active `TASKS.md` block and repo-owned command establish the complete objective, effects, safety, privacy, recovery, retry, evidence, and stop contract, iterate autonomously within that contract. Diagnose failures, patch code, add real-boundary regressions, run the required gates, commit and push, select fresh progress-backed ordinals, and retry without creating a new immutable plan for each fix or ordinal.

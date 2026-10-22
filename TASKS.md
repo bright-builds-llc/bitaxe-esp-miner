@@ -101,31 +101,78 @@ hardware regression, safe-stop proof, and redaction remain outstanding.
 Automatic selection may treat ASIC-010 as hardware-blocked until those
 prerequisites exist and continue to the next software-actionable row.
 
-## Future
-
 ### task-gamma-601-bring-up | 2026-10-21 | Bring up the Bitaxe Gamma 601 (BM1370)
 
-Owner note 2026-10-21: the owner obtained a Bitaxe 601. Per the pinned upstream
-reference (`reference/esp-miner/main/device_config.h`), board 601 is the Gamma
-family:
-- one BM1370 ASIC (chip id 1370, default 525 MHz / 1150 mV);
-- a TPS546 power controller;
-- an EMC2101 fan and temperature controller (ideality factor 0x24);
-- a 19 W power target, with an ESP32-S3 controller as on the Ultra 205.
+Owner decisions 2026-10-21:
+- the staged bring-up, "Safe boot, then mining";
+- the standing hardware authority "Same as the 205";
+- the stock AxeOS firmware is not backed up.
 
-The repository supports only the Ultra 205 (BM1366). The deferred parity rows
-are CFG-002 (Gamma 601 defaults), ASIC-008 (BM1370) and PWR-004 (TPS546).
-`tools/flash` rejects `board=601`, and `just detect-ultra205` admits only the
-Ultra 205.
+Plan `delightful-foraging-quill` (owner approved). ADR-0041 records the
+board identity guard and build-time board selection.
 
-- [ ] Plan the bring-up order with the owner: the pure BM1370 core first (as
-      ASIC-009/010), then TPS546, the board profile and defaults, detection
-      and flashing, and hardware-gated control.
-- [ ] A detector or identification step for the 601 under its own task
-      contract, before any effect on it. Standing USB authorization covers
-      only the Ultra 205.
-- [ ] Keep the Ultra 205 workflows unambiguous with two boards attached (port
-      selection, detector admission).
+The 601, from the pinned reference (`reference/esp-miner/main/device_config.h`):
+- one BM1370 (chip id 0x1370, default 525 MHz / 1150 mV);
+- a TPS546 PMBus power controller at I2C 0x24, in place of the DS4432U and
+  INA260;
+- an EMC2101 whose external diode is the chip temperature (ideality 0x24);
+- the VR temperature from the TPS546;
+- no ASIC-enable or plug-sense GPIO; an ESP32-S3 N16R8.
+
+The deferred parity rows are CFG-002, ASIC-008 and PWR-004.
+
+**The urgent finding:** nothing could tell a 601 from a 205. The detector's
+physical identity digests the host USB port, and ROM admission checked only
+that the chip is an ESP32-S3. Phase A gates writes on the device's
+registered MAC digest. The detector still cannot tell the boards apart, so
+only the board a task names stays attached while it runs.
+
+The 601 did not enumerate on the 205's USB-C cable. Upstream notes some
+Bitaxe boards need a USB-A host port (bitaxeGamma#37); that is an owner
+action.
+
+- [x] **A. Board identity guard (software).**
+  - A local `boards.local.json` maps board ids to digests of the ESP32-S3
+    base MAC.
+  - ROM admission refuses an unregistered or mismatched device before any
+    effect.
+  - A register command; the 205 is seeded from its kept `board-info`
+    output.
+  - Tests; the full gate; an independent review.
+  - Done 2026-10-21: `tools/flash` `board_identity` (21 tests) gates ROM
+    admission and the core-dump erase, refusing before the reset when no
+    device is registered for the board. The Ultra 205 is registered from
+    its kept `board-info` output. Two review rounds; full gate.
+- [ ] **B. Identify the 601 (hardware, its own contract).**
+  - The detector, one ROM admission (chip, MAC, flash, features), then a
+    hard reset back to stock.
+  - The NVS read in memory, extracting only `boardversion`, `asicmodel` and
+    `devicemodel`. It needs an identification admission that the gate does
+    not give today: the ROM gate requests board 205. That arrives with the
+    requested board threaded through (part of C), or as a dedicated
+    read-only identification mode.
+  - Register the 601's digest. No writes.
+- [ ] **C. Board seam and 601 safe boot.**
+  - `BoardId::Gamma601`, a board build flag, per-board packages, platform
+    identity and defaults, and the runtime board guard.
+  - A safe-boot build: ASIC reset held low, the TPS546 commanded off, the
+    EMC2101 external diode, Wi-Fi, HTTP and OTA. A state-preserving install.
+- [ ] **D. TPS546.**
+  - A pure PMBus core with the Gamma config plan, a clamp to 1.00-1.25 V
+    and no `STORE_USER_ALL`.
+  - Telemetry and fault polling.
+  - Hardware with `OPERATION` off; then a bounded VOUT enable with the ASIC
+    held in reset.
+- [ ] **E. BM1370 pure core (ASIC-008):** init, PLL, job ids and results,
+      the nonce errata, version rolling; golden fixtures.
+- [ ] **F. BM1370 on hardware, then mining.** Chip detection, mining-ready
+      init, board-specific live limits, a short local run, stops,
+      self-test and soaks; the parity rows with their evidence.
+
+Each phase ends with the full gate, an independent review, commit and
+push. Each hardware step needs its own contract and enable line below.
+
+## Future
 
 ### task-stop-paths-hardware-evidence | 2026-10-21 | Hardware evidence for stops other than a pause
 

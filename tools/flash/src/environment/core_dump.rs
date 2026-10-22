@@ -6,6 +6,10 @@ pub(super) fn erase(environment: &LocalFlashEnvironment, offset: u32, size: u32)
         bail!("core_dump_erase_range");
     }
     environment.validate_espflash_identity()?;
+    crate::board_identity::require_registered(
+        &environment.workspace_dir,
+        crate::board_identity::RegisteredBoard::Ultra205,
+    )?;
     let mut slot = environment.usb_session.borrow_mut();
     let session = slot.as_mut().context("core_dump_erase_session_missing")?;
     let before = inspect_usb_profile(session.port())?;
@@ -23,6 +27,11 @@ pub(super) fn erase(environment: &LocalFlashEnvironment, offset: u32, size: u32)
     if rom.physical_identity_digest != session.physical_identity_digest() {
         bail!("physical_identity_drift");
     }
+    crate::board_identity::require_board(
+        &environment.workspace_dir,
+        crate::board_identity::RegisteredBoard::Ultra205,
+        &board_info,
+    )?;
     environment.validate_espflash_identity()?;
     let command = crate::core_dump::clearing::erase_command(session.port(), offset, size);
     let result = session.run_espflash(

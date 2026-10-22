@@ -13,6 +13,8 @@ target/
 /wifi-credentials*.json
 /pool-credentials*.env
 /pool-credentials*.json
+/boards.local.json
+/.boards.local.json.*.tmp
 docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/*.bin
 docs/parity/evidence/phase-21-live-mining-and-soak-evidence/live-mining-enablement/package/*.elf
 docs/parity/evidence/phase-21-live-mining-and-soak-evidence/bm1366-init-work-result/chip-detect/package/*.bin

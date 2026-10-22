@@ -12,6 +12,10 @@ bootstrap-esp *args:
 detect-ultra205 *args:
     bazel run //tools/flash:flash -- detect {{ args }}
 
+# Records a board's base-MAC digest in the private board registry (ADR-0041); no device effect.
+register-board *args:
+    bazel run //tools/flash:flash -- register-board {{ args }}
+
 str005-failure-recovery action *args:
     bazel run //scripts:str005_failure_recovery -- {{ action }} {{ args }}
 

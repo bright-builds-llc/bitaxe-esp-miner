@@ -13,6 +13,10 @@ impl LocalFlashEnvironment {
         if inspection.physical_identity_digest != session.physical_identity_digest() {
             bail!("physical_identity_drift");
         }
+        crate::board_identity::require_registered(
+            &self.workspace_dir,
+            crate::board_identity::RegisteredBoard::Ultra205,
+        )?;
         let intent = if session.operation() == UsbOperation::Recover {
             UsbIntent::Recover
         } else {
@@ -52,6 +56,13 @@ impl LocalFlashEnvironment {
             bail!("physical_identity_drift");
         }
         emit_line("usb_profile", "rom_downloader")?;
+        // The port names no board (ADR-0041): the device's own MAC must be registered for the
+        // board this tool serves before any write, erase or read.
+        crate::board_identity::require_board(
+            &self.workspace_dir,
+            crate::board_identity::RegisteredBoard::Ultra205,
+            &board_info,
+        )?;
         Ok(())
     }
 

@@ -171,6 +171,8 @@ js_library(
 rust_binary(
     name = "flash",
     srcs = [
+        "src/board_identity.rs",
+        "src/board_identity/tests.rs",
         "src/core_dump.rs",
         "src/core_dump/contract.rs",
         "src/core_dump/proof.rs",

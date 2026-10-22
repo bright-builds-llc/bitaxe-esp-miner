@@ -39,6 +39,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+mod board_identity;
 mod boot_chain;
 mod bootstrap_timing;
 mod campaign;
@@ -145,6 +146,10 @@ fn main() -> Result<()> {
     if let CliCommand::UsbPresenceWatch(command) = &cli.command {
         return usb_presence_watch::run(command);
     }
+    // Registration touches no device, so it runs before any USB environment.
+    if let CliCommand::RegisterBoard(command) = &cli.command {
+        return board_identity::run_register(command);
+    }
     match &cli.command {
         CliCommand::CoreDumpRead(command) => core_dump::preflight(command, false)?,
         CliCommand::CoreDumpClear(command) => {
@@ -179,6 +184,7 @@ fn main() -> Result<()> {
         match cli.command {
             CliCommand::DrainWorkerSerial(command) => drain_worker_serial::run(&command),
             CliCommand::UsbPresenceWatch(command) => usb_presence_watch::run(&command),
+            CliCommand::RegisterBoard(command) => board_identity::run_register(&command),
             CliCommand::CoreDumpClear(command) => core_dump::clearing::run(&command, &environment),
             CliCommand::CoreDumpRead(command) => core_dump::run(&command, &environment),
             CliCommand::Detect(command) => run_detect(&command, &environment),

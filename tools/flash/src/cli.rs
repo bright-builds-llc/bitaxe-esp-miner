@@ -21,6 +21,8 @@ pub(crate) enum CliCommand {
     DrainWorkerSerial(crate::drain_worker_serial::DrainWorkerSerialCommand),
     #[command(name = "usb-presence-watch")]
     UsbPresenceWatch(crate::usb_presence_watch::UsbPresenceWatchCommand),
+    #[command(name = "register-board")]
+    RegisterBoard(crate::board_identity::RegisterBoardCommand),
     Detect(DetectCommand),
     Flash(FlashCommand),
     Monitor(MonitorCommand),
