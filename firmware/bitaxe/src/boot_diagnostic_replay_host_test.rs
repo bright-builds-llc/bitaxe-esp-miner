@@ -42,6 +42,11 @@ mod preparation_evidence {
         "fixture preparation".to_owned()
     }
 }
+mod board_identity {
+    pub fn marker() -> String {
+        "fixture board identity".to_owned()
+    }
+}
 mod core_dump_evidence {
     pub fn marker(previous: bool) -> String {
         format!("fixture core store previous={previous}")
@@ -58,6 +63,14 @@ fn core_store_replay_keeps_both_boot_origins() {
         worker_diagnostics::maybe_worker_diagnostic_line(22).as_deref(),
         Some("fixture core store previous=false")
     );
+}
+
+#[test]
+fn the_board_identity_is_replayed_after_the_core_store_origins() {
+    // Act
+    let line = worker_diagnostics::maybe_worker_diagnostic_line(23);
+    // Assert
+    assert_eq!(line.as_deref(), Some("fixture board identity"));
 }
 
 #[test]

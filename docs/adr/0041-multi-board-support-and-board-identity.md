@@ -50,6 +50,19 @@ not a guard anyone designed.
    build no TPS546 code. A package for one board is refused on another.
 3. **The firmware checks its board at run time** against the stored
    `boardversion` and refuses hardware control on a mismatch.
+   - It reads the value once at boot and reports it, as a closed label
+     (`205`, `601`, `missing`, `other` or `unreadable`), with the relation
+     `match`, `mismatch` or `unknown`.
+   - The report goes in a periodic USB record, `usb_board_identity`, and in
+     the API fields `storedBoard` and `boardIdentity`.
+   - Only a value naming another known board is a mismatch. It withholds
+     the ASIC production handle, which every mining admission requires, and
+     the self-test. Holding the board safe stays available.
+   - The ASIC diagnostic compile modes (chip detection, work-result
+     bootstrap) are not production builds and are outside this guard.
+   - A missing, unrecognized or unreadable value is reported but does not
+     block. The report is not authoritative: the registry gate above
+     decides what may be written.
 4. **The 601 does not inherit Ultra 205 verification** (ADR-0014). Its
    identification, safe boot, power controller, ASIC and mining each need
    their own task contract and hardware evidence. Parity rows CFG-002,

@@ -32,6 +32,7 @@ pub(crate) fn maybe_worker_diagnostic_line(slot: usize) -> Option<String> {
         20 => Some(crate::preparation_evidence::marker(false)),
         21 => Some(crate::core_dump_evidence::marker(true)),
         22 => Some(crate::core_dump_evidence::marker(false)),
+        23 => Some(crate::board_identity::marker()),
         _ => None,
     }
 }

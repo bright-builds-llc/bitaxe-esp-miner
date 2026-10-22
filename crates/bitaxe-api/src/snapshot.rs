@@ -146,6 +146,10 @@ pub struct PlatformSnapshot {
     pub semantic_version: String,
     pub source_commit: String,
     pub reference_commit: String,
+    /// Project extension (ADR-0041): what the stored `boardversion` names.
+    pub stored_board: bitaxe_core::board_identity::StoredBoard,
+    /// Project extension (ADR-0041): how the stored board relates to the built one.
+    pub board_identity: bitaxe_core::board_identity::BoardIdentity,
     pub app_elf_sha256: String,
     pub build_timestamp_utc: String,
     pub build_channel: String,
@@ -189,6 +193,8 @@ impl PlatformSnapshot {
             semantic_version: "0.0.0-safe".to_owned(),
             source_commit: "0".repeat(40),
             reference_commit: "0".repeat(40),
+            stored_board: bitaxe_core::board_identity::StoredBoard::Missing,
+            board_identity: bitaxe_core::board_identity::BoardIdentity::Unknown,
             app_elf_sha256: "0".repeat(64),
             build_timestamp_utc: "Unavailable".to_owned(),
             build_channel: "dev".to_owned(),

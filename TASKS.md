@@ -158,11 +158,41 @@ action.
     - Three effects: one ROM entry, one NVS read, one hard reset; no
       writes.
     - Summary: `docs/parity/evidence/20261021-gamma601-identification.md`.
-- [ ] **C. Board seam and 601 safe boot.**
-  - `BoardId::Gamma601`, a board build flag, per-board packages, platform
-    identity and defaults, and the runtime board guard.
-  - A safe-boot build: ASIC reset held low, the TPS546 commanded off, the
-    EMC2101 external diode, Wi-Fi, HTTP and OTA. A state-preserving install.
+- [ ] **C. Board seam and 601 safe boot.** Plan `gamma-601-phase-c` (owner
+      approved 2026-10-21; state-preserving install). Order: no flashable
+      601 package before the safe-boot build exists.
+  - [ ] C1a: firmware board identity, 205 behaviour unchanged.
+    - [x] The stored-board identity, its report and the guard.
+      - NVS `boardversion` is read once at boot and classified
+        (`match | mismatch | unknown`).
+      - Reported in the `usb_board_identity` record (replay slot 23) and the
+        API fields `storedBoard` and `boardIdentity`, defaulted so host
+        readers accept older firmware.
+      - The replay cycle grew to 25 slots, and its interval shrank to
+        240 ms, so it still lasts 6000 ms, the gap host judges allow.
+      - The guard: another known board withholds the ASIC production handle
+        and the self-test; `board_identity_source_ownership_tests` pins it.
+    - [ ] A `BOARD` catalog constant; platform, attestation and
+      `BoardTarget` variants.
+  - [ ] C1c: tools board threading.
+    - `BoardId::Gamma601` for `flash`, `flash-monitor`, `monitor` and
+      `detect` only.
+    - Manifest board and ELF marker admission.
+    - `enter_rom(Some(board))`.
+    - xtask, `invocation.ts` and the release gate (205 only).
+  - [ ] C1b and C2 together.
+    - The `board-gamma-601` feature, with `firmware_gamma601` targets and
+      packages.
+    - The 601 safe boot:
+      - reset held low;
+      - TPS546 `ON_OFF_CONFIG=0x1F` then `OPERATION=0x00`, confirmed off;
+      - EMC2101 external-diode config;
+      - a 30 % fan owner;
+      - mining structurally absent;
+      - the `usb_gamma601_safe_boot` record.
+    - Isolation tests per board.
+  - [ ] A 205 regression check on hardware (`stopping-002`) after C1.
+  - [ ] C3 on the 601: its own contract and a check-in first.
 - [ ] **D. TPS546.**
   - A pure PMBus core with the Gamma config plan, a clamp to 1.00-1.25 V
     and no `STORE_USER_ALL`.

@@ -572,6 +572,19 @@ rust_test(
 )
 
 rust_test(
+    name = "board_identity_source_ownership_tests",
+    srcs = [
+        "src/asic_adapter/production.rs",
+        "src/board_identity_source_ownership_test.rs",
+        "src/self_test_runtime.rs",
+        "src/startup.rs",
+    ],
+    crate_name = "board_identity_source_ownership_tests",
+    crate_root = "src/board_identity_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "self_test_source_ownership_tests",
     srcs = [
         "src/boot_evidence.rs",

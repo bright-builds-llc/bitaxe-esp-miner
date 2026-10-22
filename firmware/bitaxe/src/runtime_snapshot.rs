@@ -324,13 +324,7 @@ fn mutate_statistics_history(mutate: impl FnOnce(&mut StatisticsHistory)) {
 }
 
 fn mutate_command_visible_state(mutate: impl FnOnce(&mut CommandVisibleState)) {
-    let state = COMMAND_VISIBLE_STATE.get_or_init(|| Mutex::new(CommandVisibleState::default()));
-    let Ok(mut state) = state.lock() else {
-        log::warn!("axeos_runtime_state=unavailable reason=mutex_poisoned");
-        return;
-    };
-
-    mutate(&mut state);
+    mutate_command_visible_state_with_result((), mutate);
 }
 
 fn collect_projected_api_views_with_sample_policy(
@@ -588,6 +582,8 @@ fn collect_platform_snapshot(
     platform.semantic_version = crate::semantic_version().to_owned();
     platform.source_commit = crate::firmware_commit().to_owned();
     platform.reference_commit = crate::reference_commit().to_owned();
+    platform.stored_board = crate::board_identity::stored();
+    platform.board_identity = crate::board_identity::identity();
     platform.app_elf_sha256 = crate::app_elf_sha256();
     platform.build_timestamp_utc = crate::build_timestamp_utc().to_owned();
     platform.build_channel = crate::build_channel().to_owned();

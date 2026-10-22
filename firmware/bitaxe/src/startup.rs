@@ -131,10 +131,15 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     crate::retain_build_identity();
     PROGRESS.enter(DiagnosticStage::Nvs);
     settings_adapter::initialize_default_nvs_partition()?;
-    if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
-        PROGRESS.fail(DiagnosticStage::Nvs);
-        log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
-    }
+    let settings_read = match settings_adapter::initialize_current_settings_snapshot() {
+        Ok(()) => true,
+        Err(error) => {
+            PROGRESS.fail(DiagnosticStage::Nvs);
+            log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
+            false
+        }
+    };
+    crate::board_identity::initialize(settings_read);
     // Earliest point with readable NVS, before Wi-Fi, HTTP settings writes and the Worker owner
     // exist, so the capture precedes every lease and every runtime pool-configuration writer.
     settings_adapter::preservation::capture_boot_pool_configuration();

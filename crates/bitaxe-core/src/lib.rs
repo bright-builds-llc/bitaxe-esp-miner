@@ -1,4 +1,5 @@
 pub mod bap;
+pub mod board_identity;
 pub mod device_pause;
 pub mod display;
 pub mod fallible;

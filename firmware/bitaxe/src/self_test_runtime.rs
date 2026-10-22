@@ -369,6 +369,9 @@ fn current_temperature() -> Option<f32> {
 fn wait_for_safety_preflight(
     watchdog: &mut SelfTestTaskWatchdog,
 ) -> Result<(), HardwareSelfTestFailure> {
+    if !crate::board_identity::hardware_control_permitted() {
+        return Err(HardwareSelfTestFailure::SafetyUnavailable);
+    }
     let deadline = crate::runtime_uptime::millis().saturating_add(SAFETY_PREFLIGHT_TIMEOUT_MS);
     loop {
         let observations = crate::safety_adapter::observation_snapshot();

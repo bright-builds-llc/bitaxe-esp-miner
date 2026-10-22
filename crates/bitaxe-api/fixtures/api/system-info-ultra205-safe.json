@@ -205,6 +205,8 @@
   "semanticVersion": "0.0.0-safe",
   "sourceCommit": "0000000000000000000000000000000000000000",
   "referenceCommit": "0000000000000000000000000000000000000000",
+  "storedBoard": "missing",
+  "boardIdentity": "unknown",
   "appElfSha256": "0000000000000000000000000000000000000000000000000000000000000000",
   "buildTimestampUtc": "Unavailable",
   "buildChannel": "dev",

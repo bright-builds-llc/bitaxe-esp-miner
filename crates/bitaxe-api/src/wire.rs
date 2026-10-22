@@ -276,6 +276,13 @@ pub struct SystemInfoWire {
     pub source_commit: String,
     #[serde(rename = "referenceCommit")]
     pub reference_commit: String,
+    /// Project extension (ADR-0041): `205`, `601`, `missing`, `other` or `unreadable`.
+    /// Defaulted so readers accept firmware that predates it.
+    #[serde(rename = "storedBoard", default)]
+    pub stored_board: String,
+    /// Project extension (ADR-0041): `match`, `mismatch` or `unknown`; defaulted likewise.
+    #[serde(rename = "boardIdentity", default)]
+    pub board_identity: String,
     #[serde(rename = "appElfSha256")]
     pub app_elf_sha256: String,
     #[serde(rename = "buildTimestampUtc")]
@@ -460,6 +467,8 @@ impl SystemInfoWire {
             semantic_version: platform.semantic_version.clone(),
             source_commit: platform.source_commit.clone(),
             reference_commit: platform.reference_commit.clone(),
+            stored_board: platform.stored_board.label().to_owned(),
+            board_identity: platform.board_identity.label().to_owned(),
             app_elf_sha256: platform.app_elf_sha256.clone(),
             build_timestamp_utc: platform.build_timestamp_utc.clone(),
             build_channel: platform.build_channel.clone(),

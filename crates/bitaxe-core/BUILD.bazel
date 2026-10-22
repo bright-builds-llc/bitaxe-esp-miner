@@ -67,6 +67,8 @@ rust_library(
         "src/bap/settings_tests.rs",
         "src/bap/tests.rs",
         "src/bap/wire.rs",
+        "src/board_identity.rs",
+        "src/board_identity/tests.rs",
         "src/device_pause.rs",
         "src/display.rs",
         "src/fallible.rs",
