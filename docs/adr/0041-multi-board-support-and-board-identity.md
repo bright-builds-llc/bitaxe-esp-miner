@@ -76,6 +76,31 @@ not a guard anyone designed.
    identification, safe boot, power controller, ASIC and mining each need
    their own task contract and hardware evidence. Parity rows CFG-002,
    ASIC-008 and PWR-004 move only on that evidence.
+5. **The 601's first firmware is a safe boot.** The `board-gamma-601`
+   Cargo feature (`//firmware/bitaxe:firmware_image_gamma601`, `just
+   package --board 601`) builds firmware that:
+   - drives the ASIC reset (GPIO1) low as its first act and never releases
+     it;
+   - commands the TPS546 off before anything else on the I2C bus, only
+     after its identity reads as a TPS546. It keeps re-commanding off until
+     the controller reports off and its output measures below 0.2 V;
+   - can write nothing else to the TPS546. Its bus capability expresses
+     only the off writes, in upstream's order (`OPERATION` off, then
+     `ON_OFF_CONFIG`);
+   - runs the fan at 100 % until the output is confirmed off, then at
+     30 %, and sets the EMC2101's external-diode configuration;
+   - starts none of the Ultra 205's safety, sensor, fan or mining owners,
+     so it has no Worker channel;
+   - refuses an HTTP firmware update whose image carries another board's
+     marker. Both builds do this.
+
+   It logs its `usb_gamma601_safe_boot` and `usb_board_identity` records
+   every 5 s. Wi-Fi, HTTP and the startup screen run as on the 205.
+   Residual risk: until the firmware's first act, and while a package is
+   written in the ROM downloader, the ASIC reset and the TPS546 output are
+   whatever the previous firmware left. The safe boot marks its OTA image
+   valid even when a reading fails; rolling back could restore firmware
+   that mines.
 
 ## Consequences
 
@@ -108,8 +133,9 @@ not a guard anyone designed.
   passes only through private named pipes and memory, never a stored
   file. It registers a board only when the board's own stored
   `boardversion`, `asicmodel` and `devicemodel` all name it.
-- **One requested board for now.** The gate requests board 205 today.
-  Phase C threads the requested board through every command.
+- **Board selection.** `flash`, `flash-monitor`, `monitor` and `detect`
+  request the board their `--board` names; every other command requests the
+  205.
 - The registry holds digests only. A base MAC has little entropy under a
   known vendor prefix, so a digest can be reversed by search: the registry
   stays private (mode 0600, gitignored), and committed evidence names board

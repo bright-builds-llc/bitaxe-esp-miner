@@ -110,7 +110,7 @@ pub use route_shell::{
     MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
 };
 pub use runtime_boot_attestation::{
-    classify_runtime_boot_attestations, runtime_boot_attestation_marker_start,
+    classify_runtime_boot_attestations, runtime_boot_attestation_marker_start, AttestedBoard,
     ExpectedRuntimeAttestationIdentity, RuntimeAttestationAccumulator,
     RuntimeAttestationParseFailure, RuntimeAttestationParseFailureCounts, RuntimeAttestationStatus,
     RuntimeBootAttestation, RuntimeBootAttestationError, RUNTIME_BOOT_ATTESTATION_MARKER,

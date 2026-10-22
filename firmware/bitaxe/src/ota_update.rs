@@ -4,6 +4,7 @@
 //! - `reference/esp-miner/main/http_server/http_server.c`
 //! - ESP-IDF OTA APIs through `esp_idf_svc::sys`
 
+use bitaxe_core::board_identity::FirmwareMarkerScanner;
 use std::ptr;
 
 use esp_idf_svc::sys;
@@ -87,7 +88,17 @@ pub fn stream_firmware_ota(
         };
     }
 
-    match stream_request_body_to_ota(request, ota_handle, &mut status_sink) {
+    let mut markers = FirmwareMarkerScanner::default();
+    match stream_request_body_to_ota(request, ota_handle, &mut markers, &mut status_sink) {
+        // An image built for another board is never activated (ADR-0041).
+        Ok(_) if !markers.admits(crate::board_identity::BUILT) => {
+            log::warn!("firmware_ota=refused reason=image_names_another_board");
+            abort_ota(ota_handle);
+            status_sink(FirmwareOtaStatus::ValidationError);
+            FirmwareOtaApplyResult::ValidationError {
+                esp_err: sys::ESP_ERR_INVALID_ARG,
+            }
+        }
         Ok(bytes_written) => finish_ota(ota_handle, ota_partition, bytes_written, status_sink),
         Err(error) => error,
     }
@@ -96,6 +107,7 @@ pub fn stream_firmware_ota(
 fn stream_request_body_to_ota(
     request: *mut sys::httpd_req_t,
     ota_handle: sys::esp_ota_handle_t,
+    markers: &mut FirmwareMarkerScanner,
     status_sink: &mut impl FnMut(FirmwareOtaStatus),
 ) -> Result<usize, FirmwareOtaApplyResult> {
     let total = unsafe { (*request).content_len };
@@ -118,6 +130,7 @@ fn stream_request_body_to_ota(
         }
 
         let read = recv_len as usize;
+        markers.feed(&buffer[..read]);
         let write_result = unsafe { sys::esp_ota_write(ota_handle, buffer.as_ptr().cast(), read) };
         if write_result != sys::ESP_OK {
             abort_ota(ota_handle);

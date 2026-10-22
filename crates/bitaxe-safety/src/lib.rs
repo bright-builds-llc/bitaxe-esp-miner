@@ -2,6 +2,7 @@ pub mod core_voltage_acquisition;
 pub mod effects;
 pub mod evidence;
 pub mod fault;
+pub mod gamma601_safe_boot;
 pub mod mining_preconditions;
 pub mod observation;
 pub mod power;
@@ -10,6 +11,7 @@ pub mod sensor_acquisition;
 pub mod status;
 pub mod thermal;
 pub mod thermal_fault_stimulus;
+pub mod tps546;
 pub mod watchdog;
 
 #[must_use]

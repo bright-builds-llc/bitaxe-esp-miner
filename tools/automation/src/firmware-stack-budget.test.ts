@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { verifyFirmwareStackBudget } from "./firmware-stack-budget.js";
+import { verifyFirmwareStackBudget, verifyGamma601StackBudget } from "./firmware-stack-budget.js";
 
 const operatorSymbol = "bitaxe_firmware::operator_sensor_runtime::run";
 const readinessSymbol = "bitaxe_firmware::runtime_snapshot::collect_platform_readiness_snapshot";
@@ -102,4 +102,23 @@ test("firmware stack audit rejects an oversized platform readiness frame", () =>
 
   // Act / Assert
   assert.throws(() => verifyFirmwareStackBudget(input), /oversized platform readiness frame/u);
+});
+
+test("the 601 stack audit checks its safe-boot thread in place of the sensor owner", () => {
+  // Arrange
+  const input = `${symbol("bitaxe_firmware::gamma601::run", "0x200")}\n${symbol(readinessSymbol, "0x1e0")}`;
+
+  // Act
+  const result = verifyGamma601StackBudget(input);
+
+  // Assert
+  assert.deepEqual(result, { safeBootFrameBytes: 512, platformReadinessFrameBytes: 480 });
+});
+
+test("the 601 stack audit refuses an oversized safe-boot frame", () => {
+  // Arrange
+  const input = `${symbol("bitaxe_firmware::gamma601::run", "0x1000")}\n${symbol(readinessSymbol, "0x1e0")}`;
+
+  // Act / Assert
+  assert.throws(() => verifyGamma601StackBudget(input), /safe-boot frame/u);
 });

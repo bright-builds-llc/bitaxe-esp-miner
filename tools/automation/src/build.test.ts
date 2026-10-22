@@ -266,3 +266,13 @@ test("an overheat-trip-test build runs Cargo with the feature in its own target 
     await rm(root, { recursive: true });
   }
 });
+
+test("the 601 build owns its Cargo target directory, feature and artifact names", () => {
+  // Act
+  const plan = firmwareBuildPlan("board-gamma-601");
+
+  // Assert
+  assert.equal(plan.cargoTargetDir, ".bazel-firmware-gamma601-target");
+  assert.deepEqual(plan.cargoFeatures, ["--features", "board-gamma-601"]);
+  assert.equal(plan.artifactPrefix, "bitaxe-gamma601-firmware");
+});

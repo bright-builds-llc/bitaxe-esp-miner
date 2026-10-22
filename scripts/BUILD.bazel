@@ -1612,6 +1612,22 @@ js_test(
     entry_point = "verify-firmware-variant-isolation.mjs",
 )
 
+# Each board's firmware ELF carries only its own board facts (ADR-0041).
+js_test(
+    name = "firmware_board_isolation_test",
+    args = [
+        "205",
+        "$(rootpath //firmware/bitaxe:firmware)",
+        "601",
+        "$(rootpath //firmware/bitaxe:firmware_gamma601)",
+    ],
+    data = [
+        "//firmware/bitaxe:firmware",
+        "//firmware/bitaxe:firmware_gamma601",
+    ],
+    entry_point = "verify-firmware-board-isolation.mjs",
+)
+
 # The active lesson files' format, unique IDs and budget (AGENTS.md, Deterministic Active-Lesson Loading).
 js_test(
     name = "lesson_areas_test",

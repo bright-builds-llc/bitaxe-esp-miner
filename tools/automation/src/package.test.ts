@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import type { CommandSpec } from "./contracts.generated.js";
+import { FirmwareBoardMarkerError, type FirmwareBoard } from "./firmware-board.js";
 import { FirmwareVariantMarkerError, OVERHEAT_TRIP_TEST_MARKER, type FirmwareVariant } from "./firmware-variant.js";
 import { packageFirmware } from "./package.js";
 import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
@@ -13,6 +14,7 @@ import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed
 const buildLabel = "0123456789ab-dev";
 const productionElf = Buffer.from("\x7fELF production firmware");
 const testElf = Buffer.from(`\x7fELF ${OVERHEAT_TRIP_TEST_MARKER} local_overheat_trip_c=55`);
+const gammaElf = Buffer.from("\x7fELF firmware_board=601 safe boot");
 
 /** A workspace holding the package inputs and the managed ESP-IDF tool paths packaging resolves. */
 async function packageWorkspace(elf: Buffer): Promise<string> {
@@ -58,11 +60,16 @@ function fakePackagingTools(runs: CommandSpec<unknown>[]) {
   });
 }
 
-async function packageWith(root: string, firmwareVariant: FirmwareVariant, runs: CommandSpec<unknown>[]): Promise<unknown> {
+async function packageWith(
+  root: string,
+  firmwareVariant: FirmwareVariant,
+  runs: CommandSpec<unknown>[],
+  board: FirmwareBoard = "205",
+): Promise<unknown> {
   const request = {
     firmwareElf: "in/firmware.elf", buildProvenanceStamp: "in/stamp.txt", espIdfSdkconfig: "in/sdkconfig",
     bootloaderBin: "in/bootloader.bin", partitionTableBin: "in/partition-table.bin", otadataInitialBin: "in/otadata.bin",
-    outDir: "out", manifest: "out/manifest.json", webUi: { kind: "legacy-tree", path: "in/www" }, firmwareVariant,
+    outDir: "out", manifest: "out/manifest.json", webUi: { kind: "legacy-tree", path: "in/www" }, firmwareVariant, board,
   } as const;
   return packageFirmware(root, request, fakePackagingTools(runs), "xtask").then(() => undefined, (failure: unknown) => failure);
 }
@@ -138,6 +145,63 @@ test("a production package whose ELF lacks the test marker is packaged as produc
     const manifestGenerator = runs.find((spec) => spec.args[0] === "package-firmware");
     assert.ok(manifestGenerator !== undefined);
     assert.equal(argAfter(manifestGenerator, "--firmware-variant"), "production");
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a 601 package passes its board and file names to the manifest generator", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "production", runs, "601");
+
+    // Assert
+    assert.equal(error, undefined);
+    const manifestGenerator = runs.find((spec) => spec.args[0] === "package-firmware");
+    assert.ok(manifestGenerator !== undefined);
+    assert.equal(argAfter(manifestGenerator, "--board"), "601");
+    assert.equal(path.basename(argAfter(manifestGenerator, "--default-flash-image")), "bitaxe-gamma601.elf");
+    assert.equal(argAfter(manifestGenerator, "--release-name"), "bitaxe-gamma601");
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a 601 package whose ELF lacks the 601 marker fails before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(productionElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "production", runs, "601");
+
+    // Assert
+    assert.ok(error instanceof FirmwareBoardMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_board_marker_missing" });
+    assert.equal(runs.length, 0);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a 205 package whose ELF carries the 601 marker fails before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "production", runs, "205");
+
+    // Assert
+    assert.ok(error instanceof FirmwareBoardMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_board_mismatch" });
+    assert.equal(runs.length, 0);
   } finally {
     await rm(root, { recursive: true });
   }

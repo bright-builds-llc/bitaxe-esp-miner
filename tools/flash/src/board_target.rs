@@ -68,7 +68,7 @@ impl BoardId {
     pub(crate) const fn package_manifest_relative_path(self) -> &'static str {
         match self {
             Self::Ultra205 => PACKAGE_MANIFEST_RELATIVE_PATH,
-            Self::Gamma601 => "firmware/bitaxe/bitaxe-gamma601-package.json",
+            Self::Gamma601 => "firmware/bitaxe/gamma601/bitaxe-gamma601-package.json",
         }
     }
 

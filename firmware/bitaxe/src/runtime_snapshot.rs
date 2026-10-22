@@ -141,6 +141,7 @@ fn complete_operator_snapshot(
 
 fn complete_api_snapshot(candidate: OperatorSnapshotCandidate) -> ApiSnapshot {
     let mut snapshot = ApiSnapshot::safe_ultra_205();
+    snapshot.catalog = crate::board_identity::catalog_entry();
     snapshot.mining = candidate.projection.state().clone();
     snapshot.block_found = candidate.block_found;
     snapshot.best_difficulty = candidate.best_difficulty;

@@ -14,8 +14,8 @@ pub mod validation;
 mod golden_tests;
 
 pub use catalog::{
-    board_catalog, ultra_205_catalog_entry, AsicProfile, BoardCapabilities, BoardCatalogEntry,
-    VerificationScope,
+    board_catalog, gamma_601_catalog_entry, ultra_205_catalog_entry, AsicProfile,
+    BoardCapabilities, BoardCatalogEntry, VerificationScope,
 };
 pub use confirmed_snapshot::{
     ConfirmedSnapshotPublicationFailure, ConfirmedSnapshotRead, ConfirmedSnapshotReadHealth,
@@ -127,8 +127,8 @@ mod tests {
     use bitaxe_core::{AsicTarget, BoardTarget};
 
     use super::{
-        board_catalog, ultra_205_catalog_entry, ultra_205_defaults, Phase1BoardSelection,
-        VerificationScope,
+        board_catalog, gamma_601_catalog_entry, ultra_205_catalog_entry, ultra_205_defaults,
+        Phase1BoardSelection, VerificationScope,
     };
 
     #[test]
@@ -218,6 +218,17 @@ mod tests {
         assert_eq!(defaults.manual_fan_speed(), 100);
         assert!(defaults.self_test());
         assert!(!defaults.overheat_mode());
+    }
+
+    #[test]
+    fn gamma_601_catalog_entry_names_the_bm1370_gamma() {
+        // Act
+        let entry = gamma_601_catalog_entry();
+
+        // Assert
+        assert_eq!(entry.board_version(), "601");
+        assert_eq!(entry.family(), "Gamma");
+        assert_eq!(entry.asic().model(), "BM1370");
     }
 
     #[test]

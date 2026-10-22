@@ -472,6 +472,7 @@ const packageFirmwareArguments = [
   "--out-dir", "out",
   "--manifest", "out/manifest.json",
   "--web-ui-stage", "stage",
+  "--board", "205",
 ];
 
 test("package-firmware requires a known firmware variant", () => {
@@ -499,4 +500,25 @@ test("package-firmware and build-firmware accept the overheat-trip-test variant"
 
   // Assert
   assert.deepEqual(invocations, ["build-firmware", "package-firmware"]);
+});
+
+test("package-firmware requires a known board and the build accepts the 601 mode", () => {
+  // Arrange
+  const unknownBoard = [...packageFirmwareArguments.slice(0, -2), "--board", "401", "--firmware-variant", "production"];
+  const gammaPackage = [...packageFirmwareArguments.slice(0, -2), "--board", "601", "--firmware-variant", "production"];
+  const gammaBuild = [
+    "build-firmware",
+    "--output-dir", "out",
+    "--build-provenance-stamp", "stamp.txt",
+    "--identity-sdkconfig-defaults", "identity.defaults",
+    "--build-timestamp-utc", "timestamp.txt",
+    "--build-mode", "board-gamma-601",
+  ];
+
+  // Act / Assert
+  assert.throws(() => parseInvocation(unknownBoard));
+  assert.deepEqual([gammaPackage, gammaBuild].map((args) => parseInvocation(args).command), [
+    "package-firmware",
+    "build-firmware",
+  ]);
 });

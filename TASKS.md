@@ -161,7 +161,7 @@ action.
 - [ ] **C. Board seam and 601 safe boot.** Plan `gamma-601-phase-c` (owner
       approved 2026-10-21; state-preserving install). Order: no flashable
       601 package before the safe-boot build exists.
-  - [ ] C1a: firmware board identity, 205 behaviour unchanged.
+  - [x] C1a: firmware board identity, 205 behaviour unchanged.
     - [x] The stored-board identity, its report and the guard.
       - NVS `boardversion` is read once at boot and classified
         (`match | mismatch | unknown`).
@@ -172,8 +172,16 @@ action.
         240 ms, so it still lasts 6000 ms, the gap host judges allow.
       - The guard: another known board withholds the ASIC production handle
         and the self-test; `board_identity_source_ownership_tests` pins it.
-    - [ ] A `BOARD` catalog constant; platform, attestation and
-      `BoardTarget` variants.
+    - [x] Built-board facts selected together in one `cfg` block in
+      `firmware/bitaxe/src/board_identity.rs`:
+      - the marker;
+      - the boot line;
+      - `BoardTarget`/`AsicTarget` (now with `Gamma601`/`Bm1370`);
+      - the runtime attestation board (205/BM1366 or 601/BM1370);
+      - the catalog entry behind the API's `boardVersion` and `ASICModel`,
+        and the screen.
+      - Not yet board-aware: the platform identity's `PlatformBoard`, which
+        stays 205.
   - [x] C1c: tools board threading (`tools/flash`).
     - `BoardId::Gamma601`, parsed only by `flash`, `flash-monitor`, `monitor`
       and `detect`.
@@ -186,14 +194,18 @@ action.
     - Moved to C1b: xtask packaging for 601 and the runtime attestation
       parser. The automation runner (`invocation.ts`) and the release gate
       stay 205 only.
-  - [ ] C1b and C2 together.
+  - [x] C1b and C2 together. Verified in software: both images build,
+    `//scripts:firmware_board_isolation_test` passes, and two independent
+    reviews were applied. Not yet on hardware (C3).
     - The `board-gamma-601` feature, with `firmware_gamma601` targets and
       packages.
     - The 601 safe boot:
       - reset held low;
-      - TPS546 `ON_OFF_CONFIG=0x1F` then `OPERATION=0x00`, confirmed off;
+      - TPS546 `OPERATION=0x00` then `ON_OFF_CONFIG=0x1F` (upstream's order),
+        confirmed off;
       - EMC2101 external-diode config;
-      - a 30 % fan owner;
+      - the fan at 100 % until the output is confirmed off, then 30 %;
+      - the records logged every 5 s (the 601 has no Worker replay);
       - mining structurally absent;
       - the `usb_gamma601_safe_boot` record.
     - Isolation tests per board.

@@ -10,9 +10,9 @@ use std::sync::atomic::AtomicUsize;
 
 const DIAGNOSTIC_BYTES: usize = 1024;
 /// Replay slots per cycle; the last one carries the sink's transmit observation.
-const REPLAY_SLOTS: usize = 25;
-/// One slot per interval keeps the whole cycle at 6000 ms, the observation gap host judges allow.
-const REPLAY_INTERVAL_MS: u64 = 240;
+const REPLAY_SLOTS: usize = 26;
+/// One slot per interval keeps the whole cycle within 6000 ms, the gap host judges allow.
+const REPLAY_INTERVAL_MS: u64 = 230;
 static DIAGNOSTICS: OnceLock<SyncSender<String>> = OnceLock::new();
 static DROPPED_DIAGNOSTICS: AtomicUsize = AtomicUsize::new(0);
 

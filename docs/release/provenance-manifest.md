@@ -101,6 +101,7 @@ material with explicit review boundaries.
 | `docs/release/license-inventory.md` | Non-Cargo inventory rows and artifact review scope | Present and required by release gate. |
 | `docs/release/provenance-manifest.md` | Source/reference/static/recovery/GPL/artifact review records | Present and required by release gate. |
 | `docs/release/ultra-205.md` | Operator package, flash, monitor, OTA, OTAWWW gap, recovery, and rollback procedures | Present release documentation input. |
+| `docs/release/gamma-601.md` | Gamma 601 safe-boot development package notes (ADR-0041) | Development input for the 601 package; not a release document. |
 
 - Owner: release gate.
 - Required decision before publication: each generated artifact must have a

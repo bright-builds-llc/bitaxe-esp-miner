@@ -148,7 +148,7 @@ fn rejects_factory_bin_as_default_flash_image() {
     let request = package_request(&dir, factory_image, None);
 
     // Act
-    let result = validate_default_flash_image(&request.default_flash_image);
+    let result = validate_default_flash_image(request.board, &request.default_flash_image);
 
     // Assert
     assert!(result.is_err());
@@ -187,7 +187,7 @@ fn unavailable_non_critical_tool_versions_are_literal_unavailable() {
 }
 
 #[test]
-fn rejects_deferred_gamma_601_board() {
+fn accepts_gamma_601_board() {
     // Arrange
     let input = "601";
 
@@ -195,8 +195,30 @@ fn rejects_deferred_gamma_601_board() {
     let result = input.parse::<BoardId>();
 
     // Assert
-    let error = result.expect_err("deferred board");
-    assert!(error.contains("deferred"));
+    assert_eq!(result.expect("board"), BoardId::Gamma601);
+}
+
+#[test]
+fn the_gamma_601_package_names_its_own_files_and_chip() {
+    // Act
+    let board = BoardId::Gamma601;
+
+    // Assert
+    assert_eq!(board.default_elf_name(), "bitaxe-gamma601.elf");
+    assert_eq!(board.factory_image_name(), "bitaxe-gamma601-factory.bin");
+    assert_eq!(
+        (board.device_model(), board.asic()),
+        ("Gamma 601", "BM1370")
+    );
+}
+
+#[test]
+fn a_205_elf_name_is_not_a_601_default_image() {
+    // Act
+    let result = validate_default_flash_image(BoardId::Gamma601, Utf8Path::new(DEFAULT_ELF_NAME));
+
+    // Assert
+    assert!(result.is_err());
 }
 
 #[test]

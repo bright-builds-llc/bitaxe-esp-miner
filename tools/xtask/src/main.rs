@@ -8,12 +8,14 @@ use bitaxe_api::BuildProvenance;
 use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 
+mod board;
 mod firmware_variant;
 mod package_manifest;
 mod partition_contract;
 mod web_ui;
 mod workspace;
 
+use board::{parse_board, BoardId};
 use package_manifest::{
     build_manifest, read_manifest_v3, validate_default_flash_image, validate_package_manifest_v3,
     write_manifest,
@@ -196,36 +198,6 @@ impl From<PackageArgs> for PackageRequest {
             web_ui_variant: args.web_ui_variant,
             firmware_variant: args.firmware_variant,
             www_dir: args.www_dir,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum BoardId {
-    Ultra205,
-}
-
-impl FromStr for BoardId {
-    type Err = String;
-
-    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
-        match value {
-            "205" => Ok(Self::Ultra205),
-            "601" => Err(
-                "board 601 is deferred after the Ultra 205 pivot; Phase 1 supports board=205 only"
-                    .to_owned(),
-            ),
-            other => Err(format!(
-                "unsupported board {other}; Phase 1 supports board=205 only"
-            )),
-        }
-    }
-}
-
-impl fmt::Display for BoardId {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Ultra205 => formatter.write_str("205"),
         }
     }
 }
@@ -439,13 +411,6 @@ fn run_validate_package(args: &ValidatePackageArgs) -> Result<()> {
 }
 
 fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
-    if package_request.board != BoardId::Ultra205 {
-        bail!(
-            "unsupported board {}; Phase 1 supports board=205 only",
-            package_request.board
-        );
-    }
-
     if !package_request.firmware_elf.is_file() {
         bail!(
             "firmware ELF does not exist: {}",
@@ -489,7 +454,7 @@ fn validate_package_request(package_request: &PackageRequest) -> Result<()> {
         );
     }
 
-    validate_default_flash_image(&package_request.default_flash_image)?;
+    validate_default_flash_image(package_request.board, &package_request.default_flash_image)?;
     if !package_request.default_flash_image.is_file() {
         bail!(
             "default flash image does not exist: {}",
@@ -568,10 +533,6 @@ fn validate_factory_payload(
     }
 
     Ok(())
-}
-
-fn parse_board(value: &str) -> std::result::Result<BoardId, String> {
-    value.parse()
 }
 
 fn parse_utf8_path(value: &str) -> std::result::Result<Utf8PathBuf, String> {

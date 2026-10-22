@@ -165,3 +165,13 @@ pub(crate) fn command_begin() {
 pub(crate) fn enter_control_phase(phase: u32) {
     unsafe { bitaxe_fault_enter_phase(phase) };
 }
+
+/// Retains the previous boot's panic and allocation-failure receipts in the general log.
+pub(crate) fn retain_previous_boot_failure() {
+    if let Some(marker) = crate::boot_evidence::worker_rust_panic_marker() {
+        crate::info_retained(&marker);
+    }
+    if let Some(marker) = crate::boot_evidence::worker_allocation_failure_marker() {
+        crate::info_retained(&marker);
+    }
+}

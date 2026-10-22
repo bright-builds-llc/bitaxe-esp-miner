@@ -3,6 +3,8 @@
 mod adc;
 mod ds4432u;
 mod emc2101;
+#[cfg(feature = "board-gamma-601")]
+pub(crate) mod gamma601;
 mod i2c_bus;
 mod i2c_retry;
 mod ina260;

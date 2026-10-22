@@ -1,4 +1,5 @@
 import type { AutomationCommand } from "./contracts.generated.js";
+import { firmwareBoards } from "./firmware-board.js";
 import { firmwareVariants } from "./firmware-variant.js";
 
 type FlagRule = {
@@ -30,7 +31,7 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--build-provenance-stamp": value({ required: true }),
     "--identity-sdkconfig-defaults": value({ required: true }),
     "--build-timestamp-utc": value({ required: true }),
-    "--build-mode": value({ required: true, values: ["normal", "rollback-probe", "overheat-trip-test"] }),
+    "--build-mode": value({ required: true, values: ["normal", "rollback-probe", "overheat-trip-test", "board-gamma-601"] }),
   },
   "package-rollback-probe": {
     "--firmware-elf": value({ required: true }),
@@ -49,6 +50,7 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--manifest": value({ required: true }),
     "--web-ui-stage": value({ required: true }),
     "--firmware-variant": value({ required: true, values: firmwareVariants }),
+    "--board": value({ required: true, values: firmwareBoards }),
   },
   "verify-reference": {},
   "verify-redaction": {

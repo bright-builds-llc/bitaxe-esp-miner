@@ -556,6 +556,40 @@ pub const fn ultra_205_catalog_entry() -> BoardCatalogEntry {
     BOARD_CATALOG[7]
 }
 
+/// Returns the Gamma 601 board catalog entry.
+#[must_use]
+pub const fn gamma_601_catalog_entry() -> BoardCatalogEntry {
+    const ENTRY: BoardCatalogEntry = catalog_entry_by_version("601");
+    ENTRY
+}
+
+/// Finds a board by its `boardversion`; used in constants, so a missing board fails the build.
+const fn catalog_entry_by_version(version: &str) -> BoardCatalogEntry {
+    let mut index = 0;
+    while index < BOARD_CATALOG.len() {
+        if const_str_eq(BOARD_CATALOG[index].board_version(), version) {
+            return BOARD_CATALOG[index];
+        }
+        index += 1;
+    }
+    panic!("board version missing from the catalog");
+}
+
+const fn const_str_eq(left: &str, right: &str) -> bool {
+    let (left, right) = (left.as_bytes(), right.as_bytes());
+    if left.len() != right.len() {
+        return false;
+    }
+    let mut index = 0;
+    while index < left.len() {
+        if left[index] != right[index] {
+            return false;
+        }
+        index += 1;
+    }
+    true
+}
+
 /// Returns every upstream board catalog entry represented by this phase.
 #[must_use]
 pub const fn board_catalog() -> &'static [BoardCatalogEntry] {

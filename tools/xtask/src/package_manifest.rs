@@ -12,8 +12,8 @@ use bitaxe_api::BuildProvenance;
 use crate::firmware_variant::{validate_manifest_firmware_variant, FirmwareVariant};
 use crate::web_ui::{collect_web_ui_assets, validate_web_ui_manifest, WebUiAsset, WebUiVariant};
 use crate::{
-    validate_package_request, PackageEnvironment, PackageRequest, DEFAULT_ELF_NAME,
-    EXPECTED_REFERENCE_COMMIT, FACTORY_IMAGE_NAME, RUST_TARGET, UNAVAILABLE,
+    validate_package_request, BoardId, PackageEnvironment, PackageRequest,
+    EXPECTED_REFERENCE_COMMIT, RUST_TARGET, UNAVAILABLE,
 };
 
 mod validation;
@@ -272,15 +272,15 @@ pub(crate) fn build_manifest(
         ),
         image_metadata: ImageMetadata {
             board: package_request.board.to_string(),
-            device_model: "Ultra 205".to_owned(),
-            asic: "BM1366".to_owned(),
+            device_model: package_request.board.device_model().to_owned(),
+            asic: package_request.board.asic().to_owned(),
             esp_idf_version: crate::ESP_IDF_VERSION.to_owned(),
             rust_target: RUST_TARGET.to_owned(),
         },
         tool_versions: tool_versions(environment),
         install_notes: ReleaseNotes {
             path: manifest_relative_path(&package_request.manifest, &package_request.install_notes),
-            summary: "Ultra 205 release operator guide".to_owned(),
+            summary: package_request.board.install_summary().to_owned(),
         },
         license_inventory: manifest_relative_path(
             &package_request.manifest,
@@ -302,20 +302,25 @@ pub(crate) fn build_manifest(
     Ok(manifest)
 }
 
-pub(crate) fn validate_default_flash_image(default_flash_image: &Utf8Path) -> Result<()> {
+pub(crate) fn validate_default_flash_image(
+    board: BoardId,
+    default_flash_image: &Utf8Path,
+) -> Result<()> {
+    let elf_name = board.default_elf_name();
+    let factory_name = board.factory_image_name();
     let maybe_file_name = default_flash_image.file_name();
     let Some(file_name) = maybe_file_name else {
-        bail!("default_flash_image must resolve to {DEFAULT_ELF_NAME}");
+        bail!("default_flash_image must resolve to {elf_name}");
     };
 
-    if file_name != DEFAULT_ELF_NAME {
-        if file_name == FACTORY_IMAGE_NAME {
+    if file_name != elf_name {
+        if file_name == factory_name {
             bail!(
-                "default_flash_image must resolve to {DEFAULT_ELF_NAME}; {FACTORY_IMAGE_NAME} is only an additional artifact"
+                "default_flash_image must resolve to {elf_name}; {factory_name} is only an additional artifact"
             );
         }
 
-        bail!("default_flash_image must resolve to {DEFAULT_ELF_NAME}, not {file_name}");
+        bail!("default_flash_image must resolve to {elf_name}, not {file_name}");
     }
 
     Ok(())
@@ -351,7 +356,17 @@ pub(crate) fn validate_package_manifest_v3(manifest: &PackageManifestV3) -> Resu
     }
     validate_app_elf_sha256(&manifest.app_elf_sha256)?;
 
-    validate_default_flash_image(Utf8Path::new(&manifest.default_flash_image))?;
+    let board: BoardId = manifest
+        .image_metadata
+        .board
+        .parse()
+        .map_err(|error: String| anyhow::anyhow!("image_metadata.board: {error}"))?;
+    if manifest.image_metadata.device_model != board.device_model()
+        || manifest.image_metadata.asic != board.asic()
+    {
+        bail!("image_metadata contradicts board {board}");
+    }
+    validate_default_flash_image(board, Utf8Path::new(&manifest.default_flash_image))?;
     require_non_empty("release_name", &manifest.release_name)?;
     require_non_empty("source_commit", &manifest.source_commit)?;
     require_non_empty("reference_commit", &manifest.reference_commit)?;

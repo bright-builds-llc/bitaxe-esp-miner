@@ -1,7 +1,7 @@
 //! Side-effect-free private projection for the physical screen owner.
 
 use bitaxe_api::{SafeTelemetrySnapshot, SafetyTelemetryStatus};
-use bitaxe_config::{reload_snapshot, ultra_205_catalog_entry, LoadedValue};
+use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_core::runtime_health::PassiveSelfTestState;
 use bitaxe_core::screen::ScreenSnapshot;
 
@@ -23,7 +23,7 @@ pub fn collect_screen_snapshot(now_ms: u64) -> ScreenSnapshot {
     };
     let wifi = crate::wifi_adapter::current_wifi_snapshot_with_live_rssi();
     let wifi_connected = wifi.wifi_status == "connected";
-    let catalog = ultra_205_catalog_entry();
+    let catalog = crate::board_identity::catalog_entry();
     let pool_host = screen_pool_host(command.fallback_active);
 
     ScreenSnapshot {

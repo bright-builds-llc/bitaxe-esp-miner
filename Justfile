@@ -111,26 +111,32 @@ diagnose-ultra205-late-attach *args:
 diagnose-ultra205-uart-capture *args:
     bash scripts/phase28.1.1-terminal-closure-guard.sh
 
-# Firmware ELF plus the staged web UI; `--web-ui current|solid` picks the variant (default current, ADR-0034).
+# Firmware ELF plus the staged web UI; `--web-ui current|solid` picks the variant (default current, ADR-0034)
+# and `--board 205|601` the board (default 205, ADR-0041).
 [positional-arguments]
 build *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    flag="$(scripts/web-ui-flag.sh "$@")"
-    bazel build //firmware/bitaxe:firmware //firmware/bitaxe:web_ui_staged "$flag"
+    lines="$(scripts/firmware-build-args.sh build "$@")"
+    targets=()
+    while IFS= read -r line; do targets+=("$line"); done <<<"$lines"
+    bazel build "${targets[@]}"
 
 # Four parallel tests: at full parallelism slow script tests time out and starve the firmware build on a
 # developer host, which looks like a regression (STR-005 promotion, 2026-10-06).
 test:
     bazel test //... --local_test_jobs=4
 
-# Package image; `--web-ui current|solid` picks the bundled web UI (default current). The manifest records it.
+# Package image; `--web-ui current|solid` picks the bundled web UI (default current) and `--board 205|601`
+# the board (default 205). The manifest records both.
 [positional-arguments]
 package *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    flag="$(scripts/web-ui-flag.sh "$@")"
-    bazel build //firmware/bitaxe:firmware_image "$flag"
+    lines="$(scripts/firmware-build-args.sh package "$@")"
+    targets=()
+    while IFS= read -r line; do targets+=("$line"); done <<<"$lines"
+    bazel build "${targets[@]}"
 
 # Test-only lowered overheat trip (ADR-0040), never released; flash needs `--allow-test-firmware overheat-trip-test`; reinstall production afterwards.
 package-overheat-trip-test:

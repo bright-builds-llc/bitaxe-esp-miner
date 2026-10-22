@@ -46,6 +46,9 @@ mod board_identity {
     pub fn marker() -> String {
         "fixture board identity".to_owned()
     }
+    pub fn maybe_board_runtime_marker() -> Option<String> {
+        Some("fixture board runtime".to_owned())
+    }
 }
 mod core_dump_evidence {
     pub fn marker(previous: bool) -> String {
@@ -71,6 +74,14 @@ fn the_board_identity_is_replayed_after_the_core_store_origins() {
     let line = worker_diagnostics::maybe_worker_diagnostic_line(23);
     // Assert
     assert_eq!(line.as_deref(), Some("fixture board identity"));
+}
+
+#[test]
+fn the_board_s_own_record_follows_the_board_identity() {
+    // Act
+    let line = worker_diagnostics::maybe_worker_diagnostic_line(24);
+    // Assert
+    assert_eq!(line.as_deref(), Some("fixture board runtime"));
 }
 
 #[test]

@@ -3,7 +3,7 @@ import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node
 import path from "node:path";
 
 import { internalCommandSpec } from "./contracts.generated.js";
-import { verifyFirmwareStackBudget } from "./firmware-stack-budget.js";
+import { verifyFirmwareStackBudget, verifyGamma601StackBudget } from "./firmware-stack-budget.js";
 import type { ProcessPort } from "./process.js";
 
 export type BuildFirmwareRequest = {
@@ -14,8 +14,11 @@ export type BuildFirmwareRequest = {
   readonly buildMode: FirmwareBuildMode;
 };
 
-/** `overheat-trip-test` is the test-only firmware variant (ADR-0040); it keeps the normal artifact names. */
-export type FirmwareBuildMode = "normal" | "rollback-probe" | "overheat-trip-test";
+/**
+ * `overheat-trip-test` is the test-only firmware variant (ADR-0040); it keeps the normal artifact names.
+ * `board-gamma-601` builds for the Gamma 601 (ADR-0041) under its own artifact names.
+ */
+export type FirmwareBuildMode = "normal" | "rollback-probe" | "overheat-trip-test" | "board-gamma-601";
 
 /** Per-mode Cargo inputs; each mode owns its target directory so builds never share ESP-IDF state. */
 export function firmwareBuildPlan(buildMode: FirmwareBuildMode): {
@@ -39,6 +42,13 @@ export function firmwareBuildPlan(buildMode: FirmwareBuildMode): {
         artifactPrefix: "bitaxe-firmware",
         cargoTargetDir: ".bazel-firmware-overheat-trip-test-target",
         cargoFeatures: ["--features", "overheat-trip-test"],
+        otaRollbackProbe: "0",
+      };
+    case "board-gamma-601":
+      return {
+        artifactPrefix: "bitaxe-gamma601-firmware",
+        cargoTargetDir: ".bazel-firmware-gamma601-target",
+        cargoFeatures: ["--features", "board-gamma-601"],
         otaRollbackProbe: "0",
       };
   }
@@ -145,7 +155,11 @@ export async function buildFirmware(
   if (disassembly.timedOut || disassembly.exitCode !== 0) {
     throw new Error("firmware stack disassembly failed");
   }
-  verifyFirmwareStackBudget(disassembly.stdout);
+  if (request.buildMode === "board-gamma-601") {
+    verifyGamma601StackBudget(disassembly.stdout);
+  } else {
+    verifyFirmwareStackBudget(disassembly.stdout);
+  }
   const buildLabel = await requiredStampField(provenanceStamp, "build_label");
   const generated = await findGeneratedIdfBuild(cargoTargetDir, buildLabel);
   const sdkconfig = await readFile(path.join(generated, "sdkconfig"), "utf8");

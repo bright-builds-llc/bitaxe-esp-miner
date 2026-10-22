@@ -385,6 +385,9 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   evidence. The direct UART and pin rules are unchanged.
 - **USB-C hosts.** Some Bitaxe boards do not enumerate on a USB-C host port
   and need a USB-A port or adapter (upstream readme, bitaxeGamma#37).
+- **601 builds.** `just build --board 601` and `just package --board 601`
+  build the safe boot (ADR-0041 item 5). `just flash` and `just flash-monitor`
+  with `--board 601` build and admit only that package, state-preserving.
 
 ### Iterative Hardware Fix Authorization
 

@@ -309,3 +309,41 @@ fn incomplete_readiness_is_rejected() {
     // Assert
     assert_eq!(status, RuntimeAttestationStatus::IncompleteReadiness);
 }
+
+#[test]
+fn a_601_sample_round_trips_with_its_board_and_asic() {
+    // Arrange
+    let marker = sample(1_000).for_board(AttestedBoard::Gamma601).marker();
+    // Act
+    let parsed = RuntimeBootAttestation::parse(&marker).expect("601 sample");
+    // Assert
+    assert!(marker.contains(" board=601 asic=BM1370 "));
+    assert_eq!(parsed.board(), AttestedBoard::Gamma601);
+}
+
+#[test]
+fn a_board_with_another_board_s_asic_is_rejected() {
+    // Arrange
+    let marker = sample(1_000).marker().replace("asic=BM1366", "asic=BM1370");
+    // Act
+    let result = RuntimeBootAttestation::parse(&marker);
+    // Assert
+    assert_eq!(
+        result,
+        Err(RuntimeBootAttestationError::InvalidField("board"))
+    );
+}
+
+#[test]
+fn samples_from_different_boards_are_not_one_boot() {
+    // Arrange
+    let log = format!(
+        "{}\n{}\n",
+        sample(1_000).marker(),
+        sample(2_000).for_board(AttestedBoard::Gamma601).marker()
+    );
+    // Act
+    let status = classify_runtime_boot_attestations(&log, &expected());
+    // Assert
+    assert_eq!(status, RuntimeAttestationStatus::StaticFieldsMismatch);
+}

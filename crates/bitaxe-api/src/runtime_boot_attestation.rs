@@ -14,8 +14,38 @@ pub const RUNTIME_BOOT_ATTESTATION_MARKER: &str = "runtime_boot_attestation";
 /// Current runtime boot attestation wire schema.
 pub const RUNTIME_BOOT_ATTESTATION_SCHEMA_VERSION: u32 = 1;
 
-const BOARD: &str = "205";
-const ASIC: &str = "BM1366";
+/// The board and ASIC an attestation names (ADR-0041).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum AttestedBoard {
+    #[default]
+    Ultra205,
+    Gamma601,
+}
+
+impl AttestedBoard {
+    #[must_use]
+    pub const fn board(self) -> &'static str {
+        match self {
+            Self::Ultra205 => "205",
+            Self::Gamma601 => "601",
+        }
+    }
+
+    #[must_use]
+    pub const fn asic(self) -> &'static str {
+        match self {
+            Self::Ultra205 => "BM1366",
+            Self::Gamma601 => "BM1370",
+        }
+    }
+
+    fn from_fields(board: &str, asic: &str) -> Option<Self> {
+        [Self::Ultra205, Self::Gamma601]
+            .into_iter()
+            .find(|candidate| candidate.board() == board && candidate.asic() == asic)
+    }
+}
+
 const MINING_STATE: &str = "disabled";
 const WORK_SUBMISSION_STATE: &str = "disabled";
 const HARDWARE_CONTROL_STATE: &str = "disabled";
@@ -66,6 +96,7 @@ pub struct RuntimeBootAttestation {
     reference_commit: String,
     app_elf_sha256: String,
     esp_idf_version: String,
+    board: AttestedBoard,
 }
 
 impl RuntimeBootAttestation {
@@ -99,7 +130,21 @@ impl RuntimeBootAttestation {
             reference_commit: reference_commit.to_owned(),
             app_elf_sha256: app_elf_sha256.to_owned(),
             esp_idf_version: esp_idf_version.to_owned(),
+            board: AttestedBoard::Ultra205,
         })
+    }
+
+    /// The same sample attested for `board`; samples are the Ultra 205's by default.
+    #[must_use]
+    pub const fn for_board(mut self, board: AttestedBoard) -> Self {
+        self.board = board;
+        self
+    }
+
+    /// The board this sample attests.
+    #[must_use]
+    pub const fn board(&self) -> AttestedBoard {
+        self.board
     }
 
     /// Parses one marker, tolerating a logger prefix before the stable marker.
@@ -128,8 +173,9 @@ impl RuntimeBootAttestation {
         }
 
         require_exact(&fields, "schema_version", "1")?;
-        require_exact(&fields, "board", BOARD)?;
-        require_exact(&fields, "asic", ASIC)?;
+        let board =
+            AttestedBoard::from_fields(require(&fields, "board")?, require(&fields, "asic")?)
+                .ok_or(RuntimeBootAttestationError::InvalidField("board"))?;
         require_exact(&fields, "mining", MINING_STATE)?;
         require_exact(&fields, "work_submission", WORK_SUBMISSION_STATE)?;
         require_exact(&fields, "hardware_control", HARDWARE_CONTROL_STATE)?;
@@ -151,16 +197,19 @@ impl RuntimeBootAttestation {
             require(&fields, "app_elf_sha256")?,
             require(&fields, "esp_idf_version")?,
         )
+        .map(|attestation| attestation.for_board(board))
     }
 
     /// Formats the complete versioned marker.
     pub fn marker(&self) -> String {
         format!(
-            "{RUNTIME_BOOT_ATTESTATION_MARKER} schema_version={RUNTIME_BOOT_ATTESTATION_SCHEMA_VERSION} session={} boot_ordinal={} reset_reason={} uptime_ms={} board={BOARD} asic={ASIC} mining={MINING_STATE} work_submission={WORK_SUBMISSION_STATE} hardware_control={HARDWARE_CONTROL_STATE} firmware_commit={} reference_commit={} app_elf_sha256={} esp_idf_version={} ota_boot_validation={OTA_BOOT_VALIDATION_STATE} spiffs_mount={SPIFFS_MOUNT_STATE} api_route_shell={API_ROUTE_SHELL_STATE} redacted=true",
+            "{RUNTIME_BOOT_ATTESTATION_MARKER} schema_version={RUNTIME_BOOT_ATTESTATION_SCHEMA_VERSION} session={} boot_ordinal={} reset_reason={} uptime_ms={} board={} asic={} mining={MINING_STATE} work_submission={WORK_SUBMISSION_STATE} hardware_control={HARDWARE_CONTROL_STATE} firmware_commit={} reference_commit={} app_elf_sha256={} esp_idf_version={} ota_boot_validation={OTA_BOOT_VALIDATION_STATE} spiffs_mount={SPIFFS_MOUNT_STATE} api_route_shell={API_ROUTE_SHELL_STATE} redacted=true",
             self.session,
             self.boot_ordinal,
             self.reset_reason.label(),
             self.uptime_ms,
+            self.board.board(),
+            self.board.asic(),
             self.firmware_commit,
             self.reference_commit,
             self.app_elf_sha256,
@@ -210,6 +259,7 @@ impl RuntimeBootAttestation {
             && self.reference_commit == other.reference_commit
             && self.app_elf_sha256 == other.app_elf_sha256
             && self.esp_idf_version == other.esp_idf_version
+            && self.board == other.board
     }
 
     fn matches_expected(&self, expected: &ExpectedRuntimeAttestationIdentity) -> bool {

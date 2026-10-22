@@ -42,6 +42,7 @@ import {
   parseInvocation,
   type ParsedInvocation,
 } from "./invocation.js";
+import type { FirmwareBoard } from "./firmware-board.js";
 import { packageFirmware } from "./package.js";
 import { packageRollbackProbe } from "./rollback-probe.js";
 import { captureLogBufferEvidence } from "./log-buffer-evidence.js";
@@ -233,6 +234,7 @@ async function main(): Promise<number> {
         manifest: optionValue(invocation, "--manifest"),
         webUi: { kind: "stage", path: optionValue(invocation, "--web-ui-stage") },
         firmwareVariant: optionValue(invocation, "--firmware-variant") as FirmwareVariant,
+        board: optionValue(invocation, "--board") as FirmwareBoard,
       }, processPort, toolProgram(root, "tools/xtask/xtask"));
     } else if (invocation.command === "package-rollback-probe") {
       publicValue = await packageRollbackProbe(root, {

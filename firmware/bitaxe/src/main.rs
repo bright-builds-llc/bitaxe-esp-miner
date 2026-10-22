@@ -1,3 +1,7 @@
+// The Gamma 601 safe boot (ADR-0041) starts none of the Ultra 205's hardware, safety and
+// mining owners, which stay compiled but unreferenced in that build.
+#![cfg_attr(feature = "board-gamma-601", allow(dead_code, unused_imports))]
+
 use esp_idf_svc::sys;
 
 mod application_log;
@@ -23,6 +27,8 @@ mod display_adapter;
 mod fan_controller_plan;
 mod fan_controller_runtime;
 mod filesystem;
+#[cfg(feature = "board-gamma-601")]
+mod gamma601;
 mod http_api;
 mod http_send_timing;
 mod input_adapter;
@@ -71,12 +77,18 @@ mod worker_qualification_budget;
 mod worker_soak_budget;
 mod www_update;
 
+#[cfg(not(feature = "board-gamma-601"))]
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
+#[cfg(feature = "board-gamma-601")]
+const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Gamma 601 asic=BM1370";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";
 const SAFE_STATE_LOG_LINE: &str =
     "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled";
 
 fn main() -> anyhow::Result<()> {
+    // The Gamma 601 safe boot holds the ASIC in reset before anything else runs (ADR-0041).
+    #[cfg(feature = "board-gamma-601")]
+    gamma601::hold_asic_reset_early();
     let maybe_http = startup::run()?;
     if let Some(http) = maybe_http {
         http.run();

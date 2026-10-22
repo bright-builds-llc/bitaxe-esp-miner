@@ -49,6 +49,12 @@ pub(crate) enum Emc2101WriteRegister {
     Configuration,
     FanConfiguration,
     FanSetting,
+    /// External diode ideality factor; the Gamma 601 sets it for its ASIC diode.
+    #[cfg(feature = "board-gamma-601")]
+    ExternalIdeality,
+    /// External diode beta compensation.
+    #[cfg(feature = "board-gamma-601")]
+    BetaCompensation,
 }
 
 impl Emc2101WriteRegister {
@@ -57,6 +63,10 @@ impl Emc2101WriteRegister {
             Self::Configuration => 0x03,
             Self::FanConfiguration => 0x4a,
             Self::FanSetting => 0x4c,
+            #[cfg(feature = "board-gamma-601")]
+            Self::ExternalIdeality => 0x17,
+            #[cfg(feature = "board-gamma-601")]
+            Self::BetaCompensation => 0x18,
         }
     }
 }

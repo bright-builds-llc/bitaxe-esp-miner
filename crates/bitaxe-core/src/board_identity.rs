@@ -115,5 +115,67 @@ pub fn usb_marker(built: KnownBoard, stored: StoredBoard) -> String {
     )
 }
 
+/// Each board's firmware carries `firmware_board=<board_version>` (ADR-0041). Only the firmware
+/// may hold a complete marker, so the scanner below never stores one: it keeps the prefix
+/// reversed and matches the version separately, and no build's bytes spell another board's
+/// marker through this code.
+const MARKER_PREFIX_REVERSED: &[u8] = b"=draob_erawmrif";
+const MARKER_LENGTH: usize = MARKER_PREFIX_REVERSED.len() + 3;
+const BOARDS: [KnownBoard; 2] = [KnownBoard::Ultra205, KnownBoard::Gamma601];
+
+fn is_marker(window: &[u8], board: KnownBoard) -> bool {
+    let (prefix, version) = window.split_at(MARKER_PREFIX_REVERSED.len());
+    prefix.iter().eq(MARKER_PREFIX_REVERSED.iter().rev())
+        && version == board.board_version().as_bytes()
+}
+
+/// Finds board markers in an image that arrives in chunks, such as an HTTP firmware update.
+#[derive(Debug, Default)]
+pub struct FirmwareMarkerScanner {
+    /// The last bytes seen, so a marker split across two chunks is still found.
+    tail: Vec<u8>,
+    seen: [bool; 2],
+}
+
+impl FirmwareMarkerScanner {
+    pub fn feed(&mut self, chunk: &[u8]) {
+        let head = &chunk[..chunk.len().min(MARKER_LENGTH - 1)];
+        let mut boundary = std::mem::take(&mut self.tail);
+        boundary.extend_from_slice(head);
+        for (index, board) in BOARDS.into_iter().enumerate() {
+            let found = |bytes: &[u8]| {
+                bytes
+                    .windows(MARKER_LENGTH)
+                    .any(|window| is_marker(window, board))
+            };
+            self.seen[index] |= found(&boundary) || found(chunk);
+        }
+        let mut joined = boundary;
+        joined.extend_from_slice(&chunk[head.len()..]);
+        let keep = joined.len().saturating_sub(MARKER_LENGTH - 1);
+        self.tail = joined.split_off(keep);
+    }
+
+    /// Whether the image may be installed on `built`: it carries no other known board's marker.
+    /// An image with no marker (an upstream release, or one that predates the markers) is
+    /// admitted, since nothing in it names another board.
+    #[must_use]
+    pub fn admits(&self, built: KnownBoard) -> bool {
+        BOARDS
+            .into_iter()
+            .zip(self.seen)
+            .all(|(board, seen)| board == built || !seen)
+    }
+
+    /// Whether the image carries `board`'s marker.
+    #[must_use]
+    pub fn carries(&self, board: KnownBoard) -> bool {
+        BOARDS
+            .into_iter()
+            .zip(self.seen)
+            .any(|(candidate, seen)| candidate == board && seen)
+    }
+}
+
 #[cfg(test)]
 mod tests;

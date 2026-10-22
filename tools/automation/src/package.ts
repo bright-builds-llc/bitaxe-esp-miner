@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { internalCommandSpec } from "./contracts.generated.js";
+import { boardPackageNames, requireFirmwareBoardMarker, type FirmwareBoard } from "./firmware-board.js";
 import { requireFirmwareVariantMarker, type FirmwareVariant } from "./firmware-variant.js";
 import type { ProcessPort, ProcessOutcome } from "./process.js";
 import { readStage, readTree } from "./web-ui-files.js";
@@ -21,6 +22,8 @@ export type PackageFirmwareRequest = {
   readonly webUi: WebUiSource;
   /** Variant the ELF was built as (ADR-0040); recorded in the manifest and checked against the ELF bytes. */
   readonly firmwareVariant: FirmwareVariant;
+  /** Board the ELF was built for (ADR-0041); recorded in the manifest and checked against the ELF bytes. */
+  readonly board: FirmwareBoard;
 };
 
 /**
@@ -68,21 +71,24 @@ export async function packageFirmware(
   xtaskProgram: string,
 ): Promise<void> {
   const input = resolveRequest(workspaceRoot, request);
-  const { webUi: webUiSource, firmwareVariant, ...paths } = input;
+  const { webUi: webUiSource, firmwareVariant, board, ...paths } = input;
   await Promise.all(Object.values(paths).map((file) => file === input.outDir || file === input.manifest ? undefined : readFile(file)));
-  requireFirmwareVariantMarker(await readFile(input.firmwareElf), firmwareVariant);
+  const elfBytes = await readFile(input.firmwareElf);
+  requireFirmwareVariantMarker(elfBytes, firmwareVariant);
+  requireFirmwareBoardMarker(elfBytes, board);
+  const names = boardPackageNames[board];
   await requireSuccess(
     processPort.run(internalCommandSpec(xtaskProgram, ["verify-reference"], (value) => value)),
     "reference verification",
   );
   await mkdir(input.outDir, { recursive: true });
 
-  const packageElf = path.join(input.outDir, "bitaxe-ultra205.elf");
+  const packageElf = path.join(input.outDir, names.elf);
   const firmwareOta = path.join(input.outDir, "esp-miner.bin");
   const wwwImage = path.join(input.outDir, "www.bin");
   const wwwProbeImage = path.join(input.outDir, "www-probe.bin");
   const otadata = path.join(input.outDir, "otadata-initial.bin");
-  const factoryImage = path.join(input.outDir, "bitaxe-ultra205-factory.bin");
+  const factoryImage = path.join(input.outDir, names.factoryImage);
   await copyFile(input.bootloaderBin, path.join(input.outDir, "bootloader.bin"));
   await copyFile(input.partitionTableBin, path.join(input.outDir, "partition-table.bin"));
   await copyFile(input.firmwareElf, packageElf);
@@ -175,14 +181,14 @@ export async function packageFirmware(
         internalCommandSpec(
           xtaskProgram,
           [
-            "package-firmware", "--board", "205",
+            "package-firmware", "--board", board,
             "--firmware-elf", packageElf, "--build-provenance-stamp", input.buildProvenanceStamp,
             "--app-descriptor-version", appVersion, "--app-elf-sha256", elfSha,
             "--firmware-ota-image", firmwareOta, "--www-bin", wwwImage,
             "--partition-table", path.join(workspaceRoot, "firmware/bitaxe/partitions-ultra205.csv"),
             "--otadata-initial", otadata, "--default-flash-image", packageElf, "--out-dir", input.outDir,
             "--manifest", input.manifest, "--factory-image", factoryImage,
-            "--release-name", "bitaxe-ultra205", "--install-notes", "docs/release/ultra-205.md",
+            "--release-name", names.releaseName, "--install-notes", names.installNotes,
             "--license-inventory", "docs/release/license-inventory.md",
             "--provenance-manifest", "docs/release/provenance-manifest.md",
             "--otadata-source", input.otadataInitialBin,
@@ -229,6 +235,7 @@ function resolveRequest(workspaceRoot: string, request: PackageFirmwareRequest):
     manifest: path.resolve(workspaceRoot, request.manifest),
     webUi: { kind: request.webUi.kind, path: path.resolve(workspaceRoot, request.webUi.path) },
     firmwareVariant: request.firmwareVariant,
+    board: request.board,
   };
 }
 

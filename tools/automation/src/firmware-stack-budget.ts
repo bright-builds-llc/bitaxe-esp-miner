@@ -1,4 +1,5 @@
 const operatorSensorSymbol = "bitaxe_firmware::operator_sensor_runtime::run";
+const gamma601SafeBootSymbol = "bitaxe_firmware::gamma601::run";
 const platformReadinessSymbol = "bitaxe_firmware::runtime_snapshot::collect_platform_readiness_snapshot";
 const screenCollectorSymbol = "bitaxe_firmware::runtime_snapshot::screen::collect_screen_snapshot";
 const maxIndividualFrameBytes = 3 * 1024;
@@ -71,4 +72,22 @@ export function verifyFirmwareStackBudget(disassembly: string): FirmwareStackBud
     screenCollectorFrameBytes,
     combinedFrameBytes,
   };
+}
+
+export type Gamma601StackBudget = {
+  readonly safeBootFrameBytes: number;
+  readonly platformReadinessFrameBytes: number;
+};
+
+/** The Gamma 601 safe boot (ADR-0041) runs its own thread in place of the 205's sensor owner. */
+export function verifyGamma601StackBudget(disassembly: string): Gamma601StackBudget {
+  const safeBootFrameBytes = entryFrameBytes(disassembly, gamma601SafeBootSymbol);
+  const platformReadinessFrameBytes = entryFrameBytes(disassembly, platformReadinessSymbol);
+  if (safeBootFrameBytes > maxIndividualFrameBytes) {
+    throw new Error("firmware stack audit found an oversized safe-boot frame");
+  }
+  if (platformReadinessFrameBytes > maxPlatformReadinessFrameBytes) {
+    throw new Error("firmware stack audit found an oversized platform readiness frame");
+  }
+  return { safeBootFrameBytes, platformReadinessFrameBytes };
 }

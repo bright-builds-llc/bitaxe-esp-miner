@@ -8,6 +8,9 @@ license.workspace = true
 # Test-only: lowers the local overheat trip (ADR-0040). Built only through the
 # `--//firmware/bitaxe:firmware_variant=overheat-trip-test` package, never released.
 overheat-trip-test = ["bitaxe-runtime/overheat-trip-test"]
+# Builds for the Gamma 601 (ADR-0041): the safe boot, with the ASIC held in reset and the
+# TPS546 output off. Built only through `//firmware/bitaxe:firmware_image_gamma601`.
+board-gamma-601 = []
 
 [dependencies]
 anyhow.workspace = true

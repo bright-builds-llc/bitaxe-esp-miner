@@ -13,6 +13,7 @@ filegroup(
 rust_binary(
     name = "xtask",
     srcs = [
+        "src/board.rs",
         "src/firmware_variant.rs",
         "src/main.rs",
         "src/package_manifest.rs",

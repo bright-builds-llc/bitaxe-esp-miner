@@ -120,6 +120,8 @@ export async function rebuildInstalledPackage(
       webUi: { kind: "legacy-tree", path: path.join(worktree, "firmware/bitaxe/static/www") },
       // Historical commits predate firmware variants (ADR-0040); all are production.
       firmwareVariant: "production",
+      // The restore path rebuilds Ultra 205 packages only.
+      board: "205",
     }, processPort, xtask);
     const manifestDocument = await readFile(manifestPath, "utf8");
     const manifest = JSON.parse(manifestDocument) as Record<string, unknown>;

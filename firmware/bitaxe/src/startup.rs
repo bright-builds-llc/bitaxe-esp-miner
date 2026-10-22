@@ -1,10 +1,12 @@
 use crate::boot_diagnostic_cache::{Checkpoint, StartFailure, CACHE};
 use crate::bwg_worker_usb::startup_diagnostics::{Stage as DiagnosticStage, PROGRESS};
 use bitaxe_api::panic_receipt::StartupStage;
-use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState, StartupDebugText};
+use bitaxe_core::{Phase1SafeState, StartupDebugText};
 use esp_idf_svc::hal::{modem::Modem, peripherals::Peripherals};
 use esp_idf_svc::sys;
 
+#[cfg(feature = "board-gamma-601")]
+use crate::gamma601::{initialize_hardware, start_runtime_owners};
 use crate::{
     asic_adapter, bap_adapter, best_difficulty_adapter, boot_evidence, boot_validation,
     display_adapter, fan_controller_runtime, filesystem, http_api, input_adapter,
@@ -112,14 +114,14 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     retain_usb_memory_checkpoint("usb_installed");
     PROGRESS.enter(DiagnosticStage::EarlyIdentity);
     crate::panic_evidence::enter_stage(StartupStage::EarlyIdentity);
-    retain_previous_boot_failure();
+    crate::panic_evidence::retain_previous_boot_failure();
     crate::crypto_entropy::initialize()?;
 
     let safe_state = Phase1SafeState::default();
     let boot_log_line = format!(
         "bitaxe-rust boot: board={} asic={}",
-        BoardTarget::Ultra205.display_name(),
-        AsicTarget::Bm1366.display_name()
+        crate::board_identity::BOARD_TARGET.display_name(),
+        crate::board_identity::ASIC_TARGET.display_name()
     );
     debug_assert_eq!(boot_log_line, BOOT_LOG_LINE);
     let safe_state_log_line = safe_state.log_line();
@@ -195,8 +197,8 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     };
     Ok((
         StartupDebugText::new(
-            BoardTarget::Ultra205,
-            AsicTarget::Bm1366,
+            crate::board_identity::BOARD_TARGET,
+            crate::board_identity::ASIC_TARGET,
             Some(crate::build_label()),
             crate::build_timestamp_utc(),
         ),
@@ -204,6 +206,7 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     ))
 }
 
+#[cfg(not(feature = "board-gamma-601"))]
 fn initialize_hardware(
     startup_debug_text: StartupDebugText,
     maybe_thermal_fault_stimulus: Option<settings_adapter::ThermalFaultStimulusAdmission>,
@@ -279,6 +282,7 @@ fn initialize_hardware(
     )
 }
 
+#[cfg(not(feature = "board-gamma-601"))]
 fn initialize_operator_runtime(
     mut maybe_bus: Option<safety_adapter::BitaxeI2cBus<'static>>,
     maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
@@ -361,6 +365,42 @@ fn start_runtime_services(
         }
         asic_adapter::BootMiningBaseline::Unconfirmed => None,
     };
+    let serial_jtag_runtime = start_runtime_owners()?;
+    let deferred_usb_runtime = if serial_jtag_runtime {
+        boot_evidence::publish_usb_boot_profile(
+            bitaxe_api::UsbBootTransport::SerialJtagRuntime,
+            bitaxe_api::UsbBootProfileReason::DiagnosticOwner,
+            bitaxe_api::UsbBootBaseline::Diagnostic,
+        );
+        log::info!("usb_runtime=serial_jtag reason=diagnostic_owner");
+        DeferredUsbRuntime::AlreadySelected
+    } else if let Some(bwg_recovery) = maybe_bwg_recovery {
+        retain_usb_memory_checkpoint("worker_owner_prepare");
+        match crate::bwg_worker_usb::prepare(bwg_recovery) {
+            Ok(prepared) => DeferredUsbRuntime::Worker(prepared),
+            Err(error) => {
+                retain_bwg_worker_start_failure(&error);
+                DeferredUsbRuntime::AlreadySelected
+            }
+        }
+    } else {
+        boot_evidence::publish_usb_boot_profile(
+            bitaxe_api::UsbBootTransport::SerialJtagRuntime,
+            bitaxe_api::UsbBootProfileReason::BootBaselineUnconfirmed,
+            bitaxe_api::UsbBootBaseline::Unconfirmed,
+        );
+        log::warn!("bwg_worker_control=unavailable category=boot_baseline_unconfirmed");
+        DeferredUsbRuntime::AlreadySelected
+    };
+    Ok(RuntimeServicesStarted {
+        boot_validation_ready,
+        deferred_usb_runtime,
+    })
+}
+
+/// Starts the safety and mining owners; true when a diagnostic owner holds Serial/JTAG.
+#[cfg(not(feature = "board-gamma-601"))]
+fn start_runtime_owners() -> anyhow::Result<bool> {
     required_runtime_owner(safety_adapter::start_safety_supervisor())?;
     let maybe_tcp_payload_admission =
         match settings_adapter::load_tcp_payload_diagnostic_admission() {
@@ -405,36 +445,7 @@ fn start_runtime_services(
         }
         required_runtime_owner(fan_controller_runtime::start())?;
     }
-    let deferred_usb_runtime = if serial_jtag_runtime {
-        boot_evidence::publish_usb_boot_profile(
-            bitaxe_api::UsbBootTransport::SerialJtagRuntime,
-            bitaxe_api::UsbBootProfileReason::DiagnosticOwner,
-            bitaxe_api::UsbBootBaseline::Diagnostic,
-        );
-        log::info!("usb_runtime=serial_jtag reason=diagnostic_owner");
-        DeferredUsbRuntime::AlreadySelected
-    } else if let Some(bwg_recovery) = maybe_bwg_recovery {
-        retain_usb_memory_checkpoint("worker_owner_prepare");
-        match crate::bwg_worker_usb::prepare(bwg_recovery) {
-            Ok(prepared) => DeferredUsbRuntime::Worker(prepared),
-            Err(error) => {
-                retain_bwg_worker_start_failure(&error);
-                DeferredUsbRuntime::AlreadySelected
-            }
-        }
-    } else {
-        boot_evidence::publish_usb_boot_profile(
-            bitaxe_api::UsbBootTransport::SerialJtagRuntime,
-            bitaxe_api::UsbBootProfileReason::BootBaselineUnconfirmed,
-            bitaxe_api::UsbBootBaseline::Unconfirmed,
-        );
-        log::warn!("bwg_worker_control=unavailable category=boot_baseline_unconfirmed");
-        DeferredUsbRuntime::AlreadySelected
-    };
-    Ok(RuntimeServicesStarted {
-        boot_validation_ready,
-        deferred_usb_runtime,
-    })
+    Ok(serial_jtag_runtime)
 }
 
 fn start_deferred_usb_runtime(deferred_usb_runtime: DeferredUsbRuntime) {
@@ -482,15 +493,6 @@ fn retain_bwg_worker_start_failure(error: &anyhow::Error) {
 
 fn bwg_worker_start_failure_detail(error: &anyhow::Error) -> StartFailure {
     StartFailure::from_context(&error.to_string())
-}
-
-fn retain_previous_boot_failure() {
-    if let Some(marker) = boot_evidence::worker_rust_panic_marker() {
-        crate::info_retained(&marker);
-    }
-    if let Some(marker) = boot_evidence::worker_allocation_failure_marker() {
-        crate::info_retained(&marker);
-    }
 }
 
 fn prepare_statistics_runtime() -> Option<statistics_runtime::PreparedStatistics> {

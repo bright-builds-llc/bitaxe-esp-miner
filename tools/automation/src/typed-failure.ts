@@ -38,6 +38,7 @@ import { Ultra205DefaultsEvidenceError } from "./ultra205-defaults-evidence.js";
 import { UiWorkflowEvidenceError } from "./ui-workflow-evidence.js";
 import { SelfTestCampaignError } from "./self-test-campaign.js";
 import { FirmwareBuildTimeoutError } from "./build.js";
+import { FirmwareBoardMarkerError } from "./firmware-board.js";
 import { FirmwareVariantMarkerError } from "./firmware-variant.js";
 import type { AutomationCategory } from "./contracts.generated.js";
 
@@ -87,7 +88,8 @@ function maybeTypedFailure(error: unknown): TypedFailure | undefined {
     || error instanceof UiWorkflowEvidenceError
     || error instanceof SelfTestCampaignError
     || error instanceof FirmwareBuildTimeoutError
-    || error instanceof FirmwareVariantMarkerError) {
+    || error instanceof FirmwareVariantMarkerError
+    || error instanceof FirmwareBoardMarkerError) {
     return error;
   }
   return undefined;

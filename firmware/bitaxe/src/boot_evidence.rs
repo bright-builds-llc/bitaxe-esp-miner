@@ -492,6 +492,7 @@ fn runtime_attestation(
         &identity.app_elf_sha256,
         &identity.esp_idf_version,
     )
+    .map(|attestation| attestation.for_board(crate::board_identity::ATTESTED_BOARD))
 }
 
 fn emit_runtime_attestation(identity: &RuntimeAttestationIdentity, uptime_ms: u64) {

@@ -24,6 +24,11 @@ use super::{
     },
 };
 
+#[cfg(feature = "board-gamma-601")]
+mod tps546;
+#[cfg(feature = "board-gamma-601")]
+pub(crate) use tps546::Tps546Bus;
+
 pub const I2C_SDA_GPIO: i32 = 47;
 pub const I2C_SCL_GPIO: i32 = 48;
 pub const I2C_SPEED_KHZ: u32 = 400;

@@ -12,11 +12,13 @@ pub mod usb_diagnostics;
 pub mod wifi_reconnect;
 pub mod wifi_rssi;
 
-/// First Phase 1 board target for boot/log bring-up.
+/// A board the firmware is built for (ADR-0041).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoardTarget {
     /// Bitaxe Ultra 205 board.
     Ultra205,
+    /// Bitaxe Gamma 601 board.
+    Gamma601,
 }
 
 impl BoardTarget {
@@ -25,15 +27,18 @@ impl BoardTarget {
     pub const fn display_name(self) -> &'static str {
         match self {
             Self::Ultra205 => "Ultra 205",
+            Self::Gamma601 => "Gamma 601",
         }
     }
 }
 
-/// First Phase 1 ASIC target for Ultra 205 bring-up.
+/// The ASIC a board carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AsicTarget {
     /// Bitmain BM1366 ASIC.
     Bm1366,
+    /// Bitmain BM1370 ASIC.
+    Bm1370,
 }
 
 impl AsicTarget {
@@ -42,6 +47,7 @@ impl AsicTarget {
     pub const fn display_name(self) -> &'static str {
         match self {
             Self::Bm1366 => "BM1366",
+            Self::Bm1370 => "BM1370",
         }
     }
 }
