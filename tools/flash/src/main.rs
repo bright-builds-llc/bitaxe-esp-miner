@@ -40,6 +40,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 mod board_identity;
+mod board_target;
 mod boot_chain;
 mod bootstrap_timing;
 mod campaign;
@@ -85,6 +86,7 @@ mod wifi;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use board_target::*;
 pub(crate) use boot_chain::*;
 pub(crate) use campaign::*;
 pub(crate) use cli::*;

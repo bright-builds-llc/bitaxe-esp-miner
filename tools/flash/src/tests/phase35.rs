@@ -126,6 +126,7 @@ fn phase35_probe_real_process_uses_private_sanitized_no_clobber_artifacts() {
         espflash_version: "espflash 4.5.0".to_owned(),
         espflash_sha256: sha256_bytes(b"fake espflash"),
         usb_session: RefCell::new(None),
+        rom_board: std::cell::Cell::new(crate::board_identity::RegisteredBoard::Ultra205),
     };
     let command = Phase35ProbeCommand {
         board: BoardId::Ultra205,

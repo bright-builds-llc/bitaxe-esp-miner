@@ -328,14 +328,43 @@ fn rom_entry_refuses_first_when_no_device_is_registered_for_the_board() {
 }
 
 #[test]
-fn ordinary_rom_admission_always_requests_the_205() {
+fn ordinary_rom_admission_requests_the_session_board() {
     // Arrange
     let source = include_str!("../environment/usb_ownership.rs");
     let body = &source[source.find("fn ensure_bootloader").expect("admission")..];
     // Act
-    let call = &body[..body.find("fn enter_rom").expect("enter_rom")];
+    let call = &body[..body.find("fn open_usb_session").expect("open")];
     // Assert
-    assert!(call.contains("self.enter_rom(Some(crate::board_identity::RegisteredBoard::Ultra205))"));
+    assert!(call.contains("self.enter_rom(Some(self.rom_board.get()))"));
+}
+
+#[test]
+fn a_new_session_without_a_board_requires_the_205() {
+    // Arrange
+    let source = include_str!("../environment.rs");
+    let start = source.find("fn begin_usb_session(&self").expect("begin");
+    // Act
+    let body = &source[start
+        ..source[start..]
+            .find("fn begin_board_usb_session")
+            .expect("next")
+            + start];
+    // Assert
+    assert!(body.contains(
+        "} else {\n            crate::board_identity::RegisteredBoard::Ultra205\n        };"
+    ));
+}
+
+#[test]
+fn a_session_cannot_change_its_board() {
+    // Arrange
+    let source = include_str!("../environment/usb_ownership.rs");
+    let body = &source[source.find("fn open_usb_session").expect("open")..];
+    // Act
+    let guard = body.find("reason=session_board_changed").expect("guard");
+    let set = body.find("self.rom_board.set(board)").expect("set");
+    // Assert
+    assert!(guard < set);
 }
 
 #[test]

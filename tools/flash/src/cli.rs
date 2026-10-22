@@ -232,7 +232,7 @@ pub(crate) struct SignalIdentifyCommand {
 
 #[derive(Debug, Parser, Clone)]
 pub(crate) struct DetectCommand {
-    #[arg(long, default_value = "205", value_parser = parse_board)]
+    #[arg(long, default_value = "205", value_parser = parse_flash_board)]
     pub(crate) board: BoardId,
 
     #[arg(long)]
@@ -306,7 +306,7 @@ pub(crate) struct CommonArgs {
     #[arg(long = "expected-physical-sha256", value_parser = parse_expected_physical_sha256)]
     pub(crate) maybe_expected_physical_sha256: Option<String>,
 
-    #[arg(long, default_value = "205", value_parser = parse_board)]
+    #[arg(long, default_value = "205", value_parser = parse_flash_board)]
     pub(crate) board: BoardId,
 
     #[arg(long)]
@@ -481,11 +481,6 @@ pub(crate) struct Phase36EffectResult<'a> {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum BoardId {
-    Ultra205,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum EvidenceRedactionMode {
     DeveloperRaw,
     CommitRedacted,
@@ -554,31 +549,6 @@ impl EvidenceRedactionMode {
 
     pub(crate) fn commit_ready(self) -> bool {
         matches!(self, Self::CommitRedacted)
-    }
-}
-
-impl FromStr for BoardId {
-    type Err = String;
-
-    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
-        match value {
-            "205" => Ok(Self::Ultra205),
-            "601" => Err(
-                "board 601 is deferred after the Ultra 205 pivot; Phase 1 supports board=205 only"
-                    .to_owned(),
-            ),
-            other => Err(format!(
-                "unsupported board {other}; Phase 1 supports board=205 only"
-            )),
-        }
-    }
-}
-
-impl fmt::Display for BoardId {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Ultra205 => formatter.write_str("205"),
-        }
     }
 }
 

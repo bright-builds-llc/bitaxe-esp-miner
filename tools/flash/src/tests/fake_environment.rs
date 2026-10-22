@@ -48,6 +48,8 @@ struct FakeFlashEnvironment {
     maybe_installed_bytes: Option<Vec<u8>>,
     last_usb_command_diagnostic: RefCell<Option<UsbCommandDiagnostic>>,
     built_web_ui_variants: RefCell<Vec<WebUiVariant>>,
+    built_boards: RefCell<Vec<BoardId>>,
+    session_boards: RefCell<Vec<BoardId>>,
 }
 
 impl Default for FakeFlashEnvironment {
@@ -59,7 +61,8 @@ impl Default for FakeFlashEnvironment {
 include!("fake_environment_accessors.rs");
 
 impl FlashEnvironment for FakeFlashEnvironment {
-    fn build_package(&self, web_ui: WebUiVariant) -> Result<()> {
+    fn build_package(&self, board: BoardId, web_ui: WebUiVariant) -> Result<()> {
+        self.built_boards.borrow_mut().push(board);
         self.built_web_ui_variants.borrow_mut().push(web_ui);
         Ok(())
     }
@@ -158,6 +161,16 @@ impl FlashEnvironment for FakeFlashEnvironment {
             *self.session_port.borrow_mut() = port.to_owned();
         }
         Ok(())
+    }
+
+    fn begin_board_usb_session(
+        &self,
+        operation: UsbOperation,
+        port: &str,
+        board: BoardId,
+    ) -> Result<()> {
+        self.session_boards.borrow_mut().push(board);
+        self.begin_usb_session(operation, port)
     }
 
     fn prepare_application_exit(&self) -> Result<Utf8PathBuf> {

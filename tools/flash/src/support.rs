@@ -7,10 +7,6 @@ pub(crate) fn unix_timestamp() -> String {
         .unwrap_or_else(|_| UNAVAILABLE.to_owned())
 }
 
-pub(crate) fn parse_board(value: &str) -> std::result::Result<BoardId, String> {
-    value.parse()
-}
-
 pub(crate) fn parse_utf8_path(value: &str) -> std::result::Result<Utf8PathBuf, String> {
     Ok(Utf8PathBuf::from(value))
 }

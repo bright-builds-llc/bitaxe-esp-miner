@@ -353,8 +353,11 @@ fn package_command(
     let ota_path = resolve_manifest_sibling(&manifest_path, Utf8Path::new(&ota.path))?;
     let ota_bytes = read_validated_artifact(ota, &ota_path, environment)?;
     let factory = require_artifact(&manifest, "factory_merged_image")?;
-    let factory_path =
-        resolve_manifest_factory_artifact(&manifest_path, Utf8Path::new(&factory.path))?;
+    let factory_path = resolve_manifest_factory_artifact(
+        BoardId::Ultra205,
+        &manifest_path,
+        Utf8Path::new(&factory.path),
+    )?;
     let factory_bytes = read_validated_artifact(factory, &factory_path, environment)?;
     if sha256_bytes(&factory_bytes) != factory_sha256 {
         bail!("restore_installed=blocked reason=factory_identity");

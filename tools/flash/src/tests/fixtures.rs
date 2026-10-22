@@ -116,7 +116,7 @@ fn write_manifest_v4_contents(
 ) {
     let manifest_dir = manifest.parent().expect("parent");
     std::fs::create_dir_all(manifest_dir.as_std_path()).expect("create manifest dir");
-    let elf = b"synthetic firmware elf".to_vec();
+    let elf = b"synthetic firmware elf firmware_board=205".to_vec();
     let ota = esp_application_fixture(SOURCE_COMMIT, BUILD_LABEL);
     let partition_table = factory_partition_table_fixture();
     let factory = factory_image_fixture(&partition_table, &ota);
@@ -169,6 +169,7 @@ fn write_manifest_v4_contents(
             "release_tag": null
         },
         "default_flash_image": default_flash_image,
+        "image_metadata": {"board": "205"},
         "web_ui_variant": "current",
         "artifacts": artifact_values,
         "update_segments": [

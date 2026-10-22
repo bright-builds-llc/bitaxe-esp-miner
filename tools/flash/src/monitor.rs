@@ -32,7 +32,6 @@ pub(crate) fn prepare_monitor_command(
     common: &CommonArgs,
     environment: &impl FlashEnvironment,
 ) -> Result<CommandSpec> {
-    ensure_ultra_205(common.board)?;
     let port = resolve_port(common.port.as_deref(), environment)?;
     Ok(CommandSpec::new(
         "bitaxe-receive-only",
@@ -44,7 +43,6 @@ pub(crate) fn prepare_evidence_monitor_command(
     common: &CommonArgs,
     environment: &impl FlashEnvironment,
 ) -> Result<CommandSpec> {
-    ensure_ultra_205(common.board)?;
     let port = resolve_port(common.port.as_deref(), environment)?;
     Ok(CommandSpec::new(
         "bitaxe-receive-only",

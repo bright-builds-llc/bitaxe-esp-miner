@@ -32,7 +32,7 @@ pub(crate) fn run_flash_with_wifi_mode(
     if !command.common.dry_run {
         let port = maybe_command_port(&execution_command)
             .context("usb_session=blocked reason=port_unavailable")?;
-        environment.begin_usb_session(UsbOperation::Flash, &port)?;
+        environment.begin_board_usb_session(UsbOperation::Flash, &port, command.common.board)?;
         require_expected_physical(&command.common, environment)?;
         let segmented = maybe_segmented_write
             .as_ref()
@@ -67,7 +67,7 @@ pub(crate) fn run_monitor(
     if !command.common.dry_run {
         let port = maybe_command_port(&command_spec)
             .context("usb_session=blocked reason=port_unavailable")?;
-        environment.begin_usb_session(UsbOperation::Monitor, &port)?;
+        environment.begin_board_usb_session(UsbOperation::Monitor, &port, command.common.board)?;
         require_expected_physical(&command.common, environment)?;
         let bytes = environment.receive_only(&command_spec, command.capture_timeout_seconds)?;
         write_receive_only_console(&bytes)?;
@@ -173,7 +173,11 @@ fn run_receive_only_flash_monitor(
     if !command.common.dry_run {
         let port = maybe_command_port(&monitor_command)
             .context("usb_session=blocked reason=port_unavailable")?;
-        environment.begin_usb_session(UsbOperation::FlashMonitor, &port)?;
+        environment.begin_board_usb_session(
+            UsbOperation::FlashMonitor,
+            &port,
+            command.common.board,
+        )?;
         require_expected_physical(&command.common, environment)?;
         let bytes = environment.receive_only(&monitor_command, command.capture_timeout_seconds)?;
         write_receive_only_console(&bytes)?;
@@ -220,7 +224,11 @@ fn run_evidence_flash_monitor(
     } else {
         let port = maybe_command_port(&monitor_command)
             .context("usb_session=blocked reason=port_unavailable")?;
-        environment.begin_usb_session(UsbOperation::FlashMonitor, &port)?;
+        environment.begin_board_usb_session(
+            UsbOperation::FlashMonitor,
+            &port,
+            command.common.board,
+        )?;
         require_expected_physical(&command.common, environment)?;
         let capture_result = environment
             .execute_capturing(

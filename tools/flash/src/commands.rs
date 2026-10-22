@@ -141,7 +141,6 @@ pub(crate) fn run_detect(
     command: &DetectCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
-    ensure_ultra_205(command.board)?;
     let port = resolve_port(command.port.as_deref(), environment)?;
     match environment.usb_profile(&port)? {
         UsbProfile::WorkerRuntime => bail!("legacy_tinyusb_requires_manual_bootstrap"),
@@ -158,7 +157,7 @@ pub(crate) fn run_detect(
         UsbProfile::SerialJtagRuntime | UsbProfile::RomDownloader => {}
         UsbProfile::Unknown => bail!("runtime_profile_unknown"),
     }
-    environment.begin_usb_session(UsbOperation::Detect, &port)?;
+    environment.begin_board_usb_session(UsbOperation::Detect, &port, command.board)?;
     let command_spec = CommandSpec::new(
         "espflash",
         [

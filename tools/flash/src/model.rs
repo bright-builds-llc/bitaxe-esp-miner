@@ -332,6 +332,14 @@ pub(crate) struct PackageManifest {
     /// Firmware variant compiled into the application (ADR-0040); absent means production.
     #[serde(default, rename = "firmware_variant")]
     pub(crate) maybe_firmware_variant: Option<String>,
+    /// The board the package targets (ADR-0041).
+    #[serde(default, rename = "image_metadata")]
+    pub(crate) maybe_image_metadata: Option<PackageImageMetadata>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct PackageImageMetadata {
+    pub(crate) board: String,
 }
 
 #[derive(Debug, Deserialize)]

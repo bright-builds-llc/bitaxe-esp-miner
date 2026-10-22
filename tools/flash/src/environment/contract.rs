@@ -1,7 +1,7 @@
 use crate::*;
 
 pub(crate) trait FlashEnvironment {
-    fn build_package(&self, web_ui: WebUiVariant) -> Result<()>;
+    fn build_package(&self, board: BoardId, web_ui: WebUiVariant) -> Result<()>;
     fn bazel_bin(&self) -> Result<Utf8PathBuf>;
     fn workspace_path(&self, path: &Utf8Path) -> Utf8PathBuf {
         path.to_owned()
@@ -30,7 +30,15 @@ pub(crate) trait FlashEnvironment {
     fn prepare_post_reset_capture(&self, _duration: Duration) -> Result<()> {
         Ok(())
     }
+    /// Begins a session for the Ultra 205, or continues the current one.
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()>;
+    /// Begins a session whose ROM admission requires `board` (ADR-0041).
+    fn begin_board_usb_session(
+        &self,
+        operation: UsbOperation,
+        port: &str,
+        board: BoardId,
+    ) -> Result<()>;
     fn prepare_application_exit(&self) -> Result<Utf8PathBuf> {
         bail!("application_exit=blocked reason=adapter_unavailable")
     }

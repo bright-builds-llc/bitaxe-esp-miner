@@ -27,7 +27,10 @@ pub(crate) fn prepare_flash_with_wifi_mode(
     wifi_mode: WifiNvsSeedMode,
     environment: &impl FlashEnvironment,
 ) -> Result<PreparedFlash> {
-    ensure_ultra_205(command.common.board)?;
+    // A factory install seeds Ultra 205 defaults into NVS; the 601 keeps its own (ADR-0041).
+    if command.factory_reset && command.common.board != BoardId::Ultra205 {
+        bail!("identity_admission=blocked reason=factory_install_supports_205_only");
+    }
     let admitted_image = resolve_flash_image(command, environment)?;
     let package = match &admitted_image {
         AdmittedFlashImage::Factory(package) => Some(package),
@@ -163,15 +166,16 @@ pub(crate) fn resolve_flash_image(
         bail!("identity_admission=blocked reason=explicit_image_requires_package_manifest");
     }
 
+    let board = command.common.board;
     let builds_package = command.manifest.is_none();
     if builds_package {
-        environment.build_package(command.maybe_web_ui.unwrap_or(WebUiVariant::Current))?;
+        environment.build_package(board, command.maybe_web_ui.unwrap_or(WebUiVariant::Current))?;
     }
     let manifest = match &command.manifest {
         Some(path) => environment.workspace_path(path),
         None => environment
             .bazel_bin()?
-            .join(PACKAGE_MANIFEST_RELATIVE_PATH),
+            .join(board.package_manifest_relative_path()),
     };
     let manifest_contents = environment.read_to_string(&manifest)?;
     let package_manifest: PackageManifest = serde_json::from_str(&manifest_contents)
@@ -186,6 +190,7 @@ pub(crate) fn resolve_flash_image(
     )?;
     let current_provenance = environment.current_provenance()?;
     let admitted_factory = validate_identity_admission(
+        board,
         &manifest,
         &package_manifest,
         &current_provenance,
@@ -202,15 +207,23 @@ pub(crate) fn resolve_flash_image(
 }
 
 pub(crate) fn validate_identity_admission(
+    board: BoardId,
     manifest_path: &Utf8Path,
     manifest: &PackageManifest,
     current_provenance: &BuildProvenance,
     environment: &impl FlashEnvironment,
 ) -> Result<AdmittedFactoryImage> {
+    require_manifest_board(
+        board,
+        manifest
+            .maybe_image_metadata
+            .as_ref()
+            .map(|metadata| metadata.board.as_str()),
+    )?;
     if manifest
         .maybe_execution_profile
         .as_deref()
-        .is_some_and(|profile| profile != "physical-ultra205")
+        .is_some_and(|profile| profile != board.physical_execution_profile())
         || manifest.build_identity.channel == "virtual-ultra205"
     {
         bail!("identity_admission=blocked reason=virtual_image_not_physical");
@@ -243,7 +256,11 @@ pub(crate) fn validate_identity_admission(
         bail!("identity_admission=blocked reason=package_workspace_identity_mismatch");
     }
     validate_lower_hex("app_elf_sha256", &manifest.app_elf_sha256, true)?;
-    let _ = resolve_manifest_default(manifest_path, Utf8Path::new(&manifest.default_flash_image))?;
+    let _ = resolve_manifest_default(
+        board,
+        manifest_path,
+        Utf8Path::new(&manifest.default_flash_image),
+    )?;
 
     let elf_artifact = require_artifact(manifest, "firmware_elf")?;
     let elf_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&elf_artifact.path))?;
@@ -257,14 +274,18 @@ pub(crate) fn validate_identity_admission(
     if sha256_bytes(&elf_bytes) != manifest.app_elf_sha256 {
         bail!("identity_admission=blocked reason=firmware_elf_app_sha_mismatch");
     }
+    require_board_bytes(board, &elf_bytes)?;
 
     let ota_artifact = require_artifact(manifest, "firmware_ota_image")?;
     let ota_path = resolve_manifest_sibling(manifest_path, Utf8Path::new(&ota_artifact.path))?;
     let ota_bytes = read_validated_artifact(ota_artifact, &ota_path, environment)?;
     let app_elf_sha256 = decode_lower_hex(&manifest.app_elf_sha256)?;
     let factory_artifact = require_artifact(manifest, "factory_merged_image")?;
-    let factory_path =
-        resolve_manifest_factory_artifact(manifest_path, Utf8Path::new(&factory_artifact.path))?;
+    let factory_path = resolve_manifest_factory_artifact(
+        board,
+        manifest_path,
+        Utf8Path::new(&factory_artifact.path),
+    )?;
     let factory_bytes = read_validated_artifact(factory_artifact, &factory_path, environment)?;
     package_admission::validate_factory_ota_identity(
         &factory_bytes,
@@ -382,38 +403,41 @@ pub(crate) fn sha256_bytes(bytes: &[u8]) -> String {
 }
 
 pub(crate) fn resolve_manifest_default(
+    board: BoardId,
     manifest: &Utf8Path,
     default_flash_image: &Utf8Path,
 ) -> Result<Utf8PathBuf> {
+    let elf_name = board.default_elf_name();
+    let factory_name = board.factory_image_name();
     let Some(file_name) = default_flash_image.file_name() else {
-        bail!("default_flash_image must resolve to {DEFAULT_ELF_NAME}");
+        bail!("default_flash_image must resolve to {elf_name}");
     };
 
-    if file_name != DEFAULT_ELF_NAME {
-        if file_name == FACTORY_IMAGE_NAME {
+    if file_name != elf_name {
+        if file_name == factory_name {
             bail!(
-                "default_flash_image must resolve to {DEFAULT_ELF_NAME}; {FACTORY_IMAGE_NAME} is only an additional artifact"
+                "default_flash_image must resolve to {elf_name}; {factory_name} is only an additional artifact"
             );
         }
 
-        bail!("default_flash_image must resolve to {DEFAULT_ELF_NAME}, not {file_name}");
+        bail!("default_flash_image must resolve to {elf_name}, not {file_name}");
     }
 
     resolve_manifest_sibling(manifest, default_flash_image)
 }
 
 pub(crate) fn resolve_manifest_factory_artifact(
+    board: BoardId,
     manifest: &Utf8Path,
     factory_image: &Utf8Path,
 ) -> Result<Utf8PathBuf> {
+    let factory_name = board.factory_image_name();
     let Some(file_name) = factory_image.file_name() else {
-        bail!("factory_merged_image artifact must resolve to {FACTORY_IMAGE_NAME}");
+        bail!("factory_merged_image artifact must resolve to {factory_name}");
     };
 
-    if file_name != FACTORY_IMAGE_NAME {
-        bail!(
-            "factory_merged_image artifact must resolve to {FACTORY_IMAGE_NAME}, not {file_name}"
-        );
+    if file_name != factory_name {
+        bail!("factory_merged_image artifact must resolve to {factory_name}, not {file_name}");
     }
 
     resolve_manifest_sibling(manifest, factory_image)

@@ -60,11 +60,11 @@ fn phase34_package_admission_snapshots_bytes_before_device_effects() {
     ];
     let execution_markers = [
         "maybe_segmented_write",
-        "environment.begin_usb_session",
+        "environment.begin_board_usb_session",
         "environment.execute_esptool_write_flash(segmented)",
     ];
     let execution_order = [
-        "environment.begin_usb_session",
+        "environment.begin_board_usb_session",
         "environment.execute_esptool_write_flash(segmented)",
     ];
 

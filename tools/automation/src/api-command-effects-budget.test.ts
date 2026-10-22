@@ -63,10 +63,11 @@ test("budget derivation rejects unsafe arithmetic", () => {
 test("budget components remain bound to child source limits", async () => {
   // Arrange
   const root = runfileRoot();
-  const [campaign, environment, usb, observation, recovery, processAdapter, fixture, justfile] =
+  const [campaign, environment, usbOwnership, usb, observation, recovery, processAdapter, fixture, justfile] =
     await Promise.all([
       readFile(path.join(root, "tools/flash/src/campaign.rs"), "utf8"),
       readFile(path.join(root, "tools/flash/src/environment.rs"), "utf8"),
+      readFile(path.join(root, "tools/flash/src/environment/usb_ownership.rs"), "utf8"),
       readFile(path.join(root, "tools/device-session/src/usb.rs"), "utf8"),
       readFile(path.join(root, "tools/device-session/src/usb/observation.rs"), "utf8"),
       readFile(path.join(root, "tools/device-session/src/usb/recovery.rs"), "utf8"),
@@ -80,7 +81,7 @@ test("budget components remain bound to child source limits", async () => {
   assert.match(campaign, /MiningCampaignStage::CommandEffects => CampaignCaptureLimit::Bounded/u);
   assert.match(campaign, /duration_seconds\s*\.saturating_mul\(2\)/u);
   assert(!campaign.includes("COMMAND_EFFECTS_OPERATOR_READY_SECONDS"));
-  assert.match(environment, /Duration::from_secs\(10\)/u);
+  assert.match(usbOwnership, /Duration::from_secs\(10\)/u);
   assert.equal(environment.match(/Duration::from_secs\(360\)/gu)?.length, 2);
   assert.match(usb, /for attempt in 1\.\.=2/u);
   assert.match(observation, /observe_receive_only_ephemeral_chunks_operator_gated/u);

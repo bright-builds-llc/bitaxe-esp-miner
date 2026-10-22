@@ -5,8 +5,72 @@ const ESPTOOL_ADMITTED_ROM_BEFORE: &str = "no_reset";
 
 impl LocalFlashEnvironment {
     pub(super) fn ensure_bootloader(&self) -> Result<()> {
-        self.enter_rom(Some(crate::board_identity::RegisteredBoard::Ultra205))
-            .map(|_| ())
+        self.enter_rom(Some(self.rom_board.get())).map(|_| ())
+    }
+
+    /// Opens the repository USB session; its ROM admission requires `board` until it finishes.
+    pub(super) fn open_usb_session(
+        &self,
+        operation: UsbOperation,
+        port: &str,
+        board: crate::board_identity::RegisteredBoard,
+    ) -> Result<()> {
+        if self.usb_session.borrow().is_some() {
+            if self.rom_board.get() != board {
+                bail!("board_identity=blocked reason=session_board_changed");
+            }
+            return Ok(());
+        }
+        let trace_root = self
+            .workspace_dir
+            .join("scratch/device-sessions")
+            .join(format!(
+                "{}-{}",
+                std::process::id(),
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos()
+            ));
+        let mut session = UsbSession::acquire(operation, port, trace_root.as_std_path())
+            .inspect_err(|error| {
+                if let Some(timing) = self.bootstrap_timing.borrow().as_ref() {
+                    timing.failure(
+                        bitaxe_device_session::BootstrapFailureStage::SessionAdmission,
+                        error.category,
+                    );
+                }
+            })?;
+        if let Some(timing) = self.bootstrap_timing.borrow().as_ref() {
+            session.enable_bootstrap_timing(timing.clone());
+        }
+        if let Some(duration) = *self.maybe_early_capture_duration.borrow() {
+            session.prepare_post_reset_capture(duration)?;
+        }
+        let version_validation = session
+            .run_espflash_probe(
+                self.espflash_bin.as_std_path(),
+                &["--version".to_owned()],
+                Duration::from_secs(10),
+            )
+            .map_err(|error| anyhow::anyhow!("{error}"))
+            .and_then(|output| {
+                let observed = String::from_utf8(output.stdout)
+                    .context("supervised espflash version output was not valid UTF-8")?;
+                if observed.trim() != self.espflash_version {
+                    bail!("espflash_version_mismatch expected={ESPFLASH_EXPECTED_VERSION}");
+                }
+                Ok(())
+            });
+        if let Err(primary_error) = version_validation {
+            return match session.finish() {
+                Ok(_) => Err(primary_error),
+                Err(_) => Err(primary_error.context("cleanup_failure=secondary")),
+            };
+        }
+        *self.usb_session.borrow_mut() = Some(session);
+        self.rom_board.set(board);
+        Ok(())
     }
 
     /// Enters the ROM downloader and returns the `board-info` output. With a board, it refuses

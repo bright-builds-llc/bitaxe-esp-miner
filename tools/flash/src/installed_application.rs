@@ -68,8 +68,13 @@ pub(crate) fn run_start_installed(
     if manifest.schema_version != 4 {
         bail!("start_installed=blocked reason=state_preserving_manifest_required");
     }
-    let admitted =
-        validate_identity_admission(&manifest_path, &manifest, &provenance, environment)?;
+    let admitted = validate_identity_admission(
+        BoardId::Ultra205,
+        &manifest_path,
+        &manifest,
+        &provenance,
+        environment,
+    )?;
     if admitted.runtime_identity.firmware_commit != expected.firmware_commit
         || admitted.runtime_identity.app_elf_sha256 != expected.app_elf_sha256
     {

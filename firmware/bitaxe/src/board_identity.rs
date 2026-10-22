@@ -8,6 +8,8 @@ use std::sync::OnceLock;
 
 /// The board this image was built for.
 pub(crate) const BUILT: KnownBoard = KnownBoard::Ultra205;
+/// Package admission requires this literal in the application (`tools/flash/src/board_target.rs`).
+const BUILD_MARKER: &str = "firmware_board=205";
 
 static STORED: OnceLock<StoredBoard> = OnceLock::new();
 
@@ -24,6 +26,7 @@ pub(crate) fn initialize(settings_read: bool) {
         },
     };
     let _ = STORED.set(stored);
+    log::info!("{BUILD_MARKER}");
     log::info!("{}", marker());
 }
 

@@ -20,6 +20,8 @@ pub(crate) struct LocalFlashEnvironment {
     pub(crate) maybe_early_capture_duration: RefCell<Option<Duration>>,
     pub(crate) bootstrap_timing: RefCell<Option<bitaxe_device_session::BootstrapTiming>>,
     pub(crate) usb_session: RefCell<Option<UsbSession>>,
+    /// The board ROM admission requires during the current session (ADR-0041).
+    pub(crate) rom_board: std::cell::Cell<crate::board_identity::RegisteredBoard>,
 }
 impl LocalFlashEnvironment {
     pub(super) fn validate_espflash_identity(&self) -> Result<()> {
@@ -43,6 +45,7 @@ impl LocalFlashEnvironment {
             maybe_early_capture_duration: RefCell::new(None),
             bootstrap_timing: RefCell::new(None),
             usb_session: RefCell::new(None),
+            rom_board: std::cell::Cell::new(crate::board_identity::RegisteredBoard::Ultra205),
         })
     }
 }
@@ -110,17 +113,18 @@ impl FlashEnvironment for LocalFlashEnvironment {
     fn usb_profile(&self, port: &str) -> Result<UsbProfile> {
         inspect_usb_profile(port).map(|inspection| inspection.profile)
     }
-    fn build_package(&self, web_ui: WebUiVariant) -> Result<()> {
+    fn build_package(&self, board: BoardId, web_ui: WebUiVariant) -> Result<()> {
         let flag = web_ui.bazel_flag();
+        let target = board.package_build_target();
         let status = Command::new("bazel")
             .current_dir(self.workspace_dir.as_std_path())
             .arg("build")
-            .arg(PACKAGE_BUILD_TARGET)
+            .arg(target)
             .arg(&flag)
             .status()
             .context("failed to run bazel build for firmware package")?;
         if !status.success() {
-            bail!("bazel build {PACKAGE_BUILD_TARGET} {flag} failed with {status}");
+            bail!("bazel build {target} {flag} failed with {status}");
         }
 
         Ok(())
@@ -278,58 +282,21 @@ impl FlashEnvironment for LocalFlashEnvironment {
         Ok(())
     }
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()> {
-        if self.usb_session.borrow().is_some() {
-            return Ok(());
-        }
-        let trace_root = self
-            .workspace_dir
-            .join("scratch/device-sessions")
-            .join(format!(
-                "{}-{}",
-                std::process::id(),
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_nanos()
-            ));
-        let mut session = UsbSession::acquire(operation, port, trace_root.as_std_path())
-            .inspect_err(|error| {
-                if let Some(timing) = self.bootstrap_timing.borrow().as_ref() {
-                    timing.failure(
-                        bitaxe_device_session::BootstrapFailureStage::SessionAdmission,
-                        error.category,
-                    );
-                }
-            })?;
-        if let Some(timing) = self.bootstrap_timing.borrow().as_ref() {
-            session.enable_bootstrap_timing(timing.clone());
-        }
-        if let Some(duration) = *self.maybe_early_capture_duration.borrow() {
-            session.prepare_post_reset_capture(duration)?;
-        }
-        let version_validation = session
-            .run_espflash_probe(
-                self.espflash_bin.as_std_path(),
-                &["--version".to_owned()],
-                Duration::from_secs(10),
-            )
-            .map_err(|error| anyhow::anyhow!("{error}"))
-            .and_then(|output| {
-                let observed = String::from_utf8(output.stdout)
-                    .context("supervised espflash version output was not valid UTF-8")?;
-                if observed.trim() != self.espflash_version {
-                    bail!("espflash_version_mismatch expected={ESPFLASH_EXPECTED_VERSION}");
-                }
-                Ok(())
-            });
-        if let Err(primary_error) = version_validation {
-            return match session.finish() {
-                Ok(_) => Err(primary_error),
-                Err(_) => Err(primary_error.context("cleanup_failure=secondary")),
-            };
-        }
-        *self.usb_session.borrow_mut() = Some(session);
-        Ok(())
+        let board = if self.usb_session.borrow().is_some() {
+            self.rom_board.get()
+        } else {
+            crate::board_identity::RegisteredBoard::Ultra205
+        };
+        self.open_usb_session(operation, port, board)
+    }
+
+    fn begin_board_usb_session(
+        &self,
+        operation: UsbOperation,
+        port: &str,
+        board: BoardId,
+    ) -> Result<()> {
+        self.open_usb_session(operation, port, board.registered())
     }
 
     fn prepare_application_exit(&self) -> Result<Utf8PathBuf> {
@@ -545,6 +512,8 @@ impl FlashEnvironment for LocalFlashEnvironment {
 
     fn finish_usb_session(&self) -> Result<()> {
         let maybe_session = self.usb_session.borrow_mut().take();
+        self.rom_board
+            .set(crate::board_identity::RegisteredBoard::Ultra205);
         let Some(session) = maybe_session else {
             return Ok(());
         };

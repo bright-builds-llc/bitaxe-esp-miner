@@ -287,16 +287,16 @@ fn write_failure_is_terminal_before_monitor_or_completed_flash_evidence() {
 }
 
 #[test]
-fn rejects_deferred_gamma_601_board() {
+fn ultra_205_only_commands_reject_the_gamma_601() {
     // Arrange
     let input = "601";
 
     // Act
-    let result = input.parse::<BoardId>();
+    let result = parse_board(input);
 
     // Assert
-    let error = result.expect_err("deferred board");
-    assert!(error.contains("deferred"));
+    let error = result.expect_err("205-only command");
+    assert!(error.contains("accepted only by flash"));
 }
 
 #[test]

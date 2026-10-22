@@ -5,7 +5,7 @@ use tempfile::{tempdir, TempDir};
 const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 const REFERENCE_COMMIT: &str = "abcdef0123456789abcdef0123456789abcdef01";
 const BUILD_LABEL: &str = "0123456789ab-dev";
-const APP_ELF_SHA256: &str = "ca16ef5bd57d7e4b2f2f016ffb9236c426e68f16072bc1c5a53ef0e515f1d063";
+const APP_ELF_SHA256: &str = "05486740ec9e1f2e23c5dfc471ec1b6d01d97b1a1b3f78ed97c44ce894c1f83e";
 
 include!("tests/fixtures.rs");
 include!("tests/fake_environment.rs");
@@ -13,6 +13,7 @@ include!("tests/fake_usb_environment.rs");
 
 mod admission;
 mod admission_layout;
+mod board_target_flash;
 mod campaign;
 mod capture;
 mod cli;

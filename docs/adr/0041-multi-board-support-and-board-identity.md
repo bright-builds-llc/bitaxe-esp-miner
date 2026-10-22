@@ -48,6 +48,15 @@ not a guard anyone designed.
 2. **The board is chosen at build time.** Each package targets one board.
    The 601 build contains no DS4432U, INA260 or GPIO10 code, and the 205
    build no TPS546 code. A package for one board is refused on another.
+   - In `tools/flash`, only `flash`, `flash-monitor`, `monitor` and `detect`
+     accept `--board 601`; every other command parses the 205 only.
+   - `--board` selects the package to build. Admission requires the
+     manifest's `image_metadata.board` and the application's compiled
+     marker (`firmware_board=<board>`) to name the requested board, and no
+     other board's marker. Packages are admitted only when built from the
+     current source, so there is no allowance for older packages.
+   - A factory install seeds Ultra 205 defaults into NVS, so it stays 205
+     only. The 601 is installed state-preserving.
 3. **The firmware checks its board at run time** against the stored
    `boardversion` and refuses hardware control on a mismatch.
    - It reads the value once at boot and reports it, as a closed label
@@ -77,7 +86,10 @@ not a guard anyone designed.
   detector pass verifies no board. Only ROM admission does.
 - **Where the gate sits.** It runs at `tools/flash` ROM admission
   (`ensure_bootloader`), which precedes every flash write, erase, flash read
-  and NVS operation, and at the core-dump erase's own probe. `just
+  and NVS operation, and at the core-dump erase's own probe. ROM admission
+  requires the board its USB session was opened for, set once the session
+  opens and cleared when it finishes. Sessions opened without a board
+  require the 205, and a session cannot change its board. `just
   register-board` records a board from a private `board-info` output.
 - **What stays ungated.** Paths outside that admission only reset the chip,
   probe the ROM or read flash, so they cannot change a board's firmware.

@@ -174,12 +174,18 @@ action.
         and the self-test; `board_identity_source_ownership_tests` pins it.
     - [ ] A `BOARD` catalog constant; platform, attestation and
       `BoardTarget` variants.
-  - [ ] C1c: tools board threading.
-    - `BoardId::Gamma601` for `flash`, `flash-monitor`, `monitor` and
-      `detect` only.
-    - Manifest board and ELF marker admission.
-    - `enter_rom(Some(board))`.
-    - xtask, `invocation.ts` and the release gate (205 only).
+  - [x] C1c: tools board threading (`tools/flash`).
+    - `BoardId::Gamma601`, parsed only by `flash`, `flash-monitor`, `monitor`
+      and `detect`.
+    - Per-board package target, manifest and file names.
+    - Manifest board and ELF marker admission, required for both boards;
+      the 205 firmware now carries `firmware_board=205`. C1b must define
+      the marker in the same `cfg` block as the built board.
+    - ROM admission requires the session's board.
+    - A factory install stays 205 only.
+    - Moved to C1b: xtask packaging for 601 and the runtime attestation
+      parser. The automation runner (`invocation.ts`) and the release gate
+      stay 205 only.
   - [ ] C1b and C2 together.
     - The `board-gamma-601` feature, with `firmware_gamma601` targets and
       packages.
