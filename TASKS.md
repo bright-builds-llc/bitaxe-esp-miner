@@ -143,7 +143,7 @@ action.
     admission and the core-dump erase, refusing before the reset when no
     device is registered for the board. The Ultra 205 is registered from
     its kept `board-info` output. Two review rounds; full gate.
-- [ ] **B. Identify the 601 (hardware, its own contract).**
+- [x] **B. Identify the 601 (hardware, its own contract).**
   - The detector, one ROM admission (chip, MAC, flash, features), then a
     hard reset back to stock.
   - The NVS read in memory, extracting only `boardversion`, `asicmodel` and
@@ -151,6 +151,13 @@ action.
     admission: the ROM gate requests board 205, so it enters ROM without
     the gate, writes nothing, and registers only on a full match.
   - Register the 601's digest. No writes.
+  - Done 2026-10-21, attempt 001:
+    - `just identify-board` (`9453a1a2`) found `601`/`BM1370`/`gamma` and
+      16MB flash, and registered the 601.
+    - The board enumerated through a USB-C hub.
+    - Three effects: one ROM entry, one NVS read, one hard reset; no
+      writes.
+    - Summary: `docs/parity/evidence/20261021-gamma601-identification.md`.
 - [ ] **C. Board seam and 601 safe boot.**
   - `BoardId::Gamma601`, a board build flag, per-board packages, platform
     identity and defaults, and the runtime board guard.
@@ -217,7 +224,6 @@ Phase B identification contract (attempt ordinals 001 onward):
   - any refusal of the detector or the gate.
   Retries follow the progress-gated attempt policy.
 
-Gamma 601 identification hardware: enabled.
 
 ## Future
 
