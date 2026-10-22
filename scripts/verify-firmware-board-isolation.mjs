@@ -13,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 export const BOARD_LITERALS = {
   '205': {
     required: ['firmware_board=205', 'operator-sensors', 'fan-controller'],
-    forbidden: ['firmware_board=601', 'gamma601_safe_boot'],
+    // The record's literal, not the module name: debug info may name unlinked helpers.
+    forbidden: ['firmware_board=601', 'usb_gamma601_safe_boot'],
   },
   '601': {
     required: ['firmware_board=601', 'usb_gamma601_safe_boot', 'mining_owner=absent'],

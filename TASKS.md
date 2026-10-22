@@ -221,11 +221,15 @@ action.
       (follow-ups below);
     - summary: `docs/parity/evidence/20261022-gamma601-safe-boot.md`.
   - [ ] Follow-up: why the 601 does not join Wi-Fi with its stock settings.
-    A key-presence report from the NVS read (names only, no values) would
+    The safe-boot record (schema v2) now carries the Wi-Fi owner's status
+    category (`wifi=`, closed tokens only). If that is not enough, a
+    key-presence report from the NVS read (names only, no values) would
     show which stored keys differ from ours.
-  - [ ] Follow-up: find where the TPS546 `CML` status bit comes from. Read
-    `STATUS_CML` read-only, and check whether the safe boot's own reads
-    set it.
+  - [ ] Follow-up: find where the TPS546 `CML` status bit comes from. The
+    record now carries `STATUS_CML` each sweep (`cml=`), and `STATUS_WORD`
+    and `STATUS_CML` as read at boot before the off writes
+    (`start_status=`, `start_cml=`). After a power cycle these show
+    whether the safe boot's own reads set the bit.
 - [ ] **D. TPS546.**
   - A pure PMBus core with the Gamma config plan, a clamp to 1.00-1.25 V
     and no `STORE_USER_ALL`.
@@ -360,6 +364,43 @@ Closed after attempt 001 passed (2026-10-22); no enable lines remain.
   - If the device stays in the ROM downloader, the owner power-cycles it.
   - Returning to stock AxeOS (an upstream release flashed with upstream
     tools) is the owner's choice and outside this contract.
+
+Follow-up diagnostics contract (attempt ordinals 001 onward):
+
+Gamma 601 follow-up diagnostics hardware: enabled.
+
+- **Objective:** observe the Wi-Fi status category and the TPS546 `STATUS_CML`
+  readings from the schema v2 safe-boot record. First after an install,
+  then after a power cycle of the board, so that `start_cml` shows what the
+  safe boot's own identity reads leave behind.
+- **Commands, in order, each attempt:**
+  1. `just detect-ultra205`: exactly one device;
+  2. `just flash-monitor --board 601 --port <port>
+     --capture-timeout-seconds 360`: one state-preserving install of the
+     601 package at HEAD, with its capture;
+  3. the owner removes barrel power and USB, waits about 10 s, then
+     restores barrel power and then USB. This is a manual, non-invasive
+     power cycle;
+  4. the detector, then `just monitor --board 601 --port <port>
+     --capture-timeout-seconds 360`: a receive-only capture, with no reset
+     and no write.
+- **Precondition:** only the 601 attached, as in C3; the tree clean and
+  pushed.
+- **Allowed effects:** the detector checks, one state-preserving install
+  with its resets, the owner's power cycle, a receive-only capture, and the
+  installed safe boot's own effects (ADR-0041 item 5).
+- **Prohibited effects:** as in the C3 contract. In particular, no
+  `CLEAR_FAULTS` or any TPS546 write beyond the off writes, no NVS writes,
+  and no HTTP or network discovery.
+- **Observations, not pass criteria:**
+  - the `wifi=` category over time;
+  - `start_status`, `start_cml` and `cml`, after the install and after the
+    power cycle.
+  The C3 safety readings must still hold: reset held, off confirmed, fan
+  running.
+- **Stops:** the C3 contract's stops. The capture and evidence rules are
+  the C3 contract's, under `scratch/gamma-601-follow-ups/attempt-NNN/`.
+- **Recovery:** as in C3.
 
 ## Future
 

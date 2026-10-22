@@ -20,6 +20,8 @@ pub enum ReadCommand {
     /// `IC_DEVICE_ID`: a block read, a length byte then six identity bytes.
     DeviceId,
     StatusWord,
+    /// `STATUS_CML`: why the communication, memory or logic summary bit is set.
+    StatusCml,
     VoutMode,
     ReadVin,
     ReadVout,
@@ -33,6 +35,7 @@ impl ReadCommand {
         match self {
             Self::DeviceId => 0xad,
             Self::StatusWord => 0x79,
+            Self::StatusCml => 0x7e,
             Self::VoutMode => 0x20,
             Self::ReadVin => 0x88,
             Self::ReadVout => 0x8b,
@@ -46,7 +49,7 @@ impl ReadCommand {
     pub const fn length(self) -> usize {
         match self {
             Self::DeviceId => 7,
-            Self::VoutMode => 1,
+            Self::VoutMode | Self::StatusCml => 1,
             Self::StatusWord
             | Self::ReadVin
             | Self::ReadVout

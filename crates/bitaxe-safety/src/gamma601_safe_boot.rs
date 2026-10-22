@@ -41,6 +41,11 @@ pub struct SafeBootReport {
     /// `None` until the status and output have both been read.
     pub maybe_off: Option<OffState>,
     pub maybe_faults: Option<u16>,
+    /// `STATUS_CML` at this sweep.
+    pub maybe_cml: Option<u8>,
+    /// `STATUS_WORD` and `STATUS_CML` as first read at boot, before the off writes.
+    pub maybe_start_status: Option<u16>,
+    pub maybe_start_cml: Option<u8>,
     pub maybe_vin_volts: Option<f64>,
     pub maybe_vout_volts: Option<f64>,
     pub maybe_iout_amps: Option<f64>,
@@ -48,7 +53,6 @@ pub struct SafeBootReport {
     pub maybe_board_temperature_celsius: Option<f64>,
     pub fan_duty_percent: u8,
     pub maybe_fan_rpm: Option<u32>,
-    pub wifi_joined: bool,
 }
 
 impl SafeBootReport {
@@ -60,6 +64,9 @@ impl SafeBootReport {
             controller: Controller::Unread,
             maybe_off: None,
             maybe_faults: None,
+            maybe_cml: None,
+            maybe_start_status: None,
+            maybe_start_cml: None,
             maybe_vin_volts: None,
             maybe_vout_volts: None,
             maybe_iout_amps: None,
@@ -67,7 +74,6 @@ impl SafeBootReport {
             maybe_board_temperature_celsius: None,
             fan_duty_percent: FAN_DUTY_UNCONFIRMED_PERCENT,
             maybe_fan_rpm: None,
-            wifi_joined: false,
         }
     }
 
@@ -87,16 +93,19 @@ impl SafeBootReport {
         }
     }
 
-    /// The closed USB record.
+    /// The closed USB record. `wifi_status` is the Wi-Fi owner's status category; anything
+    /// other than a short lowercase token is reported as `other`, so no network value leaks.
     #[must_use]
-    pub fn usb_marker(&self) -> String {
+    pub fn usb_marker(&self, wifi_status: &str) -> String {
         format!(
-            "usb_gamma601_safe_boot schema=v1 reset_held={} tps546={} off={} faults={} vin_mv={} vout_mv={} iout_ma={} vr_temp_c={} board_temp_c={} fan_duty_pct={} fan_rpm={} wifi_joined={} redacted=true",
+            "usb_gamma601_safe_boot schema=v2 reset_held={} tps546={} off={} faults={} cml={} start_status={} start_cml={} vin_mv={} vout_mv={} iout_ma={} vr_temp_c={} board_temp_c={} fan_duty_pct={} fan_rpm={} wifi={} redacted=true",
             self.reset_held,
             self.controller.label(),
             self.maybe_off.map_or("unread", OffState::label),
-            self.maybe_faults
-                .map_or_else(|| "unavailable".to_owned(), |faults| format!("0x{faults:04x}")),
+            hex(self.maybe_faults.map(u32::from), 4),
+            hex(self.maybe_cml.map(u32::from), 2),
+            hex(self.maybe_start_status.map(u32::from), 4),
+            hex(self.maybe_start_cml.map(u32::from), 2),
             milli(self.maybe_vin_volts),
             milli(self.maybe_vout_volts),
             milli(self.maybe_iout_amps),
@@ -105,8 +114,29 @@ impl SafeBootReport {
             self.fan_duty_percent,
             self.maybe_fan_rpm
                 .map_or_else(|| "unavailable".to_owned(), |rpm| rpm.to_string()),
-            self.wifi_joined,
+            closed_category(wifi_status),
         )
+    }
+}
+
+fn hex(maybe_value: Option<u32>, digits: usize) -> String {
+    maybe_value.map_or_else(
+        || "unavailable".to_owned(),
+        |value| format!("0x{value:0digits$x}"),
+    )
+}
+
+/// A status category is a short lowercase token; anything else is `other`.
+fn closed_category(status: &str) -> &str {
+    let closed = !status.is_empty()
+        && status.len() <= 48
+        && status
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte == b'_');
+    if closed {
+        status
+    } else {
+        "other"
     }
 }
 

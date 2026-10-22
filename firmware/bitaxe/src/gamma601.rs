@@ -56,7 +56,7 @@ pub(crate) fn maybe_usb_marker() -> Option<String> {
     REPORT
         .lock()
         .ok()
-        .and_then(|report| report.map(|report| report.usb_marker()))
+        .and_then(|report| report.map(|report| report.usb_marker(&wifi_status())))
 }
 
 /// Holds the ASIC in reset, turns the TPS546 off and starts the safe-boot thread.
@@ -98,9 +98,9 @@ pub(crate) fn initialize_hardware(
     match safety_adapter::BitaxeI2cBus::new(peripherals.i2c0, pins.gpio47, pins.gpio48) {
         Ok(mut bus) => {
             // The controller goes off before the display or anything else on the bus.
-            let controller = turn_off_at_startup(&mut bus);
+            let startup = turn_off_at_startup(&mut bus);
             render_startup_screen(&mut bus, &startup_debug_text);
-            start(bus.into_runtime(), reset_held, controller);
+            start(bus.into_runtime(), reset_held, startup);
         }
         Err(error) => {
             log::error!("gamma601_safe_boot=fault category=i2c_unavailable error={error:#}");
@@ -147,25 +147,44 @@ fn render_startup_screen(
     }
 }
 
-/// Identifies the controller and, only when it is a TPS546, commands its output off.
-fn turn_off_at_startup(bus: &mut safety_adapter::BitaxeI2cBus<'static>) -> Controller {
+/// What the startup read of the controller found, before any write to it.
+struct StartupController {
+    controller: Controller,
+    maybe_status: Option<u16>,
+    maybe_cml: Option<u8>,
+}
+
+/// Identifies the controller, records its status as found and, only when it is a TPS546,
+/// commands its output off.
+fn turn_off_at_startup(bus: &mut safety_adapter::BitaxeI2cBus<'static>) -> StartupController {
     let controller = identify(|| {
         let mut budget = hardware::budget();
         hardware::identify_controller(&mut bus.tps546(&mut budget))
     });
+    let mut found = StartupController {
+        controller,
+        maybe_status: None,
+        maybe_cml: None,
+    };
     if let Controller::Found(_) = controller {
-        let mut budget = hardware::budget();
-        if let Err(error) = hardware::command_off(&mut bus.tps546(&mut budget)) {
+        let mut status_budget = hardware::budget();
+        (found.maybe_status, found.maybe_cml) =
+            hardware::read_status(&mut bus.tps546(&mut status_budget));
+        // The off writes get a budget of their own: slow status reads must not spend it.
+        let mut off_budget = hardware::budget();
+        if let Err(error) = hardware::command_off(&mut bus.tps546(&mut off_budget)) {
             log::error!("gamma601_safe_boot=fault category=off_command error={error:#}");
         }
     }
-    controller
+    found
 }
 
 /// Starts the safe-boot thread, which keeps the controller off and the fan running.
-fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, controller: Controller) {
+fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: StartupController) {
     let mut report = SafeBootReport::initial(reset_held);
-    report.controller = controller;
+    report.controller = startup.controller;
+    report.maybe_start_status = startup.maybe_status;
+    report.maybe_start_cml = startup.maybe_cml;
     sweep(&mut owner, &mut report);
     log_records(&report);
     publish(report);
@@ -228,12 +247,16 @@ fn sweep(owner: &mut RuntimeI2cOwner<'_>, report: &mut SafeBootReport) {
         log::warn!("gamma601_safe_boot=fault category=fan_configuration error={error:#}");
     }
     hardware::read_thermal(owner, report);
-    report.wifi_joined = crate::wifi_adapter::current_wifi_snapshot().wifi_status == "connected";
 }
 
 fn log_records(report: &SafeBootReport) {
-    log::info!("{}", report.usb_marker());
+    log::info!("{}", report.usb_marker(&wifi_status()));
     log::info!("{}", crate::board_identity::marker());
+}
+
+/// The Wi-Fi owner's status category; the record admits only closed tokens of it.
+fn wifi_status() -> String {
+    crate::wifi_adapter::current_wifi_snapshot().wifi_status
 }
 
 fn publish(report: SafeBootReport) {

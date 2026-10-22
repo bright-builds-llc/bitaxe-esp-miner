@@ -34,6 +34,21 @@ pub(crate) fn identify_controller(bus: &mut Tps546Bus<'_, '_, '_>) -> Controller
     }
 }
 
+/// Reads `STATUS_WORD` and `STATUS_CML`, as the controller holds them before any write.
+pub(crate) fn read_status(bus: &mut Tps546Bus<'_, '_, '_>) -> (Option<u16>, Option<u8>) {
+    let mut word = [0_u8; 2];
+    let maybe_status = bus
+        .read(ReadCommand::StatusWord, &mut word)
+        .ok()
+        .map(|()| u16::from_le_bytes(word));
+    let mut cml = [0_u8; 1];
+    let maybe_cml = bus
+        .read(ReadCommand::StatusCml, &mut cml)
+        .ok()
+        .map(|()| cml[0]);
+    (maybe_status, maybe_cml)
+}
+
 /// Sends the off writes, in upstream's order.
 pub(crate) fn command_off(bus: &mut Tps546Bus<'_, '_, '_>) -> Result<()> {
     for write in OFF_SEQUENCE {
@@ -71,6 +86,11 @@ pub(crate) fn read_controller(owner: &mut RuntimeI2cOwner<'_>, report: &mut Safe
         .read(ReadCommand::VoutMode, &mut mode)
         .ok()
         .map(|()| mode[0]);
+    let mut cml = [0_u8; 1];
+    report.maybe_cml = bus
+        .read(ReadCommand::StatusCml, &mut cml)
+        .ok()
+        .map(|()| cml[0]);
     let maybe_vout = maybe_raw_vout
         .zip(maybe_mode)
         .and_then(|(raw, mode)| tps546::decode_vout(raw, mode));
