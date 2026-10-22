@@ -311,12 +311,17 @@ Gamma 601 safe-boot hardware: enabled.
   - network discovery, HTTP requests to the device;
   - direct UART or pins.
 - **Pass, per install,** from the captured console:
-  - the boot line names `Gamma 601` and `BM1370`, and `firmware_board=601`
-    and `mining_owner=absent` appear;
-  - `usb_board_identity built=601 stored=601 identity=match`;
+  - the build: the flash tool admitted the package only with
+    `firmware_board=601` in its application, and
+    `usb_board_identity built=601 stored=601 identity=match` is reported.
+    Amended after attempt 001: the receive-only console carries the
+    device's replay and diagnostic records, not the general log. So the
+    boot line, `firmware_board=601` and `mining_owner=absent` log lines
+    are not observable there.
   - `usb_gamma601_safe_boot` with `reset_held=true`, a recognised `tps546`
     (`d24a` or `d24s`), and `off=confirmed` within 30 s of boot, staying
-    confirmed;
+    confirmed. The records carry no uptime, so a record's uptime is taken
+    from the nearest `usb_startup` record before it.
   - `vout_mv` under 200, `fan_duty_pct=30`, `fan_rpm` above 0, and a board
     temperature between 10 and 60 C.
   - Wi-Fi joining is recorded but not required.
