@@ -220,12 +220,26 @@ action.
     - Wi-Fi did not join, and the TPS546 reports a latched `CML` bit
       (follow-ups below);
     - summary: `docs/parity/evidence/20261022-gamma601-safe-boot.md`.
-  - [ ] Follow-up: why the 601 does not join Wi-Fi with its stock settings.
+  - [x] Follow-up: why the 601 does not join Wi-Fi with its stock settings.
+    Answered 2026-10-22, follow-up attempt 001: the stored credentials are
+    valid, but the station reports `access_point_unavailable`. The owner
+    reports that the 601 holds placeholder network values. Our firmware
+    reads the stock settings correctly. Joining needs real credentials (see
+    the Future task).
     The safe-boot record (schema v2) now carries the Wi-Fi owner's status
     category (`wifi=`, closed tokens only). If that is not enough, a
     key-presence report from the NVS read (names only, no values) would
     show which stored keys differ from ours.
-  - [ ] Follow-up: find where the TPS546 `CML` status bit comes from. The
+  - [ ] Follow-up: find where the TPS546 `CML` status bit comes from.
+    Narrowed 2026-10-22, follow-up attempt 001:
+    - after a cold power-on, `STATUS_CML = 0x82` is already set by the
+      first status read, which follows only the identity reads;
+    - the sweeps add nothing;
+    - the same capture showed the TPS546 output on, in regulation, at
+      power-on until the safe boot's off writes. Upstream does the same.
+    - A read of `STATUS_CML` before the identity read would show whether
+      the identity reads set the bit.
+    - Summary: `docs/parity/evidence/20261022-gamma601-follow-ups.md`. The
     record now carries `STATUS_CML` each sweep (`cml=`), and `STATUS_WORD`
     and `STATUS_CML` as read at boot before the off writes
     (`start_status=`, `start_cml=`). After a power cycle these show
@@ -367,7 +381,7 @@ Closed after attempt 001 passed (2026-10-22); no enable lines remain.
 
 Follow-up diagnostics contract (attempt ordinals 001 onward):
 
-Gamma 601 follow-up diagnostics hardware: enabled.
+Closed after attempt 001 (2026-10-22); no enable line remains.
 
 - **Objective:** observe the Wi-Fi status category and the TPS546 `STATUS_CML`
   readings from the schema v2 safe-boot record. First after an install,
@@ -403,6 +417,27 @@ Gamma 601 follow-up diagnostics hardware: enabled.
 - **Recovery:** as in C3.
 
 ## Future
+
+### task-gamma-601-wifi-provisioning | 2026-10-22 | Give the Gamma 601 real Wi-Fi credentials
+
+The 601 holds placeholder network values from stock AxeOS, so its station
+reports `access_point_unavailable` (`task-gamma-601-bring-up` follow-up,
+2026-10-22). The owner's local `wifi-credentials.json` should work. Today
+that file is admitted only to a factory install, and the factory install
+seeds Ultra 205 defaults, so it is 205-only (ADR-0041).
+
+- [ ] Choose a path with the owner:
+  - the owner joins the board's configuration access point and enters the
+    network in the web UI themselves;
+  - a 601 factory install that seeds the 601's upstream defaults
+    (`reference/esp-miner/config-601.cvs`) plus the credentials file;
+  - a state-preserving write of the network keys only. This would need an
+    AGENTS.md change, since credentials are admitted only to factory
+    contracts today.
+- [ ] Implement the chosen path, if it needs code, with tests, the full gate
+  and a review.
+- [ ] Hardware under its own contract: the station joins
+  (`wifi=connected`), and the safe boot's readings still hold.
 
 ### task-stop-paths-hardware-evidence | 2026-10-21 | Hardware evidence for stops other than a pause
 
