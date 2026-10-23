@@ -12,6 +12,7 @@
 pub mod init;
 pub mod protocol;
 pub mod result;
+pub mod shutdown;
 pub mod work;
 
 #[cfg(test)]

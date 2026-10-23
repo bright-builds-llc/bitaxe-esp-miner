@@ -30,7 +30,6 @@ fn api_snapshot_contains_typed_input_fields_without_platform_sdk_dependencies() 
     let snapshot = ApiSnapshot::safe_ultra_205();
 
     // Act
-    let config = snapshot.config;
     let catalog = snapshot.catalog;
     let mining = snapshot.mining;
     let block_found = snapshot.block_found;
@@ -38,7 +37,7 @@ fn api_snapshot_contains_typed_input_fields_without_platform_sdk_dependencies() 
     let platform = snapshot.platform;
 
     // Assert
-    assert_eq!(config.defaults.asic_model(), "BM1366");
+    assert_eq!(catalog.asic().model(), "BM1366");
     assert_eq!(catalog.board_version(), "205");
     assert_eq!(mining.counters.accepted, 0);
     assert_eq!(block_found.block_found, 0);
@@ -53,12 +52,10 @@ fn config_snapshot_uses_ultra_205_defaults() {
     let config = ConfigSnapshot::ultra_205();
 
     // Act
-    let defaults = config.defaults;
+    let (frequency_mhz, voltage_mv) = (config.asic_frequency_mhz, config.asic_voltage_mv);
 
     // Assert
-    assert_eq!(defaults.board_version(), "205");
-    assert_eq!(defaults.asic_frequency_mhz(), 485);
-    assert_eq!(defaults.asic_voltage_mv(), 1200);
+    assert_eq!((frequency_mhz, voltage_mv), (485.0, 1200));
 }
 
 #[test]

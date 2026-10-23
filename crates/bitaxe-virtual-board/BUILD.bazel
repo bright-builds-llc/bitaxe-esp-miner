@@ -37,3 +37,10 @@ rust_test(
     edition = "2021",
     deps = [":bitaxe_virtual_board", "//crates/bitaxe-asic:bitaxe_asic", "@crates//:serde_json"],
 )
+
+rust_test(
+    name = "bm1370_tests",
+    srcs = ["tests/bm1370.rs"],
+    edition = "2021",
+    deps = [":bitaxe_virtual_board", "//crates/bitaxe-asic:bitaxe_asic"],
+)

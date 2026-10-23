@@ -9,9 +9,9 @@ use bitaxe_safety::{
 };
 use serde::{Deserialize, Serialize};
 
-const ULTRA_205_MAX_INPUT_POWER_WATTS: f64 = 15.0;
-
+mod limits;
 mod safety_verdict;
+pub use limits::MiningSafetyLimits;
 pub use safety_verdict::{SafetyFact, SafetyFactState, SafetyVerdict};
 
 /// Stable public state labels for one observed fact.
@@ -129,21 +129,28 @@ impl TelemetryObservations {
     /// Requires every supported fresh, validated Ultra 205 safety fact before mining effects.
     #[must_use]
     pub fn is_ultra_205_mining_safe_at(&self, now: MonotonicMillis) -> bool {
-        self.ultra_205_mining_safety_verdict_at(now).is_none()
+        self.is_mining_safe_at(&MiningSafetyLimits::ultra_205(), now)
+    }
+
+    /// Requires every fresh, validated safety fact a board's limits name before mining effects.
+    #[must_use]
+    pub fn is_mining_safe_at(&self, limits: &MiningSafetyLimits, now: MonotonicMillis) -> bool {
+        self.mining_safety_verdict_at(limits, now).is_none()
     }
 }
 
-/// The first fresh Ultra 205 safety fact outside its mining range, in predicate order.
+/// The first fresh safety fact outside its board's mining range, in predicate order.
 fn maybe_out_of_range_fact(
+    limits: &MiningSafetyLimits,
     power_watts: f64,
     bus_voltage_volts: f64,
     current_amps: f64,
     chip_temp_celsius: f64,
+    vr_temp_celsius: f64,
 ) -> Option<SafetyFact> {
     let min_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 - INPUT_VOLTAGE_MARGIN_RATIO);
     let max_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 + INPUT_VOLTAGE_MARGIN_RATIO);
-    if !(power_watts.is_finite() && (0.0..=ULTRA_205_MAX_INPUT_POWER_WATTS).contains(&power_watts))
-    {
+    if !limits.power_in_range(power_watts) {
         return Some(SafetyFact::Power);
     }
     if !(bus_voltage_volts.is_finite()
@@ -158,6 +165,9 @@ fn maybe_out_of_range_fact(
         && (MIN_PLAUSIBLE_TEMP_C..ASIC_THROTTLE_TEMP_C).contains(&chip_temp_celsius))
     {
         return Some(SafetyFact::ChipTemperature);
+    }
+    if !limits.vr_temperature_in_range(vr_temp_celsius) {
+        return Some(SafetyFact::VrTemperature);
     }
     None
 }

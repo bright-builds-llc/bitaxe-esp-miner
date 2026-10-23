@@ -42,6 +42,9 @@ pub const THERMAL_DIODE_FAULT_SENTINEL: f64 = 127.0;
 pub const MIN_PLAUSIBLE_TEMP_C: f64 = -40.0;
 pub const MAX_PLAUSIBLE_TEMP_C: f64 = 150.0;
 pub const ASIC_THROTTLE_TEMP_C: f64 = 75.0;
+/// A TPS546 board stops mining above this regulator temperature
+/// (`reference/esp-miner/main/tasks/power_management_task.c`, `TPS546_THROTTLE_TEMP`).
+pub const TPS546_VR_THROTTLE_TEMP_C: f64 = 105.0;
 pub const SAFE_RESTART_TEMP_C: f64 = 45.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]

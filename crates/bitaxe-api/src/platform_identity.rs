@@ -112,6 +112,9 @@ pub enum PlatformBoard {
     /// Bitaxe Ultra board version 205.
     #[serde(rename = "205")]
     Ultra205,
+    /// Bitaxe Gamma board version 601 (ADR-0041).
+    #[serde(rename = "601")]
+    Gamma601,
 }
 
 /// Closed firmware ASIC identity. No other ASIC can receive an available claim.
@@ -120,6 +123,9 @@ pub enum PlatformAsic {
     /// BM1366 ASIC used by the Ultra 205 target.
     #[serde(rename = "BM1366")]
     Bm1366,
+    /// BM1370 ASIC used by the Gamma 601.
+    #[serde(rename = "BM1370")]
+    Bm1370,
 }
 
 /// Closed decoded ESP-IDF reset-reason vocabulary.
@@ -361,9 +367,9 @@ mod tests {
 
     #[test]
     fn closed_board_and_asic_vocabularies_reject_alternate_claims() {
-        // Arrange
-        let alternate_board = r#"{"state":"available","value":"601"}"#;
-        let alternate_asic = r#"{"state":"available","value":"BM1370"}"#;
+        // Arrange: boards and ASICs the firmware does not build for.
+        let alternate_board = r#"{"state":"available","value":"401"}"#;
+        let alternate_asic = r#"{"state":"available","value":"BM1397"}"#;
 
         // Act
         let board_result = serde_json::from_str::<PlatformFact<PlatformBoard>>(alternate_board);

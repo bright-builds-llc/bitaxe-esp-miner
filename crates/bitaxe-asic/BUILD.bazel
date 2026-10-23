@@ -38,6 +38,8 @@ rust_library(
         "src/bm1370/init.rs",
         "src/bm1370/protocol.rs",
         "src/bm1370/result.rs",
+        "src/bm1370/shutdown.rs",
+        "src/bm1370/shutdown/tests.rs",
         "src/bm1370/tests.rs",
         "src/bm1370/tests/decode.rs",
         "src/bm1370/work.rs",

@@ -1,4 +1,4 @@
-//! Independent BM1366 endpoint oracle based on pinned upstream wire definitions.
+//! Independent BM1366 and BM1370 endpoint oracle based on pinned upstream wire definitions.
 //!
 //! The literal discovery request is `bm1366.c:BM1366_init`; its reply is the
 //! retained Phase 28.1 J3 hardware frame documented by the production parser.
@@ -9,6 +9,16 @@ use std::collections::BTreeMap;
 
 pub const DISCOVERY_REQUEST: [u8; 7] = [0x55, 0xaa, 0x52, 0x05, 0x00, 0x00, 0x0a];
 pub const DISCOVERY_REPLY: [u8; 11] = [0xaa, 0x55, 0x13, 0x66, 0, 0, 0, 0, 0, 0, 5];
+
+/// The chip the oracle answers as.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ChipModel {
+    #[default]
+    Bm1366,
+    /// Answers `13 70` to discovery, takes register B9, and packs a result's job id shifted
+    /// left one bit (`bm1370.c:BM1370_process_work`).
+    Bm1370,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NonceFixture {
@@ -56,6 +66,7 @@ pub fn header_from_payload(payload: &[u8; 82], nonce: u32) -> [u8; 80] {
 
 #[derive(Debug, Clone)]
 pub struct Bm1366 {
+    pub model: ChipModel,
     pub power_enabled: bool,
     pub reset_asserted: bool,
     pub host_baud: u32,
@@ -70,6 +81,7 @@ pub struct Bm1366 {
 impl Default for Bm1366 {
     fn default() -> Self {
         Self {
+            model: ChipModel::Bm1366,
             power_enabled: false,
             reset_asserted: true,
             host_baud: 115200,
@@ -140,10 +152,13 @@ impl Bm1366 {
         }
     }
     fn write_register(&mut self, register: u8, value: [u8; 4]) -> Result<Vec<u8>, ModelError> {
-        if !matches!(
-            register,
-            0x08 | 0x10 | 0x14 | 0x18 | 0x28 | 0x2c | 0x3c | 0x54 | 0x58 | 0xa4 | 0xa8
-        ) {
+        let model_register = self.model == ChipModel::Bm1370 && register == 0xb9;
+        if !model_register
+            && !matches!(
+                register,
+                0x08 | 0x10 | 0x14 | 0x18 | 0x28 | 0x2c | 0x3c | 0x54 | 0x58 | 0xa4 | 0xa8
+            )
+        {
             return Err(ModelError::Unsupported("ASIC write register"));
         }
         if register == 0x08 {
@@ -167,7 +182,14 @@ impl Bm1366 {
     }
     fn read_register(&self, register: u8) -> Result<Vec<u8>, ModelError> {
         if register == 0 {
-            return Ok(DISCOVERY_REPLY.to_vec());
+            return match self.model {
+                ChipModel::Bm1366 => Ok(DISCOVERY_REPLY.to_vec()),
+                ChipModel::Bm1370 => {
+                    let mut reply = [0xaa, 0x55, 0x13, 0x70, 0, 0, 0, 0, 0, 0, 0];
+                    reply[10] = response_crc(&reply[2..10], false)?;
+                    Ok(reply.to_vec())
+                }
+            };
         }
         let value = if matches!(register, 0x4c | 0x88..=0x8c) {
             [0; 4]
@@ -206,7 +228,11 @@ impl Bm1366 {
             return Ok(Vec::new());
         }
         fixture.validate()?;
-        let mut reply = [0xaa, 0x55, 0, 0, 0, 0, 1, payload[0], 0, 0, 0];
+        let result_id = match self.model {
+            ChipModel::Bm1366 => payload[0],
+            ChipModel::Bm1370 => (payload[0] << 1) & 0xf0,
+        };
+        let mut reply = [0xaa, 0x55, 0, 0, 0, 0, 1, result_id, 0, 0, 0];
         reply[2..6].copy_from_slice(&fixture.nonce.to_le_bytes());
         reply[10] = response_crc(&reply[2..10], true)?;
         Ok(reply.to_vec())

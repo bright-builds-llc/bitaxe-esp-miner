@@ -5,9 +5,7 @@
 //! handwritten AxeOS wire DTOs.
 
 use bitaxe_asic::bm1366::observation::AsicInitStatus;
-use bitaxe_config::{
-    ultra_205_catalog_entry, ultra_205_defaults, BoardCatalogEntry, Ultra205Defaults,
-};
+use bitaxe_config::{ultra_205_catalog_entry, ultra_205_defaults, BoardCatalogEntry};
 use bitaxe_core::runtime_health::RuntimeHealthSnapshot;
 use bitaxe_safety::evidence::SafetyCriticalEvidence;
 use bitaxe_safety::observation::{Observation, UnavailableReason};
@@ -50,14 +48,21 @@ impl ApiSnapshot {
     /// live voltage, fan, thermal, and power evidence exists.
     #[must_use]
     pub fn safe_ultra_205() -> Self {
+        Self::safe_for_board(ultra_205_catalog_entry())
+    }
+
+    /// A safe snapshot for a board: its catalog and its catalog's default frequency and
+    /// voltage; everything else as [`Self::safe_ultra_205`] documents.
+    #[must_use]
+    pub fn safe_for_board(catalog: BoardCatalogEntry) -> Self {
         Self {
             operator_snapshot_identity: OperatorSnapshotIdentity::fixture_only(),
             platform_identity: PlatformIdentity::fixture_only(),
             runtime_health: RuntimeHealthSnapshot::fixture_unavailable(),
-            config: ConfigSnapshot::ultra_205(),
+            config: ConfigSnapshot::for_board(catalog),
             project_settings: ProjectSettingsSnapshot::default(),
             system_info_settings: Box::new(SystemInfoSettingsSnapshot::safe_ultra_205()),
-            catalog: ultra_205_catalog_entry(),
+            catalog,
             mining: MiningRuntimeState::default(),
             block_found: BlockFoundNotificationState {
                 block_found: 0,
@@ -90,7 +95,6 @@ impl Default for ProjectSettingsSnapshot {
 /// the public wire contract.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ConfigSnapshot {
-    pub defaults: Ultra205Defaults,
     pub asic_frequency_mhz: f64,
     pub asic_voltage_mv: u16,
     pub auto_fan_speed: bool,
@@ -98,13 +102,22 @@ pub struct ConfigSnapshot {
 }
 
 impl ConfigSnapshot {
+    /// The defaults for a board: its catalog's default frequency and voltage, and the fan
+    /// defaults every catalog board shares. Settings replace these once they load.
+    #[must_use]
+    pub const fn for_board(catalog: BoardCatalogEntry) -> Self {
+        let mut config = Self::ultra_205();
+        config.asic_frequency_mhz = catalog.asic().default_frequency_mhz() as f64;
+        config.asic_voltage_mv = catalog.asic().default_voltage_mv();
+        config
+    }
+
     /// Returns the Ultra 205 defaults sourced from `config-205.cvs`.
     #[must_use]
     pub const fn ultra_205() -> Self {
         let defaults = ultra_205_defaults();
 
         Self {
-            defaults,
             asic_frequency_mhz: defaults.asic_frequency_mhz() as f64,
             asic_voltage_mv: defaults.asic_voltage_mv(),
             auto_fan_speed: defaults.auto_fan_speed(),

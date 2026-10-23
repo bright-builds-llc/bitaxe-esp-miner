@@ -1,10 +1,10 @@
-//! First failing Ultra 205 mining-safety fact. Diagnostic detail only: the
-//! verdict decides exactly what `is_ultra_205_mining_safe_at` decides.
+//! First failing mining-safety fact for a board's limits. Diagnostic detail only: the verdict
+//! decides exactly what `is_mining_safe_at` decides.
 
 use bitaxe_safety::observation::{MonotonicMillis, Observation, StampedSample};
 use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
 
-use super::{maybe_out_of_range_fact, TelemetryObservations};
+use super::{maybe_out_of_range_fact, MiningSafetyLimits, TelemetryObservations};
 
 /// Safety facts in the order the mining predicate evaluates them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,6 +15,8 @@ pub enum SafetyFact {
     Current = 3,
     ChipTemperature = 4,
     FanRpm = 5,
+    /// A TPS546 board's regulator temperature.
+    VrTemperature = 6,
 }
 
 impl SafetyFact {
@@ -26,6 +28,7 @@ impl SafetyFact {
             Self::Current => "current",
             Self::ChipTemperature => "chip_temperature",
             Self::FanRpm => "fan_rpm",
+            Self::VrTemperature => "vr_temperature",
         }
     }
 
@@ -37,6 +40,7 @@ impl SafetyFact {
             3 => Some(Self::Current),
             4 => Some(Self::ChipTemperature),
             5 => Some(Self::FanRpm),
+            6 => Some(Self::VrTemperature),
             _ => None,
         }
     }
@@ -107,10 +111,21 @@ impl Rejection {
 }
 
 impl TelemetryObservations {
-    /// Returns `None` exactly when every supported fact is fresh, current and in range.
+    /// The Ultra 205's verdict.
     #[must_use]
     pub fn ultra_205_mining_safety_verdict_at(
         &self,
+        now: MonotonicMillis,
+    ) -> Option<SafetyVerdict> {
+        self.mining_safety_verdict_at(&MiningSafetyLimits::ultra_205(), now)
+    }
+
+    /// Returns `None` exactly when every fact the board's limits name is fresh, current and
+    /// in range.
+    #[must_use]
+    pub fn mining_safety_verdict_at(
+        &self,
+        limits: &MiningSafetyLimits,
         now: MonotonicMillis,
     ) -> Option<SafetyVerdict> {
         let power = match admissible(&self.power_watts, now) {
@@ -132,12 +147,29 @@ impl TelemetryObservations {
         if let Err(rejection) = admissible(&self.fan_rpm, now) {
             return Some(rejection.verdict(SafetyFact::FanRpm));
         }
+        // Only a TPS546 board must report its regulator temperature; elsewhere it is unused.
+        let vr_temperature = if limits.requires_vr_temperature() {
+            match admissible(&self.vr_temp_celsius, now) {
+                Ok(fact) => fact,
+                Err(rejection) => return Some(rejection.verdict(SafetyFact::VrTemperature)),
+            }
+        } else {
+            (f64::NAN, 0)
+        };
 
-        let fact = maybe_out_of_range_fact(power.0, bus_voltage.0, current.0, chip_temperature.0)?;
+        let fact = maybe_out_of_range_fact(
+            limits,
+            power.0,
+            bus_voltage.0,
+            current.0,
+            chip_temperature.0,
+            vr_temperature.0,
+        )?;
         let (value, age_ms) = match fact {
             SafetyFact::Power => power,
             SafetyFact::BusVoltage => bus_voltage,
             SafetyFact::Current => current,
+            SafetyFact::VrTemperature => vr_temperature,
             // Fan RPM has freshness but no range limit, so it never fails here.
             SafetyFact::ChipTemperature | SafetyFact::FanRpm => chip_temperature,
         };

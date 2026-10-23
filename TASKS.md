@@ -345,7 +345,8 @@ action.
       self-test and soaks; the parity rows with their evidence. Plan
       `gamma-601-phase-f` (owner approved 2026-10-23), in four gated
       sub-phases.
-  - [ ] F1: the shared crates, pure and host-tested.
+  - [x] F1: the shared crates, pure and host-tested (`f6a623ff` and the
+    commit after it).
     - [x] F1.1: board-parameterized frequency and voltage validators.
       The 601's voltage stops at the TPS546 ceiling of 1.20 V, which a
       cross-crate test pins.
@@ -360,13 +361,22 @@ action.
     - [x] F1.5: board profiles, presets and device-settings parsing. The
       validators are ranges, so upstream's minus-100/100 overheat pair is
       valid on the 601 (425/1050); no substitute pair is needed.
-    - [ ] F1.6: a board-parameterized safety verdict (catalog power, VR
-      temperature, TPS546 faults).
-    - [ ] F1.7: a BM1370 safe-shutdown plan and a per-board shutdown
-      bound.
-    - [ ] F1.8: the API's board and ASIC identity (`PlatformBoard`,
-      snapshots, fixtures).
-    - [ ] F1.9: the host BM1370 path (virtual board, simulation).
+    - [x] F1.6: a board-parameterized safety verdict
+      (`MiningSafetyLimits`):
+      - power up to the catalog target plus 3 W (the 205 still 15 W; the
+        601 22 W);
+      - a fresh regulator temperature up to 105 C on TPS546 boards (a new
+        `VrTemperature` fact).
+      The 205's entry points are wrappers.
+    - [x] F1.7: the BM1370 safe shutdown, lowered into adapter actions,
+      and per-board admission and bounds. Every 601 frequency's plan
+      matches its closed tail; at 625 MHz that is 24,550 ms.
+    - [x] F1.8: the API names the 601 and the BM1370 (`PlatformBoard`,
+      `PlatformAsic`), and has a per-board safe snapshot. Tests pin
+      upstream's 601 values.
+    - [x] F1.9: the virtual board's oracle also answers as a BM1370. A
+      host test runs the core's init, chip detection, the baud switch and
+      a genesis-block job to a decoded, target-meeting nonce.
   - F2 carries over from F1's review:
     - the firmware's family and chip count come from board identity, not
       a literal BM1366: `owner_loop.rs`, `bwg.rs`,
@@ -380,7 +390,26 @@ action.
       205 keeps;
     - overheat recovery is board-aware, with VR-temperature cooling on the
       601 and `reduced_profile` taking the board;
-    - `hashrate.rs`'s `BM1366_HASH_DOMAIN_COUNT` comes from the catalog.
+    - `hashrate.rs`'s `BM1366_HASH_DOMAIN_COUNT` comes from the catalog;
+    - revocation's `SHUTDOWN_BOUND_MS` becomes the board's
+      (`catalog_maximum_pre_reset_tail_ms_for`), and admission uses
+      `profile_admissible_for_board`;
+    - the firmware's platform identity names the built board. The
+      `phase34_source_guard` pins the literal `PlatformBoard::Ultra205`
+      today, so it changes too;
+    - the safety verdict call sites take the board's `MiningSafetyLimits`;
+    - the TPS546 fault state (`VCORE_check_fault`) becomes a safety fact;
+    - the simulation interpreter drives the BM1370 through its lowered
+      adapter actions;
+    - the closed safety-fact vocabularies follow the board's
+      `requires_vr_temperature()`:
+      - `scripts/str005-v2-serial/safety-diagnostics.mjs` `FACTS`;
+      - `campaign_status.rs` `CampaignObservationRequirements::ULTRA_205`;
+      - `tools/flash/src/campaign/markers.rs` and its serial tests;
+    - the 601's power fact is the TPS546's VOUT × IOUT plus the 5 W family
+      offset, as upstream reports it.
+  - F3 must show the 601's 22 W power stop against real mining power at
+    its catalog settings before relying on it above the default.
   - [ ] F2: the firmware seams; the 601 is still refused mining.
   - [ ] F3: hardware on the 601, each step under its own contract.
   - [ ] F4: self-test, soaks and promotion.

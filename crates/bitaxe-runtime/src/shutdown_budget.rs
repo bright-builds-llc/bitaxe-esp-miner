@@ -1,9 +1,11 @@
 //! Admission-time upper bound for the qualified pre-reset ASIC shutdown plan.
 
+use bitaxe_asic::asic::AsicFamily;
 use bitaxe_asic::bm1366::command::Bm1366AdapterAction;
 use bitaxe_asic::bm1366::mining_ready::{
     safe_shutdown_command_actions, Bm1366MiningProfile, MiningReadyConfig,
 };
+use bitaxe_config::catalog::BoardCatalogEntry;
 use bitaxe_stratum::v1::production_session::MiningHardwareProfile;
 
 pub const UART_WRITE_BOUND_MS: u32 = 100;
@@ -59,6 +61,56 @@ pub fn profile_admissible(profile: MiningHardwareProfile) -> bool {
 #[must_use]
 pub fn plan_is_bounded(profile: Bm1366MiningProfile) -> bool {
     pre_reset_bound_ms(profile) == Some(closed_pre_reset_tail_ms(profile.frequency_mhz()))
+}
+
+/// A board's shutdown bound: the closed tail of its ASIC's highest catalog frequency. The
+/// Ultra 205's is [`CATALOG_MAXIMUM_PRE_RESET_TAIL_MS`]; the Gamma 601's 625 MHz needs 24,550 ms.
+#[must_use]
+pub fn catalog_maximum_pre_reset_tail_ms_for(entry: BoardCatalogEntry) -> Option<u32> {
+    let maximum_mhz = *entry.asic().frequency_options().iter().max()?;
+    Some(closed_pre_reset_tail_ms(maximum_mhz))
+}
+
+/// [`profile_admissible`] for the boards whose shutdown plans the firmware models, the
+/// single-chip Ultra 205 and Gamma 601: the profile's plan must be bounded by exactly its
+/// closed tail. Any other board, even with the same chip, is not admitted.
+#[must_use]
+pub fn profile_admissible_for_board(
+    entry: BoardCatalogEntry,
+    profile: MiningHardwareProfile,
+) -> bool {
+    let modelled = matches!(entry.board_version(), "205" | "601") && entry.asic_count() == 1;
+    if !modelled {
+        return false;
+    }
+    match AsicFamily::from_model(entry.asic().model()) {
+        Some(AsicFamily::Bm1366) => profile_admissible(profile),
+        Some(AsicFamily::Bm1370) => {
+            let frequency_mhz = profile.frequency().mhz();
+            bm1370_pre_reset_bound_ms(frequency_mhz, entry.asic_count(), entry.asic().core_count())
+                == Some(closed_pre_reset_tail_ms(frequency_mhz))
+        }
+        None => false,
+    }
+}
+
+/// The bound of the BM1370's actual shutdown plan from `frequency_mhz`.
+#[must_use]
+pub fn bm1370_pre_reset_bound_ms(
+    frequency_mhz: u16,
+    chip_count: u8,
+    core_count: u16,
+) -> Option<u32> {
+    if option_env!("BITAXE_ASIC_UART_TRACE") == Some("1") {
+        return None;
+    }
+    bitaxe_asic::bm1370::shutdown::safe_shutdown_command_actions(
+        frequency_mhz,
+        chip_count,
+        core_count,
+    )
+    .ok()
+    .and_then(|actions| maximum_pre_reset_ms(&actions))
 }
 
 fn maximum_pre_reset_ms(actions: &[Bm1366AdapterAction]) -> Option<u32> {
@@ -139,6 +191,76 @@ mod tests {
         let admitted = profile_admissible(profile(400, 80));
         // Assert
         assert!(admitted);
+    }
+
+    #[test]
+    fn the_ultra_205_board_bound_is_its_catalog_maximum() {
+        // Act
+        let bound = catalog_maximum_pre_reset_tail_ms_for(bitaxe_config::ultra_205_catalog_entry());
+        // Assert
+        assert_eq!(bound, Some(CATALOG_MAXIMUM_PRE_RESET_TAIL_MS));
+    }
+
+    #[test]
+    fn the_gamma_601_bound_covers_its_625_mhz() {
+        // Act
+        let bound = catalog_maximum_pre_reset_tail_ms_for(
+            bitaxe_config::catalog::gamma_601_catalog_entry(),
+        );
+        // Assert
+        assert_eq!(bound, Some(24_550));
+    }
+
+    #[test]
+    fn every_gamma_601_catalog_frequency_plan_matches_its_closed_tail() {
+        // Arrange
+        let entry = bitaxe_config::catalog::gamma_601_catalog_entry();
+        // Act
+        let mismatched: Vec<u16> = (400..=625)
+            .filter(|&mhz| {
+                let profile = MiningHardwareProfile::for_board(entry, i64::from(mhz), 1_150, 100)
+                    .expect("catalog profile");
+                !profile_admissible_for_board(entry, profile)
+            })
+            .collect();
+        // Assert
+        assert!(mismatched.is_empty(), "mismatched: {mismatched:?}");
+    }
+
+    #[test]
+    fn a_board_whose_chip_the_firmware_does_not_drive_is_not_admitted() {
+        // Arrange
+        let entry = bitaxe_config::board_catalog()
+            .iter()
+            .copied()
+            .find(|entry| entry.asic().model() == "BM1368")
+            .expect("BM1368 board");
+        let profile = MiningHardwareProfile::for_board(entry, 490, 1_166, 100).expect("profile");
+        // Act
+        let admitted = profile_admissible_for_board(entry, profile);
+        // Assert
+        assert!(!admitted);
+    }
+
+    #[test]
+    fn a_board_sharing_a_modelled_chip_is_not_admitted() {
+        // Arrange: the six-chip Hex and the Gamma Turbo use the BM1366 and the BM1370.
+        let others: Vec<BoardCatalogEntry> = bitaxe_config::board_catalog()
+            .iter()
+            .copied()
+            .filter(|entry| matches!(entry.board_version(), "302" | "801"))
+            .collect();
+        // Act
+        let admitted: Vec<bool> = others
+            .iter()
+            .map(|&entry| {
+                let profile =
+                    MiningHardwareProfile::for_board(entry, 485, 1_150, 100).expect("profile");
+                profile_admissible_for_board(entry, profile)
+            })
+            .collect();
+        // Assert
+        assert_eq!(admitted, [false, false]);
     }
 
     #[test]

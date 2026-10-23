@@ -185,3 +185,83 @@ fn codes_round_trip_through_their_closed_labels() {
         (None, None)
     );
 }
+
+fn gamma_601() -> MiningSafetyLimits {
+    MiningSafetyLimits::for_board(bitaxe_config::catalog::gamma_601_catalog_entry())
+}
+
+fn gamma_601_safe() -> TelemetryObservations {
+    TelemetryObservations {
+        power_watts: fresh(18.0),
+        vr_temp_celsius: fresh(55.0),
+        ..safe()
+    }
+}
+
+#[test]
+fn a_gamma_601_with_its_regulator_temperature_is_safe() {
+    // Act
+    let maybe_verdict = gamma_601_safe().mining_safety_verdict_at(&gamma_601(), NOW);
+    // Assert
+    assert_eq!(maybe_verdict, None);
+}
+
+#[test]
+fn a_gamma_601_without_its_regulator_temperature_is_not_safe() {
+    // Arrange
+    let observations = TelemetryObservations {
+        vr_temp_celsius: Observation::unavailable(UnavailableReason::ThermalReadingUnavailable),
+        ..gamma_601_safe()
+    };
+    // Act
+    let maybe_verdict = observations.mining_safety_verdict_at(&gamma_601(), NOW);
+    // Assert
+    assert_eq!(
+        maybe_verdict.map(|verdict| (verdict.fact, verdict.state)),
+        Some((SafetyFact::VrTemperature, SafetyFactState::Unavailable))
+    );
+}
+
+#[test]
+fn a_hot_regulator_stops_a_gamma_601() {
+    // Arrange
+    let observations = TelemetryObservations {
+        vr_temp_celsius: fresh(106.0),
+        ..gamma_601_safe()
+    };
+    // Act
+    let maybe_verdict = observations.mining_safety_verdict_at(&gamma_601(), NOW);
+    // Assert
+    assert_eq!(
+        maybe_verdict.map(|verdict| (verdict.fact, verdict.state, verdict.maybe_value_milli)),
+        Some((
+            SafetyFact::VrTemperature,
+            SafetyFactState::OutOfRange,
+            Some(106_000)
+        ))
+    );
+}
+
+#[test]
+fn power_a_gamma_601_may_draw_is_over_an_ultra_205_s_limit() {
+    // Arrange
+    let observations = gamma_601_safe();
+    // Act
+    let verdicts = [
+        observations.mining_safety_verdict_at(&gamma_601(), NOW),
+        observations.ultra_205_mining_safety_verdict_at(NOW),
+    ];
+    // Assert
+    assert_eq!(
+        verdicts.map(|maybe| maybe.map(|verdict| verdict.fact)),
+        [None, Some(SafetyFact::Power)]
+    );
+}
+
+#[test]
+fn the_regulator_fact_has_its_own_code() {
+    // Act
+    let round_trip = SafetyFact::maybe_from_code(SafetyFact::VrTemperature as u8);
+    // Assert
+    assert_eq!(round_trip, Some(SafetyFact::VrTemperature));
+}
