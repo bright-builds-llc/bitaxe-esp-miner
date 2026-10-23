@@ -79,6 +79,21 @@ impl VoutCheck {
         };
         self.started = true;
         log::info!("gamma601_vout_check=started target_mv={TARGET_MV}");
+        if let Ok(mut slot) = RECORD.lock() {
+            slot.conclude(CheckResult::Running, "none");
+        }
+        // The safe boot's thread is busy for the window: its replayed record must not keep
+        // claiming the pre-check readings. Only the boot's own facts stay; the readings read
+        // unavailable and the fan duty shows the check's full duty.
+        super::publish(SafeBootReport {
+            reset_held: report.reset_held,
+            controller: report.controller,
+            maybe_pre_id_status: report.maybe_pre_id_status,
+            maybe_pre_id_cml: report.maybe_pre_id_cml,
+            maybe_start_status: report.maybe_start_status,
+            maybe_start_cml: report.maybe_start_cml,
+            ..SafeBootReport::initial(report.reset_held)
+        });
         let record = run_check(owner, *report, off);
         log::info!("{}", record.usb_marker());
         if let Ok(mut slot) = RECORD.lock() {
@@ -88,7 +103,7 @@ impl VoutCheck {
     }
 }
 
-/// The check's latest record, logged with the safe boot's.
+/// The check's latest record, logged with the safe boot's and replayed in turn with it.
 pub(super) fn usb_marker() -> String {
     RECORD.lock().map_or_else(
         |_| VoutCheckRecord::pending(TARGET_MV).usb_marker(),

@@ -60,3 +60,32 @@ fn a_readback_mismatch_names_the_register_and_both_values() {
         "result=refused reason=config_readback_mismatch target_mv=1150 vout_mode=unread readback=mismatch:0x40:0x0280:0x0281 "
     ));
 }
+
+#[test]
+fn a_started_check_reports_running() {
+    // Arrange
+    let mut record = VoutCheckRecord::pending(1150);
+    record.conclude(CheckResult::Running, "none");
+    // Act
+    let marker = record.usb_marker();
+    // Assert
+    assert!(marker.contains(" result=running reason=none "));
+}
+
+#[test]
+fn the_replay_slot_alternates_starting_with_the_safe_boot_record() {
+    // Arrange
+    let turn = ReplayTurn::new();
+    // Act
+    let records = [(); 4].map(|()| turn.next());
+    // Assert
+    assert_eq!(
+        records,
+        [
+            ReplayRecord::SafeBoot,
+            ReplayRecord::Check,
+            ReplayRecord::SafeBoot,
+            ReplayRecord::Check
+        ]
+    );
+}

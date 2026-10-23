@@ -7,12 +7,43 @@
 pub use crate::tps546::config::Readback;
 use crate::tps546::enable::EnableSummary;
 use crate::tps546::OffState;
+use core::sync::atomic::{AtomicBool, Ordering};
+
+/// Which record a shared replay slot carries next.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReplayRecord {
+    SafeBoot,
+    Check,
+}
+
+/// Alternates the safe-boot record and the check's record in one replay slot, starting with
+/// the safe boot's, so the variant's records reach a receive-only console without lengthening
+/// the replay cycle.
+#[derive(Debug, Default)]
+pub struct ReplayTurn(AtomicBool);
+
+impl ReplayTurn {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self(AtomicBool::new(false))
+    }
+
+    pub fn next(&self) -> ReplayRecord {
+        if self.0.fetch_xor(true, Ordering::Relaxed) {
+            ReplayRecord::Check
+        } else {
+            ReplayRecord::SafeBoot
+        }
+    }
+}
 
 /// How the check ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CheckResult {
     /// Not run yet: it waits for the output to be confirmed off after boot.
     Pending,
+    /// Started and not yet concluded; a record that stays here means the check never ended.
+    Running,
     /// The window completed within every limit.
     Passed,
     /// The output was commanded on, and the window ended early.
@@ -26,6 +57,7 @@ impl CheckResult {
     pub const fn label(self) -> &'static str {
         match self {
             Self::Pending => "pending",
+            Self::Running => "running",
             Self::Passed => "passed",
             Self::Aborted => "aborted",
             Self::Refused => "refused",

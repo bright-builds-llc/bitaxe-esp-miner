@@ -4,9 +4,10 @@
 //! mines. Nothing in this build releases the reset or turns the output on; only the test-only
 //! `gamma601-vout-check` variant adds one bounded enable with the reset held (ADR-0041 item 6,
 //! `gamma601/vout_check.rs`). A thread keeps the controller off, the fan running (full until the
-//! output is confirmed off) and the readings current. Wi-Fi, HTTP and the display's startup screen run as on the Ultra 205; the 205's
-//! safety, sensor, fan and mining owners are not started. With no Worker channel, the records
-//! reach USB as log lines.
+//! output is confirmed off) and the readings current. Wi-Fi, HTTP and the display's startup
+//! screen run as on the Ultra 205; the 205's safety, sensor, fan and mining owners are not
+//! started. The records reach a receive-only USB console through the USB replay's board slot
+//! (`board_identity::maybe_board_runtime_marker`); their log lines feed the general log only.
 //!
 //! Reference: `reference/esp-miner/main/main.c`, `main/asic_reset.c` and `main/power/TPS546.c`.
 
@@ -28,8 +29,8 @@ mod vout_check;
 const IDENTIFY_ATTEMPTS: usize = 6;
 const IDENTIFY_BACKOFF_MS: u32 = 3;
 const SWEEP_PERIOD: Duration = Duration::from_secs(1);
-/// One sweep in this many writes the records to the log. The 601 has no Worker channel, so the
-/// USB replay does not run: the log lines are how a receive-only monitor sees them.
+/// One sweep in this many writes the records to the general log. A receive-only console sees
+/// them through the USB replay, not these lines.
 const LOG_EVERY_SWEEPS: u32 = 5;
 const THREAD_NAME: &str = "gamma601-safe-boot";
 #[cfg(not(feature = "gamma601-vout-check"))]
@@ -40,6 +41,9 @@ const THREAD_STACK_BYTES: usize = 12 * 1024;
 
 static REPORT: Mutex<Option<SafeBootReport>> = Mutex::new(None);
 static RESET_DRIVEN: AtomicBool = AtomicBool::new(false);
+#[cfg(feature = "gamma601-vout-check")]
+static CHECK_REPLAY_TURN: bitaxe_safety::gamma601_vout_check::ReplayTurn =
+    bitaxe_safety::gamma601_vout_check::ReplayTurn::new();
 
 /// Drives the ASIC reset (GPIO1) low as the firmware's first act, before NVS, settings or any
 /// peripheral; the HAL never takes the pin over. The level is set before the direction, so the
@@ -59,8 +63,13 @@ fn reset_held() -> bool {
         && unsafe { sys::gpio_get_level(sys::gpio_num_t_GPIO_NUM_1) } == 0
 }
 
-/// The latest safe-boot record, for the USB replay.
+/// The latest safe-boot record, for the USB replay. The core-voltage check variant alternates
+/// it with the check's record in the same replay slot, so the replay cycle keeps its length.
 pub(crate) fn maybe_usb_marker() -> Option<String> {
+    #[cfg(feature = "gamma601-vout-check")]
+    if CHECK_REPLAY_TURN.next() == bitaxe_safety::gamma601_vout_check::ReplayRecord::Check {
+        return Some(vout_check::usb_marker());
+    }
     REPORT
         .lock()
         .ok()

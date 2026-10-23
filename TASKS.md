@@ -486,7 +486,12 @@ Gamma 601 core-voltage check hardware: enabled.
      bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
      --allow-test-firmware gamma601-vout-check --capture-timeout-seconds
      360`: the variant, installed state-preserving. The capture spans the
-     check, which starts 30 s after boot and lasts about 65 s.
+     check, which starts 30 s after boot and lasts about 65 s. The
+     check's `usb_gamma601_vout_check` record takes turns with the
+     safe-boot record in the replay. While the check record reads
+     `running`, the safe-boot record reads `off=unread`, its readings
+     `unavailable` and `fan_duty_pct=100`. That is expected, and exempt
+     from the C3 stops: `off` is judged from the check record then.
   5. The detector, then step 2 again: production reinstalled, and the safe
      boot confirmed.
 - **Precondition:** only the 601 attached; the tree clean and pushed. The
@@ -543,10 +548,12 @@ Gamma 601 core-voltage check hardware: enabled.
       all power was removed, the stock `VOUT_MAX` matches the check's
       value. That is a software finding, not another hardware stop.
   - A reboot or new boot during step 4's capture, other than the
-    install's own reset at its start, more than one
-    `gamma601_vout_check=started`, or `started` with no concluding record
-    by the end of the capture: the owner removes all power, barrel first,
+    install's own reset at its start, or a check record still `running`
+    at the end of the capture: the owner removes all power, barrel first,
     then USB.
+  - No `usb_gamma601_vout_check` record in the capture, or one still
+    `pending` at its end: an evidence failure. Stop, reinstall production
+    and fix before any retry.
   - `off` other than `confirmed` after the check: the owner removes all
     power, barrel first, then USB (`stop_hardware_blocker`).
   - The C3 stops.
@@ -560,6 +567,31 @@ Gamma 601 core-voltage check hardware: enabled.
   - The owner removes all power (barrel and USB). That clears the
     controller's volatile configuration and the RTC latch.
   - Reinstall production (step 5) after any attempt, passed or not.
+
+D4 attempts:
+- **Attempt 001** (2026-10-23, `cc6bf00f`):
+  - **Steps 1-3 passed.** Production's warm install read
+    `pre_id_status=0x0842 pre_id_cml=0x82`. After the owner's power
+    cycle, the first transfer read `pre_id_status=0xffff pre_id_cml=0x80`,
+    the start read `0x0002`/`0x80` (output on, as in phase C), and the
+    steady state read `cml=0x82`.
+  - **Step 4 was an evidence failure.** The check ran: `faults` and `cml`
+    went to `0x0000`/`0x00`, which only its `CLEAR_FAULTS` after a
+    readback can do. The safe-boot records then showed `off=confirmed`,
+    `reset_held=true` and `vout_mv=20`. But its record went only to the
+    general log, which the receive-only console does not carry, so the
+    outcome is unknown.
+  - **Step 5 passed.** Production was reinstalled and confirmed. It read
+    `pre_id_cml=0x00 start_cml=0x00`, then `cml=0x02`: the safe boot's
+    own transfers after the start read set CML bit 1.
+  - **Fix:** the record is now replayed in turn with the safe-boot record
+    (a pure `ReplayTurn`, tested). It reads `running` while the check
+    runs. Meanwhile the safe-boot record carries no readings and the
+    check's fan duty.
+  - **Outcome:** `continue_after_verified_fix`. Evidence is under
+    `scratch/gamma-601-vout-check/attempt-001/`.
+  - The controller keeps the check's configuration, so attempt 002 needs
+    all power removed first.
 
 Phase C 205 regression contract (attempt ordinals 001 onward):
 
