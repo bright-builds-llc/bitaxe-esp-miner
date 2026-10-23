@@ -301,7 +301,39 @@ action.
     with the ASIC in reset. Not shown: anything with the ASIC out of reset
     (phase E/F).
 - [ ] **E. BM1370 pure core (ASIC-008):** init, PLL, job ids and results,
-      the nonce errata, version rolling; golden fixtures.
+      the nonce errata, version rolling; golden fixtures. Plan
+      `gamma-601-phase-e` (owner approved 2026-10-23); parity work plan
+      `docs/parity/work-plans/20261023T180521Z-ASIC-008/`.
+  - [x] E1: the shared PLL search takes a divider range; the BM1366 path is
+    unchanged, and upstream's own PLL test vector passes.
+  - [x] E2: `crates/bitaxe-asic/src/bm1370*`:
+    - the init plan, split at chip detection;
+    - the ramp in both directions;
+    - the nonce space with the errata;
+    - the max baud, the job interval and the expected hashrate;
+    - work frames and 24-step job ids;
+    - strict result, register and chip-id decoding.
+    Dispatch stays deferred.
+  - [x] E3: `fixtures/bm1370/protocol-cases.json`, computed by an
+    independent reimplementation of upstream's algorithms. All 99 init
+    frames match, and so do the CRCs in upstream's hand-dump comments.
+  - [ ] E4: an independent review, then evidence, the ASIC-008 transition
+    to `implemented` (`unit,golden`), and progress.
+  - Phase F prerequisites, outside this pure core:
+    - the stratum job-id step, hard-coded to 8
+      (`crates/bitaxe-stratum/src/v1/live_runtime.rs`);
+    - firmware's `bitaxe_asic::bm1366` types and its single-chip
+      `ultra_205_*` helpers;
+    - the BM1366-only config validators;
+    - the UART adapter;
+    - a chip-counting loop for the BM1370: upstream's skip, stop and
+      exact-count rules; the pure core has the per-frame parser only;
+    - runtime ramps starting from an achieved frequency that is not a
+      quarter-MHz value. The core's ramp takes quarter-MHz, and init's
+      50 MHz start is exact.
+    - fractional target frequencies (upstream stores a float), if the 601
+      needs them.
+    Each needs a chip-generic seam or a BM1370 twin.
 - [ ] **F. BM1370 on hardware, then mining.** Chip detection, mining-ready
       init, board-specific live limits, a short local run, stops,
       self-test and soaks; the parity rows with their evidence.

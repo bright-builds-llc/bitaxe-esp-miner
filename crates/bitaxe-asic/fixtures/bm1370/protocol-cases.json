@@ -1,0 +1,253 @@
+{
+  "schema_version": "bitaxe-bm1370-protocol-fixtures-v1",
+  "provenance": {
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "source_paths": [
+      "reference/esp-miner/components/asic/bm1370.c",
+      "reference/esp-miner/components/asic/include/bm1370.h",
+      "reference/esp-miner/components/asic/pll.c",
+      "reference/esp-miner/components/asic/frequency_transition_bmXX.c",
+      "reference/esp-miner/components/asic/asic_common.c",
+      "reference/esp-miner/main/device_config.h",
+      "reference/esp-miner/components/asic/crc.c",
+      "reference/esp-miner/components/asic/asic.c",
+      "reference/esp-miner/main/tasks/power_management_task.c",
+      "reference/esp-miner/components/stratum/include/utils.h"
+    ],
+    "license_posture": "reference-derived fixture data; not MIT source expression",
+    "derivation": "computed by an independent reimplementation of the upstream algorithms; the init frames match the CRCs in the bm1370.c hand-dump comments"
+  },
+  "profile": {
+    "chip_id": 4976,
+    "default_frequency_mhz": 525,
+    "default_voltage_mv": 1150,
+    "difficulty": 256,
+    "core_count": 128,
+    "small_core_count": 2040,
+    "hash_domains": 4,
+    "default_asic_timeout_ms": 500,
+    "expected_hashrate_ghs_at_default": 1071
+  },
+  "init": {
+    "chip_count": 1,
+    "target_frequency_mhz": 525,
+    "difficulty": 256,
+    "version_mask": 536862720,
+    "chip_detect_after_frame": 4,
+    "frames_hex": [
+      "55aa510900a49000ffff1c",
+      "55aa510900a49000ffff1c",
+      "55aa510900a49000ffff1c",
+      "55aa520500000a",
+      "55aa510900a49000ffff1c",
+      "55aa510900a80007000003",
+      "55aa51090018f000c10004",
+      "55aa5305000003",
+      "55aa400500001c",
+      "55aa5109003c80008b0012",
+      "55aa5109003c8000800c11",
+      "55aa51090014000000ff08",
+      "55aa51090058000111110d",
+      "55aa410900a8000701f015",
+      "55aa41090018f000c1000c",
+      "55aa4109003c80008b001a",
+      "55aa4109003c8000800c19",
+      "55aa4109003c800082aa05",
+      "55aa510900b9000044800d",
+      "55aa510900540000000218",
+      "55aa510900b9000044800d",
+      "55aa5109003c80008dee1b",
+      "55aa5109000840bd026501",
+      "55aa5109000840af026408",
+      "55aa5109000840a5025408",
+      "55aa5109000840a8026311",
+      "55aa5109000840b602630c",
+      "55aa5109000840a802531a",
+      "55aa5109000840b4025312",
+      "55aa5109000840a002431e",
+      "55aa5109000840aa024315",
+      "55aa5109000840a2025214",
+      "55aa5109000840ab025212",
+      "55aa5109000840b4025217",
+      "55aa5109000840bd025211",
+      "55aa5109000840a502420c",
+      "55aa5109000840a102611d",
+      "55aa5109000840a802611b",
+      "55aa5109000840af026119",
+      "55aa5109000840b6026106",
+      "55aa5109000840a202511b",
+      "55aa5109000840a8025110",
+      "55aa5109000840ae02510a",
+      "55aa5109000840b4025118",
+      "55aa5109000840ba02511c",
+      "55aa5109000840a0024114",
+      "55aa5109000840a5024103",
+      "55aa5109000840aa02411f",
+      "55aa5109000840af024108",
+      "55aa5109000840b4024102",
+      "55aa5109000840b902410b",
+      "55aa5109000840be024109",
+      "55aa5109000850c3024101",
+      "55aa5109000840a0023118",
+      "55aa5109000840a4023117",
+      "55aa5109000840a8023106",
+      "55aa5109000840ac023109",
+      "55aa5109000840b0023101",
+      "55aa5109000840b402310e",
+      "55aa5109000840a1026018",
+      "55aa5109000840bc023110",
+      "55aa5109000840a802601e",
+      "55aa5109000850c402310f",
+      "55aa5109000840af02601c",
+      "55aa5109000850cc023111",
+      "55aa5109000840b6026003",
+      "55aa5109000850d4023116",
+      "55aa5109000840a202501e",
+      "55aa5109000840a502501c",
+      "55aa5109000840a8025015",
+      "55aa5109000840ab025018",
+      "55aa5109000840ae02500f",
+      "55aa5109000840b102500a",
+      "55aa5109000840b402501d",
+      "55aa5109000840b7025010",
+      "55aa5109000840ba025019",
+      "55aa5109000840bd02501b",
+      "55aa5109000840a0024011",
+      "55aa5109000850c302501e",
+      "55aa5109000840a5024006",
+      "55aa5109000850c9025015",
+      "55aa5109000840aa02401a",
+      "55aa5109000850cf02500f",
+      "55aa5109000840af02400d",
+      "55aa5109000850d502501d",
+      "55aa5109000840b4024007",
+      "55aa5109000850db025019",
+      "55aa5109000840b902400e",
+      "55aa5109000850e102501c",
+      "55aa5109000840be02400c",
+      "55aa5109000850e7025006",
+      "55aa5109000850c3024004",
+      "55aa5109000850ed02500d",
+      "55aa5109000840a002301d",
+      "55aa5109000840a2023008",
+      "55aa5109000840a4023012",
+      "55aa5109000840a6023007",
+      "55aa5109000840a8023003",
+      "55aa51090010000c2fb718"
+    ],
+    "max_baud_frame_hex": "55aa510900281130020003",
+    "max_baud": 1000000,
+    "two_chip": {
+      "set_address_frames_hex": [
+        "55aa400500001c",
+        "55aa4005800010"
+      ],
+      "nonce_space_at_525": 399189
+    }
+  },
+  "frequency": {
+    "pll": {
+      "50.0": {
+        "payload_hex": "000840a80265",
+        "actual_mhz": 50.0
+      },
+      "56.25": {
+        "payload_hex": "000840bd0265",
+        "actual_mhz": 56.25
+      },
+      "400.0": {
+        "payload_hex": "000840a00240",
+        "actual_mhz": 400.0
+      },
+      "490.0": {
+        "payload_hex": "000850c40240",
+        "actual_mhz": 490.0
+      },
+      "525.0": {
+        "payload_hex": "000840a80230",
+        "actual_mhz": 525.0
+      },
+      "550.0": {
+        "payload_hex": "000840b00230",
+        "actual_mhz": 550.0
+      },
+      "600.0": {
+        "payload_hex": "000850c00230",
+        "actual_mhz": 600.0
+      },
+      "625.0": {
+        "payload_hex": "000850c80230",
+        "actual_mhz": 625.0
+      }
+    },
+    "ramp_50_to_525_writes": 76,
+    "ramp_50_to_530_last_payload_hex": "000850d40240",
+    "ramp_50_to_530_writes": 77
+  },
+  "nonce_space": {
+    "50": 8388340,
+    "525": 798647,
+    "600": 698782
+  },
+  "work": {
+    "job_id": 24,
+    "starting_nonce_hex": "01020304",
+    "nbits_hex": "05060708",
+    "ntime_hex": "090a0b0c",
+    "merkle_root_byte": 17,
+    "prev_block_hash_byte": 34,
+    "version_hex": "33343536",
+    "num_midstates": 1,
+    "expected_frame_hex": "55aa215618010102030405060708090a0b0c11111111111111111111111111111111111111111111111111111111111111112222222222222222222222222222222222222222222222222222222222222222333435367821",
+    "job_id_sequence": [
+      24,
+      48,
+      72,
+      96,
+      120,
+      16,
+      40,
+      64,
+      88,
+      112,
+      8,
+      32,
+      56,
+      80,
+      104,
+      0,
+      24
+    ]
+  },
+  "job_result": {
+    "frame_hex": "aa559e401234013f000398",
+    "address_interval": 16,
+    "expected_job_id": 24,
+    "expected_nonce_hex": "3412409e",
+    "expected_asic_index": 2,
+    "expected_core_id": 79,
+    "expected_small_core_id": 15,
+    "expected_version_bits": 24576
+  },
+  "job_result_highest_core": {
+    "frame_hex": "aa55fe0000000130000091",
+    "address_interval": 256,
+    "expected_job_id": 24,
+    "expected_core_id": 127,
+    "expected_asic_index": 0,
+    "expected_small_core_id": 0
+  },
+  "register_result": {
+    "frame_hex": "aa5501020304208c00001f",
+    "address_interval": 16,
+    "expected_asic_index": 2,
+    "expected_asic_address": 32,
+    "expected_value": 16909060,
+    "expected_register": "total_count"
+  },
+  "unknown_register_frame_hex": "aa55010203042050000006",
+  "chip_id": {
+    "frame_hex": "aa5513708000000000000e",
+    "wrong_chip_frame_hex": "aa55136880000000000011"
+  }
+}

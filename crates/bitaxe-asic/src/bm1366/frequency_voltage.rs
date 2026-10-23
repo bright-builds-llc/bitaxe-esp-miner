@@ -158,7 +158,21 @@ pub(crate) fn transition_frequency_plan(frequency_quarter_mhz: u32) -> Option<Fr
 }
 
 pub(crate) fn frequency_plan_for_quarter_mhz(target_quarter_mhz: u32) -> Option<FrequencyPlan> {
-    let pll = pll_parameters(target_quarter_mhz)?;
+    frequency_plan_with_bounds(
+        target_quarter_mhz,
+        BM1366_FB_DIVIDER_MIN,
+        BM1366_FB_DIVIDER_MAX,
+    )
+}
+
+/// The register plan for a target under a chip's own feedback-divider range; the search, the
+/// VCO scale and the post-divider packing are shared by the BM13xx chips that use them.
+pub(crate) fn frequency_plan_with_bounds(
+    target_quarter_mhz: u32,
+    fb_divider_min: u16,
+    fb_divider_max: u16,
+) -> Option<FrequencyPlan> {
+    let pll = pll_parameters_with_bounds(target_quarter_mhz, fb_divider_min, fb_divider_max)?;
     let vdo_scale = if u16::from(pll.fb_divider) * FREQ_MULT_MHZ / u16::from(pll.refdiv) >= 2400 {
         0x50
     } else {
@@ -172,14 +186,6 @@ pub(crate) fn frequency_plan_for_quarter_mhz(target_quarter_mhz: u32) -> Option<
         refdiv: pll.refdiv,
         postdiv,
     })
-}
-
-fn pll_parameters(target_quarter_mhz: u32) -> Option<PllParameters> {
-    pll_parameters_with_bounds(
-        target_quarter_mhz,
-        BM1366_FB_DIVIDER_MIN,
-        BM1366_FB_DIVIDER_MAX,
-    )
 }
 
 pub(crate) fn pll_parameters_with_bounds(
@@ -280,8 +286,27 @@ mod tests {
     use crate::bm1366::command::Bm1366Command;
 
     use super::{
-        Bm1366FrequencyPlan, Bm1366VoltagePlan, HardwareEffectEvidence, ParityEffectStatus,
+        pll_parameters_with_bounds, Bm1366FrequencyPlan, Bm1366VoltagePlan, HardwareEffectEvidence,
+        ParityEffectStatus, PllParameters,
     };
+
+    #[test]
+    fn the_pll_search_matches_upstream_s_own_test_vector() {
+        // Arrange: `components/asic/test/test_pll.c`, 450 MHz within dividers 60-200.
+        let target_quarter_mhz = 450 * 4;
+        // Act
+        let pll = pll_parameters_with_bounds(target_quarter_mhz, 60, 200);
+        // Assert
+        assert_eq!(
+            pll,
+            Some(PllParameters {
+                fb_divider: 72,
+                refdiv: 2,
+                postdiv1: 2,
+                postdiv2: 1,
+            })
+        );
+    }
 
     #[test]
     fn frequency_voltage_accept_ultra_205_bm1366_defaults_as_pure_decisions() {
