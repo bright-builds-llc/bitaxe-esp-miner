@@ -467,6 +467,22 @@ Ultra 205 board seam regression check hardware: enabled.
   (archived `task-preparation-rollback-cooling-watchdog`). Recovery is
   `just local-mining-soak pause --private-root P/attempt-NNN`.
 
+Attempt 001 (2026-10-22): `soak_failed` before any write; outcome
+`continue_after_verified_fix`.
+- **Before the run:**
+  - the production install (`335e9f6c`) reported
+    `built=205 stored=205 identity=match`;
+  - a first endpoint handoff was cut short by a Chrome crash, and its
+    server was released;
+  - a second handoff and the soak preflight passed.
+- **The failure:** the run's first `GET /api/system/info` threw before the
+  baseline was journaled. A failure to reach the device carried no closed
+  code, so the soak reported only `soak_failed`. The device stayed paused,
+  with no write.
+- **Fix (instrumentation of the failed boundary):** the soak's device
+  client now reports `soak_device_timeout` or `soak_device_unreachable`
+  (`device.test.mjs`). The next attempt uses a fresh handoff.
+
 ## Future
 
 ### task-stop-paths-hardware-evidence | 2026-10-21 | Hardware evidence for stops other than a pause

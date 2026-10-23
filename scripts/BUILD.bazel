@@ -2071,6 +2071,7 @@ js_binary(
 ) for name in [
     "boot-resume",
     "break-log",
+    "device",
     "handover",
     "judge",
     "lease",
