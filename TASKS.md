@@ -300,7 +300,7 @@ action.
     The configuration writes and reads back, and 1.15 V holds for 60 s
     with the ASIC in reset. Not shown: anything with the ASIC out of reset
     (phase E/F).
-- [ ] **E. BM1370 pure core (ASIC-008):** init, PLL, job ids and results,
+- [x] **E. BM1370 pure core (ASIC-008):** init, PLL, job ids and results,
       the nonce errata, version rolling; golden fixtures. Plan
       `gamma-601-phase-e` (owner approved 2026-10-23); parity work plan
       `docs/parity/work-plans/20261023T180521Z-ASIC-008/`.
@@ -317,8 +317,14 @@ action.
   - [x] E3: `fixtures/bm1370/protocol-cases.json`, computed by an
     independent reimplementation of upstream's algorithms. All 99 init
     frames match, and so do the CRCs in upstream's hand-dump comments.
-  - [ ] E4: an independent review, then evidence, the ASIC-008 transition
+  - [x] E4: an independent review, then evidence, the ASIC-008 transition
     to `implemented` (`unit,golden`), and progress.
+    - The review found no correctness defects. It recomputed every fixture
+      value and swept the PLL and ramp against upstream.
+    - The source commit is `aa7081d1`.
+    - The two transitions are `deferred` → `in-progress` → `implemented`,
+      as the parity tool requires for an activation.
+    - Evidence: `docs/parity/evidence/asic008-bm1370-core/summary.md`.
   - Phase F prerequisites, outside this pure core:
     - the stratum job-id step, hard-coded to 8
       (`crates/bitaxe-stratum/src/v1/live_runtime.rs`);

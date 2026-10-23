@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261023T183410Z-ASIC-008",
+  "predecessor_sha256": "a4e066775bc0e1ae04657583e1e621dc58a317182ee0f6e6725d9d52be8aefaa",
+  "result_sha256": "82d1be13e76511094b4916ec0b0d4467cf78008dda52af666499863f3a502969",
+  "row_id": "ASIC-008",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261023T180521Z-ASIC-008/PLAN.md",
+  "plan_sha256": "cbb023b954890901d5ee00bb031fce799555c53fd29b0df20d83e7cda80a1562",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-asic`",
+  "after_rust_owned_target": "`crates/bitaxe-asic`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,golden",
+  "before_notes": "Activated by the owner-approved Gamma 601 phase E plan (gamma-601-phase-e, 2026-10-23) under the linked parity plan; the pure BM1370 protocol core is in progress and no device effect is authorized.",
+  "after_notes": "Pure BM1370 protocol core now covers framing/CRC, the init plan split at chip detection, the BM1370 PLL range, the bidirectional ramp, the errata nonce space, 82-byte work and 88-byte job frames, 24-step job ids, strict result/register/chip-id decoding, and pinned-reference golden fixtures; see docs/parity/evidence/asic008-bm1370-core/summary.md and docs/parity/work-plans/20261023T180521Z-ASIC-008/WORKLOG.md. Firmware dispatch, UART/device effects, chip counting, and Gamma 601 hardware verification remain unavailable and unclaimed."
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261023T180521Z-ASIC-008",
+  "predecessor_sha256": "7cff8f0c43766b93d5a57c08190f4c40ba5f07060c0edd89c3553a93fb8dc51e",
+  "result_sha256": "a4e066775bc0e1ae04657583e1e621dc58a317182ee0f6e6725d9d52be8aefaa",
+  "row_id": "ASIC-008",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261023T180521Z-ASIC-008/PLAN.md",
+  "plan_sha256": "cbb023b954890901d5ee00bb031fce799555c53fd29b0df20d83e7cda80a1562",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-asic`",
+  "after_rust_owned_target": "`crates/bitaxe-asic`",
+  "before_status": "deferred",
+  "after_status": "in-progress",
+  "before_evidence": "deferred",
+  "after_evidence": "pending",
+  "before_notes": "Needed for Gamma 601 and related boards after the Ultra 205/BM1366 path.",
+  "after_notes": "Activated by the owner-approved Gamma 601 phase E plan (gamma-601-phase-e, 2026-10-23) under the linked parity plan; the pure BM1370 protocol core is in progress and no device effect is authorized."
+}
