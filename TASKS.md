@@ -255,7 +255,7 @@ action.
     and `STATUS_CML` as read at boot before the off writes
     (`start_status=`, `start_cml=`). After a power cycle these show
     whether the safe boot's own reads set the bit.
-- [ ] **D. TPS546.** Plan `gamma-601-phase-d` (owner approved 2026-10-23).
+- [x] **D. TPS546.** Plan `gamma-601-phase-d` (owner approved 2026-10-23).
   - [x] D1: the pure configuration core (`bitaxe-safety`):
     - the LINEAR11 and ULINEAR16 encoders;
     - upstream's ordered Gamma writes as data, golden-tested;
@@ -294,8 +294,12 @@ action.
     - the thread stack is 12 KiB, and the record reports the watermark;
     - the record keeps the post-write status, read before `CLEAR_FAULTS`;
     - the production ELFs must not carry the check's record.
-  - [ ] D4: hardware under its own contract (below): the CML answer after
-    a power cycle, the one-shot check, production reinstalled.
+  - [x] D4: hardware under its own contract (below): the CML answer after
+    a power cycle, the one-shot check, production reinstalled. Attempt
+    002 passed (`docs/parity/evidence/20261023-gamma601-vout-check.md`).
+    The configuration writes and reads back, and 1.15 V holds for 60 s
+    with the ASIC in reset. Not shown: anything with the ASIC out of reset
+    (phase E/F).
 - [ ] **E. BM1370 pure core (ASIC-008):** init, PLL, job ids and results,
       the nonce errata, version rolling; golden fixtures.
 - [ ] **F. BM1370 on hardware, then mining.** Chip detection, mining-ready
@@ -465,7 +469,7 @@ Closed after attempt 001 (2026-10-22); no enable line remains.
 Phase D4 core-voltage check contract (attempt ordinals 001 onward; plan
 `gamma-601-phase-d`, owner approved 2026-10-23):
 
-Gamma 601 core-voltage check hardware: enabled.
+Closed after attempt 002 passed (2026-10-23); no enable line remains.
 
 - **Objective:** three steps.
   - Observe `pre_id_status` and `pre_id_cml` after a power cycle, on
@@ -596,6 +600,17 @@ D4 attempts:
     `scratch/gamma-601-vout-check/attempt-001/`.
   - The controller keeps the check's configuration, so attempt 002 needs
     all power removed first.
+- **Attempt 002** (2026-10-23, `4a7c5717`): passed.
+  - It began at step 3, after the owner removed all power.
+  - The check passed: `readback=match`, 240 samples, 1144-1146 mV, peak
+    710 mA, `off=confirmed` and 8236 bytes of stack free.
+  - Production was reinstalled and confirmed.
+  - The cold boot read `pre_id_cml=0x00`. CML bit 7 needs the too-early
+    first read seen in attempt 001; bit 1 comes from the safe boot's own
+    transfers.
+  - Evidence: `scratch/gamma-601-vout-check/attempt-002/` and
+    `docs/parity/evidence/20261023-gamma601-vout-check.md`.
+  - Outcome: `complete`.
 
 Phase C 205 regression contract (attempt ordinals 001 onward):
 
