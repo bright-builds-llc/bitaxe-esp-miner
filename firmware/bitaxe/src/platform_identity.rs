@@ -3,10 +3,7 @@
 use std::ffi::CStr;
 use std::fs;
 
-use bitaxe_api::{
-    PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity, PlatformResetReason,
-    PlatformUnavailableReason,
-};
+use bitaxe_api::{PlatformFact, PlatformIdentity, PlatformResetReason, PlatformUnavailableReason};
 use esp_idf_svc::sys;
 
 mod installed_asset_version;
@@ -23,8 +20,8 @@ pub fn collect() -> PlatformIdentity {
     PlatformIdentity {
         esp_idf_version: esp_idf_version(),
         axe_os_static_asset: axe_os_static_asset(),
-        board: PlatformFact::available(PlatformBoard::Ultra205),
-        asic: PlatformFact::available(PlatformAsic::Bm1366),
+        board: PlatformFact::available(crate::board_identity::PLATFORM_BOARD),
+        asic: PlatformFact::available(crate::board_identity::PLATFORM_ASIC),
         running_partition: running_partition(),
         reset_reason: reset_reason(),
         uptime_milliseconds: uptime_milliseconds(),

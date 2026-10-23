@@ -423,6 +423,7 @@ filegroup(
         "//crates/bitaxe-api:phase34_identity_sources",
         "//crates/bitaxe-core:phase34_identity_sources",
         "build.rs",
+        "src/board_identity.rs",
         "src/boot_evidence.rs",
         "src/boot_evidence/usb_profile.rs",
         "src/boot_evidence/worker_diagnostics.rs",
@@ -780,6 +781,7 @@ rust_test(
     srcs = [
         "src/production_mining_session/cooling_core.rs",
         "src/production_worker_admission_host_test.rs",
+        "src/production_worker_admission_host_test/crate_stubs.rs",
         "src/production_worker_admission_host_test/start_boundary.rs",
         "src/production_worker_admission_host_test/local_owner.rs",
         "src/production_worker_admission_host_test/resource_acknowledgement.rs",

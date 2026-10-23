@@ -248,7 +248,7 @@ fn read_pool_configuration(
     Ok(Some(ProductionPoolConfiguration {
         endpoint: ProductionPoolEndpoint { host, port },
         runtime: LiveRuntimeConfig {
-            asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
+            asic_family: crate::board_identity::ASIC_FAMILY,
             maybe_suggested_difficulty: read_optional_u16(nvs, &format!("{prefix}stratumdiff"))?,
             model: model.to_owned(),
             version: version.to_owned(),

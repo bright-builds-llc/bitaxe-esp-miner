@@ -2,7 +2,8 @@
 //!
 //! Read once after the settings snapshot loads. The comparison is reported over USB and the
 //! API; only a stored value naming another known board withholds hardware control.
-use bitaxe_api::AttestedBoard;
+use bitaxe_api::{AttestedBoard, PlatformAsic, PlatformBoard};
+use bitaxe_asic::asic::AsicFamily;
 use bitaxe_config::{BoardCatalogEntry, StoredValueKind};
 use bitaxe_core::board_identity::{BoardIdentity, KnownBoard, StoredBoard};
 use bitaxe_core::{AsicTarget, BoardTarget};
@@ -18,6 +19,9 @@ mod built {
     pub(super) const TARGET: BoardTarget = BoardTarget::Ultra205;
     pub(super) const ASIC: AsicTarget = AsicTarget::Bm1366;
     pub(super) const ATTESTED: AttestedBoard = AttestedBoard::Ultra205;
+    pub(super) const PLATFORM_BOARD: PlatformBoard = PlatformBoard::Ultra205;
+    pub(super) const PLATFORM_ASIC: PlatformAsic = PlatformAsic::Bm1366;
+    pub(super) const FAMILY: AsicFamily = AsicFamily::Bm1366;
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::ultra_205_catalog_entry()
     }
@@ -31,6 +35,9 @@ mod built {
     pub(super) const TARGET: BoardTarget = BoardTarget::Gamma601;
     pub(super) const ASIC: AsicTarget = AsicTarget::Bm1370;
     pub(super) const ATTESTED: AttestedBoard = AttestedBoard::Gamma601;
+    pub(super) const PLATFORM_BOARD: PlatformBoard = PlatformBoard::Gamma601;
+    pub(super) const PLATFORM_ASIC: PlatformAsic = PlatformAsic::Bm1370;
+    pub(super) const FAMILY: AsicFamily = AsicFamily::Bm1370;
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::gamma_601_catalog_entry()
     }
@@ -44,6 +51,11 @@ pub(crate) const BOARD_TARGET: BoardTarget = built::TARGET;
 pub(crate) const ASIC_TARGET: AsicTarget = built::ASIC;
 /// The board the runtime boot attestation names.
 pub(crate) const ATTESTED_BOARD: AttestedBoard = built::ATTESTED;
+/// The board and ASIC the platform identity reports.
+pub(crate) const PLATFORM_BOARD: PlatformBoard = built::PLATFORM_BOARD;
+pub(crate) const PLATFORM_ASIC: PlatformAsic = built::PLATFORM_ASIC;
+/// The built board's chip family: its job-id step, job interval and result layout.
+pub(crate) const ASIC_FAMILY: AsicFamily = built::FAMILY;
 
 /// The built board's catalog entry, for the API and the screen.
 pub(crate) const fn catalog_entry() -> BoardCatalogEntry {

@@ -208,7 +208,7 @@ fn pool_set(grant: &WorkerLeaseGrant) -> Result<ProductionPoolSet, Error> {
             },
             runtime: if let Some(v2) = grant.maybe_v2() {
                 ProductionProtocolConfig::V2(V2PoolConfig {
-                    asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
+                    asic_family: crate::board_identity::ASIC_FAMILY,
                     authority: bitaxe_worker_control::noise::canonical_bytes::<32>(
                         &v2.authority_public_key,
                     )
@@ -218,7 +218,7 @@ fn pool_set(grant: &WorkerLeaseGrant) -> Result<ProductionPoolSet, Error> {
                 })
             } else {
                 LiveRuntimeConfig {
-                    asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
+                    asic_family: crate::board_identity::ASIC_FAMILY,
                     maybe_suggested_difficulty: grant.maybe_suggested_difficulty(),
                     model: "bitaxe-ultra".to_owned(),
                     version: crate::semantic_version().to_owned(),

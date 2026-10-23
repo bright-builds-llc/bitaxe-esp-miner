@@ -6,6 +6,8 @@
 mod admission_diagnostics;
 #[path = "production_mining_session/bwg.rs"]
 mod bwg;
+#[path = "production_worker_admission_host_test/crate_stubs.rs"]
+mod crate_stubs;
 #[path = "production_worker_admission_host_test/local_owner.rs"]
 mod local_owner;
 #[path = "production_mining_session/revocation.rs"]
@@ -20,6 +22,7 @@ use bitaxe_stratum::v1::production_session::{
     ProductionSessionEvent, ProductionSessionSnapshot, ProductionSessionWakeup,
 };
 use bitaxe_stratum::v1::state::MiningOperatorIntent;
+use crate_stubs::{board_identity, runtime_uptime, semantic_version};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, SyncSender};
 use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -37,16 +40,6 @@ static TEST_LOCK: Mutex<()> = Mutex::new(());
 
 enum OwnerInboxMessage {
     Bwg(bwg::OwnerCommand),
-}
-
-fn semantic_version() -> &'static str {
-    "synthetic-test"
-}
-
-mod runtime_uptime {
-    pub(crate) fn millis() -> u64 {
-        1_000
-    }
 }
 
 mod worker_acceptance_budget {

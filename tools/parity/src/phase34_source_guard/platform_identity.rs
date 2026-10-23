@@ -25,8 +25,26 @@ fn phase34_source_guard_rejects_platform_substitution_and_effects() {
         .contains("INSTALLED_ASSET_VERSION.observe(|| fs::read(STATIC_ASSET_VERSION_PATH).ok())"));
     assert!(INSTALLED_ASSET_VERSION_SOURCE.contains("parse_static_asset_version(&bytes)"));
     assert!(PLATFORM_IDENTITY_SOURCE.contains("sys::esp_get_idf_version()"));
-    assert!(PLATFORM_IDENTITY_SOURCE.contains("PlatformBoard::Ultra205"));
-    assert!(PLATFORM_IDENTITY_SOURCE.contains("PlatformAsic::Bm1366"));
+    // The board and ASIC are the built board's fixed facts (ADR-0041), never a probe.
+    assert!(PLATFORM_IDENTITY_SOURCE
+        .contains("board: PlatformFact::available(crate::board_identity::PLATFORM_BOARD),"));
+    assert!(PLATFORM_IDENTITY_SOURCE
+        .contains("asic: PlatformFact::available(crate::board_identity::PLATFORM_ASIC),"));
+    let ultra_205_build = source_between(
+        BOARD_IDENTITY_SOURCE,
+        "#[cfg(not(feature = \"board-gamma-601\"))]",
+        "#[cfg(feature = \"board-gamma-601\")]",
+    );
+    for fact in [
+        "PLATFORM_BOARD: PlatformBoard = PlatformBoard::Ultra205;",
+        "PLATFORM_ASIC: PlatformAsic = PlatformAsic::Bm1366;",
+        "FAMILY: AsicFamily = AsicFamily::Bm1366;",
+    ] {
+        assert!(
+            ultra_205_build.contains(fact),
+            "the Ultra 205 build lacks {fact}"
+        );
+    }
     assert!(PLATFORM_IDENTITY_SOURCE.contains("sys::esp_ota_get_running_partition()"));
     assert!(PLATFORM_IDENTITY_SOURCE.contains("PlatformResetReason::decode"));
     assert!(PLATFORM_IDENTITY_SOURCE.contains("sys::esp_timer_get_time()"));

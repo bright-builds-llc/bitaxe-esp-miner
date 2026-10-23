@@ -49,6 +49,7 @@ const PRODUCTION_OWNER_PROGRESS_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/production_mining_session/owner_progress.rs");
 const PLATFORM_IDENTITY_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/platform_identity.rs");
+const BOARD_IDENTITY_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/board_identity.rs");
 const INSTALLED_ASSET_VERSION_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/platform_identity/installed_asset_version.rs");
 const CORE_SOURCE: &str = include_str!("../../../crates/bitaxe-core/src/lib.rs");

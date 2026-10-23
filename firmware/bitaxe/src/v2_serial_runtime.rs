@@ -104,7 +104,7 @@ fn prepare_input(stratum: V2Stratum) -> Option<Vec<Input>> {
     )
     .ok()?;
     config.push(bitaxe_stratum::v2::session::SessionConfig {
-        asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
+        asic_family: crate::board_identity::ASIC_FAMILY,
         endpoint_host: endpoint.ip().to_string(),
         endpoint_port: endpoint.port(),
         vendor: "bitaxe".into(),

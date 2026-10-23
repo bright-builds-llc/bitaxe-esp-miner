@@ -378,10 +378,11 @@ action.
       host test runs the core's init, chip detection, the baud switch and
       a genesis-block job to a decoded, target-meeting nonce.
   - F2 carries over from F1's review:
-    - the firmware's family and chip count come from board identity, not
-      a literal BM1366: `owner_loop.rs`, `bwg.rs`,
-      `settings_adapter/production.rs`, `settings_adapter/stratum_v2.rs`,
-      `v2_serial_runtime.rs`;
+    - [x] the firmware's family and chip count come from board identity
+      (`board_identity::ASIC_FAMILY`), and so does the platform identity's
+      board and ASIC. The phase-34 guard pins the board-identity source.
+      `hashrate.rs`'s single chip and four domains hold for the BM1370
+      too, so it stays as pinned;
     - production result classification goes through
       `AsicFamily::classify_production_result`;
     - the SV2 `hardware_version` and nominal hashrate, and the V1
@@ -390,13 +391,10 @@ action.
       205 keeps;
     - overheat recovery is board-aware, with VR-temperature cooling on the
       601 and `reduced_profile` taking the board;
-    - `hashrate.rs`'s `BM1366_HASH_DOMAIN_COUNT` comes from the catalog;
-    - revocation's `SHUTDOWN_BOUND_MS` becomes the board's
-      (`catalog_maximum_pre_reset_tail_ms_for`), and admission uses
+    - revocation's reported `SHUTDOWN_BOUND_MS` becomes the board's
+      (`catalog_maximum_pre_reset_tail_ms_for`) when the 601's owners
+      start. The fixed-USB judges pin 22,550 for the 205. Admission uses
       `profile_admissible_for_board`;
-    - the firmware's platform identity names the built board. The
-      `phase34_source_guard` pins the literal `PlatformBoard::Ultra205`
-      today, so it changes too;
     - the safety verdict call sites take the board's `MiningSafetyLimits`;
     - the TPS546 fault state (`VCORE_check_fault`) becomes a safety fact;
     - the simulation interpreter drives the BM1370 through its lowered
