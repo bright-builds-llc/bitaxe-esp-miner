@@ -16,7 +16,7 @@ const sample = (atMs, miningActivity, powerW, fresh = FRESH) => ({ atMs, miningA
  * meanwhile it reads `during` (`stopping` as fixed, `active` as before the fix).
  */
 function fakeDevice({ during = "stopping", stopMs = 14_000, loseFirstPauseResponse = false, startAfterMs = 4000,
-  frozenHashrate = false, staleForMs = 0 } = {}) {
+  frozenHashrate = false, staleForMs = 0, board = {} } = {}) {
   const clock = { now: 0 };
   const state = { paused: true, resumedAt: null, pausedAt: null, pool: {}, calls: [] };
   const activity = () => {
@@ -36,6 +36,7 @@ function fakeDevice({ during = "stopping", stopMs = 14_000, loseFirstPauseRespon
       runtimeHealth: state.resumedAt !== null && clock.now - state.resumedAt < staleForMs
         ? { taskWatchdogReason: "feed_stale", taskWatchdogOwnerSubphase: "effect_prepare_hardware" }
         : { taskWatchdogReason: "feed_fresh", taskWatchdogOwnerSubphase: "unavailable" },
+      ...board,
     };
   };
   const client = {
@@ -305,4 +306,23 @@ test("every reading other than feed_fresh counts, including none", () => {
     reasons: ["feed_failed", "feed_stale", "missing"],
     subphases: ["effect_prepare_hardware", "missing", "unavailable"],
   });
+});
+
+test("regression-001 passes on a 205 whose stored board matches", async () => {
+  // Arrange
+  const device = fakeDevice({ board: { storedBoard: "205", boardIdentity: "match" } });
+  // Act
+  const { verdict } = await run(device, SOAKS["regression-001"]);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+});
+
+test("regression-001 refuses a baseline without the board report", async () => {
+  // Arrange: firmware that predates the report.
+  const device = fakeDevice();
+  // Act
+  const error = await run(device, SOAKS["regression-001"]).then(() => null, (failure) => failure);
+  // Assert
+  assert.match(String(error), /soak_board_identity/u);
+  assert.deepEqual(device.state.calls, []);
 });

@@ -59,6 +59,12 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   `taskWatchdogReason` and owner subphase. It is owned by
   `task-preparation-rollback-cooling-watchdog`; its enable line is
   `Ultra 205 preparation watchdog check hardware: enabled.`
+- `regression-001` is phase C's regression check on the Ultra 205
+  (ADR-0041), owned by `task-gamma-601-bring-up`. Its enable line is
+  `Ultra 205 board seam regression check hardware: enabled.` It applies
+  `watchdog-001`'s checks. Before any write, the baseline must also report
+  `storedBoard` `205` with `boardIdentity` `match`
+  (`soak_board_identity`).
 - `boot-resume-001` is the boot-resume check, owned by
   `task-local-mining-boot-resume`. Its enable line is `Ultra 205 local mining
   boot resume check hardware: enabled.` See [Boot-resume

@@ -25,7 +25,7 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
   // A journal failure must never stop the pause; it is noted in the verdict instead.
   let journalFailed = false;
   const note = async (event) => { try { await record(event); } catch { journalFailed = true; } };
-  const baseline = await admitBaseline({ client, expected, settings, now, note });
+  const baseline = await admitBaseline({ client, expected, settings, now, note, soak });
 
   const samples = [];
   const marks = {};
@@ -75,8 +75,13 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
  * Admits the run's paused baseline and saves the owner's pool; refuses before any write unless the
  * device runs the expected firmware on the handed-off boot, paused, with the ASIC shown powered down.
  */
-export async function admitBaseline({ client, expected, settings, now, note }) {
+export async function admitBaseline({ client, expected, settings, now, note, soak = null }) {
   const baselineInfo = await client.info();
+  // A soak may require the firmware's board report (ADR-0041) to name its board.
+  if (soak?.requireStoredBoard) {
+    requireCondition(baselineInfo.storedBoard === soak.requireStoredBoard && baselineInfo.boardIdentity === "match",
+      "soak_board_identity");
+  }
   // Crash tripwire: a boot after a panic means a dump waits in the core-dump partition. Refuse before
   // any write, so the operator reads it first (task-handover-panic-diagnosis) instead of losing the
   // boot's evidence to later runs.

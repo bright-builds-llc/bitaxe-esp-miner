@@ -209,7 +209,9 @@ action.
       - mining structurally absent;
       - the `usb_gamma601_safe_boot` record.
     - Isolation tests per board.
-  - [ ] A 205 regression check on hardware (`stopping-002`) after C1.
+  - [ ] A 205 regression check on hardware after C1: `--soak regression-001`
+    (contract below), which applies `watchdog-001`'s checks (a superset of
+    `stopping-002`'s) and the board report.
   - [x] C3 on the 601 (contract below; owner check-in 2026-10-22: the
     install-window risk is accepted). Done 2026-10-22, attempt 001:
     - two state-preserving installs (the second is the update cycle);
@@ -416,6 +418,54 @@ Closed after attempt 001 (2026-10-22); no enable line remains.
 - **Stops:** the C3 contract's stops. The capture and evidence rules are
   the C3 contract's, under `scratch/gamma-601-follow-ups/attempt-NNN/`.
 - **Recovery:** as in C3.
+
+Phase C 205 regression contract (attempt ordinals 001 onward):
+
+Ultra 205 board seam regression check hardware: enabled.
+
+- **Objective:** `--soak regression-001` on production firmware at the
+  clean, pushed HEAD, installed state-preserving. It runs `watchdog-001`'s
+  checks:
+  - 3 minutes of hashing with a nonzero hashrate and an accepted share;
+  - a pause whose status moves only from `active` to `stopping` to
+    `paused`;
+  - a zeroed hashrate while stopping;
+  - a fresh task watchdog in every sample.
+  Before any write, the baseline must also report `storedBoard` `205` with
+  `boardIdentity` `match`. On the 205's real paths, this checks the phase C
+  changes: the board-aware flash admission and ROM gate, the USB replay
+  changes, the attestation board and the board guard.
+- **Precondition:** only the 205 attached (barrel power and its direct
+  USB-C cable), registered as board 205; the tree clean and pushed.
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/local-mining-soak/` and `umask 077`:**
+  1. `just detect-ultra205`;
+  2. `just flash-monitor --board 205 --port <port>
+     --capture-timeout-seconds 360`, state-preserving;
+  3. `just otawww-endpoint preflight|serve|finish --private-root
+     P/endpoint`, with a Connect in the dedicated Gate tab;
+  4. `just local-mining-soak preflight --soak regression-001 --private-root
+     P/attempt-NNN --endpoint-root P/endpoint --package-manifest
+     bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+     --pool-credentials pool-credentials.json`;
+  5. `just local-mining-soak run`, detached under `caffeinate`, as the soak
+     README describes.
+- **Allowed effects:**
+  - the install, with its resets;
+  - the Gate Connect for the handoff;
+  - the soak's own effects: saving the owner's pool, up to 15 minutes of
+    local mining at the default pair, one pause resent idempotently, and
+    the recovery pause.
+- **Prohibited effects:**
+  - a factory reset;
+  - a Gate Connect during the run;
+  - any other hardware command;
+  - network discovery;
+  - direct UART or pins;
+  - printing or copying the pool credentials.
+- **Evidence, recovery, retries and accepted outcomes:** as `watchdog-001`
+  (archived `task-preparation-rollback-cooling-watchdog`). Recovery is
+  `just local-mining-soak pause --private-root P/attempt-NNN`.
 
 ## Future
 

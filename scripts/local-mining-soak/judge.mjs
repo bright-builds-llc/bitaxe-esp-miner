@@ -75,6 +75,12 @@ export const SOAKS = Object.freeze({
     activeMs: 3 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
     requireHashrateZeroed: true, requireWatchdogFresh: true,
     enableLine: "Ultra 205 preparation watchdog check hardware: enabled." }),
+  // Phase C's regression check on the Ultra 205 (ADR-0041): watchdog-001's checks, and the baseline
+  // must report the stored board as the 205 with a matching identity.
+  "regression-001": Object.freeze({ id: "regression-001", kind: "stopping", task: "task-gamma-601-bring-up",
+    activeMs: 3 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
+    requireHashrateZeroed: true, requireWatchdogFresh: true, requireStoredBoard: "205",
+    enableLine: "Ultra 205 board seam regression check hardware: enabled." }),
   "boot-resume-001": Object.freeze({ id: "boot-resume-001", kind: "boot-resume", task: "task-local-mining-boot-resume",
     activeMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
     enableLine: "Ultra 205 local mining boot resume check hardware: enabled." }),
