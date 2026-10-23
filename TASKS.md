@@ -158,7 +158,7 @@ action.
     - Three effects: one ROM entry, one NVS read, one hard reset; no
       writes.
     - Summary: `docs/parity/evidence/20261021-gamma601-identification.md`.
-- [ ] **C. Board seam and 601 safe boot.** Plan `gamma-601-phase-c` (owner
+- [x] **C. Board seam and 601 safe boot.** Plan `gamma-601-phase-c` (owner
       approved 2026-10-21; state-preserving install). Order: no flashable
       601 package before the safe-boot build exists.
   - [x] C1a: firmware board identity, 205 behaviour unchanged.
@@ -209,9 +209,17 @@ action.
       - mining structurally absent;
       - the `usb_gamma601_safe_boot` record.
     - Isolation tests per board.
-  - [ ] A 205 regression check on hardware after C1: `--soak regression-001`
+  - [x] A 205 regression check on hardware after C1: `--soak regression-001`
     (contract below), which applies `watchdog-001`'s checks (a superset of
-    `stopping-002`'s) and the board report.
+    `stopping-002`'s) and the board report. Passed 2026-10-22, attempt 002
+    (`ff6b11ef`):
+    - 181 s of hashing, 11 accepted shares and 0 rejected;
+    - the stop moved only from `active` through `stopping` to `paused`,
+      with the hashrate zeroed;
+    - the watchdog was fresh in every sample, and the board report
+      matched;
+    - an independent recomputation agrees;
+    - summary: `docs/parity/evidence/20261022-ultra205-board-seam-regression.md`.
   - [x] C3 on the 601 (contract below; owner check-in 2026-10-22: the
     install-window risk is accepted). Done 2026-10-22, attempt 001:
     - two state-preserving installs (the second is the update cycle);
@@ -421,7 +429,7 @@ Closed after attempt 001 (2026-10-22); no enable line remains.
 
 Phase C 205 regression contract (attempt ordinals 001 onward):
 
-Ultra 205 board seam regression check hardware: enabled.
+Closed after attempt 002 passed (2026-10-22); no enable line remains.
 
 - **Objective:** `--soak regression-001` on production firmware at the
   clean, pushed HEAD, installed state-preserving. It runs `watchdog-001`'s
