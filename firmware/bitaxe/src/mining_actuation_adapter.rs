@@ -159,12 +159,13 @@ impl Ultra205MiningActuationAdapter {
         }
         if self.fan_proof_confirmed {
             let observations = crate::safety_adapter::observation_snapshot();
-            if !observations
-                .is_ultra_205_mining_safe_at(MonotonicMillis::new(crate::runtime_uptime::millis()))
-                || !observations
-                    .fan_rpm
-                    .maybe_last_good()
-                    .is_some_and(|sample| *sample.value() > 0)
+            if !observations.is_mining_safe_at(
+                &crate::board_identity::MINING_SAFETY_LIMITS,
+                MonotonicMillis::new(crate::runtime_uptime::millis()),
+            ) || !observations
+                .fan_rpm
+                .maybe_last_good()
+                .is_some_and(|sample| *sample.value() > 0)
             {
                 return Err(MiningActuationAdapterError::SafetyObservationsUnavailable);
             }
@@ -326,9 +327,10 @@ impl Ultra205MiningActuationAdapter {
             let observations = crate::safety_adapter::observation_snapshot();
             let maybe_sample = observations.fan_rpm.maybe_last_good();
             if actuation_applied
-                && observations.is_ultra_205_mining_safe_at(MonotonicMillis::new(
-                    crate::runtime_uptime::millis(),
-                ))
+                && observations.is_mining_safe_at(
+                    &crate::board_identity::MINING_SAFETY_LIMITS,
+                    MonotonicMillis::new(crate::runtime_uptime::millis()),
+                )
                 && observations.fan_rpm.is_fresh()
                 && maybe_sample.is_some_and(|sample| {
                     *sample.value() > 0
@@ -463,9 +465,10 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 }
                 let observations = crate::safety_adapter::observation_snapshot();
                 if !crate::safety_adapter::safety_actuation_available()
-                    || !observations.is_ultra_205_mining_safe_at(MonotonicMillis::new(
-                        crate::runtime_uptime::millis(),
-                    ))
+                    || !observations.is_mining_safe_at(
+                        &crate::board_identity::MINING_SAFETY_LIMITS,
+                        MonotonicMillis::new(crate::runtime_uptime::millis()),
+                    )
                 {
                     return Err(MiningActuationAdapterError::SafetyObservationsUnavailable);
                 }

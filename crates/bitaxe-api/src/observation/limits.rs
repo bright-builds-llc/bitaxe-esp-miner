@@ -20,19 +20,23 @@ impl MiningSafetyLimits {
     ///   offset (`power.c`). Its 22 W stop has no mining evidence yet (phase F3);
     /// - on a TPS546 board, the regulator temperature up to upstream's throttle.
     #[must_use]
-    pub fn for_board(entry: BoardCatalogEntry) -> Self {
+    pub const fn for_board(entry: BoardCatalogEntry) -> Self {
+        // `f64::from` is not const; the cast is lossless from u16.
+        #[allow(clippy::cast_lossless)]
+        let target_watts = entry.power_consumption_target() as f64;
         Self {
-            max_power_watts: f64::from(entry.power_consumption_target()) + POWER_MARGIN_WATTS,
-            maybe_vr_temp_max_celsius: entry
-                .capabilities()
-                .tps546()
-                .then_some(TPS546_VR_THROTTLE_TEMP_C),
+            max_power_watts: target_watts + POWER_MARGIN_WATTS,
+            maybe_vr_temp_max_celsius: if entry.capabilities().tps546() {
+                Some(TPS546_VR_THROTTLE_TEMP_C)
+            } else {
+                None
+            },
         }
     }
 
     /// The Ultra 205's limits: 15 W, no regulator temperature.
     #[must_use]
-    pub fn ultra_205() -> Self {
+    pub const fn ultra_205() -> Self {
         Self::for_board(ultra_205_catalog_entry())
     }
 

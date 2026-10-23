@@ -247,6 +247,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 } else if revocation::permits(None)
                     && !self.safe_stop_pending()
                     && cooling_core::baseline_safe(
+                        &crate::board_identity::MINING_SAFETY_LIMITS,
                         &crate::safety_adapter::observation_snapshot(),
                         now_ms,
                     )

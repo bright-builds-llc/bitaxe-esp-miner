@@ -1,5 +1,5 @@
 //! Fan-only orchestration has no ASIC, voltage, pool, or budget capability.
-use bitaxe_api::TelemetryObservations;
+use bitaxe_api::{MiningSafetyLimits, TelemetryObservations};
 use bitaxe_safety::observation::MonotonicMillis;
 
 pub const FAN_PROOF_TIMEOUT_MS: u64 = 3_000;
@@ -25,8 +25,12 @@ pub fn post_command_fan(
 pub fn preparation_safety(base_safe: bool, nonzero_rpm: bool, never_prepared_worker: bool) -> bool {
     base_safe && (nonzero_rpm || never_prepared_worker)
 }
-pub fn baseline_safe(observations: &TelemetryObservations, now_ms: u64) -> bool {
-    observations.is_ultra_205_mining_safe_at(MonotonicMillis::new(now_ms))
+pub fn baseline_safe(
+    limits: &MiningSafetyLimits,
+    observations: &TelemetryObservations,
+    now_ms: u64,
+) -> bool {
+    observations.is_mining_safe_at(limits, MonotonicMillis::new(now_ms))
         && observations
             .chip_temp_celsius
             .maybe_last_good()
@@ -52,6 +56,8 @@ pub enum FanReply {
 pub trait CoolingBackend {
     fn now_ms(&self) -> u64;
     fn admitted(&self) -> bool;
+    /// The ranges the board's mining-safety facts must hold while cooling.
+    fn safety_limits(&self) -> MiningSafetyLimits;
     fn observations(&self) -> TelemetryObservations;
     fn command(&mut self, command: FanCommand) -> Result<(), CoolingError>;
     fn poll(&mut self) -> Result<FanReply, CoolingError>;
@@ -71,7 +77,8 @@ fn stamp(observations: &TelemetryObservations) -> Option<FanStamp> {
 pub fn qualify(backend: &mut impl CoolingBackend) -> Result<u16, CoolingError> {
     let started = backend.now_ms();
     let baseline = backend.observations();
-    if !backend.admitted() || !baseline.is_ultra_205_mining_safe_at(MonotonicMillis::new(started)) {
+    let limits = backend.safety_limits();
+    if !backend.admitted() || !baseline.is_mining_safe_at(&limits, MonotonicMillis::new(started)) {
         return Err(CoolingError::Rejected);
     }
     let maybe_baseline = stamp(&baseline);
@@ -83,7 +90,7 @@ pub fn qualify(backend: &mut impl CoolingBackend) -> Result<u16, CoolingError> {
         }
         let now = backend.now_ms();
         let observations = backend.observations();
-        if !observations.is_ultra_205_mining_safe_at(MonotonicMillis::new(now)) {
+        if !observations.is_mining_safe_at(&limits, MonotonicMillis::new(now)) {
             return Err(CoolingError::Rejected);
         }
         if maybe_applied_at.is_none() && backend.poll()? == FanReply::Applied {
@@ -107,13 +114,25 @@ pub fn qualify(backend: &mut impl CoolingBackend) -> Result<u16, CoolingError> {
     }
 }
 pub fn restore(backend: &mut impl CoolingBackend) -> Result<(), CoolingError> {
-    if !backend.admitted() || !baseline_safe(&backend.observations(), backend.now_ms()) {
+    if !backend.admitted()
+        || !baseline_safe(
+            &backend.safety_limits(),
+            &backend.observations(),
+            backend.now_ms(),
+        )
+    {
         return Err(CoolingError::Rejected);
     }
     let started = backend.now_ms();
     backend.command(FanCommand::RestoreBaseline)?;
     loop {
-        if !backend.admitted() || !baseline_safe(&backend.observations(), backend.now_ms()) {
+        if !backend.admitted()
+            || !baseline_safe(
+                &backend.safety_limits(),
+                &backend.observations(),
+                backend.now_ms(),
+            )
+        {
             return Err(CoolingError::Rejected);
         }
         if backend.poll()? == FanReply::Applied {

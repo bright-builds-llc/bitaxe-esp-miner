@@ -30,7 +30,8 @@ pub(crate) fn replace_observations_from_producer(observations: bitaxe_api::Telem
             .map(|celsius| (celsius * 1_000.0).round() as i32),
     );
     crate::production_mining_session::revocation::check_safety_verdict(
-        observations.ultra_205_mining_safety_verdict_at(
+        observations.mining_safety_verdict_at(
+            &crate::board_identity::MINING_SAFETY_LIMITS,
             bitaxe_safety::observation::MonotonicMillis::new(now_ms),
         ),
         observations
@@ -361,6 +362,7 @@ fn apply_safety_actuation(
                     == Some(generation))
                 || crate::production_mining_session::revocation::permits(Some(generation))
                 || !crate::production_mining_session::cooling_core::baseline_safe(
+                    &crate::board_identity::MINING_SAFETY_LIMITS,
                     &observation_snapshot(),
                     now_ms,
                 )

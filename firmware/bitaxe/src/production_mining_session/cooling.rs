@@ -7,7 +7,7 @@ use crate::safety_adapter::{
     FanDutyPercent, PendingSafetyActuation, SafetyActuationCommand, SafetyActuationPollOutcome,
     SafetyActuationQueueOutcome,
 };
-use bitaxe_api::TelemetryObservations;
+use bitaxe_api::{MiningSafetyLimits, TelemetryObservations};
 
 struct Backend {
     restoring: bool,
@@ -24,6 +24,9 @@ impl CoolingBackend for Backend {
         (revocation::is_live(self.generation)
             || (self.restoring && revocation::maybe_revoked() == Some(self.generation)))
             && !revocation::permits(Some(self.generation))
+    }
+    fn safety_limits(&self) -> MiningSafetyLimits {
+        crate::board_identity::MINING_SAFETY_LIMITS
     }
     fn observations(&self) -> TelemetryObservations {
         crate::safety_adapter::observation_snapshot()

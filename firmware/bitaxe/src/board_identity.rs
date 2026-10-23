@@ -2,7 +2,7 @@
 //!
 //! Read once after the settings snapshot loads. The comparison is reported over USB and the
 //! API; only a stored value naming another known board withholds hardware control.
-use bitaxe_api::{AttestedBoard, PlatformAsic, PlatformBoard};
+use bitaxe_api::{AttestedBoard, MiningSafetyLimits, PlatformAsic, PlatformBoard};
 use bitaxe_asic::asic::AsicFamily;
 use bitaxe_config::{BoardCatalogEntry, StoredValueKind};
 use bitaxe_core::board_identity::{BoardIdentity, KnownBoard, StoredBoard};
@@ -56,6 +56,9 @@ pub(crate) const PLATFORM_BOARD: PlatformBoard = built::PLATFORM_BOARD;
 pub(crate) const PLATFORM_ASIC: PlatformAsic = built::PLATFORM_ASIC;
 /// The built board's chip family: its job-id step, job interval and result layout.
 pub(crate) const ASIC_FAMILY: AsicFamily = built::FAMILY;
+/// The ranges the built board's mining-safety facts must hold.
+pub(crate) const MINING_SAFETY_LIMITS: MiningSafetyLimits =
+    MiningSafetyLimits::for_board(built::catalog());
 /// The built board's catalog version, such as "205".
 pub(crate) const BOARD_VERSION: &str = built::catalog().board_version();
 

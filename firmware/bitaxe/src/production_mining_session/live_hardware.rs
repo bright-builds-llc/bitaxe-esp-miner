@@ -52,11 +52,13 @@ impl OrdinaryEspProductionSessionAdapter {
         // Skip, never revoke, while a step could not run: unsafe readings, a stopped
         // fan (the zero-RPM revocation owns that) or stopped dispatch (pool loss).
         let observations = crate::safety_adapter::observation_snapshot();
-        let ready = observations.is_ultra_205_mining_safe_at(MonotonicMillis::new(now_ms))
-            && observations
-                .fan_rpm
-                .maybe_last_good()
-                .is_some_and(|sample| *sample.value() > 0)
+        let ready = observations.is_mining_safe_at(
+            &crate::board_identity::MINING_SAFETY_LIMITS,
+            MonotonicMillis::new(now_ms),
+        ) && observations
+            .fan_rpm
+            .maybe_last_good()
+            .is_some_and(|sample| *sample.value() > 0)
             && crate::asic_adapter::production::production_ready();
         if snapshot.hardware_state != MiningHardwareState::Ready
             || !revocation::permits(Some(generation))

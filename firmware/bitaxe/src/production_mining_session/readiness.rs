@@ -14,7 +14,7 @@ impl OrdinaryEspProductionSessionAdapter {
         // Only the fan-preparation stage may begin from fresh zero RPM. The
         // ordered adapter requires a post-command nonzero proof before power.
         let safety_prerequisites_fresh = cooling_core::preparation_safety(
-            observations.is_ultra_205_mining_safe_at(now()),
+            observations.is_mining_safe_at(&crate::board_identity::MINING_SAFETY_LIMITS, now()),
             observations
                 .fan_rpm
                 .maybe_last_good()
@@ -32,7 +32,8 @@ impl OrdinaryEspProductionSessionAdapter {
                 .as_ref()
                 .is_some_and(|run| !run.preparation_started)
                 && cooling_core::preparation_safety(
-                    observations.is_ultra_205_mining_safe_at(now()),
+                    observations
+                        .is_mining_safe_at(&crate::board_identity::MINING_SAFETY_LIMITS, now()),
                     false,
                     true,
                 ));

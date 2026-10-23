@@ -254,7 +254,7 @@ test("checked-in SAFE-10 source inventory is complete", async () => {
 
 for (const [name, relative, before, after] of [
   ["nonzero-fan", "firmware/bitaxe/src/production_mining_session/readiness.rs", "*sample.value() > 0", "*sample.value() >= 0"],
-  ["freshness-call", "firmware/bitaxe/src/production_mining_session/readiness.rs", "observations.is_ultra_205_mining_safe_at(now())", "true"],
+  ["freshness-call", "firmware/bitaxe/src/production_mining_session/readiness.rs", "observations.is_mining_safe_at(&crate::board_identity::MINING_SAFETY_LIMITS, now())", "true"],
   ["never-prepared-only", "firmware/bitaxe/src/production_mining_session/readiness.rs", "!session.preparation_started", "session.preparation_started"],
   ["worker-only", "firmware/bitaxe/src/production_mining_session/readiness.rs", "self.maybe_bwg_session", "Some(ordinary_session)"],
   ["freshness-conjunction", "crates/bitaxe-runtime/src/cooling.rs", "base_safe && (nonzero_rpm || never_prepared_worker)", "base_safe || (nonzero_rpm || never_prepared_worker)"],

@@ -414,7 +414,11 @@ action.
       (`catalog_maximum_pre_reset_tail_ms_for`) when the 601's owners
       start. The fixed-USB judges pin 22,550 for the 205. Admission uses
       `profile_admissible_for_board`;
-    - the safety verdict call sites take the board's `MiningSafetyLimits`;
+    - [x] the firmware's safety verdict call sites, and the cooling core
+      through `CoolingBackend::safety_limits`, take the built board's
+      `MiningSafetyLimits` (`board_identity::MINING_SAFETY_LIMITS`, now a
+      `const fn` of the catalog). The safe10 inventories pin the new calls.
+      The host simulation and the bitaxe-api tests keep the 205's limits;
     - the TPS546 fault state (`VCORE_check_fault`) becomes a safety fact;
     - the simulation interpreter drives the BM1370 through its lowered
       adapter actions;
@@ -425,6 +429,11 @@ action.
       - `tools/flash/src/campaign/markers.rs` and its serial tests;
     - the 601's power fact is the TPS546's VOUT × IOUT plus the 5 W family
       offset, as upstream reports it.
+    - the 601's sensor producer reports the TPS546 regulator temperature
+      before its runtime owners start: until then every limit check fails
+      on the 601, and the idle fan grant (`baseline_safe`) would hold the
+      fan at full. `operator_sensor_runtime.rs`'s `BOARD_POWER_TARGET_WATTS`
+      (12 W) comes from the catalog.
   - F3 must show the 601's 22 W power stop against real mining power at
     its catalog settings before relying on it above the default.
   - [ ] F2: the firmware seams; the 601 is still refused mining.

@@ -376,7 +376,8 @@ fn wait_for_safety_preflight(
     loop {
         let observations = crate::safety_adapter::observation_snapshot();
         if crate::safety_adapter::safety_actuation_available()
-            && observations.is_ultra_205_mining_safe_at(
+            && observations.is_mining_safe_at(
+                &crate::board_identity::MINING_SAFETY_LIMITS,
                 bitaxe_safety::observation::MonotonicMillis::new(crate::runtime_uptime::millis()),
             )
         {

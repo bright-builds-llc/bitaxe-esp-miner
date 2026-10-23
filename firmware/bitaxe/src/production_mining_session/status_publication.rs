@@ -57,7 +57,8 @@ impl OrdinaryEspProductionSessionAdapter {
         }
         let observations = crate::safety_adapter::observation_snapshot();
         let safety_now = now();
-        let safety_fresh = observations.is_ultra_205_mining_safe_at(safety_now);
+        let safety_fresh = observations
+            .is_mining_safe_at(&crate::board_identity::MINING_SAFETY_LIMITS, safety_now);
         let observation_freshness = CampaignObservationFreshness {
             power_watts: is_current(&observations.power_watts, safety_now),
             bus_voltage_volts: is_current(&observations.bus_voltage_volts, safety_now),

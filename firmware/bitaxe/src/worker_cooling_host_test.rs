@@ -59,6 +59,9 @@ impl CoolingBackend for Backend {
     fn admitted(&self) -> bool {
         !self.cancel || self.now == 1_000
     }
+    fn safety_limits(&self) -> bitaxe_api::MiningSafetyLimits {
+        bitaxe_api::MiningSafetyLimits::ultra_205()
+    }
     fn observations(&self) -> TelemetryObservations {
         if self.advance_sample {
             let acquired = if self.now > 1_000 {

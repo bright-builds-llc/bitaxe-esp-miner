@@ -162,7 +162,7 @@ fn wait_for_preflight(
         watchdog.feed(now_ms());
         let wifi_ready = crate::wifi_adapter::current_wifi_snapshot().wifi_status == "connected";
         let safety_ready = crate::safety_adapter::observation_snapshot()
-            .is_ultra_205_mining_safe_at(MonotonicMillis::new(now_ms()));
+            .is_mining_safe_at(&crate::board_identity::MINING_SAFETY_LIMITS, MonotonicMillis::new(now_ms()));
         if wifi_ready
             && safety_ready
             && crate::safety_adapter::safety_actuation_available()
@@ -203,7 +203,7 @@ fn run_active_session(
             return OwnerOutcome::Deadline;
         }
         if !crate::safety_adapter::observation_snapshot()
-            .is_ultra_205_mining_safe_at(MonotonicMillis::new(now_ms()))
+            .is_mining_safe_at(&crate::board_identity::MINING_SAFETY_LIMITS, MonotonicMillis::new(now_ms()))
         {
             return OwnerOutcome::Safety;
         }

@@ -532,8 +532,11 @@ impl MiningActuationBackend for RuntimeBoardAdapter {
                     self.board.borrow_mut().peripherals.fan_stalled = false;
                     let before = self.now_ms();
                     self.advance(500, false)?;
-                    if !bitaxe_runtime::cooling::baseline_safe(&self.observations()?, self.now_ms())
-                        || self.board.borrow().peripherals.sample.sampled_at_ms <= before
+                    if !bitaxe_runtime::cooling::baseline_safe(
+                        &bitaxe_api::MiningSafetyLimits::ultra_205(),
+                        &self.observations()?,
+                        self.now_ms(),
+                    ) || self.board.borrow().peripherals.sample.sampled_at_ms <= before
                     {
                         return Err("cooling_proof_failed");
                     }

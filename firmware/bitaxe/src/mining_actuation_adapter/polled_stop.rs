@@ -49,9 +49,10 @@ impl Ultra205MiningActuationAdapter {
         };
         let observations = crate::safety_adapter::observation_snapshot();
         let maybe_temperature = observations.chip_temp_celsius.maybe_last_good();
-        let proven = observations
-            .is_ultra_205_mining_safe_at(MonotonicMillis::new(crate::runtime_uptime::millis()))
-            && observations.chip_temp_celsius.is_fresh()
+        let proven = observations.is_mining_safe_at(
+            &crate::board_identity::MINING_SAFETY_LIMITS,
+            MonotonicMillis::new(crate::runtime_uptime::millis()),
+        ) && observations.chip_temp_celsius.is_fresh()
             && maybe_temperature.is_some_and(|sample| {
                 sample.acquired_at().get() > started_at_ms
                     && sample.value().is_finite()
