@@ -12,6 +12,12 @@ use super::{
     work::{Bm1366JobId, JOB_ID_MODULUS},
 };
 
+pub use crate::asic::{
+    NonceResult as Bm1366NonceResult, ProductionResult as Bm1366ProductionResult,
+    RegisterRead as Bm1366RegisterRead, ResultDiscardReason as Bm1366ResultDiscardReason,
+    ValidJobIds as Bm1366ValidJobIds,
+};
+
 pub const BM1366_RECEIVE_PREAMBLE: u16 = 0xaa55;
 pub const BM1366_RESULT_FRAME_LEN: usize = 11;
 pub const RESULT_WORK_TIMEOUT_MS: u32 = 10_000;
@@ -44,98 +50,10 @@ impl ResultFrameBytes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Bm1366ValidJobIds {
-    valid: [bool; JOB_ID_MODULUS as usize],
-}
-
-impl Bm1366ValidJobIds {
-    pub const fn empty() -> Self {
-        Self {
-            valid: [false; JOB_ID_MODULUS as usize],
-        }
-    }
-
-    pub fn single(job_id: Bm1366JobId) -> Self {
-        let mut valid_jobs = Self::empty();
-        valid_jobs.insert(job_id);
-        valid_jobs
-    }
-
-    pub fn insert(&mut self, job_id: Bm1366JobId) {
-        self.valid[usize::from(job_id.lookup_key().raw())] = true;
-    }
-
-    pub fn contains(&self, job_id: Bm1366JobId) -> bool {
-        self.valid[usize::from(job_id.lookup_key().raw())]
-    }
-}
-
-impl Default for Bm1366ValidJobIds {
-    fn default() -> Self {
-        Self::empty()
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bm1366ParsedResult {
     JobNonce(Bm1366NonceResult),
     RegisterRead(Bm1366RegisterRead),
-}
-
-/// Continuous production-loop disposition for one complete UART frame.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Bm1366ProductionResult {
-    JobNonce(Bm1366NonceResult),
-    RegisterRead(Bm1366RegisterRead),
-    Discarded(Bm1366ResultDiscardReason),
-}
-
-/// Privacy-safe parser failure categories for production result telemetry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Bm1366ResultDiscardReason {
-    InvalidLength,
-    InvalidPreamble,
-    InvalidCrc,
-    JobLookup,
-    Core,
-    AddressInterval,
-    RegisterResponse,
-    ParserInvariant,
-}
-
-impl Bm1366ResultDiscardReason {
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::InvalidLength => "invalid_length",
-            Self::InvalidPreamble => "invalid_preamble",
-            Self::InvalidCrc => "invalid_crc",
-            Self::JobLookup => "job_lookup",
-            Self::Core => "core",
-            Self::AddressInterval => "address_interval",
-            Self::RegisterResponse => "register_response",
-            Self::ParserInvariant => "parser_invariant",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Bm1366NonceResult {
-    pub job_id: Bm1366JobId,
-    pub nonce: u32,
-    pub asic_index: u8,
-    pub core_id: u8,
-    pub small_core_id: u8,
-    pub version_bits: u32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Bm1366RegisterRead {
-    pub register: Bm1366Register,
-    pub asic_index: u8,
-    pub asic_address: u8,
-    pub value: u32,
 }
 
 pub fn parse_bm1366_result_frame(

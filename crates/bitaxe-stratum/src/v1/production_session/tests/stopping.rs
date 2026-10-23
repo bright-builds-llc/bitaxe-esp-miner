@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn preparation_failure_rolls_back_before_terminal_publication() {
     // Arrange
-    let mut session = ProductionMiningSession::new();
+    let mut session = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let lease_id = active_duration_lease(1, 600_000).id();
     let _preparing = session
         .handle(wake(ready(), 0))
@@ -47,7 +47,7 @@ fn preparation_failure_rolls_back_before_terminal_publication() {
 #[test]
 fn a_safe_stop_reads_stopping_until_it_is_confirmed() {
     // Arrange
-    let mut session = ProductionMiningSession::new();
+    let mut session = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let lease_id = active_duration_lease(1, 600_000).id();
     let _preparing = session
         .handle(wake(ready(), 0))
@@ -87,7 +87,7 @@ fn a_safe_stop_reads_stopping_until_it_is_confirmed() {
 #[test]
 fn a_failed_safe_stop_publishes_blocked_with_its_reason_not_stopping() {
     // Arrange
-    let mut session = ProductionMiningSession::new();
+    let mut session = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let lease_id = active_duration_lease(1, 600_000).id();
     let _preparing = session
         .handle(wake(ready(), 0))
@@ -121,7 +121,7 @@ fn a_failed_safe_stop_publishes_blocked_with_its_reason_not_stopping() {
 #[test]
 fn another_failed_effect_during_a_safe_stop_is_no_failed_stop() {
     // Arrange: an ASIC stop failure queued ahead of the safe-stop's confirmation.
-    let mut session = ProductionMiningSession::new();
+    let mut session = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let lease_id = active_duration_lease(1, 600_000).id();
     let _preparing = session
         .handle(wake(ready(), 0))

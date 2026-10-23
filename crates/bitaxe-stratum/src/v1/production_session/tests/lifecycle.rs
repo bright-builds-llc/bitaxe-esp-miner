@@ -263,7 +263,7 @@ fn malformed_invalid_utf8_and_oversized_input_recover_without_acceptance() {
 #[test]
 fn pool_configuration_is_read_only_after_hardware_preparation_succeeds() {
     // Arrange
-    let mut session = ProductionMiningSession::new();
+    let mut session = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
 
     // Act
     let effects = session

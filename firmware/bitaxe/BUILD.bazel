@@ -1895,7 +1895,7 @@ rust_test(
     crate_root = "src/worker_cooling_host_test.rs",
     edition = "2021",
     deps = [
-        "//crates/bitaxe-runtime:bitaxe_runtime","//crates/bitaxe-config:bitaxe_config", "//crates/bitaxe-stratum:bitaxe_stratum","//crates/bitaxe-api:bitaxe_api", "//crates/bitaxe-safety:bitaxe_safety"],
+        "//crates/bitaxe-asic:bitaxe_asic", "//crates/bitaxe-runtime:bitaxe_runtime","//crates/bitaxe-config:bitaxe_config", "//crates/bitaxe-stratum:bitaxe_stratum","//crates/bitaxe-api:bitaxe_api", "//crates/bitaxe-safety:bitaxe_safety"],
 )
 
 rust_test(

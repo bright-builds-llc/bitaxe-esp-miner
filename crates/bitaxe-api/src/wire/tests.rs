@@ -571,7 +571,6 @@ fn wire_system_info_fixture_keeps_phase_6_hardware_telemetry_safe() {
     assert_eq!(value["fanspeed"], json!(0));
     assert_eq!(value["fanrpm"], json!(0));
     assert_eq!(value["actualFrequency"], json!(0.0));
-    assert_eq!(value["expectedHashrate"], json!(0.0));
 }
 
 #[test]
@@ -605,3 +604,5 @@ fn a_device_pause_reason_is_reported_only_while_set() {
     assert_eq!(quiet.get("pauseReason"), None);
     assert_eq!(paused.get("pauseReason"), Some(&json!("crash_loop")));
 }
+
+mod board;

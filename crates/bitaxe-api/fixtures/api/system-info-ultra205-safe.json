@@ -159,7 +159,7 @@
       "code": "producer_unavailable"
     }
   },
-  "expectedHashrate": 0.0,
+  "expectedHashrate": 433.59,
   "sharesAccepted": 0,
   "sharesRejected": 0,
   "sharesRejectedReasons": [],

@@ -2,8 +2,11 @@ use super::*;
 #[test]
 fn below_target_nonce_is_visible_without_qualified_candidate() {
     // Arrange
-    let mut snapshot =
-        bitaxe_stratum::v1::production_session::ProductionMiningSession::new().snapshot();
+    let mut snapshot = bitaxe_stratum::v1::production_session::ProductionMiningSession::new(
+        bitaxe_asic::asic::AsicFamily::Bm1366,
+        1,
+    )
+    .snapshot();
     snapshot.asic_bridge.nonce_completion_count = 7;
     snapshot.mining.counters.below_pool_target = 7;
     // Act
@@ -29,8 +32,11 @@ fn cache_preserves_u64_and_rejects_wrong_generation_without_time_gate() {
 #[test]
 fn projection_never_serializes_arbitrary_runtime_rejection_text() {
     // Arrange
-    let mut snapshot =
-        bitaxe_stratum::v1::production_session::ProductionMiningSession::new().snapshot();
+    let mut snapshot = bitaxe_stratum::v1::production_session::ProductionMiningSession::new(
+        bitaxe_asic::asic::AsicFamily::Bm1366,
+        1,
+    )
+    .snapshot();
     snapshot
         .mining
         .counters
@@ -49,8 +55,11 @@ fn projection_never_serializes_arbitrary_runtime_rejection_text() {
 #[test]
 fn expected_filter_counts_are_observational_saturating_and_retained_by_generation() {
     // Arrange
-    let snapshot =
-        bitaxe_stratum::v1::production_session::ProductionMiningSession::new().snapshot();
+    let snapshot = bitaxe_stratum::v1::production_session::ProductionMiningSession::new(
+        bitaxe_asic::asic::AsicFamily::Bm1366,
+        1,
+    )
+    .snapshot();
     let mut counters = [0; 2];
     note_expected_filter(&mut counters, true);
     note_expected_filter(&mut counters, false);

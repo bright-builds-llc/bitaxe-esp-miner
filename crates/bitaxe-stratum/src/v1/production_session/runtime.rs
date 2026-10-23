@@ -95,14 +95,16 @@ impl ProductionMiningSession {
         }
     }
 
+    /// A session for a chain of `asic_count` chips of `asic_family`, whose job interval it
+    /// follows.
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(asic_family: bitaxe_asic::asic::AsicFamily, asic_count: u32) -> Self {
         Self {
             recovery: RecoveryPolicy::new(),
             maybe_pool_set: None,
             primary: None,
             fallback: None,
-            bridge: BridgeOrchestrator::new(2_000),
+            bridge: BridgeOrchestrator::new(u64::from(asic_family.job_interval_ms(asic_count))),
             maybe_pending_v2_generation: None,
             generation_cursor: PoolSessionGeneration::initial(),
             transport_epoch_cursor: ProductionTransportEpoch::initial(),

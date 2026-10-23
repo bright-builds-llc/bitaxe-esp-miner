@@ -58,6 +58,7 @@ impl ChannelObserver for Driver {
 }
 fn config(address: SocketAddr) -> SessionConfig {
     SessionConfig {
+        asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
         endpoint_host: address.ip().to_string(),
         endpoint_port: address.port(),
         vendor: "synthetic".into(),

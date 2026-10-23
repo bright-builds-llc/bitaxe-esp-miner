@@ -4,6 +4,7 @@ use std::array;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
+use bitaxe_asic::asic::AsicFamily;
 use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
 
 use super::frame::Frame;
@@ -30,6 +31,8 @@ pub struct SessionConfig {
     pub nominal_hashrate: f32,
     pub channel_kind: ChannelKind,
     pub minimum_extranonce_size: u16,
+    /// The chip family work is sent to: it sets the job-id step.
+    pub asic_family: AsicFamily,
 }
 
 impl fmt::Debug for SessionConfig {
@@ -496,7 +499,7 @@ impl V2Session {
 
     fn take_asic_job_id(&mut self) -> Bm1366JobId {
         let current = self.next_asic_job_id;
-        self.next_asic_job_id = current.advance();
+        self.next_asic_job_id = current.advance(self.config.asic_family);
         current
     }
 

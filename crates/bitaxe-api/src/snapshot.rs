@@ -95,8 +95,6 @@ pub struct ConfigSnapshot {
     pub asic_voltage_mv: u16,
     pub auto_fan_speed: bool,
     pub manual_fan_speed: u16,
-    pub max_power_watts: u16,
-    pub nominal_voltage_volts: u16,
 }
 
 impl ConfigSnapshot {
@@ -111,8 +109,6 @@ impl ConfigSnapshot {
             asic_voltage_mv: defaults.asic_voltage_mv(),
             auto_fan_speed: defaults.auto_fan_speed(),
             manual_fan_speed: defaults.manual_fan_speed(),
-            max_power_watts: 25,
-            nominal_voltage_volts: 5,
         }
     }
 }
@@ -248,7 +244,6 @@ pub struct SafetyTelemetryReport {
     pub vr_temp_celsius: f64,
     pub core_voltage_actual_mv: f64,
     pub actual_frequency_mhz: f64,
-    pub expected_hashrate_ghs: f64,
     pub fan_speed_percent: u16,
     pub fan_rpm: u16,
     pub fan2_rpm: u16,
@@ -268,7 +263,6 @@ pub struct SafeTelemetrySnapshot {
     pub vr_temp_celsius: f64,
     pub core_voltage_actual_mv: f64,
     pub actual_frequency_mhz: f64,
-    pub expected_hashrate_ghs: f64,
     pub fan_speed_percent: u16,
     pub fan_rpm: u16,
     pub fan2_rpm: u16,
@@ -389,7 +383,6 @@ impl SafeTelemetrySnapshot {
             vr_temp_celsius: 0.0,
             core_voltage_actual_mv: 0.0,
             actual_frequency_mhz: 0.0,
-            expected_hashrate_ghs: 0.0,
             fan_speed_percent: 0,
             fan_rpm: 0,
             fan2_rpm: 0,

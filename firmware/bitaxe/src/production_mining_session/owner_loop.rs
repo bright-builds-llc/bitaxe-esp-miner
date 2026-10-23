@@ -11,7 +11,7 @@ pub(super) fn run_owner(
 ) {
     owner_resources::bind_owner_thread();
     let started_at = Instant::now();
-    let mut session = ProductionMiningSession::new();
+    let mut session = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     record_owner_phase(TaskWatchdogOwnerPhase::Subscribing);
     let mut task_watchdog =
         watchdog::ProductionTaskWatchdog::subscribe(crate::runtime_uptime::millis());

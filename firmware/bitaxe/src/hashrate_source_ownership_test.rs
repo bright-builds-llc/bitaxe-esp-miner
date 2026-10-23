@@ -289,7 +289,11 @@ fn runtime_service_requests_only_at_active_one_second_boundaries() {
     // Arrange
     let mut service = ProductionHashrateMonitor::new();
     let inactive_snapshot =
-        bitaxe_stratum::v1::production_session::ProductionMiningSession::new().snapshot();
+        bitaxe_stratum::v1::production_session::ProductionMiningSession::new(
+            bitaxe_asic::asic::AsicFamily::Bm1366,
+            1,
+        )
+        .snapshot();
 
     // Act
     let initial = service

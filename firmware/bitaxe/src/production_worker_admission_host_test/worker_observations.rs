@@ -6,7 +6,7 @@ fn filter_counts_are_captured_before_terminal_release_and_reset_for_new_worker()
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
     adapter.readiness = readiness();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let (generation, _reply) = start(&mut scope, &mut adapter, &mut core);
     adapter
         .maybe_bwg_session
@@ -24,7 +24,7 @@ fn filter_counts_are_captured_before_terminal_release_and_reset_for_new_worker()
         Some((generation.raw(), [5, 7]))
     );
     assert!(adapter.maybe_bwg_session.is_none());
-    let mut fresh_core = ProductionMiningSession::new();
+    let mut fresh_core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let (fresh_generation, _reply) = start(&mut scope, &mut adapter, &mut fresh_core);
     assert_ne!(fresh_generation, generation);
     assert_eq!(
@@ -43,7 +43,8 @@ fn new_owner_first_accepted_share_is_not_hidden_by_previous_pool_baseline() {
     let mut scope = TestScope::new();
     let generation = scope.link();
     assert!(revocation::admit_budget(generation, 180_000));
-    let mut previous = ProductionMiningSession::new().snapshot();
+    let mut previous =
+        ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1).snapshot();
     previous.campaign_state = MiningCampaignState::Consumed;
     previous.hardware_state = MiningHardwareState::Stopped;
     previous.mining.counters.accepted = 1;

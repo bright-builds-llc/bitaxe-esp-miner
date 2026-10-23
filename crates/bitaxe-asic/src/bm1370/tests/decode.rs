@@ -1,12 +1,15 @@
 //! BM1370 receive-frame decoding against the golden fixture.
 
 use super::{decode_hex, fixture, gamma_jobs, hex_at, u64_at};
-use crate::bm1370::{
-    result::{
-        parse_chip_id_response, parse_result_frame, Bm1370ChipIdentity, Bm1370ParsedResult,
-        Bm1370Register, Bm1370ValidJobIds,
+use crate::{
+    asic::{Register, ValidJobIds},
+    bm1370::{
+        result::{
+            parse_chip_id_response, parse_result_frame, register_from_byte, Bm1370ChipIdentity,
+            Bm1370ParsedResult,
+        },
+        Bm1370ProtocolFault,
     },
-    Bm1370ProtocolFault,
 };
 
 #[test]
@@ -62,7 +65,7 @@ fn a_result_for_an_unsent_job_is_refused() {
     // Arrange
     let frame = hex_at(&fixture(), "/job_result/frame_hex");
     // Act
-    let refusal = parse_result_frame(&frame, &Bm1370ValidJobIds::empty(), 16);
+    let refusal = parse_result_frame(&frame, &ValidJobIds::empty(), 16);
     // Assert
     assert_eq!(
         refusal,
@@ -92,7 +95,7 @@ fn a_register_read_decodes_its_register_and_value() {
     let Bm1370ParsedResult::RegisterRead(read) = parsed else {
         panic!("expected a register read");
     };
-    assert_eq!(read.register, Bm1370Register::TotalCount);
+    assert_eq!(read.register, Register::TotalCount);
     assert_eq!(
         [
             u64::from(read.asic_index),
@@ -112,7 +115,7 @@ fn a_register_read_decodes_its_register_and_value() {
 fn every_mapped_register_round_trips_its_code() {
     // Act
     let codes = [0x4c, 0x88, 0x89, 0x8a, 0x8b, 0x8c]
-        .map(|code| Bm1370Register::try_from(code).expect("mapped").code());
+        .map(|code| register_from_byte(code).expect("mapped").address());
     // Assert
     assert_eq!(codes, [0x4c, 0x88, 0x89, 0x8a, 0x8b, 0x8c]);
 }

@@ -2,6 +2,7 @@ use bitaxe_config::catalog::{board_catalog, VerificationScope};
 use serde_json::Value;
 
 use crate::{
+    asic::{AsicFamily, JobId, ValidJobIds, WorkFields},
     bm1366::frequency_voltage::actual_frequency_mhz,
     bm1370::{
         init::{
@@ -11,8 +12,7 @@ use crate::{
             HASH_DOMAINS, RESET_FREQUENCY_QUARTER_MHZ, SMALL_CORE_COUNT,
         },
         protocol::{Bm1370Command, DEFAULT_BAUD, MAX_BAUD},
-        result::Bm1370ValidJobIds,
-        work::{encode_work_frame, Bm1370JobId, Bm1370WorkFields},
+        work::encode_work_frame,
         Bm1370ProtocolFault, BM1370_CHIP_ID,
     },
     dispatch::{dispatch_catalog_entry, AsicDispatch, DeferredAsicModel},
@@ -62,9 +62,9 @@ fn write_payloads(commands: &[Bm1370Command]) -> Vec<Vec<u8>> {
         .collect()
 }
 
-fn gamma_jobs() -> Bm1370ValidJobIds {
-    let mut jobs = Bm1370ValidJobIds::empty();
-    jobs.insert(Bm1370JobId::new(24));
+fn gamma_jobs() -> ValidJobIds {
+    let mut jobs = ValidJobIds::empty();
+    jobs.insert(JobId::new(24));
     jobs
 }
 
@@ -354,7 +354,7 @@ fn a_work_frame_matches_its_golden_bytes() {
     let fixture = fixture();
     let array4 =
         |pointer: &str| -> [u8; 4] { hex_at(&fixture, pointer).try_into().expect("4 bytes") };
-    let fields = Bm1370WorkFields {
+    let fields = WorkFields {
         starting_nonce: array4("/work/starting_nonce_hex"),
         nbits: array4("/work/nbits_hex"),
         ntime: array4("/work/ntime_hex"),
@@ -363,7 +363,7 @@ fn a_work_frame_matches_its_golden_bytes() {
         version: array4("/work/version_hex"),
     };
     // Act
-    let frame = encode_work_frame(Bm1370JobId::new(24), fields).expect("frame");
+    let frame = encode_work_frame(JobId::new(24), fields).expect("frame");
     // Assert
     assert_eq!(
         frame.as_slice(),
@@ -380,11 +380,11 @@ fn job_ids_step_through_sixteen_values_and_repeat() {
         .iter()
         .map(|id| id.as_u64().expect("id"))
         .collect();
-    let mut job_id = Bm1370JobId::new(0);
+    let mut job_id = JobId::new(0);
     // Act
     let sequence: Vec<u64> = (0..golden.len())
         .map(|_| {
-            job_id = job_id.advance();
+            job_id = job_id.advance(AsicFamily::Bm1370);
             u64::from(job_id.raw())
         })
         .collect();

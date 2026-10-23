@@ -1,5 +1,9 @@
 // Reference: reference/esp-miner/main/device_config.h
 
+mod family;
+
+pub use family::{FamilyFacts, TPS546_CORE_VOLTAGE_CEILING_MV};
+
 /// Evidence scope attached to a board catalog entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VerificationScope {

@@ -203,6 +203,7 @@ fn exchange_profile(
     let facts = JobFacts::genesis();
     let mut session = boundary(
         V2Session::new(SessionConfig {
+            asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
             endpoint_host: functional::SYNTHETIC_ENDPOINT_HOST.into(),
             endpoint_port: functional::SYNTHETIC_ENDPOINT_PORT,
             vendor: "synthetic".into(),

@@ -57,7 +57,7 @@ fn a_signed_upstream_default_start_prepares_hardware_at_upstream_defaults() {
     // Arrange
     let mut scope = TestScope::new();
     let mut adapter = ready_adapter();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     // Act
     let (_, _reply, effects) = start_with_profile(
         &mut scope,
@@ -87,7 +87,7 @@ fn a_renewal_keeps_the_profile_its_start_chose() {
     // Arrange
     let mut scope = TestScope::new();
     let mut adapter = ready_adapter();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let (generation, _reply, _) = start_with_profile(
         &mut scope,
         &mut adapter,

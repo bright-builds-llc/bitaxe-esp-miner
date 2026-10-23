@@ -13,6 +13,8 @@ use thiserror::Error;
 
 use crate::legacy_units::{milliamps_from_amps, millivolts_from_volts};
 use crate::mining::{mining_state_from_runtime, HashrateMonitorWire, SharesRejectedReasonWire};
+use bitaxe_config::catalog::BoardCatalogEntry;
+
 use crate::{
     ApiSnapshot, BootSessionId, ObservationTruthWire, OperatorSnapshotRevision, PlatformIdentity,
     SYSTEM_INFO_STATISTICS_LIMIT,
@@ -415,7 +417,14 @@ impl SystemInfoWire {
             temp2: safe_telemetry.chip_temp2_celsius,
             vr_temp: safe_telemetry.vr_temp_celsius,
             vr_temp_status: safe_telemetry.vr_temp_status,
-            expected_hashrate: safe_telemetry.expected_hashrate_ghs,
+            // Upstream zeroes it when mining stops, by a pause or a power fault, and keeps it
+            // zero while stopped.
+            expected_hashrate: if mining_state.mining_paused || platform.maybe_power_fault.is_some()
+            {
+                0.0
+            } else {
+                expected_hashrate_ghs(config.asic_frequency_mhz, &snapshot.catalog)
+            },
             shares_accepted: mining_state.shares_accepted,
             shares_rejected: mining_state.shares_rejected,
             shares_rejected_reasons: mining_state.shares_rejected_reasons,
@@ -451,8 +460,8 @@ impl SystemInfoWire {
             fallback_stratum_protocol: fallback_pool.protocol.clone(),
             fallback_stratum_v2_authority_public_key: fallback_pool.v2_authority_public_key.clone(),
             fallback_stratum_v2_channel_type: fallback_pool.v2_channel_type.clone(),
-            max_power: config.max_power_watts,
-            nominal_voltage: config.nominal_voltage_volts,
+            max_power: snapshot.catalog.family_facts().max_power_watts,
+            nominal_voltage: snapshot.catalog.family_facts().nominal_voltage_volts,
             small_core_count: snapshot.catalog.asic().small_core_count(),
             is_psram_available: numeric_bool(platform.psram_available),
             wifi_rssi: safe_telemetry.wifi_rssi_dbm,
@@ -564,6 +573,13 @@ impl SystemAsicWire {
 
 fn numeric_bool(value: bool) -> u8 {
     u8::from(value)
+}
+
+/// The hashrate the configured frequency should reach, in GH/s, as upstream computes it:
+/// frequency × small cores × chips / 1000.
+fn expected_hashrate_ghs(frequency_mhz: f64, catalog: &BoardCatalogEntry) -> f64 {
+    frequency_mhz * f64::from(catalog.asic().small_core_count()) * f64::from(catalog.asic_count())
+        / 1000.0
 }
 
 fn swarm_color_for_family(family: &str) -> &'static str {

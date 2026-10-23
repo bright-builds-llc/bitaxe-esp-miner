@@ -17,8 +17,8 @@ export const sourceFragments = new Map<string, readonly string[]>([
   ]],
   ["crates/bitaxe-stratum/src/v1/state.rs", ["pub hashrate_inputs: HashrateInputs"]],
   ["crates/bitaxe-stratum/src/v1/production_session/campaign.rs", [
-    "Self::Conservative => (400, 1_100, 100)",
-    "core_voltage_mv: i64,",
+    "Self::Conservative => (",
+    "pub fn for_board(",
   ]],
   ["crates/bitaxe-api/src/mining.rs", [
     "hash_rate: hashrate.current_ghs,",

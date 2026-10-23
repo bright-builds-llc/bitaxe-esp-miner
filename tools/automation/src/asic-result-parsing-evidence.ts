@@ -23,6 +23,8 @@ const expectedSourceProjection =
   "docs/parity/evidence/asic003-work-send/asic-work-send-projection.json";
 const transcriptPath = "crates/bitaxe-asic/src/bm1366/transcript.rs";
 const resultPath = "crates/bitaxe-asic/src/bm1366/result.rs";
+/** The discard categories moved to the chip-neutral module with the second chip family. */
+const discardReasonPath = "crates/bitaxe-asic/src/asic.rs";
 const adapterPath = "firmware/bitaxe/src/asic_adapter/production.rs";
 const workerPath = "firmware/bitaxe/src/production_mining_session/asic_worker.rs";
 const correlationPath = "crates/bitaxe-stratum/src/v1/production_work.rs";
@@ -280,13 +282,10 @@ async function validateSourceCompatibility(
 
   const currentResult = await documentAt(currentSourceCommit, resultPath);
   for (const fragment of currentResultFragments) requireUniqueFragment(currentResult, fragment);
+  const discardReasons = await documentAt(currentSourceCommit, discardReasonPath);
   for (const category of discardCategories) {
     requireUniqueFragment(
-      extractUniqueSpan(
-        currentResult,
-        "pub enum Bm1366ResultDiscardReason {",
-        "impl Bm1366ResultDiscardReason {",
-      ),
+      extractUniqueSpan(discardReasons, "pub enum ResultDiscardReason {", "impl ResultDiscardReason {"),
       category,
     );
   }

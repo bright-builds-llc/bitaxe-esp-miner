@@ -39,11 +39,5 @@ pub use types::{
     ProductionTransportEpoch, ProductionTransportFailure, V2PoolConfig,
 };
 
-impl Default for ProductionMiningSession {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests;

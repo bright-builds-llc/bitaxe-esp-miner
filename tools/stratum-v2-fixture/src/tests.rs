@@ -442,6 +442,7 @@ fn preconnect_act_one_avoids_accept_deadline() {
 
 fn test_config() -> SessionConfig {
     SessionConfig {
+        asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
         endpoint_host: "127.0.0.1".to_owned(),
         endpoint_port: 1,
         vendor: "test".to_owned(),

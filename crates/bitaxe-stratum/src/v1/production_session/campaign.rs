@@ -1,11 +1,14 @@
 //! Validated hardware profiles and bounded one-shot mining campaign leases.
 
-use bitaxe_config::{AsicFrequencyMhz, ConfigValidationError, CoreVoltageMv, FanDutyPercent};
+use bitaxe_config::catalog::BoardCatalogEntry;
+use bitaxe_config::{
+    ultra_205_catalog_entry, AsicFrequencyMhz, ConfigValidationError, CoreVoltageMv, FanDutyPercent,
+};
 use thiserror::Error;
 
 pub const MAX_MINING_CAMPAIGN_DURATION_MS: u64 = 1_800_000;
 
-/// Closed Ultra 205 BM1366 profiles admitted by production mining campaigns.
+/// Closed profiles admitted by production mining campaigns, defined from a board's catalog.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiningHardwareProfilePreset {
     Conservative,
@@ -21,15 +24,33 @@ impl MiningHardwareProfilePreset {
         }
     }
 
+    /// The Ultra 205's profile for this preset.
     #[must_use]
     pub fn profile(self) -> MiningHardwareProfile {
-        let (frequency_mhz, core_voltage_mv, fan_duty_percent) = match self {
-            Self::Conservative => (400, 1_100, 100),
-            Self::UpstreamDefault => (485, 1_200, 100),
-        };
-
-        MiningHardwareProfile::ultra_205_bm1366(frequency_mhz, core_voltage_mv, fan_duty_percent)
+        self.profile_for_board(ultra_205_catalog_entry())
             .expect("closed Ultra 205 production profiles must remain catalog-valid")
+    }
+
+    /// A board's profile for this preset: `Conservative` is its ASIC's lowest frequency and
+    /// voltage options, `UpstreamDefault` its catalog defaults; the fan runs at 100%. `None`
+    /// when the board's catalog has no options.
+    #[must_use]
+    pub fn profile_for_board(self, entry: BoardCatalogEntry) -> Option<MiningHardwareProfile> {
+        let asic = entry.asic();
+        let (frequency_mhz, core_voltage_mv) = match self {
+            Self::Conservative => (
+                *asic.frequency_options().iter().min()?,
+                *asic.voltage_options().iter().min()?,
+            ),
+            Self::UpstreamDefault => (asic.default_frequency_mhz(), asic.default_voltage_mv()),
+        };
+        MiningHardwareProfile::for_board(
+            entry,
+            i64::from(frequency_mhz),
+            i64::from(core_voltage_mv),
+            100,
+        )
+        .ok()
     }
 }
 
@@ -46,9 +67,24 @@ impl MiningHardwareProfile {
         core_voltage_mv: i64,
         fan_duty_percent: i64,
     ) -> Result<Self, ConfigValidationError> {
+        Self::for_board(
+            ultra_205_catalog_entry(),
+            frequency_mhz,
+            core_voltage_mv,
+            fan_duty_percent,
+        )
+    }
+
+    /// A profile validated against a board's catalog ranges and core-voltage ceiling.
+    pub fn for_board(
+        entry: BoardCatalogEntry,
+        frequency_mhz: i64,
+        core_voltage_mv: i64,
+        fan_duty_percent: i64,
+    ) -> Result<Self, ConfigValidationError> {
         Ok(Self {
-            frequency: AsicFrequencyMhz::ultra_205_bm1366(frequency_mhz)?,
-            core_voltage: CoreVoltageMv::ultra_205_bm1366(core_voltage_mv)?,
+            frequency: AsicFrequencyMhz::for_board(entry, frequency_mhz)?,
+            core_voltage: CoreVoltageMv::for_board(entry, core_voltage_mv)?,
             fan_duty: FanDutyPercent::parse(fan_duty_percent)?,
         })
     }
@@ -61,15 +97,28 @@ impl MiningHardwareProfile {
         maybe_frequency_mhz: Option<f32>,
         maybe_core_voltage_mv: Option<u16>,
     ) -> Result<Self, DeviceProfileRefusal> {
+        Self::from_device_settings_for_board(
+            ultra_205_catalog_entry(),
+            maybe_frequency_mhz,
+            maybe_core_voltage_mv,
+        )
+    }
+
+    /// [`Self::from_device_settings`] for any board's catalog.
+    pub fn from_device_settings_for_board(
+        entry: BoardCatalogEntry,
+        maybe_frequency_mhz: Option<f32>,
+        maybe_core_voltage_mv: Option<u16>,
+    ) -> Result<Self, DeviceProfileRefusal> {
         let frequency = maybe_frequency_mhz.ok_or(DeviceProfileRefusal::FrequencyUnreadable)?;
         if !frequency.is_finite() || frequency.fract() != 0.0 {
             return Err(DeviceProfileRefusal::FrequencyNotWhole);
         }
-        let frequency = AsicFrequencyMhz::ultra_205_bm1366(frequency as i64)
+        let frequency = AsicFrequencyMhz::for_board(entry, frequency as i64)
             .map_err(|_| DeviceProfileRefusal::FrequencyOutOfRange)?;
         let core_voltage_mv =
             maybe_core_voltage_mv.ok_or(DeviceProfileRefusal::VoltageUnreadable)?;
-        let core_voltage = CoreVoltageMv::ultra_205_bm1366(i64::from(core_voltage_mv))
+        let core_voltage = CoreVoltageMv::for_board(entry, i64::from(core_voltage_mv))
             .map_err(|_| DeviceProfileRefusal::VoltageOutOfRange)?;
         Ok(Self {
             frequency,
@@ -483,3 +532,6 @@ mod local_stop_condition_tests {
         assert!(!MiningCampaignStopCondition::Local.allows_operator_resume());
     }
 }
+
+#[cfg(test)]
+mod board_tests;

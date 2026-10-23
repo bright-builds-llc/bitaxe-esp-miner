@@ -53,6 +53,7 @@ pub struct V2PoolConfig {
     pub authority: [u8; 32],
     pub user_identity: String,
     pub firmware: String,
+    pub asic_family: bitaxe_asic::asic::AsicFamily,
 }
 impl Drop for V2PoolConfig {
     fn drop(&mut self) {
@@ -81,6 +82,7 @@ impl V2PoolConfig {
             nominal_hashrate: 400_000_000_000.0,
             channel_kind: crate::v2::messages::ChannelKind::Standard,
             minimum_extranonce_size: 0,
+            asic_family: self.asic_family,
         }
     }
 }

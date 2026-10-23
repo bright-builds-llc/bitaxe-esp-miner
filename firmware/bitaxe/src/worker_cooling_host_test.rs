@@ -232,7 +232,7 @@ fn fresh_zero_worker_reaches_fan_proof_and_cannot_energize_on_failed_proof() {
         maybe_campaign_lease: Some(lease),
         actuation_qualified: true,
     };
-    let mut engine = ProductionMiningSession::new();
+    let mut engine = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let mut backend = PreparationBackend {
         fail_fan_proof: true,
         ..PreparationBackend::default()

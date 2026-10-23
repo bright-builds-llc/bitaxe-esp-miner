@@ -11,6 +11,7 @@ fn v2_pools() -> ProductionPoolSet {
             port: 12345,
         },
         runtime: ProductionProtocolConfig::V2(V2PoolConfig {
+            asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
             authority: [2; 32],
             user_identity: "synthetic".into(),
             firmware: "test".into(),

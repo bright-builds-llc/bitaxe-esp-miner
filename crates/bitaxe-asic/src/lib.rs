@@ -1,3 +1,4 @@
+pub mod asic;
 pub mod bm1366;
 pub mod bm1368;
 pub mod bm1370;

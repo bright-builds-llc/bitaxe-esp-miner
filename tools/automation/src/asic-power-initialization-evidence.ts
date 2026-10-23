@@ -106,7 +106,8 @@ const semanticFragments = new Map<string, readonly string[]>([
     "bus.write_emc2101(Emc2101WriteRegister::FanSetting, fan_duty_code(percent))",
   ]],
   [semanticPaths[0], [
-    "Self::Conservative => (400, 1_100, 100),",
+    // The conservative preset is the board's lowest catalog pair: 400/1100 on the Ultra 205.
+    "Self::Conservative => (",
   ]],
   [semanticPaths[1], [
     "SafetyActuationCommand::SetFanDuty(percent) => {\n            emc2101::write_fan_duty_percent(&mut bus, percent.get())\n        }",

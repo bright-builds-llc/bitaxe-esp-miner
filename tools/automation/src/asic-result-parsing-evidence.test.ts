@@ -54,8 +54,7 @@ fn parse_register_read(frame: ResultFrameBytes) {
 }
 `;
 
-const currentResultSource = `pub const BM1366_RESULT_FRAME_LEN: usize = 11;
-pub enum Bm1366ResultDiscardReason {
+const discardReasonSource = `pub enum ResultDiscardReason {
     InvalidLength,
     InvalidPreamble,
     InvalidCrc,
@@ -65,8 +64,11 @@ pub enum Bm1366ResultDiscardReason {
     RegisterResponse,
     ParserInvariant,
 }
-impl Bm1366ResultDiscardReason {
+impl ResultDiscardReason {
 }
+`;
+
+const currentResultSource = `pub const BM1366_RESULT_FRAME_LEN: usize = 11;
 ${parserSpans}
 fn classify() {
     Err(fault) => Bm1366ProductionResult::Discarded(discard_reason(fault)),
@@ -191,6 +193,7 @@ function fakePort(options: {
           ? source.replace("let submit_nonce", "let changed_submit_nonce")
           : source);
       }
+      if (target.endsWith("asic.rs")) return ok(discardReasonSource);
       if (target.endsWith("production.rs")) return ok(adapterSource);
       if (target.endsWith("asic_worker.rs")) return ok(workerSource);
       if (target.endsWith("production_work.rs")) return ok(correlationSource);

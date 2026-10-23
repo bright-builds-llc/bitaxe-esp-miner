@@ -6,7 +6,7 @@ fn start_acknowledgement_samples_active_owner_even_before_work_dispatch() {
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
     adapter.readiness = readiness();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let (generation, receiver) = start(&mut scope, &mut adapter, &mut core);
     let mut snapshot = core.snapshot();
     snapshot.campaign_state = MiningCampaignState::Active;

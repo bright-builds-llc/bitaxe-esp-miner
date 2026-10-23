@@ -386,7 +386,7 @@ fn production_resumable_pause_reaches_same_lease_confirmation_without_cooling_wa
         maybe_campaign_lease: Some(lease),
         actuation_qualified: true,
     };
-    let mut session = ProductionMiningSession::new();
+    let mut session = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let preparing = session
         .handle(ProductionSessionEvent::Wake {
             wakeup: None,

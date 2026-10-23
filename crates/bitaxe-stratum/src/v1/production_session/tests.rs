@@ -22,7 +22,7 @@ struct DeterministicProductionSessionAdapter {
 impl DeterministicProductionSessionAdapter {
     fn new(pools: Option<ProductionPoolSet>) -> Self {
         Self {
-            session: ProductionMiningSession::new(),
+            session: ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1),
             pools,
             pool_reads: 0,
             connections: Vec::new(),
@@ -238,6 +238,7 @@ fn pool(host: &str) -> ProductionPoolConfiguration {
             port: 3333,
         },
         runtime: LiveRuntimeConfig {
+            asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
             maybe_suggested_difficulty: None,
             model: "ultra".to_owned(),
             version: "205".to_owned(),

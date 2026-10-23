@@ -22,7 +22,7 @@ fn a_start_is_refused_beside_a_local_run_without_activating_its_generation() {
     adapter.local.maybe_run = Some(LocalRun {
         preparation_started: false,
     });
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
 
     // Act
     let (generation, reply) = super::start(&mut scope, &mut adapter, &mut core);

@@ -268,3 +268,11 @@ fn no_allowed_command_turns_the_output_on_or_touches_nvm() {
     // Assert
     assert_eq!(forbidden, 0);
 }
+
+#[test]
+fn the_catalog_core_voltage_ceiling_is_the_plan_s_clamp() {
+    // Act
+    let ceiling_mv = bitaxe_config::catalog::TPS546_CORE_VOLTAGE_CEILING_MV;
+    // Assert
+    assert_eq!(f64::from(ceiling_mv), TARGET_MAX_VOLTS * 1000.0);
+}

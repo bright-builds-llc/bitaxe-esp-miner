@@ -127,6 +127,7 @@ fn read_pool(
         .map_err(|_| ProductionSettingsReadError::new("sv2_authority_key"))?;
     Ok(Some(V2PoolSettings {
         session: SessionConfig {
+            asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
             endpoint_host,
             endpoint_port,
             vendor: "bitaxe-rust".to_owned(),

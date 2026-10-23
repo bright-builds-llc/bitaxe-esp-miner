@@ -2,6 +2,7 @@ use super::*;
 use crate::v2::messages::*;
 fn session() -> StandardSession {
     StandardSession::new(SessionConfig {
+        asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
         endpoint_host: "192.168.1.3".into(),
         endpoint_port: 12345,
         vendor: "test".into(),

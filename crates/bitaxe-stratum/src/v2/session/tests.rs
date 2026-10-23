@@ -151,6 +151,7 @@ fn active_standard_session(target: [u8; 32]) -> V2Session {
 
 fn config(channel_kind: ChannelKind) -> SessionConfig {
     SessionConfig {
+        asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
         endpoint_host: "pool".to_owned(),
         endpoint_port: 3333,
         vendor: "bitaxe".to_owned(),

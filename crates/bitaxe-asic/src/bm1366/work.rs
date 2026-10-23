@@ -8,83 +8,13 @@ use crate::Bm1366ProtocolFault;
 
 use super::packet::{JobFrame, CMD_WRITE, GROUP_SINGLE, JOB_HEADER_TYPE};
 
-pub const BM1366_JOB_PAYLOAD_LEN: usize = 82;
+pub use crate::asic::{
+    JobId as Bm1366JobId, WorkFields as Bm1366WorkFields, WorkPayload as Bm1366WorkPayload,
+    JOB_ID_MODULUS, JOB_PAYLOAD_LEN as BM1366_JOB_PAYLOAD_LEN, JOB_SLOT_MASK as JOB_ID_LOOKUP_MASK,
+    NUM_MIDSTATES as BM1366_NUM_MIDSTATES,
+};
+
 pub const BM1366_JOB_FRAME_LEN: usize = 88;
-pub const BM1366_NUM_MIDSTATES: u8 = 0x01;
-pub const JOB_ID_STEP: u8 = 8;
-pub const JOB_ID_MODULUS: u8 = 128;
-pub const JOB_ID_LOOKUP_MASK: u8 = 0xf8;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Bm1366JobId {
-    id: u8,
-}
-
-impl Bm1366JobId {
-    pub const fn new(id: u8) -> Self {
-        Self {
-            id: id % JOB_ID_MODULUS,
-        }
-    }
-
-    pub const fn raw(self) -> u8 {
-        self.id
-    }
-
-    pub const fn advance(self) -> Self {
-        Self::new((self.id + JOB_ID_STEP) % JOB_ID_MODULUS)
-    }
-
-    pub const fn lookup_key(self) -> Self {
-        Self::new(self.id & JOB_ID_LOOKUP_MASK)
-    }
-
-    pub const fn small_core_id(self) -> u8 {
-        self.id & !JOB_ID_LOOKUP_MASK
-    }
-}
-
-impl From<Bm1366JobId> for u8 {
-    fn from(job_id: Bm1366JobId) -> Self {
-        job_id.raw()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Bm1366WorkFields {
-    pub starting_nonce: [u8; 4],
-    pub nbits: [u8; 4],
-    pub ntime: [u8; 4],
-    pub merkle_root: [u8; 32],
-    pub prev_block_hash: [u8; 32],
-    pub version: [u8; 4],
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Bm1366WorkPayload {
-    bytes: [u8; BM1366_JOB_PAYLOAD_LEN],
-}
-
-impl Bm1366WorkPayload {
-    pub fn new(job_id: Bm1366JobId, fields: Bm1366WorkFields) -> Self {
-        let mut bytes = [0; BM1366_JOB_PAYLOAD_LEN];
-
-        bytes[0] = job_id.raw();
-        bytes[1] = BM1366_NUM_MIDSTATES;
-        bytes[2..6].copy_from_slice(&fields.starting_nonce);
-        bytes[6..10].copy_from_slice(&fields.nbits);
-        bytes[10..14].copy_from_slice(&fields.ntime);
-        bytes[14..46].copy_from_slice(&fields.merkle_root);
-        bytes[46..78].copy_from_slice(&fields.prev_block_hash);
-        bytes[78..82].copy_from_slice(&fields.version);
-
-        Self { bytes }
-    }
-
-    pub const fn bytes(&self) -> &[u8; BM1366_JOB_PAYLOAD_LEN] {
-        &self.bytes
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiagnosticWorkFrame {
@@ -158,8 +88,8 @@ mod tests {
         let last = Bm1366JobId::new(120);
 
         // Act
-        let advanced = first.advance();
-        let wrapped = last.advance();
+        let advanced = first.advance(crate::asic::AsicFamily::Bm1366);
+        let wrapped = last.advance(crate::asic::AsicFamily::Bm1366);
 
         // Assert
         assert_eq!(advanced.raw(), 8);

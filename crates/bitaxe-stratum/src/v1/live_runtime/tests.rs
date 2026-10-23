@@ -10,6 +10,7 @@ mod work;
 fn runtime() -> LiveStratumRuntime {
     LiveStratumRuntime::new_with_generation(
         LiveRuntimeConfig {
+            asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
             maybe_suggested_difficulty: None,
             model: "ultra".to_owned(),
             version: "205".to_owned(),

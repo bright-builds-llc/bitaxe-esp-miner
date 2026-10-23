@@ -342,7 +342,48 @@ action.
     Each needs a chip-generic seam or a BM1370 twin.
 - [ ] **F. BM1370 on hardware, then mining.** Chip detection, mining-ready
       init, board-specific live limits, a short local run, stops,
-      self-test and soaks; the parity rows with their evidence.
+      self-test and soaks; the parity rows with their evidence. Plan
+      `gamma-601-phase-f` (owner approved 2026-10-23), in four gated
+      sub-phases.
+  - [ ] F1: the shared crates, pure and host-tested.
+    - [x] F1.1: board-parameterized frequency and voltage validators.
+      The 601's voltage stops at the TPS546 ceiling of 1.20 V, which a
+      cross-crate test pins.
+    - [x] F1.2: the catalog family facts (max power, power offset,
+      nominal voltage). The API's `maxPower` comes from them, and
+      `expectedHashrate` is computed upstream's way. It is zero while
+      paused or after a power fault; the 205 reported 0 before.
+    - [x] F1.3: the neutral ASIC types (`bitaxe_asic::asic`), with the
+      BM1366 names kept as aliases. The BM1370 core uses them.
+    - [x] F1.4: `AsicFamily` sets the job-id step and the job interval in
+      stratum. The 205's behavior is unchanged.
+    - [x] F1.5: board profiles, presets and device-settings parsing. The
+      validators are ranges, so upstream's minus-100/100 overheat pair is
+      valid on the 601 (425/1050); no substitute pair is needed.
+    - [ ] F1.6: a board-parameterized safety verdict (catalog power, VR
+      temperature, TPS546 faults).
+    - [ ] F1.7: a BM1370 safe-shutdown plan and a per-board shutdown
+      bound.
+    - [ ] F1.8: the API's board and ASIC identity (`PlatformBoard`,
+      snapshots, fixtures).
+    - [ ] F1.9: the host BM1370 path (virtual board, simulation).
+  - F2 carries over from F1's review:
+    - the firmware's family and chip count come from board identity, not
+      a literal BM1366: `owner_loop.rs`, `bwg.rs`,
+      `settings_adapter/production.rs`, `settings_adapter/stratum_v2.rs`,
+      `v2_serial_runtime.rs`;
+    - production result classification goes through
+      `AsicFamily::classify_production_result`;
+    - the SV2 `hardware_version` and nominal hashrate, and the V1
+      subscribe model `bitaxe-ultra`, come from the board;
+    - V2's first job id is 0 where upstream's BM1370 sends 24, which the
+      205 keeps;
+    - overheat recovery is board-aware, with VR-temperature cooling on the
+      601 and `reduced_profile` taking the board;
+    - `hashrate.rs`'s `BM1366_HASH_DOMAIN_COUNT` comes from the catalog.
+  - [ ] F2: the firmware seams; the 601 is still refused mining.
+  - [ ] F3: hardware on the 601, each step under its own contract.
+  - [ ] F4: self-test, soaks and promotion.
 
 Each phase ends with the full gate, an independent review, commit and
 push. Each hardware step needs its own contract and enable line below.

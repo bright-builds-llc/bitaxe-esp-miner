@@ -92,7 +92,7 @@ bus.write_emc2101(Emc2101WriteRegister::FanSetting, fan_duty_code(percent))
 `],
   ["firmware/bitaxe/src/safety_adapter/request_queue.rs", "bounded request queue\n"],
   ["crates/bitaxe-stratum/src/v1/production_session/campaign.rs", `
-Self::Conservative => (400, 1_100, 100),
+Self::Conservative => (
 `],
   ["firmware/bitaxe/src/safety_adapter.rs", `
 SafetyActuationCommand::SetFanDuty(percent) => {

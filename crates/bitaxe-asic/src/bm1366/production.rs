@@ -6,34 +6,9 @@
 use super::{
     command::Bm1366AdapterAction,
     packet::{FrameBytes, JobFrame, CMD_WRITE, GROUP_SINGLE, JOB_HEADER_TYPE},
-    work::{Bm1366JobId, Bm1366WorkFields, Bm1366WorkPayload},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ProductionWorkPayload {
-    job_id: Bm1366JobId,
-    payload: Bm1366WorkPayload,
-}
-
-impl ProductionWorkPayload {
-    #[must_use]
-    pub fn new(job_id: Bm1366JobId, fields: Bm1366WorkFields) -> Self {
-        Self {
-            job_id,
-            payload: Bm1366WorkPayload::new(job_id, fields),
-        }
-    }
-
-    #[must_use]
-    pub const fn job_id(&self) -> Bm1366JobId {
-        self.job_id
-    }
-
-    #[must_use]
-    pub const fn payload(&self) -> &Bm1366WorkPayload {
-        &self.payload
-    }
-}
+pub use crate::asic::ProductionWorkPayload;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bm1366ProductionCommand {

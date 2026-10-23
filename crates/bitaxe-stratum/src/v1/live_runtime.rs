@@ -9,6 +9,7 @@
 use std::fmt;
 use zeroize::Zeroize;
 
+use bitaxe_asic::asic::AsicFamily;
 use bitaxe_asic::bm1366::work::Bm1366JobId;
 
 use bitaxe_asic::bm1366::production::ProductionAsicBlocker;
@@ -56,6 +57,8 @@ pub struct LiveRuntimeConfig {
     pub model: String,
     pub version: String,
     pub credentials: LivePoolCredentials,
+    /// The chip family work is sent to: it sets the job-id step.
+    pub asic_family: AsicFamily,
 }
 
 impl fmt::Debug for LiveRuntimeConfig {
@@ -65,6 +68,7 @@ impl fmt::Debug for LiveRuntimeConfig {
             .field("model", &self.model)
             .field("version", &self.version)
             .field("credentials", &"redacted")
+            .field("asic_family", &self.asic_family)
             .finish()
     }
 }
@@ -600,9 +604,11 @@ impl LiveStratumRuntime {
     }
 
     fn next_asic_job_id(&mut self) -> Bm1366JobId {
-        // Upstream `BM1366_send_work` pre-increments before assign (`bm1366.c:313-314`).
-        self.next_asic_job_id = self.next_asic_job_id.wrapping_add(8) % 128;
-        Bm1366JobId::new(self.next_asic_job_id)
+        // Upstream's send-work pre-increments before assigning (`bm1366.c:313-314`,
+        // `bm1370.c:331`), by the family's step.
+        let job_id = Bm1366JobId::new(self.next_asic_job_id).advance(self.config.asic_family);
+        self.next_asic_job_id = job_id.raw();
+        job_id
     }
 }
 

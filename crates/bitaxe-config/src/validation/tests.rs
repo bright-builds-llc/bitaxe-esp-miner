@@ -199,3 +199,39 @@ fn validation_rejects_non_205_active_board_scope() {
     // Assert
     assert!(active_scope.is_err());
 }
+
+#[test]
+fn the_gamma_601_accepts_its_catalog_frequency_range() {
+    // Arrange
+    let entry = crate::catalog::gamma_601_catalog_entry();
+    // Act
+    let parsed =
+        [399, 400, 525, 625, 626].map(|mhz| AsicFrequencyMhz::for_board(entry, mhz).is_ok());
+    // Assert
+    assert_eq!(parsed, [false, true, true, true, false]);
+}
+
+#[test]
+fn the_gamma_601_core_voltage_stops_at_its_tps546_ceiling() {
+    // Arrange: the catalog offers up to 1250 mV; the TPS546 plan clamps at 1.20 V.
+    let entry = crate::catalog::gamma_601_catalog_entry();
+    // Act
+    let parsed = [999, 1_000, 1_150, 1_200, 1_201, 1_250]
+        .map(|mv| CoreVoltageMv::for_board(entry, mv).is_ok());
+    // Assert
+    assert_eq!(parsed, [false, true, true, true, false, false]);
+}
+
+#[test]
+fn the_ultra_205_wrappers_match_its_board_validators() {
+    // Arrange
+    let entry = crate::catalog::ultra_205_catalog_entry();
+    // Act
+    let same = [399, 400, 485, 575, 576].iter().all(|&mhz| {
+        AsicFrequencyMhz::ultra_205_bm1366(mhz) == AsicFrequencyMhz::for_board(entry, mhz)
+    }) && [1_099, 1_100, 1_200, 1_300, 1_301]
+        .iter()
+        .all(|&mv| CoreVoltageMv::ultra_205_bm1366(mv) == CoreVoltageMv::for_board(entry, mv));
+    // Assert
+    assert!(same);
+}

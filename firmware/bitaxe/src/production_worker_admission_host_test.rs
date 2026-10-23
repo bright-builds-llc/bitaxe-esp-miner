@@ -178,7 +178,7 @@ fn blocked_initial_readiness_rejects_start_without_waiting_for_rpc_timeout() {
     // Arrange
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
 
     // Act
     let (_, reply) = start(&mut scope, &mut adapter, &mut core);
@@ -192,7 +192,7 @@ fn blocked_initial_start_can_retire_and_admit_a_fresh_link() {
     // Arrange
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let (generation, _reply) = start(&mut scope, &mut adapter, &mut core);
 
     // Act
@@ -217,7 +217,7 @@ fn blocked_start_finalizes_its_reserved_budget_before_releasing_ownership() {
     // Arrange
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
 
     // Act
     let (_, _reply) = start(&mut scope, &mut adapter, &mut core);
@@ -231,7 +231,7 @@ fn failed_budget_finalization_blocks_recovery_until_cleanup_succeeds() {
     // Arrange
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     worker_acceptance_budget::FAIL_FINISH.store(true, Ordering::SeqCst);
     let (generation, _reply) = start(&mut scope, &mut adapter, &mut core);
     revocation::revoke_at(generation, 1_100);
@@ -263,7 +263,7 @@ fn failed_budget_finalization_blocks_recovery_until_cleanup_succeeds() {
 }
 
 fn previously_consumed_core() -> ProductionMiningSession {
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let lease_id = MiningCampaignLeaseId::new(1).expect("valid lease id");
     let lease = MiningCampaignLease::new(
         lease_id,
@@ -327,7 +327,7 @@ fn prepared_start_waits_for_stop_confirmation_despite_late_preparation_completio
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
     adapter.readiness = readiness();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let (generation, reply) = start(&mut scope, &mut adapter, &mut core);
     let lease_id = adapter
         .maybe_bwg_session
@@ -372,7 +372,7 @@ fn safe_stop_ack_waits_for_durable_finalization_after_hardware_confirmation() {
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
     adapter.readiness = readiness();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     let (generation, _start_reply) = start(&mut scope, &mut adapter, &mut core);
     let lease_id = adapter
         .maybe_bwg_session
@@ -431,7 +431,7 @@ fn network_unavailable_rejects_start_without_hardware_preparation() {
         network_ready: false,
         ..readiness()
     };
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
 
     // Act
     let (generation, reply) = start(&mut scope, &mut adapter, &mut core);
@@ -454,7 +454,7 @@ fn actuation_unavailable_rejects_start_without_hardware_preparation() {
         actuation_qualified: false,
         ..readiness()
     };
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
 
     // Act
     let (generation, reply) = start(&mut scope, &mut adapter, &mut core);
@@ -473,7 +473,7 @@ fn rejected_unprepared_start_does_not_acknowledge_stop_during_budget_failure() {
     // Arrange
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     worker_acceptance_budget::FAIL_FINISH.store(true, Ordering::SeqCst);
     let (_, start_reply) = start(&mut scope, &mut adapter, &mut core);
     assert_eq!(start_reply.try_recv(), Ok(Err(bwg::Error::Rejected)));
@@ -528,7 +528,7 @@ fn cooling_owner_fences_link_without_reserving_mining_budget() {
     let mut scope = TestScope::new();
     let generation = scope.link();
     let mut adapter = blocked_adapter();
-    let snapshot = ProductionMiningSession::new().snapshot();
+    let snapshot = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1).snapshot();
     let (reply, receiver) = bitaxe_runtime::reply::reply();
     // Act
     adapter.event(
@@ -563,7 +563,7 @@ fn no_session_safe_stop_cannot_acknowledge_failed_cooling_restore() {
     adapter.maybe_cooling_generation = Some(generation);
     cooling::FAIL_RESTORE.store(true, Ordering::SeqCst);
     revocation::revoke_at(generation, 1_000);
-    let snapshot = ProductionMiningSession::new().snapshot();
+    let snapshot = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1).snapshot();
     let (reply, receiver) = bitaxe_runtime::reply::reply();
     // Act
     adapter.event(
@@ -617,7 +617,7 @@ fn an_activated_lease_takes_the_fan_from_any_earlier_owner() {
     let mut scope = TestScope::new();
     let mut adapter = blocked_adapter();
     adapter.readiness = readiness();
-    let mut core = ProductionMiningSession::new();
+    let mut core = ProductionMiningSession::new(bitaxe_asic::asic::AsicFamily::Bm1366, 1);
     FAN_CONTROLLER_OWNER_CLEARED.store(false, Ordering::Release);
 
     // Act

@@ -9,8 +9,8 @@
 use thiserror::Error;
 
 use crate::{
-    board_catalog, ultra_205_catalog_entry, NvsKeyName, NvsSchemaError, VerificationScope,
-    NVS_KEY_NAME_MAX_BYTES,
+    board_catalog, catalog::BoardCatalogEntry, ultra_205_catalog_entry, NvsKeyName, NvsSchemaError,
+    VerificationScope, NVS_KEY_NAME_MAX_BYTES,
 };
 
 /// Typed validation errors for raw config boundary values.
@@ -57,7 +57,13 @@ impl AsicFrequencyMhz {
     /// lowest and highest options (ADR-0037 decision 3). The options themselves
     /// are presets, as on upstream.
     pub fn ultra_205_bm1366(value: i64) -> Result<Self, ConfigValidationError> {
-        let (min, max) = option_bounds(ultra_205_catalog_entry().asic().frequency_options());
+        Self::for_board(ultra_205_catalog_entry(), value)
+    }
+
+    /// Parses a frequency for a board: any whole MHz between its ASIC's lowest and highest
+    /// catalog options.
+    pub fn for_board(entry: BoardCatalogEntry, value: i64) -> Result<Self, ConfigValidationError> {
+        let (min, max) = option_bounds(entry.asic().frequency_options());
         parse_u16_range("frequency", value, min, max).map(Self)
     }
 
@@ -81,7 +87,16 @@ impl CoreVoltageMv {
     /// Parses an Ultra 205 BM1366 core voltage: any millivolt value between the
     /// catalog's lowest and highest options (ADR-0037 decision 3).
     pub fn ultra_205_bm1366(value: i64) -> Result<Self, ConfigValidationError> {
-        let (min, max) = option_bounds(ultra_205_catalog_entry().asic().voltage_options());
+        Self::for_board(ultra_205_catalog_entry(), value)
+    }
+
+    /// Parses a core voltage for a board: any millivolt value between its ASIC's lowest and
+    /// highest catalog options, capped at the board's core-voltage ceiling when it has one.
+    pub fn for_board(entry: BoardCatalogEntry, value: i64) -> Result<Self, ConfigValidationError> {
+        let (min, max) = option_bounds(entry.asic().voltage_options());
+        let max = entry
+            .maybe_core_voltage_ceiling_mv()
+            .map_or(max, |ceiling| max.min(i64::from(ceiling)));
         parse_u16_range("coreVoltage", value, min, max).map(Self)
     }
 

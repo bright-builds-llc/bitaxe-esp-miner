@@ -295,7 +295,6 @@ fn fresh_report(evidence: SafetyCriticalEvidence) -> SafetyTelemetryReport {
         vr_temp_celsius: 45.0,
         core_voltage_actual_mv: 1_198.0,
         actual_frequency_mhz: 485.0,
-        expected_hashrate_ghs: 525.0,
         fan_speed_percent: 70,
         fan_rpm: 3_200,
         fan2_rpm: 0,
