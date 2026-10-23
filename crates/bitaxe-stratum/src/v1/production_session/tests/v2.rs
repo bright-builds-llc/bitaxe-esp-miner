@@ -12,6 +12,7 @@ fn v2_pools() -> ProductionPoolSet {
         },
         runtime: ProductionProtocolConfig::V2(V2PoolConfig {
             asic_family: bitaxe_asic::asic::AsicFamily::Bm1366,
+            hardware_version: "205",
             authority: [2; 32],
             user_identity: "synthetic".into(),
             firmware: "test".into(),
@@ -211,5 +212,28 @@ fn an_open_channel_ends_a_local_probe_and_powers_up() {
     assert_eq!(
         a.connections,
         vec![ProductionPool::Primary, ProductionPool::Primary]
+    );
+}
+
+#[test]
+fn setup_connection_names_the_configured_board_version() {
+    // Arrange
+    let pool = V2PoolConfig {
+        asic_family: bitaxe_asic::asic::AsicFamily::Bm1370,
+        hardware_version: "601",
+        authority: [2; 32],
+        user_identity: "synthetic".into(),
+        firmware: "test".into(),
+    };
+    let endpoint = ProductionPoolEndpoint {
+        host: "192.168.1.3".into(),
+        port: 12345,
+    };
+    // Act
+    let session = pool.session_config(&endpoint);
+    // Assert
+    assert_eq!(
+        (session.hardware_version.as_str(), session.asic_family),
+        ("601", bitaxe_asic::asic::AsicFamily::Bm1370)
     );
 }

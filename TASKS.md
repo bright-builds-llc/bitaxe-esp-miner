@@ -383,12 +383,31 @@ action.
       board and ASIC. The phase-34 guard pins the board-identity source.
       `hashrate.rs`'s single chip and four domains hold for the BM1370
       too, so it stays as pinned;
-    - production result classification goes through
-      `AsicFamily::classify_production_result`;
-    - the SV2 `hardware_version` and nominal hashrate, and the V1
-      subscribe model `bitaxe-ultra`, come from the board;
-    - V2's first job id is 0 where upstream's BM1370 sends 24, which the
-      205 keeps;
+    - [x] production result classification and the boot register
+      snapshot go through `AsicFamily::classify_production_result`, at the
+      chain's address interval (256 over the chip count). A compile-time
+      check holds the BM1370's frame at the BM1366's 11 bytes. The bounded
+      diagnostic work/result path in `asic_adapter.rs` stays BM1366-only;
+    - [x] the BWG and serial V2 paths' `SetupConnection` hardware version
+      is the built board's version ("205" or "601"), so the 205's bytes
+      do not change. Upstream sends the ASIC name and a fixed 1e12 nominal
+      hashrate (`stratum_v2_task.c`); aligning all three V2 paths with that
+      is a separate parity change, since it changes the 205 on the wire;
+    - the V1 subscribe model `bitaxe-ultra` in `bwg.rs` is also the BWG
+      capability identity (`bwg_worker_usb.rs` checks "bitaxe-ultra" and
+      "205" at Worker start), so both change with the 601's BWG capability;
+    - the native SV2 settings path takes its hardware version from
+      `ultra_205_defaults()` (`settings_adapter/stratum_v2.rs`); it takes
+      the built board's defaults;
+    - the accepted-state snapshot reads the chip-id register, which the
+      BM1370 register map refuses. The snapshot has no caller today; drop
+      or map that read before one is added on the 601;
+    - the bounded diagnostic work/result mode in `asic_adapter.rs` still
+      decodes BM1366 frames; a 601 build refuses that mode or routes it
+      through the family;
+    - [x] V2's first ASIC job id stays 0 on both boards. Upstream's BM1370
+      first sends 24; id 0 is a valid slot for both families and the
+      choice is not observable outside the chip link;
     - overheat recovery is board-aware, with VR-temperature cooling on the
       601 and `reduced_profile` taking the board;
     - revocation's reported `SHUTDOWN_BOUND_MS` becomes the board's

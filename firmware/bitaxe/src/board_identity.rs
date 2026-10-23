@@ -56,10 +56,17 @@ pub(crate) const PLATFORM_BOARD: PlatformBoard = built::PLATFORM_BOARD;
 pub(crate) const PLATFORM_ASIC: PlatformAsic = built::PLATFORM_ASIC;
 /// The built board's chip family: its job-id step, job interval and result layout.
 pub(crate) const ASIC_FAMILY: AsicFamily = built::FAMILY;
+/// The built board's catalog version, such as "205".
+pub(crate) const BOARD_VERSION: &str = built::catalog().board_version();
 
 /// The built board's catalog entry, for the API and the screen.
 pub(crate) const fn catalog_entry() -> BoardCatalogEntry {
     built::catalog()
+}
+
+/// The chip-address spacing results decode against: the 256 addresses shared over the chain.
+pub(crate) fn result_address_interval() -> u16 {
+    256 / u16::from(catalog_entry().asic_count())
 }
 
 static STORED: OnceLock<StoredBoard> = OnceLock::new();

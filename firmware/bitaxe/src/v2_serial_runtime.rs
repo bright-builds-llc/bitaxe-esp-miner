@@ -108,7 +108,7 @@ fn prepare_input(stratum: V2Stratum) -> Option<Vec<Input>> {
         endpoint_host: endpoint.ip().to_string(),
         endpoint_port: endpoint.port(),
         vendor: "bitaxe".into(),
-        hardware_version: "205".into(),
+        hardware_version: crate::board_identity::BOARD_VERSION.into(),
         firmware: crate::semantic_version().into(),
         device_id: String::new(),
         user_identity: stratum.user_identity.to_string(),

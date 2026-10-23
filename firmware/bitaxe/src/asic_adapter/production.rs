@@ -5,12 +5,12 @@
 use std::sync::{Mutex, OnceLock};
 
 use anyhow::Result;
+use bitaxe_asic::asic::ProductionResult;
 use bitaxe_asic::bm1366::{
     accepted_state::{
         AcceptedStateSnapshot, AcceptedStateStage, AcceptedStateStatus, PowerDeltaClass,
     },
     command::{Bm1366AdapterAction, Bm1366Command, VersionMask},
-    mining_ready::ultra_205_result_address_interval,
     packet::{CommandFrame, CMD_READ, COMMAND_HEADER_TYPE, GROUP_ALL},
     production::{Bm1366ProductionCommand, ProductionAsicBlocker, ProductionAsicStatus},
     registers::{
@@ -19,9 +19,8 @@ use bitaxe_asic::bm1366::{
         ERROR_COUNT_REGISTER, TOTAL_COUNT_REGISTER,
     },
     result::{
-        classify_bm1366_production_result, parse_bm1366_result_frame, Bm1366NonceResult,
-        Bm1366ParsedResult, Bm1366ProductionResult, Bm1366RegisterRead, Bm1366ResultDiscardReason,
-        Bm1366ValidJobIds, BM1366_RESULT_FRAME_LEN,
+        Bm1366NonceResult, Bm1366RegisterRead, Bm1366ResultDiscardReason, Bm1366ValidJobIds,
+        BM1366_RESULT_FRAME_LEN,
     },
 };
 
@@ -339,11 +338,9 @@ pub(super) fn collect_boot_accepted_state_snapshot(
         else {
             continue;
         };
-        if let Ok(Bm1366ParsedResult::RegisterRead(read)) = parse_bm1366_result_frame(
-            &frame,
-            &Bm1366ValidJobIds::empty(),
-            ultra_205_result_address_interval(),
-        ) {
+        if let ProductionResult::RegisterRead(read) =
+            classify_production_result(&frame, &Bm1366ValidJobIds::empty())
+        {
             observation.observe(read);
         }
     }
@@ -497,20 +494,31 @@ fn try_read_production_result_on_state(
         return Ok(ProductionReadOutcome::Pending);
     };
 
-    match classify_bm1366_production_result(&frame, valid_jobs, ultra_205_result_address_interval())
-    {
-        Bm1366ProductionResult::JobNonce(result) => Ok(ProductionReadOutcome::JobNonce(result)),
-        Bm1366ProductionResult::RegisterRead(read) => {
+    match classify_production_result(&frame, valid_jobs) {
+        ProductionResult::JobNonce(result) => Ok(ProductionReadOutcome::JobNonce(result)),
+        ProductionResult::RegisterRead(read) => {
             log::info!("asic_production_trace=register_read_parsed");
             Ok(ProductionReadOutcome::RegisterReadProof(read))
         }
-        Bm1366ProductionResult::Discarded(reason) => {
+        ProductionResult::Discarded(reason) => {
             uart.clear_rx()
                 .map_err(|_| ProductionAsicBlocker::UartFailed)?;
             log::warn!("asic_bridge=typed_discard outcome={}", reason.label());
             Ok(ProductionReadOutcome::Discarded(reason))
         }
     }
+}
+
+// The receive loop reads one frame length for every chip family it drives.
+const _: () = assert!(BM1366_RESULT_FRAME_LEN == bitaxe_asic::bm1370::BM1370_RESULT_FRAME_LEN);
+
+/// Classifies a receive frame by the built board's chip family and chain length.
+fn classify_production_result(frame: &[u8], valid_jobs: &Bm1366ValidJobIds) -> ProductionResult {
+    crate::board_identity::ASIC_FAMILY.classify_production_result(
+        frame,
+        valid_jobs,
+        crate::board_identity::result_address_interval(),
+    )
 }
 
 impl Default for ProductionAsicExecutor {

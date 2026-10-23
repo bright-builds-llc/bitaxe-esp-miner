@@ -54,6 +54,8 @@ pub struct V2PoolConfig {
     pub user_identity: String,
     pub firmware: String,
     pub asic_family: bitaxe_asic::asic::AsicFamily,
+    /// The board version `SetupConnection` names, such as "205".
+    pub hardware_version: &'static str,
 }
 impl Drop for V2PoolConfig {
     fn drop(&mut self) {
@@ -75,7 +77,7 @@ impl V2PoolConfig {
             endpoint_host: endpoint.host.clone(),
             endpoint_port: endpoint.port,
             vendor: "bitaxe".into(),
-            hardware_version: "205".into(),
+            hardware_version: self.hardware_version.into(),
             firmware: self.firmware.clone(),
             device_id: String::new(),
             user_identity: self.user_identity.clone(),
