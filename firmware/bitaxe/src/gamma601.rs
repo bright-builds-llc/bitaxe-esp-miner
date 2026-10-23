@@ -1,9 +1,10 @@
 //! Gamma 601 safe boot (ADR-0041, `task-gamma-601-bring-up`).
 //!
 //! The 601 build boots with the ASIC held in reset and the TPS546 output off, and it never
-//! mines. Nothing in this build releases the reset or turns the output on. A thread keeps the
-//! controller off, the fan running (full until the output is confirmed off) and the readings
-//! current. Wi-Fi, HTTP and the display's startup screen run as on the Ultra 205; the 205's
+//! mines. Nothing in this build releases the reset or turns the output on; only the test-only
+//! `gamma601-vout-check` variant adds one bounded enable with the reset held (ADR-0041 item 6,
+//! `gamma601/vout_check.rs`). A thread keeps the controller off, the fan running (full until the
+//! output is confirmed off) and the readings current. Wi-Fi, HTTP and the display's startup screen run as on the Ultra 205; the 205's
 //! safety, sensor, fan and mining owners are not started. With no Worker channel, the records
 //! reach USB as log lines.
 //!
@@ -20,6 +21,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
+#[cfg(feature = "gamma601-vout-check")]
+mod vout_check;
+
 /// Upstream reads the controller identity up to six times, 3 ms apart.
 const IDENTIFY_ATTEMPTS: usize = 6;
 const IDENTIFY_BACKOFF_MS: u32 = 3;
@@ -28,7 +32,11 @@ const SWEEP_PERIOD: Duration = Duration::from_secs(1);
 /// USB replay does not run: the log lines are how a receive-only monitor sees them.
 const LOG_EVERY_SWEEPS: u32 = 5;
 const THREAD_NAME: &str = "gamma601-safe-boot";
+#[cfg(not(feature = "gamma601-vout-check"))]
 const THREAD_STACK_BYTES: usize = 6 * 1024;
+/// The core-voltage check runs on this thread, deeper than the sweeps.
+#[cfg(feature = "gamma601-vout-check")]
+const THREAD_STACK_BYTES: usize = 12 * 1024;
 
 static REPORT: Mutex<Option<SafeBootReport>> = Mutex::new(None);
 static RESET_DRIVEN: AtomicBool = AtomicBool::new(false);
@@ -150,19 +158,28 @@ fn render_startup_screen(
 /// What the startup read of the controller found, before any write to it.
 struct StartupController {
     controller: Controller,
+    maybe_pre_id_status: Option<u16>,
+    maybe_pre_id_cml: Option<u8>,
     maybe_status: Option<u16>,
     maybe_cml: Option<u8>,
 }
 
-/// Identifies the controller, records its status as found and, only when it is a TPS546,
-/// commands its output off.
+/// Records the controller's status before and after identifying it and, only when it is a
+/// TPS546, commands its output off. The first status reads come before the identity read, so
+/// the record shows whether a latched fault bit predates every transfer this boot makes; they
+/// are reads only, harmless to any device at the address.
 fn turn_off_at_startup(bus: &mut safety_adapter::BitaxeI2cBus<'static>) -> StartupController {
+    let mut pre_id_budget = hardware::probe_budget();
+    let (maybe_pre_id_status, maybe_pre_id_cml) =
+        hardware::read_status(&mut bus.tps546(&mut pre_id_budget));
     let controller = identify(|| {
         let mut budget = hardware::budget();
         hardware::identify_controller(&mut bus.tps546(&mut budget))
     });
     let mut found = StartupController {
         controller,
+        maybe_pre_id_status,
+        maybe_pre_id_cml,
         maybe_status: None,
         maybe_cml: None,
     };
@@ -181,8 +198,12 @@ fn turn_off_at_startup(bus: &mut safety_adapter::BitaxeI2cBus<'static>) -> Start
 
 /// Starts the safe-boot thread, which keeps the controller off and the fan running.
 fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: StartupController) {
+    #[cfg(feature = "gamma601-vout-check")]
+    log::info!("{}", vout_check::VARIANT_MARKER);
     let mut report = SafeBootReport::initial(reset_held);
     report.controller = startup.controller;
+    report.maybe_pre_id_status = startup.maybe_pre_id_status;
+    report.maybe_pre_id_cml = startup.maybe_pre_id_cml;
     report.maybe_start_status = startup.maybe_status;
     report.maybe_start_cml = startup.maybe_cml;
     sweep(&mut owner, &mut report);
@@ -201,6 +222,8 @@ fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: Startup
 #[inline(never)]
 fn run(mut owner: RuntimeI2cOwner<'static>, mut report: SafeBootReport) -> ! {
     let mut sweeps: u32 = 0;
+    #[cfg(feature = "gamma601-vout-check")]
+    let mut check = vout_check::VoutCheck::pending();
     loop {
         std::thread::sleep(SWEEP_PERIOD);
         if !matches!(report.controller, Controller::Found(_)) {
@@ -218,6 +241,12 @@ fn run(mut owner: RuntimeI2cOwner<'static>, mut report: SafeBootReport) -> ! {
         }
         sweep(&mut owner, &mut report);
         publish(report);
+        // The check reads the fresh sweep; the next sweep restores the fan duty.
+        #[cfg(feature = "gamma601-vout-check")]
+        if check.poll(&mut owner, &report) {
+            // The check ended with its own off; the next sweep re-asserts off once more.
+            report.maybe_off = None;
+        }
         sweeps = sweeps.wrapping_add(1);
         if sweeps % LOG_EVERY_SWEEPS == 0 {
             log_records(&report);
@@ -252,6 +281,8 @@ fn sweep(owner: &mut RuntimeI2cOwner<'_>, report: &mut SafeBootReport) {
 fn log_records(report: &SafeBootReport) {
     log::info!("{}", report.usb_marker(&wifi_status()));
     log::info!("{}", crate::board_identity::marker());
+    #[cfg(feature = "gamma601-vout-check")]
+    log::info!("{}", vout_check::usb_marker());
 }
 
 /// The Wi-Fi owner's status category; the record admits only closed tokens of it.

@@ -6,6 +6,7 @@ target/
 /.bazel-firmware-rollback-probe-target/
 /.bazel-firmware-overheat-trip-test-target/
 /.bazel-firmware-gamma601-target/
+/.bazel-firmware-gamma601-vout-check-target/
 /.bazel-workspace-status-target/
 .embuild/
 /.planning/phases/**/hardware-runs/

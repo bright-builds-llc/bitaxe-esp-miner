@@ -122,3 +122,30 @@ test("the 601 stack audit refuses an oversized safe-boot frame", () => {
   // Act / Assert
   assert.throws(() => verifyGamma601StackBudget(input), /safe-boot frame/u);
 });
+
+test("the core-voltage check variant also bounds its check's frame", () => {
+  // Arrange
+  const input = [
+    symbol("bitaxe_firmware::gamma601::run", "0x200"),
+    symbol(readinessSymbol, "0x1e0"),
+    symbol("bitaxe_firmware::gamma601::vout_check::run_check", "0x300"),
+  ].join("\n");
+
+  // Act
+  const result = verifyGamma601StackBudget(input, { voutCheck: true });
+
+  // Assert
+  assert.equal(result.maybeVoutCheckFrameBytes, 768);
+});
+
+test("the core-voltage check variant refuses a check path over the combined budget", () => {
+  // Arrange
+  const input = [
+    symbol("bitaxe_firmware::gamma601::run", "0x900"),
+    symbol(readinessSymbol, "0x1e0"),
+    symbol("bitaxe_firmware::gamma601::vout_check::run_check", "0x900"),
+  ].join("\n");
+
+  // Act / Assert
+  assert.throws(() => verifyGamma601StackBudget(input, { voutCheck: true }), /core-voltage check path/u);
+});

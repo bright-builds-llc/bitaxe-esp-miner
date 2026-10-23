@@ -6,7 +6,12 @@ import test from "node:test";
 
 import type { CommandSpec } from "./contracts.generated.js";
 import { FirmwareBoardMarkerError, type FirmwareBoard } from "./firmware-board.js";
-import { FirmwareVariantMarkerError, OVERHEAT_TRIP_TEST_MARKER, type FirmwareVariant } from "./firmware-variant.js";
+import {
+  FirmwareVariantMarkerError,
+  GAMMA601_VOUT_CHECK_MARKER,
+  OVERHEAT_TRIP_TEST_MARKER,
+  type FirmwareVariant,
+} from "./firmware-variant.js";
 import { packageFirmware } from "./package.js";
 import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
@@ -15,6 +20,7 @@ const buildLabel = "0123456789ab-dev";
 const productionElf = Buffer.from("\x7fELF production firmware");
 const testElf = Buffer.from(`\x7fELF ${OVERHEAT_TRIP_TEST_MARKER} local_overheat_trip_c=55`);
 const gammaElf = Buffer.from("\x7fELF firmware_board=601 safe boot");
+const gammaCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_VOUT_CHECK_MARKER}`);
 
 /** A workspace holding the package inputs and the managed ESP-IDF tool paths packaging resolves. */
 async function packageWorkspace(elf: Buffer): Promise<string> {
@@ -201,6 +207,79 @@ test("a 205 package whose ELF carries the 601 marker fails before any tool runs"
     // Assert
     assert.ok(error instanceof FirmwareBoardMarkerError);
     assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_board_mismatch" });
+    assert.equal(runs.length, 0);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a 601 core-voltage check package records its variant", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaCheckElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-vout-check", runs, "601");
+
+    // Assert
+    assert.equal(error, undefined);
+    const manifestGenerator = runs.find((spec) => spec.args[0] === "package-firmware");
+    assert.ok(manifestGenerator !== undefined);
+    assert.equal(argAfter(manifestGenerator, "--firmware-variant"), "gamma601-vout-check");
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("the core-voltage check variant is refused for the Ultra 205 before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaCheckElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-vout-check", runs, "205");
+
+    // Assert
+    assert.ok(error instanceof FirmwareVariantMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_board_mismatch" });
+    assert.equal(runs.length, 0);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a 601 production package whose ELF carries the check marker fails before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaCheckElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "production", runs, "601");
+
+    // Assert
+    assert.ok(error instanceof FirmwareVariantMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_marker_in_production" });
+    assert.equal(runs.length, 0);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a test package whose ELF also carries another test variant's marker fails before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(Buffer.concat([gammaCheckElf, Buffer.from(` ${OVERHEAT_TRIP_TEST_MARKER}`)]));
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-vout-check", runs, "601");
+
+    // Assert
+    assert.ok(error instanceof FirmwareVariantMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_marker_foreign" });
     assert.equal(runs.length, 0);
   } finally {
     await rm(root, { recursive: true });

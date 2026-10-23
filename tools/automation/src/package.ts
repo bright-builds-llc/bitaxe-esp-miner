@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { internalCommandSpec } from "./contracts.generated.js";
 import { boardPackageNames, requireFirmwareBoardMarker, type FirmwareBoard } from "./firmware-board.js";
-import { requireFirmwareVariantMarker, type FirmwareVariant } from "./firmware-variant.js";
+import { requireFirmwareVariantBoard, requireFirmwareVariantMarker, type FirmwareVariant } from "./firmware-variant.js";
 import type { ProcessPort, ProcessOutcome } from "./process.js";
 import { readStage, readTree } from "./web-ui-files.js";
 import { verifyGzipSiblings, type StagedFile, type WebUiVariant } from "./web-ui-stage.js";
@@ -74,6 +74,7 @@ export async function packageFirmware(
   const { webUi: webUiSource, firmwareVariant, board, ...paths } = input;
   await Promise.all(Object.values(paths).map((file) => file === input.outDir || file === input.manifest ? undefined : readFile(file)));
   const elfBytes = await readFile(input.firmwareElf);
+  requireFirmwareVariantBoard(firmwareVariant, board);
   requireFirmwareVariantMarker(elfBytes, firmwareVariant);
   requireFirmwareBoardMarker(elfBytes, board);
   const names = boardPackageNames[board];

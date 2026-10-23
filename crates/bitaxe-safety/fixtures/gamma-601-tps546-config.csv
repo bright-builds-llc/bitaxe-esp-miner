@@ -1,0 +1,38 @@
+# source=reference/esp-miner/main/power/TPS546.c write_entire_config (lines 527-681), main/power/vcore.c lines 63-78, main/power/TPS546.h lines 75-118
+# reference_commit=c1915b0a63bfabebdb95a515cedfee05146c1d50
+# encoding=upstream float_2_slinear11, int_2_slinear11 and float_2_ulinear16 (TPS546.c lines 214-332); VOUT_MODE 0x97 (exponent -9)
+# deviations=VOUT_COMMAND (0x21) is the 1.15 V check target, not the interim 1.2 V; VOUT_MAX (0x24) is 1.25 V, not 2.0 V
+# license_posture=reference-derived GPL-3.0 source data; do not treat as MIT-only until release review
+command,width,encoding,value
+0x02,byte,raw,0x001b
+0xec,word,raw,0x0000
+0xe4,byte,raw,0x0010
+0x04,byte,raw,0x0000
+0x33,word,linear11,0x028a
+0x35,word,linear11,0xca66
+0x36,word,linear11,0xca40
+0x55,word,linear11,0xcb40
+0x56,byte,raw,0x00b7
+0x29,word,linear11,0xaa00
+0x21,word,vout,0x024c
+0x24,word,vout,0x0280
+0x2b,word,vout,0x0200
+0x40,word,vout,0x0280
+0x42,word,vout,0x0251
+0x25,word,vout,0x0233
+0x26,word,vout,0x01cc
+0x43,word,vout,0x01cc
+0x44,word,vout,0x0180
+0x4a,word,linear11,0xdb20
+0x46,word,linear11,0xdbc0
+0x47,byte,raw,0x00c0
+0x51,word,linear11,0x0069
+0x4f,word,linear11,0x0091
+0x50,byte,raw,0x00ff
+0x60,word,linear11,0x0000
+0x61,word,linear11,0x0003
+0x62,word,linear11,0x0000
+0x63,byte,raw,0x003b
+0x64,word,linear11,0x0000
+0x65,word,linear11,0x0000
+0xee,word,raw,0xffff

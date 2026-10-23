@@ -1,18 +1,28 @@
 #!/usr/bin/env node
-// Gate: the default (production) firmware ELF must not contain the overheat-trip-test boot marker
-// (ADR-0040). Under `bazel test //...` the `//firmware/bitaxe:firmware_variant` flag is `production`.
+// Gate: no default (production) firmware ELF contains a test variant's boot marker (ADR-0040,
+// ADR-0041). Under `bazel test //...` the `//firmware/bitaxe:firmware_variant` flag is
+// `production`, so every ELF passed here is a production build: the Ultra 205's and the
+// Gamma 601's.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const OVERHEAT_TRIP_TEST_MARKER = 'firmware_variant=overheat-trip-test';
+// The boot markers, and the core-voltage check's record, which only its variant compiles.
+export const TEST_VARIANT_MARKERS = [
+  'firmware_variant=overheat-trip-test',
+  'firmware_variant=gamma601-vout-check',
+  'usb_gamma601_vout_check',
+];
 
-export function main([elf, ...rest]) {
-  if (!elf || rest.length) throw Error('firmware_variant_isolation_arguments');
-  const bytes = readFileSync(elf);
-  if (bytes.length === 0) throw Error('firmware_variant_isolation_empty_elf');
-  const result = bytes.includes(OVERHEAT_TRIP_TEST_MARKER) ? 'test_marker_in_production_elf' : 'production_elf_isolated';
-  return { result, elf_bytes: bytes.length };
+export function main(elves) {
+  if (elves.length === 0) throw Error('firmware_variant_isolation_arguments');
+  const contaminated = elves.filter((elf) => {
+    const bytes = readFileSync(elf);
+    if (bytes.length === 0) throw Error('firmware_variant_isolation_empty_elf');
+    return TEST_VARIANT_MARKERS.some((marker) => bytes.includes(marker));
+  });
+  const result = contaminated.length === 0 ? 'production_elf_isolated' : 'test_marker_in_production_elf';
+  return { result, elves: elves.length, contaminated: contaminated.length };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

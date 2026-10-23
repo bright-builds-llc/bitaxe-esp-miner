@@ -1,11 +1,17 @@
 //! TPS546 PMBus access for the Gamma 601 safe boot (ADR-0041).
 //!
 //! The bus offers the closed reads of `tps546::ReadCommand` and the writes of `OffWrite`, which
-//! can only turn the output off. Nothing here can raise the output or store configuration.
+//! can only turn the output off. Only the test-only `gamma601-vout-check` build adds the Gamma
+//! configuration's writes, `CLEAR_FAULTS` and `OPERATION` on. No build can store configuration.
 //!
 //! Reference: `reference/esp-miner/main/power/TPS546.c`
 
 use super::*;
+#[cfg(feature = "gamma601-vout-check")]
+use bitaxe_safety::tps546::{
+    config::{self, ConfigWrite},
+    enable,
+};
 use bitaxe_safety::tps546::{OffWrite, ReadCommand, I2C_ADDRESS};
 
 pub(crate) struct Tps546Bus<'bus, 'budget, 'd> {
@@ -69,6 +75,60 @@ impl Tps546Bus<'_, '_, '_> {
                 &bytes,
                 TickType::new_millis(timeout_ms).ticks(),
             )
+        })
+        .map_err(transfer_error)
+        .with_context(|| format!("tps546 write 0x{:02x}", bytes[0]))
+    }
+}
+
+/// The core-voltage check's writes (ADR-0041, phase D): compiled into its test variant only.
+#[cfg(feature = "gamma601-vout-check")]
+impl Tps546Bus<'_, '_, '_> {
+    /// Writes one entry of the Gamma plan. Only `gamma_config_plan` makes a `ConfigWrite`; a
+    /// command outside the plan, or an NVM command, is still refused before the bus.
+    pub(crate) fn write_config(&mut self, write: &ConfigWrite) -> Result<()> {
+        let command = write.command();
+        if !config::is_plan_command(command) || config::is_nvm_command(command) {
+            anyhow::bail!("tps546 write 0x{command:02x} is not a configuration write");
+        }
+        let [low, high] = write.value().to_le_bytes();
+        let word = [command, low, high];
+        let bytes = if write.word() { &word[..] } else { &word[..2] };
+        self.send(bytes)
+    }
+
+    /// Reads back a configuration register, as a byte or a word.
+    pub(crate) fn read_config(&mut self, write: &ConfigWrite) -> Result<u16> {
+        let command = write.command();
+        let mut word = [0_u8; 2];
+        let length = if write.word() { 2 } else { 1 };
+        let output = &mut word[..length];
+        retry_runtime_driver_transfer(self.budget, |timeout_ms| {
+            self.driver.write_read(
+                I2C_ADDRESS,
+                &[command],
+                output,
+                TickType::new_millis(timeout_ms).ticks(),
+            )
+        })
+        .map_err(transfer_error)
+        .with_context(|| format!("tps546 read 0x{command:02x}"))?;
+        Ok(u16::from_le_bytes(word))
+    }
+
+    pub(crate) fn clear_faults(&mut self) -> Result<()> {
+        self.send(&enable::CLEAR_FAULTS)
+    }
+
+    /// Turns the output on; the armed evidence is spent.
+    pub(crate) fn operation_on(&mut self, _armed: enable::EnableArmed) -> Result<()> {
+        self.send(&enable::OPERATION_ON)
+    }
+
+    fn send(&mut self, bytes: &[u8]) -> Result<()> {
+        retry_runtime_driver_transfer(self.budget, |timeout_ms| {
+            self.driver
+                .write(I2C_ADDRESS, bytes, TickType::new_millis(timeout_ms).ticks())
         })
         .map_err(transfer_error)
         .with_context(|| format!("tps546 write 0x{:02x}", bytes[0]))

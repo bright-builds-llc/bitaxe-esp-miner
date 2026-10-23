@@ -40,6 +40,12 @@ fn main() {
     {
         panic!("the overheat-trip-test firmware variant must never carry a release tag");
     }
+    // ADR-0041: the core-voltage check is for hardware checks only, never a release.
+    if env::var_os("CARGO_FEATURE_GAMMA601_VOUT_CHECK").is_some()
+        && identity.maybe_release_tag().is_some()
+    {
+        panic!("the gamma601-vout-check firmware variant must never carry a release tag");
+    }
     println!(
         "cargo:rustc-env=BITAXE_SEMANTIC_VERSION={}",
         provenance.semantic_version()

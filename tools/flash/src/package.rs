@@ -275,10 +275,9 @@ pub(crate) fn validate_identity_admission(
     let elf_bytes = read_validated_artifact(elf_artifact, &elf_path, environment)?;
     execution_profile::reject_virtual_bytes(&elf_bytes)?;
     // The OTA image is bound to this ELF through `app_elf_sha256`, so the ELF settles the variant.
-    require_firmware_variant_bytes(
-        manifest_firmware_variant(manifest.maybe_firmware_variant.as_deref())?,
-        &elf_bytes,
-    )?;
+    let firmware_variant = manifest_firmware_variant(manifest.maybe_firmware_variant.as_deref())?;
+    require_firmware_variant_board(firmware_variant, board)?;
+    require_firmware_variant_bytes(firmware_variant, &elf_bytes)?;
     if sha256_bytes(&elf_bytes) != manifest.app_elf_sha256 {
         bail!("identity_admission=blocked reason=firmware_elf_app_sha_mismatch");
     }

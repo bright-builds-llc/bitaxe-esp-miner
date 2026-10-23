@@ -9,7 +9,9 @@ use sha2::{Digest, Sha256};
 
 use bitaxe_api::BuildProvenance;
 
-use crate::firmware_variant::{validate_manifest_firmware_variant, FirmwareVariant};
+use crate::firmware_variant::{
+    validate_firmware_variant_board, validate_manifest_firmware_variant, FirmwareVariant,
+};
 use crate::web_ui::{collect_web_ui_assets, validate_web_ui_manifest, WebUiAsset, WebUiVariant};
 use crate::{
     validate_package_request, BoardId, PackageEnvironment, PackageRequest,
@@ -367,6 +369,7 @@ pub(crate) fn validate_package_manifest_v3(manifest: &PackageManifestV3) -> Resu
         bail!("image_metadata contradicts board {board}");
     }
     validate_default_flash_image(board, Utf8Path::new(&manifest.default_flash_image))?;
+    validate_firmware_variant_board(manifest.firmware_variant, board)?;
     require_non_empty("release_name", &manifest.release_name)?;
     require_non_empty("source_commit", &manifest.source_commit)?;
     require_non_empty("reference_commit", &manifest.reference_commit)?;

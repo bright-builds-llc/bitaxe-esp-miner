@@ -142,6 +142,10 @@ package *args:
 package-overheat-trip-test:
     bazel build //firmware/bitaxe:firmware_image --//firmware/bitaxe:firmware_variant=overheat-trip-test
 
+# Test-only Gamma 601 core-voltage check (ADR-0041), never released; flash needs `--allow-test-firmware gamma601-vout-check`; reinstall production afterwards.
+package-gamma601-vout-check:
+    bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-vout-check
+
 # Web UI raw/gzip/served bytes and www.bin SPIFFS use; `--append-history docs/web-ui/size-history.csv` records them.
 web-ui-sizes *args:
     bazel run //tools/automation:web_ui_sizes -- {{ args }}

@@ -308,13 +308,20 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   test-only: its local overheat trip is 55 C, for the overheat check on
   hardware. Build it only with `just package-overheat-trip-test` (Bazel flag
   `--//firmware/bitaxe:firmware_variant`). Never release or publish it.
+- `gamma601-vout-check` (ADR-0041 item 6) is test-only too. It is the
+  Gamma 601 safe boot plus one bounded core-voltage check with the ASIC in
+  reset. Build it only with `just package-gamma601-vout-check`, install it
+  only on the 601 under an active task contract, and never release it.
+- Each test variant targets one board, and the other board's build,
+  package and flash paths refuse it.
 - The manifest records `firmware_variant`, checked against the ELF marker.
   The flash tool refuses a test variant unless `--allow-test-firmware
   <variant>` names it, the release gate refuses it, and
   `//scripts:firmware_variant_isolation_test` keeps the marker out of
   production.
-- After any hardware run on the test variant, reinstall production with
-  `just package` and confirm it.
+- After any hardware run on a test variant, reinstall that board's
+  production package (`just package`, with `--board 601` for the 601) and
+  confirm it.
 
 ### Autonomous Ultra 205 Hardware Verification
 

@@ -103,7 +103,68 @@ not a guard anyone designed.
    written in the ROM downloader, the ASIC reset and the TPS546 output are
    whatever the previous firmware left. The safe boot marks its OTA image
    valid even when a reading fails; rolling back could restore firmware
-   that mines.
+   that mines. The record also carries `STATUS_WORD` and `STATUS_CML` as
+   read before the identity read, the boot's first transfers to the
+   controller.
+6. **The core voltage is first turned on by a test-only variant.**
+   `gamma601-vout-check` (`just package-gamma601-vout-check`, Bazel flag
+   `--//firmware/bitaxe:firmware_variant`) is the safe boot plus one
+   check per boot, with the ASIC held in reset throughout:
+   - It starts 30 s after boot, and only from a confirmed-off output with
+     the ASIC reset held.
+   - It runs only after a power-on, software, USB or external reset. It
+     also refuses in two other cases:
+     - a check an earlier boot left unfinished, recorded in an RTC latch
+       that only removing all power (barrel and USB) clears;
+     - a controller that already holds the check's `VOUT_MAX` from earlier
+       in its power-up. A rebuilt image cannot move that anchor.
+   - It commands the output off again, as upstream does, then configures
+     the TPS546 with upstream's Gamma writes, still off:
+     - the plan is built only for a read `VOUT_MODE` of `0x97`;
+     - the target is clamped to 1.00-1.20 V, and the check uses 1.15 V;
+     - every register must read back as written.
+   - It records the status the writes left, re-confirms off, sends
+     `CLEAR_FAULTS`, and refuses a baseline without `OFF` or with any fault
+     bit but CML.
+   - Only an armed token, built from the matched readback, the
+     re-confirmed off state, the judge and a held reset, can turn the
+     output on. Before the enable, the ASIC reset pad is latched low
+     (`gpio_hold_en`) until the output is confirmed off again. The token
+     is a structural guard; the readings it is built from are the
+     caller's.
+   - It turns the output on once for 60 s, sampled every 250 ms by a pure
+     judge. Any of these ends the window and commands off:
+     - a reading outside its limit or implausible;
+     - a new fault bit;
+     - a missed sample;
+     - a clock that does not advance;
+     - the sample cap;
+     - the ASIC reset found released.
+   - It logs a `usb_gamma601_vout_check` record.
+
+   Two deviations from upstream bound the voltage: `VOUT_COMMAND` is the
+   target, not the interim 1.2 V, and `VOUT_MAX` is 1.25 V, not 2.0 V.
+
+   Only this variant's build can express the configuration writes,
+   `CLEAR_FAULTS` or `OPERATION` on. Its bus refuses any command outside
+   the plan, and any NVM command, before the bus.
+
+   The variant is board 601 only, in every place:
+   - the 205 targets refuse it;
+   - the packager, manifest and flash tool tie it to board 601;
+   - the flash tool requires `--allow-test-firmware gamma601-vout-check`;
+   - it is never released.
+
+   Residual risks:
+   - the judge samples at about 4 Hz, so a fault faster than that is
+     bounded only by the controller's own limits;
+   - the configuration is volatile, but the controller keeps it until its
+     power is removed;
+   - a reset during the window leaves `OPERATION` on until the next boot
+     commands off, a few seconds later. The latched reset pad is meant to
+     keep the ASIC in reset meanwhile, but no hardware evidence yet shows
+     that the hold survives a panic or watchdog reset. The latch and the
+     `VOUT_MAX` anchor refuse a second check until all power is removed.
 
 ## Consequences
 

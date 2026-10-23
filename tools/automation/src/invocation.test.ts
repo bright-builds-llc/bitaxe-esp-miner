@@ -522,3 +522,22 @@ test("package-firmware requires a known board and the build accepts the 601 mode
     "build-firmware",
   ]);
 });
+
+test("package-firmware and build-firmware accept the 601 core-voltage check variant", () => {
+  // Arrange
+  const build = [
+    "build-firmware",
+    "--output-dir", "out",
+    "--build-provenance-stamp", "stamp.txt",
+    "--identity-sdkconfig-defaults", "identity.defaults",
+    "--build-timestamp-utc", "timestamp.txt",
+    "--build-mode", "board-gamma-601-vout-check",
+  ];
+  const gammaPackage = [...packageFirmwareArguments.slice(0, -2), "--board", "601", "--firmware-variant", "gamma601-vout-check"];
+
+  // Act
+  const invocations = [build, gammaPackage].map((args) => parseInvocation(args).command);
+
+  // Assert
+  assert.deepEqual(invocations, ["build-firmware", "package-firmware"]);
+});

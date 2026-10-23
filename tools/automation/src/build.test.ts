@@ -276,3 +276,13 @@ test("the 601 build owns its Cargo target directory, feature and artifact names"
   assert.deepEqual(plan.cargoFeatures, ["--features", "board-gamma-601"]);
   assert.equal(plan.artifactPrefix, "bitaxe-gamma601-firmware");
 });
+
+test("the 601 core-voltage check build owns its target directory and keeps the 601 artifact names", () => {
+  // Act
+  const plan = firmwareBuildPlan("board-gamma-601-vout-check");
+
+  // Assert
+  assert.equal(plan.cargoTargetDir, ".bazel-firmware-gamma601-vout-check-target");
+  assert.deepEqual(plan.cargoFeatures, ["--features", "gamma601-vout-check"]);
+  assert.equal(plan.artifactPrefix, firmwareBuildPlan("board-gamma-601").artifactPrefix);
+});

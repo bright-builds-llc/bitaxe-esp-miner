@@ -11,6 +11,10 @@ overheat-trip-test = ["bitaxe-runtime/overheat-trip-test"]
 # Builds for the Gamma 601 (ADR-0041): the safe boot, with the ASIC held in reset and the
 # TPS546 output off. Built only through `//firmware/bitaxe:firmware_image_gamma601`.
 board-gamma-601 = []
+# Test-only (ADR-0041): the 601 safe boot plus one bounded core-voltage check with the ASIC held
+# in reset. Built only through the `--//firmware/bitaxe:firmware_variant=gamma601-vout-check`
+# 601 package, never released.
+gamma601-vout-check = ["board-gamma-601"]
 
 [dependencies]
 anyhow.workspace = true

@@ -1604,11 +1604,18 @@ js_binary(
     ],
 )
 
-# The default (production) firmware ELF never carries the overheat-trip-test marker (ADR-0040).
+# No production firmware ELF, the Ultra 205's or the Gamma 601's, carries a test variant's
+# marker (ADR-0040, ADR-0041).
 js_test(
     name = "firmware_variant_isolation_test",
-    args = ["$(rootpath //firmware/bitaxe:firmware)"],
-    data = ["//firmware/bitaxe:firmware"],
+    args = [
+        "$(rootpath //firmware/bitaxe:firmware)",
+        "$(rootpath //firmware/bitaxe:firmware_gamma601)",
+    ],
+    data = [
+        "//firmware/bitaxe:firmware",
+        "//firmware/bitaxe:firmware_gamma601",
+    ],
     entry_point = "verify-firmware-variant-isolation.mjs",
 )
 

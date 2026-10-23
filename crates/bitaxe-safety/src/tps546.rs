@@ -6,6 +6,9 @@
 //!
 //! Reference: `reference/esp-miner/main/power/TPS546.c`, `TPS546.h` and `pmbus_commands.h`.
 
+pub mod config;
+pub mod enable;
+
 pub const MODULE_NAME: &str = "tps546";
 
 /// The controller's 7-bit I2C address on the Gamma 601.
@@ -185,7 +188,21 @@ impl OffState {
             Self::VoltagePresent => "voltage_present",
         }
     }
+
+    #[must_use]
+    pub const fn confirmed(self) -> Option<ConfirmedOff> {
+        match self {
+            Self::Confirmed => Some(ConfirmedOff(())),
+            Self::ReportsOn | Self::VoltagePresent => None,
+        }
+    }
 }
+
+/// That a reading confirmed the output off: [`OffState::confirmed`] makes one only from
+/// `Confirmed`. Writes that need the output off take it, so a caller must pass through an off
+/// reading; it does not prove the reading was fresh.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ConfirmedOff(());
 
 /// Confirms off only when the controller reports off and the output measures below the limit.
 #[must_use]

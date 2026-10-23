@@ -255,12 +255,47 @@ action.
     and `STATUS_CML` as read at boot before the off writes
     (`start_status=`, `start_cml=`). After a power cycle these show
     whether the safe boot's own reads set the bit.
-- [ ] **D. TPS546.**
-  - A pure PMBus core with the Gamma config plan, a clamp to 1.00-1.25 V
-    and no `STORE_USER_ALL`.
-  - Telemetry and fault polling.
-  - Hardware with `OPERATION` off; then a bounded VOUT enable with the ASIC
-    held in reset.
+- [ ] **D. TPS546.** Plan `gamma-601-phase-d` (owner approved 2026-10-23).
+  - [x] D1: the pure configuration core (`bitaxe-safety`):
+    - the LINEAR11 and ULINEAR16 encoders;
+    - upstream's ordered Gamma writes as data, golden-tested;
+    - the `VOUT_MODE` gate (`0x97` only);
+    - a target clamp to 1.00-1.20 V;
+    - readback by value (raw exact, VOUT to one count, LINEAR11 to half a
+      step);
+    - the enable-window judge;
+    - no NVM store.
+    An independent review recomputed all 32 writes from upstream, byte for
+    byte, and found holes that are now closed:
+    - readback no longer accepts a value the read's own exponent covers;
+    - the judge aborts on a stalled clock and at a sample cap, and latches;
+    - the baseline may carry only CML;
+    - there are plausibility floors;
+    - the plan needs a confirmed-off token;
+    - the NVM guard covers 0x11-0x18 and 0xF0+.
+    `VOUT_MAX` is now 1.25 V (a second deviation, ADR-0041 item 6).
+  - [x] D2: the safe boot reads STATUS_WORD and STATUS_CML before the
+    identity read (`pre_id_status`, `pre_id_cml`; record schema v3).
+  - [x] D3: the test-only variant `gamma601-vout-check` (ADR-0041 item 6):
+    - the configuration, then readback and `CLEAR_FAULTS`;
+    - one 60 s enable at 1.15 V with the ASIC in reset, through the judge;
+    - then off, confirmed;
+    - the variant plumbing, end to end, as `overheat-trip-test`.
+    A second independent review led to these guards:
+    - the check requires the ASIC reset held, and re-reads it every
+      sample;
+    - it admits only a power-on, software, USB or external reset;
+    - it refuses an unfinished earlier check (RTC latch), and a
+      controller that already holds the check's `VOUT_MAX` (a hardware
+      anchor no rebuild moves);
+    - it latches the reset pad low across the window;
+    - it re-sends off before configuring, and re-confirms off after;
+    - only an armed token turns the output on;
+    - the thread stack is 12 KiB, and the record reports the watermark;
+    - the record keeps the post-write status, read before `CLEAR_FAULTS`;
+    - the production ELFs must not carry the check's record.
+  - [ ] D4: hardware under its own contract (below): the CML answer after
+    a power cycle, the one-shot check, production reinstalled.
 - [ ] **E. BM1370 pure core (ASIC-008):** init, PLL, job ids and results,
       the nonce errata, version rolling; golden fixtures.
 - [ ] **F. BM1370 on hardware, then mining.** Chip detection, mining-ready
@@ -426,6 +461,105 @@ Closed after attempt 001 (2026-10-22); no enable line remains.
 - **Stops:** the C3 contract's stops. The capture and evidence rules are
   the C3 contract's, under `scratch/gamma-601-follow-ups/attempt-NNN/`.
 - **Recovery:** as in C3.
+
+Phase D4 core-voltage check contract (attempt ordinals 001 onward; plan
+`gamma-601-phase-d`, owner approved 2026-10-23):
+
+Gamma 601 core-voltage check hardware: enabled.
+
+- **Objective:** three steps.
+  - Observe `pre_id_status` and `pre_id_cml` after a power cycle, on
+    production with D2.
+  - Run the one-shot check on `gamma601-vout-check`.
+  - Reinstall production and confirm the safe boot.
+- **Commands, in order, each attempt:**
+  1. `just detect-ultra205`: exactly one device.
+  2. `just flash-monitor --board 601 --port <port>
+     --capture-timeout-seconds 360`: production at HEAD, installed
+     state-preserving.
+  3. The owner power-cycles the board: barrel and USB off, about 10 s,
+     then barrel, then USB. Then the detector again, and `just monitor
+     --board 601 --port <port> --capture-timeout-seconds 360`, a
+     receive-only capture.
+  4. `just package-gamma601-vout-check`, then the detector, then `just
+     flash-monitor --board 601 --port <port> --manifest
+     bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
+     --allow-test-firmware gamma601-vout-check --capture-timeout-seconds
+     360`: the variant, installed state-preserving. The capture spans the
+     check, which starts 30 s after boot and lasts about 65 s.
+  5. The detector, then step 2 again: production reinstalled, and the safe
+     boot confirmed.
+- **Precondition:** only the 601 attached; the tree clean and pushed. The
+  owner is present and can remove barrel power at any moment.
+- **Allowed effects:**
+  - the detector checks;
+  - three state-preserving installs with their resets;
+  - one owner power cycle;
+  - a receive-only capture;
+  - the safe boot's own effects (ADR-0041 item 5);
+  - the variant's check (ADR-0041 item 6), once per boot:
+    - the Gamma configuration writes, volatile and never stored;
+    - their readback;
+    - `CLEAR_FAULTS`;
+    - fan at 100 %;
+    - one enable of at most 60 s at 1.15 V with the ASIC held in reset;
+    - then off.
+- **Prohibited effects:**
+  - any NVM store or restore, and any factory install or NVS write;
+  - an ASIC reset release, ASIC UART traffic, mining;
+  - a second enable in a boot, and a target other than 1.15 V;
+  - leaving the variant installed;
+  - HTTP to the device, and network discovery;
+  - direct UART or pins.
+- **Pass:**
+  - Step 3 records `pre_id_status` and `pre_id_cml`, whatever they read.
+  - Step 4's `usb_gamma601_vout_check` shows:
+    - `result=passed`, `readback=match` and `samples` of at least 230;
+    - `vout_mv_min`/`max` within 1100-1200. This includes samples taken
+      before the 1 s settle, which the judge allows; where the two
+      disagree, this criterion wins;
+    - `iout_ma_max` under 5000 and `vin_mv_min` of at least 4800;
+    - `vr_temp_c_max` under 80 and `board_temp_c_max` under 60;
+    - `off=confirmed` and `stack_free` of at least 2048.
+    `config_faults` and `config_cml` are recorded, not judged, and so is
+    the fan speed. The
+    safe-boot record then shows `off=confirmed`, `reset_held=true` and
+    `fan_duty_pct=30`.
+  - Step 5 shows the C3 safe-boot readings on production.
+- **Stops:**
+  - `result=aborted` or `refused`: investigate before any retry.
+    - A refusal named `previous_reset_*`, `previous_check_unfinished` or
+      `controller_already_configured` is a hardware stop: no software
+      retry until the owner has removed all power (barrel and USB).
+    - Any other refusal before the enable is a software finding, and a
+      fix may retry under the progress-gated attempt policy. The
+      controller keeps the check's `VOUT_MAX` until its power is removed,
+      so each retry after a configuration write also needs that power
+      cycle.
+    - A first refusal at readback is possible: the controller may store
+      some limits at its own fixed exponent. The record names the register
+      and both values.
+    - If `controller_already_configured` repeats on the first boot after
+      all power was removed, the stock `VOUT_MAX` matches the check's
+      value. That is a software finding, not another hardware stop.
+  - A reboot or new boot during step 4's capture, other than the
+    install's own reset at its start, more than one
+    `gamma601_vout_check=started`, or `started` with no concluding record
+    by the end of the capture: the owner removes all power, barrel first,
+    then USB.
+  - `off` other than `confirmed` after the check: the owner removes all
+    power, barrel first, then USB (`stop_hardware_blocker`).
+  - The C3 stops.
+  - Any refusal of the detector or the flash tool.
+- **Evidence and privacy:** as in C3, under
+  `scratch/gamma-601-vout-check/attempt-NNN/`. The committed summary names
+  board 601, the commits, the commands, each install's manifest
+  `firmware_variant` and the record values above, and passes `just
+  verify-redaction`.
+- **Recovery:**
+  - The owner removes all power (barrel and USB). That clears the
+    controller's volatile configuration and the RTC latch.
+  - Reinstall production (step 5) after any attempt, passed or not.
 
 Phase C 205 regression contract (attempt ordinals 001 onward):
 

@@ -18,9 +18,18 @@ const EMC2101_BETA: u8 = 0x00;
 /// Each group of transfers gets this long before its budget is exhausted.
 const TRANSFER_BUDGET_MS: u64 = 400;
 
+/// The pre-identity status reads get this long, so a silent address cannot delay the off
+/// writes by a full budget.
+const PROBE_BUDGET_MS: u64 = 100;
+
 /// A fresh budget for one group of transfers.
 pub(crate) fn budget() -> RuntimeI2cBudget {
     RuntimeI2cBudget::new(crate::runtime_uptime::millis().saturating_add(TRANSFER_BUDGET_MS))
+}
+
+/// A short budget for the pre-identity status reads.
+pub(crate) fn probe_budget() -> RuntimeI2cBudget {
+    RuntimeI2cBudget::new(crate::runtime_uptime::millis().saturating_add(PROBE_BUDGET_MS))
 }
 
 /// Reads `IC_DEVICE_ID`; only a recognised TPS546 is ever written.
@@ -34,7 +43,7 @@ pub(crate) fn identify_controller(bus: &mut Tps546Bus<'_, '_, '_>) -> Controller
     }
 }
 
-/// Reads `STATUS_WORD` and `STATUS_CML`, as the controller holds them before any write.
+/// Reads `STATUS_WORD` and `STATUS_CML`; reads only, so safe before the controller is identified.
 pub(crate) fn read_status(bus: &mut Tps546Bus<'_, '_, '_>) -> (Option<u16>, Option<u8>) {
     let mut word = [0_u8; 2];
     let maybe_status = bus

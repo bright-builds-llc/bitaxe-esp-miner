@@ -1,9 +1,10 @@
-//! Firmware variant identity recorded in the package manifest (ADR-0040).
+//! Firmware variant identity recorded in the package manifest (ADR-0040, ADR-0041).
 //!
 //! The packager passes the variant selected by `//firmware/bitaxe:firmware_variant`;
 //! the manifest records it so the flash tool can refuse test firmware unless the
 //! operator names it explicitly.
 
+use crate::BoardId;
 use anyhow::{bail, Result};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
@@ -14,8 +15,33 @@ use serde::{Deserialize, Serialize};
 pub(crate) enum FirmwareVariant {
     /// The default firmware, the only variant a release may carry.
     Production,
-    /// Test-only firmware with a lowered local overheat trip.
+    /// Test-only firmware with a lowered local overheat trip, for the Ultra 205.
     OverheatTripTest,
+    /// Test-only Gamma 601 firmware that runs one bounded core-voltage check.
+    Gamma601VoutCheck,
+}
+
+impl FirmwareVariant {
+    /// The board a test variant is built for; production builds for every board.
+    const fn maybe_test_board(self) -> Option<BoardId> {
+        match self {
+            Self::Production => None,
+            Self::OverheatTripTest => Some(BoardId::Ultra205),
+            Self::Gamma601VoutCheck => Some(BoardId::Gamma601),
+        }
+    }
+}
+
+/// A test variant's package targets only the board it was built for.
+pub(crate) fn validate_firmware_variant_board(
+    maybe_variant: Option<FirmwareVariant>,
+    board: BoardId,
+) -> Result<()> {
+    let maybe_test_board = maybe_variant.and_then(FirmwareVariant::maybe_test_board);
+    if maybe_test_board.is_some_and(|test_board| test_board != board) {
+        bail!("firmware variant is not built for board {board}");
+    }
+    Ok(())
 }
 
 /// Test variants exist for hardware checks only, so a release tag never carries one.
@@ -41,6 +67,7 @@ mod tests {
         let variants = [
             FirmwareVariant::Production,
             FirmwareVariant::OverheatTripTest,
+            FirmwareVariant::Gamma601VoutCheck,
         ];
 
         // Act
@@ -50,7 +77,14 @@ mod tests {
             .collect();
 
         // Assert
-        assert_eq!(names, ["\"production\"", "\"overheat-trip-test\""]);
+        assert_eq!(
+            names,
+            [
+                "\"production\"",
+                "\"overheat-trip-test\"",
+                "\"gamma601-vout-check\""
+            ]
+        );
     }
 
     #[test]
@@ -78,5 +112,27 @@ mod tests {
 
         // Assert
         assert_eq!(results, [true, true]);
+    }
+
+    #[test]
+    fn a_test_variant_targets_only_its_own_board() {
+        // Arrange
+        let cases = [
+            (Some(FirmwareVariant::Gamma601VoutCheck), BoardId::Gamma601),
+            (Some(FirmwareVariant::Gamma601VoutCheck), BoardId::Ultra205),
+            (Some(FirmwareVariant::OverheatTripTest), BoardId::Ultra205),
+            (Some(FirmwareVariant::OverheatTripTest), BoardId::Gamma601),
+            (Some(FirmwareVariant::Production), BoardId::Gamma601),
+            (None, BoardId::Gamma601),
+        ];
+
+        // Act
+        let admitted: Vec<bool> = cases
+            .iter()
+            .map(|(variant, board)| validate_firmware_variant_board(*variant, *board).is_ok())
+            .collect();
+
+        // Assert
+        assert_eq!(admitted, [true, false, true, false, true, true]);
     }
 }

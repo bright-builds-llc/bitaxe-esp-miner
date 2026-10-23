@@ -190,3 +190,95 @@ fn flash_monitor_cli_parses_the_test_firmware_allowance() {
         Some(FirmwareVariant::OverheatTripTest)
     );
 }
+
+const GAMMA_CHECK_ELF: &[u8] =
+    b"synthetic elf firmware_board=601 firmware_variant=gamma601-vout-check";
+
+#[test]
+fn the_core_voltage_check_installs_only_on_the_gamma_601() {
+    // Act
+    let gamma =
+        require_firmware_variant_board(FirmwareVariant::Gamma601VoutCheck, BoardId::Gamma601);
+    let ultra =
+        require_firmware_variant_board(FirmwareVariant::Gamma601VoutCheck, BoardId::Ultra205)
+            .expect_err("the 205 must refuse the 601 check");
+
+    // Assert
+    assert!(gamma.is_ok(), "{gamma:?}");
+    assert!(ultra
+        .to_string()
+        .contains("reason=test_firmware_board_mismatch"));
+}
+
+#[test]
+fn the_overheat_trip_test_installs_only_on_the_ultra_205() {
+    // Act
+    let error =
+        require_firmware_variant_board(FirmwareVariant::OverheatTripTest, BoardId::Gamma601)
+            .expect_err("the 601 must refuse the 205 test");
+
+    // Assert
+    assert!(error
+        .to_string()
+        .contains("reason=test_firmware_board_mismatch"));
+}
+
+#[test]
+fn the_core_voltage_check_bytes_admit_only_their_own_variant() {
+    // Act
+    let own = require_firmware_variant_bytes(FirmwareVariant::Gamma601VoutCheck, GAMMA_CHECK_ELF);
+    let production = require_firmware_variant_bytes(FirmwareVariant::Production, GAMMA_CHECK_ELF)
+        .expect_err("production must refuse the check marker");
+    let overheat =
+        require_firmware_variant_bytes(FirmwareVariant::OverheatTripTest, GAMMA_CHECK_ELF)
+            .expect_err("another variant must refuse the check marker");
+
+    // Assert
+    assert!(own.is_ok(), "{own:?}");
+    assert!(production
+        .to_string()
+        .contains("reason=test_firmware_bytes_in_production_package"));
+    assert!(overheat
+        .to_string()
+        .contains("reason=test_firmware_marker_missing"));
+}
+
+#[test]
+fn bytes_carrying_two_test_markers_are_refused() {
+    // Arrange
+    let both = [GAMMA_CHECK_ELF, TEST_ELF].concat();
+
+    // Act
+    let error = require_firmware_variant_bytes(FirmwareVariant::Gamma601VoutCheck, &both)
+        .expect_err("two markers must block");
+
+    // Assert
+    assert!(error
+        .to_string()
+        .contains("reason=test_firmware_marker_foreign"));
+}
+
+#[test]
+fn flash_cli_parses_the_core_voltage_check_allowance() {
+    // Arrange
+    let argv = [
+        "bitaxe-flash",
+        "flash",
+        "--board",
+        "601",
+        "--allow-test-firmware",
+        "gamma601-vout-check",
+    ];
+
+    // Act
+    let cli = parse_cli(argv.iter().map(|value| value.to_string())).expect("parse flash");
+
+    // Assert
+    let CliCommand::Flash(command) = cli.command else {
+        panic!("expected flash command");
+    };
+    assert_eq!(
+        command.maybe_allow_test_firmware,
+        Some(FirmwareVariant::Gamma601VoutCheck)
+    );
+}
