@@ -494,6 +494,10 @@ Gamma 601 core-voltage check hardware: enabled.
      from the C3 stops: `off` is judged from the check record then.
   5. The detector, then step 2 again: production reinstalled, and the safe
      boot confirmed.
+
+  An attempt after a verified fix may begin at step 3 when the previous
+  attempt's step 5 left production with D2 installed and the owner has
+  just removed all power. The owner's power cycle is then step 3's.
 - **Precondition:** only the 601 attached; the tree clean and pushed. The
   owner is present and can remove barrel power at any moment.
 - **Allowed effects:**
