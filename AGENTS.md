@@ -318,6 +318,11 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   Build it only with `just package-gamma601-mining`, install it only on the
   601 under an active task contract, and never release it. Production 601
   builds cannot turn the TPS546 output on.
+- `gamma601-chip-check` (ADR-0041 item 8) is test-only too. It is the 601
+  safe boot plus one bounded chip detection: the BM1370 powered at 1.15 V
+  and released from reset only for the chip count. Build it only with
+  `just package-gamma601-chip-check`, install it only on the 601 under an
+  active task contract, and never release it.
 - Each test variant targets one board, and the other board's build,
   package and flash paths refuse it.
 - The manifest records `firmware_variant`, checked against the ELF marker.

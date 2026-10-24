@@ -16,6 +16,8 @@ export const TEST_VARIANT_MARKERS = [
   'firmware_variant=overheat-trip-test',
   'firmware_variant=gamma601-vout-check',
   'firmware_variant=gamma601-mining',
+  'firmware_variant=gamma601-chip-check',
+  'usb_gamma601_chip_check',
   'usb_gamma601_vout_check',
   ENABLE_LITERAL,
 ];

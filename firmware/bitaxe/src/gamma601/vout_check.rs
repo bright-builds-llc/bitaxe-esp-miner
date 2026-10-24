@@ -17,7 +17,7 @@
 //!
 //! Reference: `reference/esp-miner/main/power/TPS546.c` (`TPS546_init`, `TPS546_set_vout`).
 
-use super::regulator;
+use super::{check_guard, regulator};
 use crate::safety_adapter::{gamma601 as hardware, RuntimeI2cOwner};
 use bitaxe_safety::gamma601_safe_boot::{Controller, SafeBootReport};
 use bitaxe_safety::gamma601_vout_check::{CheckResult, Readback, VoutCheckRecord};
@@ -81,18 +81,7 @@ impl VoutCheck {
         if let Ok(mut slot) = RECORD.lock() {
             slot.conclude(CheckResult::Running, "none");
         }
-        // The safe boot's thread is busy for the window: its replayed record must not keep
-        // claiming the pre-check readings. Only the boot's own facts stay; the readings read
-        // unavailable and the fan duty shows the check's full duty.
-        super::publish(SafeBootReport {
-            reset_held: report.reset_held,
-            controller: report.controller,
-            maybe_pre_id_status: report.maybe_pre_id_status,
-            maybe_pre_id_cml: report.maybe_pre_id_cml,
-            maybe_start_status: report.maybe_start_status,
-            maybe_start_cml: report.maybe_start_cml,
-            ..SafeBootReport::initial(report.reset_held)
-        });
+        check_guard::publish_window_report(report);
         let record = run_check(owner, *report, off);
         log::info!("{}", record.usb_marker());
         if let Ok(mut slot) = RECORD.lock() {
@@ -151,7 +140,7 @@ fn configure_and_enable(
     interrupted: bool,
     record: &mut VoutCheckRecord,
 ) -> Result<(), Ended> {
-    reset_reason_admitted()?;
+    check_guard::reset_reason_admitted().map_err(refused)?;
     if interrupted {
         return Err(refused("previous_check_unfinished"));
     }
@@ -196,26 +185,6 @@ fn configure_and_enable(
         Ok(Step::Abort(abort)) => Err((CheckResult::Aborted, abort.label())),
         Ok(Step::Continue) => Err((CheckResult::Aborted, "window_unfinished")),
         Err(reason) => Err((CheckResult::Aborted, reason)),
-    }
-}
-
-/// Only a power-on, a software restart, a USB or an external reset admits the check. Any other
-/// reset, such as a panic, a watchdog or a brown-out, may have cut an earlier check's window
-/// short.
-fn reset_reason_admitted() -> Result<(), Ended> {
-    // SAFETY: ESP-IDF exposes the current reset reason as a side-effect-free query.
-    let reason = unsafe { sys::esp_reset_reason() };
-    match reason {
-        sys::esp_reset_reason_t_ESP_RST_POWERON
-        | sys::esp_reset_reason_t_ESP_RST_SW
-        | sys::esp_reset_reason_t_ESP_RST_USB
-        | sys::esp_reset_reason_t_ESP_RST_EXT => Ok(()),
-        sys::esp_reset_reason_t_ESP_RST_PANIC => Err(refused("previous_reset_panic")),
-        sys::esp_reset_reason_t_ESP_RST_BROWNOUT => Err(refused("previous_reset_brownout")),
-        sys::esp_reset_reason_t_ESP_RST_INT_WDT
-        | sys::esp_reset_reason_t_ESP_RST_TASK_WDT
-        | sys::esp_reset_reason_t_ESP_RST_WDT => Err(refused("previous_reset_watchdog")),
-        _ => Err(refused("previous_reset_other")),
     }
 }
 

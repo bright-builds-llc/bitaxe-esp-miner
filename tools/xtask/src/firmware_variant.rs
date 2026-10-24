@@ -21,6 +21,8 @@ pub(crate) enum FirmwareVariant {
     Gamma601VoutCheck,
     /// Test-only Gamma 601 firmware that may power its BM1370 and mine, for phase F3.
     Gamma601Mining,
+    /// Test-only Gamma 601 firmware that runs one bounded chip detection, for phase F3.1.
+    Gamma601ChipCheck,
 }
 
 impl FirmwareVariant {
@@ -29,7 +31,9 @@ impl FirmwareVariant {
         match self {
             Self::Production => None,
             Self::OverheatTripTest => Some(BoardId::Ultra205),
-            Self::Gamma601VoutCheck | Self::Gamma601Mining => Some(BoardId::Gamma601),
+            Self::Gamma601VoutCheck | Self::Gamma601Mining | Self::Gamma601ChipCheck => {
+                Some(BoardId::Gamma601)
+            }
         }
     }
 }
@@ -71,6 +75,7 @@ mod tests {
             FirmwareVariant::OverheatTripTest,
             FirmwareVariant::Gamma601VoutCheck,
             FirmwareVariant::Gamma601Mining,
+            FirmwareVariant::Gamma601ChipCheck,
         ];
 
         // Act
@@ -86,7 +91,8 @@ mod tests {
                 "\"production\"",
                 "\"overheat-trip-test\"",
                 "\"gamma601-vout-check\"",
-                "\"gamma601-mining\""
+                "\"gamma601-mining\"",
+                "\"gamma601-chip-check\""
             ]
         );
     }
@@ -128,6 +134,8 @@ mod tests {
             (Some(FirmwareVariant::OverheatTripTest), BoardId::Gamma601),
             (Some(FirmwareVariant::Gamma601Mining), BoardId::Gamma601),
             (Some(FirmwareVariant::Gamma601Mining), BoardId::Ultra205),
+            (Some(FirmwareVariant::Gamma601ChipCheck), BoardId::Gamma601),
+            (Some(FirmwareVariant::Gamma601ChipCheck), BoardId::Ultra205),
             (Some(FirmwareVariant::Production), BoardId::Gamma601),
             (None, BoardId::Gamma601),
         ];
@@ -141,7 +149,7 @@ mod tests {
         // Assert
         assert_eq!(
             admitted,
-            [true, false, true, false, true, false, true, true]
+            [true, false, true, false, true, false, true, false, true, true]
         );
     }
 }

@@ -336,3 +336,43 @@ fn installing_the_mining_variant_requires_naming_it() {
         .contains("reason=test_firmware_requires_allowance"));
     assert!(named.is_ok(), "{named:?}");
 }
+
+const GAMMA_CHIP_CHECK_ELF: &[u8] =
+    b"synthetic elf firmware_board=601 firmware_variant=gamma601-chip-check";
+
+#[test]
+fn the_chip_check_installs_only_on_the_gamma_601_and_only_when_named() {
+    // Act
+    let gamma =
+        require_firmware_variant_board(FirmwareVariant::Gamma601ChipCheck, BoardId::Gamma601);
+    let ultra =
+        require_firmware_variant_board(FirmwareVariant::Gamma601ChipCheck, BoardId::Ultra205)
+            .expect_err("the 205 must refuse the 601 chip check");
+    let unnamed = admit_firmware_variant(FirmwareVariant::Gamma601ChipCheck, None)
+        .expect_err("the chip check needs its allowance");
+
+    // Assert
+    assert!(gamma.is_ok(), "{gamma:?}");
+    assert!(ultra
+        .to_string()
+        .contains("reason=test_firmware_board_mismatch"));
+    assert!(unnamed
+        .to_string()
+        .contains("reason=test_firmware_requires_allowance"));
+}
+
+#[test]
+fn the_chip_check_bytes_admit_only_their_own_variant() {
+    // Act
+    let own =
+        require_firmware_variant_bytes(FirmwareVariant::Gamma601ChipCheck, GAMMA_CHIP_CHECK_ELF);
+    let mining =
+        require_firmware_variant_bytes(FirmwareVariant::Gamma601Mining, GAMMA_CHIP_CHECK_ELF)
+            .expect_err("the mining variant must refuse the chip check marker");
+
+    // Assert
+    assert!(own.is_ok(), "{own:?}");
+    assert!(mining
+        .to_string()
+        .contains("reason=test_firmware_marker_missing"));
+}

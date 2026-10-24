@@ -52,6 +52,12 @@ fn main() {
     {
         panic!("the gamma601-mining firmware variant must never carry a release tag");
     }
+    // ADR-0041: the 601 chip check is for the phase F3.1 contract, never a release.
+    if env::var_os("CARGO_FEATURE_GAMMA601_CHIP_CHECK").is_some()
+        && identity.maybe_release_tag().is_some()
+    {
+        panic!("the gamma601-chip-check firmware variant must never carry a release tag");
+    }
     println!(
         "cargo:rustc-env=BITAXE_SEMANTIC_VERSION={}",
         provenance.semantic_version()

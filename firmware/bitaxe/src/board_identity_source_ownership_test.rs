@@ -67,8 +67,14 @@ fn the_board_is_read_after_the_settings_and_before_the_hardware() {
 fn the_regulator_enable_carries_the_isolation_gate_s_literal_in_test_builds_only() {
     // Arrange
     let gate = TPS546_BUS_SOURCE
-        .find(r#"#[cfg(any(feature = "gamma601-vout-check", feature = "gamma601-mining"))]
-impl Tps546Bus"#)
+        .find(
+            r#"#[cfg(any(
+    feature = "gamma601-vout-check",
+    feature = "gamma601-mining",
+    feature = "gamma601-chip-check"
+))]
+impl Tps546Bus"#,
+        )
         .expect("the enabling writes are gated to the test variants");
     // Act
     let body = body_of(&TPS546_BUS_SOURCE[gate..], "pub(crate) fn operation_on(");

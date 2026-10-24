@@ -77,11 +77,13 @@ config_setting(
 #   bazel build //firmware/bitaxe:firmware_image --//firmware/bitaxe:firmware_variant=overheat-trip-test
 #   bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-vout-check
 #   bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-mining
+#   bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-chip-check
 # `production` stays the default. Each test variant is for hardware checks on
 # one board only: `overheat-trip-test` lowers the Ultra 205's local overheat
 # trip, `gamma601-vout-check` runs one bounded core-voltage check on the
-# Gamma 601, and `gamma601-mining` lets the 601 power its BM1370 and mine for
-# the phase F3 contracts. None is ever released; the manifest records
+# Gamma 601, `gamma601-mining` lets the 601 power its BM1370 and mine for the
+# phase F3 contracts, and `gamma601-chip-check` runs one bounded chip
+# detection. None is ever released; the manifest records
 # `firmware_variant`, the other board's targets refuse it, and the flash tool
 # refuses it without `--allow-test-firmware <variant>`.
 string_flag(
@@ -92,6 +94,7 @@ string_flag(
         "overheat-trip-test",
         "gamma601-vout-check",
         "gamma601-mining",
+        "gamma601-chip-check",
     ],
 )
 
@@ -113,6 +116,11 @@ config_setting(
 config_setting(
     name = "firmware_variant_gamma601_mining",
     flag_values = {":firmware_variant": "gamma601-mining"},
+)
+
+config_setting(
+    name = "firmware_variant_gamma601_chip_check",
+    flag_values = {":firmware_variant": "gamma601-chip-check"},
 )
 
 CURRENT_UI_SOURCES = [
@@ -1551,8 +1559,8 @@ js_run_binary(
 # Gamma 601 safe-boot build and package (ADR-0041). The firmware is built with the
 # `board-gamma-601` Cargo feature in its own target directory, and the package is written
 # under `gamma601/`, so neither shares outputs with the Ultra 205. The test-only
-# `gamma601-vout-check` and `gamma601-mining` variants each build in a target directory
-# of their own.
+# `gamma601-vout-check`, `gamma601-mining` and `gamma601-chip-check` variants each build in a
+# target directory of their own.
 js_run_binary(
     name = "firmware_build_gamma601",
     copy_srcs_to_bin = False,
@@ -1608,6 +1616,7 @@ js_run_binary(
         ":firmware_variant_production": ["board-gamma-601"],
         ":firmware_variant_gamma601_vout_check": ["board-gamma-601-vout-check"],
         ":firmware_variant_gamma601_mining": ["board-gamma-601-mining"],
+        ":firmware_variant_gamma601_chip_check": ["board-gamma-601-chip-check"],
     }, no_match_error = "the Gamma 601 firmware has no overheat-trip-test variant"),
     execution_requirements = {
         "local": "1",
@@ -1678,6 +1687,7 @@ js_run_binary(
         ":firmware_variant_production": ["production"],
         ":firmware_variant_gamma601_vout_check": ["gamma601-vout-check"],
         ":firmware_variant_gamma601_mining": ["gamma601-mining"],
+        ":firmware_variant_gamma601_chip_check": ["gamma601-chip-check"],
     }, no_match_error = "the Gamma 601 package has no overheat-trip-test variant"),
     execution_requirements = {
         "local": "1",

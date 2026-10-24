@@ -296,3 +296,13 @@ test("the 601 mining build owns its target directory and keeps the 601 artifact 
   assert.deepEqual(plan.cargoFeatures, ["--features", "gamma601-mining"]);
   assert.equal(plan.artifactPrefix, firmwareBuildPlan("board-gamma-601").artifactPrefix);
 });
+
+test("the 601 chip check build owns its target directory and keeps the 601 artifact names", () => {
+  // Act
+  const plan = firmwareBuildPlan("board-gamma-601-chip-check");
+
+  // Assert
+  assert.equal(plan.cargoTargetDir, ".bazel-firmware-gamma601-chip-check-target");
+  assert.deepEqual(plan.cargoFeatures, ["--features", "gamma601-chip-check"]);
+  assert.equal(plan.artifactPrefix, firmwareBuildPlan("board-gamma-601").artifactPrefix);
+});

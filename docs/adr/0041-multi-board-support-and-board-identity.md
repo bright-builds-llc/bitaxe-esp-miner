@@ -198,6 +198,42 @@ not a guard anyone designed.
      window. Holding the pad low through the panic needs register-level
      writes in the panic path and fault-injection evidence on hardware,
      under its own authorization.
+8. **The BM1370 is first detected by a test-only check.**
+   `gamma601-chip-check` (`just package-gamma601-chip-check`) is the safe
+   boot plus one check per power-on, 30 s after boot from a confirmed-off
+   output, on the safe-boot thread:
+   - it refuses after any reset but a power-on, software, USB or external
+     one, or when its RTC latch shows an earlier check unfinished or
+     already run since all power was last removed;
+   - it sets the fan to full and requires a nonzero tach reading;
+   - it latches the reset pad low (`gpio_hold_en`), turns the TPS546 on at
+     1.15 V through the production power path (configured and read back, a
+     clean off baseline, an armed enable with the reset held), waits
+     500 ms and judges the settled output;
+   - it frees the pad and runs the BM1370's chip detection through the
+     executor (the reset pulse, the `CHIP_ID` read and the count), which
+     must find exactly one chip; the count starts only within 5 s of the
+     power-on sequence;
+   - it always holds the reset low again, latches the pad and turns the
+     output off, confirmed.
+   The output is on for about 6 s on a healthy bus (the settle, then up to
+   5.4 s of detection) and about 8 s to a confirmed off; the steps' own
+   I2C timeouts bound it at about 16 s on a degraded bus. The pad latch
+   keeps the reset low through any reset while the output may be on,
+   except during the count. There, a software restart's shutdown handler
+   drives the reset low and latches it, and the panic cutoff drives it low
+   until the reboot. After a panic, a host USB reset, a brown-out or a
+   hardware watchdog in the count window, the line is undriven from the
+   reboot to the next boot's first act (item 7's residual risk).
+   - Residual risk, the latch: it lives in `.rtc_noinit`. A rebuilt image
+     whose layout moves that word can read it as clear without all power
+     removed, so a second check after a rebuild still needs a power
+     removal by contract.
+   It sends no work and never sets a frequency. It logs and replays a
+   value-free `usb_gamma601_chip_check` record. It is tied to board 601
+   like the other test variants, needs `--allow-test-firmware
+   gamma601-chip-check`, and is never released; dispatch stays refused.
+
 
 ## Consequences
 

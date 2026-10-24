@@ -391,6 +391,19 @@ fn interpret_action(
     }
 }
 
+/// The chips the last completed count counted; `COUNT_INCOMPLETE` while one runs or after one
+/// that stopped early. Read only by the Gamma 601 chip check's record.
+static LAST_COUNTED_CHIPS: std::sync::atomic::AtomicU8 =
+    std::sync::atomic::AtomicU8::new(COUNT_INCOMPLETE);
+const COUNT_INCOMPLETE: u8 = u8::MAX;
+
+/// The last count's result: `Some(chips)` once one completed, `None` while one runs or after
+/// one that stopped early.
+pub fn last_counted_chips() -> Option<u8> {
+    let chips = LAST_COUNTED_CHIPS.load(std::sync::atomic::Ordering::Relaxed);
+    (chips != COUNT_INCOMPLETE).then_some(chips)
+}
+
 /// Upstream-like `count_asic_chips` RX loop: drain until idle timeout, soft-retry
 /// preamble/CRC/chip-id mismatch, hard-fail on wrong length / UART error, then
 /// require counted == expected. Stores counted chips for mining-ready handoff.
@@ -406,6 +419,7 @@ fn count_asic_chips_rx_loop(
         timeout_ms
     };
     let mut counted_chips = 0_u8;
+    LAST_COUNTED_CHIPS.store(COUNT_INCOMPLETE, std::sync::atomic::Ordering::Relaxed);
     let mut frames_seen = 0_u32;
     let started = std::time::Instant::now();
 
@@ -495,6 +509,7 @@ fn count_asic_chips_rx_loop(
         }
     }
 
+    LAST_COUNTED_CHIPS.store(counted_chips, std::sync::atomic::Ordering::Relaxed);
     match chip_detect::finalize_counted_chip_detect(counted_chips, expected_chips) {
         Ok(chips) => {
             status::publish_status(AsicInitStatus::ChipDetectedNoMining { chips });
