@@ -34620,3 +34620,73 @@ Completion review (2026-10-22):
   - the seed CSV, holding the Wi-Fi password, sits in a private temporary
     directory until the capture ends. This is the 205 flow's behaviour too.
 
+### task-str005-v2-share-preparation-clock-flake | 2026-10-24 | Make the V2 share preparation composition test deterministic
+
+The case "late-delivery retains real issued/delivery facts but prohibits
+simulated Start" of `//scripts:str005_v2_share_preparation_composition_test`
+failed under a full gate with `5 !== 10` signatures, and passed alone.
+
+- [x] Find the wall-clock assumption that breaks on a loaded host.
+- [x] Add a regression that stretches real time past the windows and fails
+      on the current test clock.
+- [x] Drive the page and fixture clocks from a virtual clock that moves only
+      by the test's explicit jumps, without weakening any assertion.
+- [x] Verify: the target with `--runs_per_test=20 --cache_test_results=no
+      --local_test_jobs=8` beside a parallel load, `bazel test //scripts:all`,
+      and the Bright Builds checks.
+
+Authorization: local test-fixture edits, Bazel tests, Git commit only. No
+hardware, detector, device, credentials or network beyond the fixture's own
+loopback/private listener.
+
+Root cause: the fixture and page clocks were `performance.now()` plus the
+test's jumps. Issuance runs 10 real `bun` signer processes after
+`/start/network`, and the share routes require that network review to be at
+most 5000 ms old at every signature (`requireNetwork`). On a loaded host the
+real signing time crossed 5 s, so issuance stopped partway (`5 !== 10`). The
+fixture's 10 s start window and the page's 10 s fixture window had the same
+exposure.
+
+Fix: `share-preparation-composition.fixture.mjs` keeps a virtual host clock
+that moves only through `advance()`, and the page clock is that clock plus
+the page offset. Every expiry case still crosses its window by the same
+explicit 10001 ms jump. A new case slows each real signature by 600 ms
+(6 s in total) and requires a full 10-signature preparation.
+
+Verification:
+- New case red on the old clock (preparation aborted), green after the fix;
+  all 7 cases pass alone.
+- Load, old test: 20 runs at 8 jobs passed under a parallel cargo build plus
+  16 CPU burners, and under 16 `bun` spawn loops. Under 48 spawn loops it
+  failed 10 of 20, at the reported line 47 (`8 !== 10`, `9 !== 10`) and in
+  the pass case (line 33).
+- Load, fixed test: 20 of 20 under the parallel cargo build plus 16 burners
+  (load ~29), and 20 of 20 on the final tree under 32 spawn loops plus 16
+  burners (load ~58). Across 40 runs under 48 spawn loops (load 300-420) no
+  clock-window assertion failed.
+- `bazel test //scripts:all --keep_going`: the first run passed 229 targets.
+  Six firmware ELF targets failed to build: the worktree's first ESP-IDF
+  install raced between the concurrent 205 and 601 builds, and the disk then
+  filled. `bazel query rdeps` shows none of the six depends on the changed
+  files. After the owner freed disk space, the partial ESP-IDF clone,
+  toolchains and Python environment under `.embuild/espressif` were removed,
+  `bazel build //firmware/bitaxe:firmware` ran alone and passed, and
+  `bazel test //scripts:all --keep_going` then passed all 235 targets.
+- `bun scripts/bright-builds-check.ts all`: 0 findings.
+
+Completion review: the reported flake class is removed. The test no longer
+depends on real elapsed time against its host-clock windows, and no assertion
+was relaxed.
+
+Residual risks:
+- Real-process bounds in production code still apply to the test: the
+  fixture child's 5 s readiness timer (`fixture-owner.mjs`), the 5 s `lsof`
+  bound and the 2.5 s `ps` bound in cleanup, and the client's 30 s
+  operation bounds. Only under 48 spawn loops did the fixed test fail, 7 and
+  13 of 20, on the readiness timer and once on `lsof`
+  (`noise_resource_unproved`, cause not isolated).
+- Concurrent first-time firmware builds in a fresh worktree race on the
+  ESP-IDF clone under `.embuild/espressif/esp-idf/v5.5.4`, and an install
+  cut short (for example by a full disk) leaves partial tools that later
+  builds do not repair.
+

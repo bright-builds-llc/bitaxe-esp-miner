@@ -46,7 +46,8 @@ export async function preparationFixture(t) {
   const context = { scope: "share", attemptId, gate_root: gateRoot, fixture_binary: fixtureBinary, fixture_sha256: sha256(await readFile(fixtureBinary)), gate_commit: "a".repeat(40), firmware_commit: "b".repeat(40), app_elf_sha256: "c".repeat(64),
     client_sha256: "f".repeat(64), qualificationAttempt: { schema: "worker-qualification-attempt-v1", id: attemptId, ordinal: 18, purpose: "normal", maximumActiveMilliseconds: 180000 }, expectedLedgerBefore: ledger };
   const contextSha256 = sha256(JSON.stringify(context)), state = { ...baseState(context), qualification: qualification() }, journal = await createJournal(root, context);
-  let offset=0; const now=()=>Math.floor(performance.now())+offset;
+  // Host-clock windows move only by explicit jumps, so real signer latency on a loaded host never counts against them.
+  let clockMs=60000; const now=()=>clockMs;
   for (let sequence = 1; sequence <= 9; sequence++) await journal.state("candidate", state, now());
   for (let index = 1; index <= 4; index++) await writeNew(resolve(root, `cycle-${index}.json`), { schema: "str005-v2-cycle-v1", contextSha256,
     beforeSequence: index * 2 - 1, afterSequence: index * 2, installReviewSha256: "d".repeat(64),
@@ -69,7 +70,7 @@ export async function preparationFixture(t) {
   check(station,"test_private_interface_required");
   const status=()=>{const value=idle();value.observation.stationIpv4=station;return value;};
   const failures=[];
-  return {root,context,routes,state,journal,binding,status,signatures:()=>signatures,advance(ms){offset+=ms;},onSign(fn){maybeSignHook=fn;},owner:()=>owner,
+  return {root,context,routes,state,journal,binding,status,signatures:()=>signatures,now,advance(ms){clockMs+=ms;},onSign(fn){maybeSignHook=fn;},owner:()=>owner,
     async launch(){owner=await startFixture(root,context,station,code=>failures.push(code),{now});return owner;},
     async network(){return routes.handle("/start/network",{status:status(),controlSessionBindingSha256:binding});},
     async authorize(){return routes.handle("/authorization-context",{controlSessionBindingSha256:binding});},

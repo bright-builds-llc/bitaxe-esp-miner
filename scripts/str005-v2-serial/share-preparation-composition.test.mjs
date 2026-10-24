@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {lstat,readFile} from "node:fs/promises";
 import {resolve} from "node:path";
+import {setTimeout as delay} from "node:timers/promises";
 import {preparationFixture} from "./share-preparation-composition.fixture.mjs";
 import {createV2Coordinator} from "./client.mjs";
 import {clientFixture} from "./client.test-helper.mjs";
@@ -9,8 +10,9 @@ import {proof} from "../str005-noise-serial/files.mjs";
 
 async function coordinatorFixture(t, mode) {
   const f=await preparationFixture(t), device=clientFixture("share");let pageOffset=0, maybeRequestAt, maybeStartAt, loads=0, starts=0;
-  const now=()=>performance.now()+pageOffset;
+  const now=()=>f.now()+pageOffset;
   const originalLoad=device.gate.loadSignedWindow;
+  if(mode==="slow-signer")f.onSign(()=>delay(600));
   device.gate.stratumV2Status=async()=>f.status();
   device.gate.stratumV2TelemetryEndpoint=async()=>({controlSessionBindingSha256:f.binding});
   device.gate.prepareStartAuthorization=async()=>{await f.authorize();if(mode==="late-sign")pageOffset+=10001;return{controlSessionBindingSha256:f.binding};};
@@ -33,6 +35,14 @@ test("actual fixture and generated test-key signer prepare within both clock win
   assert.deepEqual(f.counts(),{loads:1,starts:1});assert.ok(f.pageElapsed()<=10000);assert.equal(f.signatures(),10);
   const issued=(await proof(f.root,"issued.json")).value,delivered=(await proof(f.root,"consumed.json")).value;
   assert.equal(issued.authorizationCount,10);assert.equal(issued.privatePayloadPersisted,false);assert.equal(delivered.deliveryAttempted,true);assert.equal(delivered.deviceReservationObserved,false);
+});
+test("real signing slower than the network window on a loaded host still prepares within both clock windows",{timeout:30000},async t=>{
+  // Arrange: 10 real signatures at 600 ms each outlast the 5 s network window in host time.
+  const f=await coordinatorFixture(t,"slow-signer");
+  // Act
+  await assert.rejects(f.run());
+  // Assert
+  assert.deepEqual(f.counts(),{loads:1,starts:1});assert.ok(f.pageElapsed()<=10000);assert.equal(f.signatures(),10);
 });
 test("page clock already expired blocks issuance before real signing",{timeout:30000},async t=>{
   const f=await coordinatorFixture(t,"page-expired");await assert.rejects(f.run());
