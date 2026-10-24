@@ -3,6 +3,7 @@ pub mod effects;
 pub mod evidence;
 pub mod fault;
 pub mod gamma601_safe_boot;
+pub mod gamma601_sensors;
 pub mod gamma601_vout_check;
 pub mod mining_preconditions;
 pub mod observation;

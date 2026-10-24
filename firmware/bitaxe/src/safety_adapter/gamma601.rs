@@ -113,13 +113,28 @@ pub(crate) fn read_controller(owner: &mut RuntimeI2cOwner<'_>, report: &mut Safe
     report.maybe_vr_temperature_celsius = maybe_temperature;
 }
 
-/// Reads the board temperature and fan speed into `report`.
-pub(crate) fn read_thermal(owner: &mut RuntimeI2cOwner<'_>, report: &mut SafeBootReport) {
+/// What one thermal read found, for the shared observations.
+pub(crate) struct ThermalAcquisitions {
+    /// The BM1370's diode, through the EMC2101's external channel.
+    pub(crate) chip_temperature: AcquisitionOutcome<f64>,
+    pub(crate) tachometer: AcquisitionOutcome<u16>,
+}
+
+/// Reads the board temperature and fan speed into `report`, and the chip temperature.
+pub(crate) fn read_thermal(
+    owner: &mut RuntimeI2cOwner<'_>,
+    report: &mut SafeBootReport,
+) -> ThermalAcquisitions {
     let mut budget = budget();
     let mut bus = owner.sensors(&mut budget);
     report.maybe_board_temperature_celsius =
         success(emc2101::read_internal_temperature_acquisition(&mut bus));
-    report.maybe_fan_rpm = success(emc2101::read_tachometer_acquisition(&mut bus)).map(u32::from);
+    let tachometer = emc2101::read_tachometer_acquisition(&mut bus);
+    report.maybe_fan_rpm = success(tachometer).map(u32::from);
+    ThermalAcquisitions {
+        chip_temperature: emc2101::read_external_temperature_acquisition(&mut bus),
+        tachometer,
+    }
 }
 
 fn success<T>(outcome: AcquisitionOutcome<T>) -> Option<T> {

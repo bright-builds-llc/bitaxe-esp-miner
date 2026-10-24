@@ -513,7 +513,7 @@ fn disable_runtime_display(
     *maybe_display = None;
 }
 
-fn project_observations(
+pub(crate) fn project_observations(
     state: ProducerSensorState,
     core_voltage_state: CoreVoltageProducerState,
 ) -> TelemetryObservations {
@@ -575,7 +575,7 @@ fn duration_until(deadline_ms: u64) -> Duration {
     Duration::from_millis(deadline_ms.saturating_sub(crate::runtime_uptime::millis()))
 }
 
-fn new_boot_session_id() -> BootSessionId {
+pub(crate) fn new_boot_session_id() -> BootSessionId {
     // SAFETY: esp_random has no preconditions and returns one hardware RNG word per call.
     let high = u64::from(unsafe { sys::esp_random() });
     // SAFETY: esp_random has no preconditions and returns one hardware RNG word per call.

@@ -339,7 +339,7 @@ fn read_back(
 fn sample(owner: &mut RuntimeI2cOwner<'_>, report: SafeBootReport) -> Option<Readings> {
     let mut reading = report;
     hardware::read_controller(owner, &mut reading);
-    hardware::read_thermal(owner, &mut reading);
+    let _ = hardware::read_thermal(owner, &mut reading);
     Some(Readings {
         vout_volts: reading.maybe_vout_volts?,
         iout_amps: reading.maybe_iout_amps?,

@@ -1,5 +1,6 @@
 const operatorSensorSymbol = "bitaxe_firmware::operator_sensor_runtime::run";
 const gamma601SafeBootSymbol = "bitaxe_firmware::gamma601::run";
+const gamma601PublishSymbol = "bitaxe_firmware::gamma601::observations::Producer::publish";
 const gamma601VoutCheckSymbol = "bitaxe_firmware::gamma601::vout_check::run_check";
 const platformReadinessSymbol = "bitaxe_firmware::runtime_snapshot::collect_platform_readiness_snapshot";
 const screenCollectorSymbol = "bitaxe_firmware::runtime_snapshot::screen::collect_screen_snapshot";
@@ -77,6 +78,8 @@ export function verifyFirmwareStackBudget(disassembly: string): FirmwareStackBud
 
 export type Gamma601StackBudget = {
   readonly safeBootFrameBytes: number;
+  /** The observation publish, nested under the safe boot's frame on every sweep. */
+  readonly publishFrameBytes: number;
   readonly platformReadinessFrameBytes: number;
   /** The core-voltage check's frame, nested under the safe boot's; only in that variant. */
   readonly maybeVoutCheckFrameBytes?: number;
@@ -91,14 +94,21 @@ export function verifyGamma601StackBudget(
   options: { readonly voutCheck: boolean } = { voutCheck: false },
 ): Gamma601StackBudget {
   const safeBootFrameBytes = entryFrameBytes(disassembly, gamma601SafeBootSymbol);
+  const publishFrameBytes = entryFrameBytes(disassembly, gamma601PublishSymbol);
   const platformReadinessFrameBytes = entryFrameBytes(disassembly, platformReadinessSymbol);
   if (safeBootFrameBytes > maxIndividualFrameBytes) {
     throw new Error("firmware stack audit found an oversized safe-boot frame");
   }
+  if (publishFrameBytes > maxIndividualFrameBytes) {
+    throw new Error("firmware stack audit found an oversized observation publish frame");
+  }
+  if (safeBootFrameBytes + publishFrameBytes > maxCombinedFrameBytes) {
+    throw new Error("firmware stack audit found an oversized observation publish path");
+  }
   if (platformReadinessFrameBytes > maxPlatformReadinessFrameBytes) {
     throw new Error("firmware stack audit found an oversized platform readiness frame");
   }
-  if (!options.voutCheck) return { safeBootFrameBytes, platformReadinessFrameBytes };
+  if (!options.voutCheck) return { safeBootFrameBytes, publishFrameBytes, platformReadinessFrameBytes };
   const voutCheckFrameBytes = entryFrameBytes(disassembly, gamma601VoutCheckSymbol);
   if (voutCheckFrameBytes > maxIndividualFrameBytes) {
     throw new Error("firmware stack audit found an oversized core-voltage check frame");
@@ -106,5 +116,10 @@ export function verifyGamma601StackBudget(
   if (safeBootFrameBytes + voutCheckFrameBytes > maxCombinedFrameBytes) {
     throw new Error("firmware stack audit found an oversized core-voltage check path");
   }
-  return { safeBootFrameBytes, platformReadinessFrameBytes, maybeVoutCheckFrameBytes: voutCheckFrameBytes };
+  return {
+    safeBootFrameBytes,
+    publishFrameBytes,
+    platformReadinessFrameBytes,
+    maybeVoutCheckFrameBytes: voutCheckFrameBytes,
+  };
 }

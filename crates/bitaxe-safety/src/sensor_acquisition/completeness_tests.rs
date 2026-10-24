@@ -210,3 +210,32 @@ fn sustained_failures_age_all_retained_facts_to_stale() {
         expected_tachometer.as_ref()
     );
 }
+
+#[test]
+fn a_failed_power_read_on_the_ina260_path_keeps_its_label() {
+    // Arrange
+    let outcomes = SensorSweepOutcomes {
+        power: AcquisitionOutcome::ReadFailed,
+        ..successful_outcomes()
+    };
+
+    // Act
+    let (state, _) = reduce_sensor_sweep(
+        ProducerSensorState::default(),
+        ProducerSequences::default(),
+        outcomes,
+        SESSION,
+        ACQUIRED_AT,
+        12.0,
+    )
+    .expect("sequences fit");
+
+    // Assert
+    assert!(matches!(
+        state.power().truth(),
+        Observation::Fault {
+            reason: FaultReason::Ina260ReadFailed,
+            ..
+        }
+    ));
+}

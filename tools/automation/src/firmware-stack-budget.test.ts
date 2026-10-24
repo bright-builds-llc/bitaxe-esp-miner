@@ -5,6 +5,7 @@ import { verifyFirmwareStackBudget, verifyGamma601StackBudget } from "./firmware
 
 const operatorSymbol = "bitaxe_firmware::operator_sensor_runtime::run";
 const readinessSymbol = "bitaxe_firmware::runtime_snapshot::collect_platform_readiness_snapshot";
+const publishSymbol = "bitaxe_firmware::gamma601::observations::Producer::publish";
 const screenSymbol = "bitaxe_firmware::runtime_snapshot::screen::collect_screen_snapshot";
 
 function symbol(symbolName: string, frame: string): string {
@@ -106,27 +107,40 @@ test("firmware stack audit rejects an oversized platform readiness frame", () =>
 
 test("the 601 stack audit checks its safe-boot thread in place of the sensor owner", () => {
   // Arrange
-  const input = `${symbol("bitaxe_firmware::gamma601::run", "0x200")}\n${symbol(readinessSymbol, "0x1e0")}`;
+  const input = `${symbol("bitaxe_firmware::gamma601::run", "0x200")}\n${symbol(publishSymbol, "0x3e0")}\n${symbol(readinessSymbol, "0x1e0")}`;
 
   // Act
   const result = verifyGamma601StackBudget(input);
 
   // Assert
-  assert.deepEqual(result, { safeBootFrameBytes: 512, platformReadinessFrameBytes: 480 });
+  assert.deepEqual(result, { safeBootFrameBytes: 512, publishFrameBytes: 992, platformReadinessFrameBytes: 480 });
 });
 
 test("the 601 stack audit refuses an oversized safe-boot frame", () => {
   // Arrange
-  const input = `${symbol("bitaxe_firmware::gamma601::run", "0x1000")}\n${symbol(readinessSymbol, "0x1e0")}`;
+  const input = `${symbol("bitaxe_firmware::gamma601::run", "0x1000")}\n${symbol(publishSymbol, "0x3e0")}\n${symbol(readinessSymbol, "0x1e0")}`;
 
   // Act / Assert
   assert.throws(() => verifyGamma601StackBudget(input), /safe-boot frame/u);
+});
+
+test("the 601 stack audit refuses a publish path over the combined budget", () => {
+  // Arrange
+  const input = [
+    symbol("bitaxe_firmware::gamma601::run", "0x900"),
+    symbol(publishSymbol, "0x900"),
+    symbol(readinessSymbol, "0x1e0"),
+  ].join("\n");
+
+  // Act / Assert
+  assert.throws(() => verifyGamma601StackBudget(input), /observation publish path/u);
 });
 
 test("the core-voltage check variant also bounds its check's frame", () => {
   // Arrange
   const input = [
     symbol("bitaxe_firmware::gamma601::run", "0x200"),
+    symbol(publishSymbol, "0x3e0"),
     symbol(readinessSymbol, "0x1e0"),
     symbol("bitaxe_firmware::gamma601::vout_check::run_check", "0x300"),
   ].join("\n");
@@ -142,6 +156,7 @@ test("the core-voltage check variant refuses a check path over the combined budg
   // Arrange
   const input = [
     symbol("bitaxe_firmware::gamma601::run", "0x900"),
+    symbol(publishSymbol, "0x100"),
     symbol(readinessSymbol, "0x1e0"),
     symbol("bitaxe_firmware::gamma601::vout_check::run_check", "0x900"),
   ].join("\n");

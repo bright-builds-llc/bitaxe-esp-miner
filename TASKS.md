@@ -427,13 +427,42 @@ action.
       - `scripts/str005-v2-serial/safety-diagnostics.mjs` `FACTS`;
       - `campaign_status.rs` `CampaignObservationRequirements::ULTRA_205`;
       - `tools/flash/src/campaign/markers.rs` and its serial tests;
-    - the 601's power fact is the TPS546's VOUT × IOUT plus the 5 W family
-      offset, as upstream reports it.
-    - the 601's sensor producer reports the TPS546 regulator temperature
-      before its runtime owners start: until then every limit check fails
-      on the 601, and the idle fan grant (`baseline_safe`) would hold the
-      fan at full. `operator_sensor_runtime.rs`'s `BOARD_POWER_TARGET_WATTS`
-      (12 W) comes from the catalog.
+    - [x] the 601 publishes the shared observations from its safe-boot
+      thread (`gamma601/observations.rs`), now sweeping every 500 ms:
+      - power is VOUT × IOUT plus the family's 5 W offset from the raw
+        IOUT, as upstream; VIN is the input voltage; the current is IOUT;
+      - with the output confirmed off, an IOUT down to -0.5 A reads as
+        0 A: the idle 601 reads about -0.2 A (safe-boot evidence), which
+        would otherwise fault the power fact whenever the board is idle.
+        With the output on, any negative or non-finite IOUT is an invalid
+        sample, so the offset can never hide power while mining. This is
+        a choice for the owner to check;
+      - the core voltage is VOUT; the regulator temperature is the
+        TPS546's; the chip temperature is the EMC2101 external diode
+        (ideality 0x24, no offset); a failed regulator read faults power
+        as `tps546_read_failed`;
+      - the 205's sensor runtime is unchanged; its projection and boot
+        session helper are shared, not copied;
+      - the safe-boot thread's stack is 8 KiB, as the 205's sensor owner
+        that runs the same publish chain. The build's stack audit bounds
+        `Producer::publish` (992 bytes) with `run`, and the thread logs `gamma601_safe_boot_stack free_bytes=` every 5 s for
+        F3 to record;
+    - F3 must show what the external diode reads with the BM1370 held in
+      reset. If it faults, the idle 601 fails `baseline_safe` and the idle
+      fan grant, which the board-aware overheat item must handle;
+    - parity differences to record in the checklist: upstream reports the
+      chip temperature as -1 until the ASIC is initialised
+      (`Thermal_get_chip_temp`), and the raw negative idle current; the
+      601 reports the diode reading and 0 A;
+    - the TPS546 status faults (VOUT_OV, IOUT_OC, temperature) reach no
+      observation or verdict yet (upstream `TPS546_check_status` sets
+      `power_fault`); that item must land before 601 mining;
+    - the vout-check variant's 250 ms samples now also read the external
+      diode, two more EMC2101 reads than its passed hardware run made;
+    - the 601's VIN read 5.41 to 5.47 V on the bench, inside the shared
+      5 V ±10 % limit (5.5 V) with little margin;
+    - `operator_sensor_runtime.rs`'s `BOARD_POWER_TARGET_WATTS` (12 W) is
+      the 205's catalog target and runs only on the 205.
   - F3 must show the 601's 22 W power stop against real mining power at
     its catalog settings before relying on it above the default.
   - [ ] F2: the firmware seams; the 601 is still refused mining.

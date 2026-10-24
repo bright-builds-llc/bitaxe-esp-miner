@@ -11,6 +11,7 @@
 //!
 //! Reference: `reference/esp-miner/main/main.c`, `main/asic_reset.c` and `main/power/TPS546.c`.
 
+use crate::safety_adapter::gamma601::ThermalAcquisitions;
 use crate::safety_adapter::{self, gamma601 as hardware, RuntimeI2cOwner};
 use crate::{asic_adapter, bap_adapter, display_adapter, input_adapter, settings_adapter};
 use bitaxe_core::StartupDebugText;
@@ -22,19 +23,23 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
+mod observations;
 #[cfg(feature = "gamma601-vout-check")]
 mod vout_check;
 
 /// Upstream reads the controller identity up to six times, 3 ms apart.
 const IDENTIFY_ATTEMPTS: usize = 6;
 const IDENTIFY_BACKOFF_MS: u32 = 3;
-const SWEEP_PERIOD: Duration = Duration::from_secs(1);
-/// One sweep in this many writes the records to the general log. A receive-only console sees
-/// them through the USB replay, not these lines.
-const LOG_EVERY_SWEEPS: u32 = 5;
+/// Twice per stale window, so the published observations stay fresh between sweeps.
+const SWEEP_PERIOD: Duration = Duration::from_millis(500);
+/// One sweep in this many writes the records to the general log, every 5 s. A receive-only
+/// console sees them through the USB replay, not these lines.
+const LOG_EVERY_SWEEPS: u32 = 10;
 const THREAD_NAME: &str = "gamma601-safe-boot";
+/// The sweeps publish the shared observations through the same verdict and store as the 205's
+/// 8 KiB sensor owner, which the 601 does not start.
 #[cfg(not(feature = "gamma601-vout-check"))]
-const THREAD_STACK_BYTES: usize = 6 * 1024;
+const THREAD_STACK_BYTES: usize = 8 * 1024;
 /// The core-voltage check runs on this thread, deeper than the sweeps.
 #[cfg(feature = "gamma601-vout-check")]
 const THREAD_STACK_BYTES: usize = 12 * 1024;
@@ -215,13 +220,15 @@ fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: Startup
     report.maybe_pre_id_cml = startup.maybe_pre_id_cml;
     report.maybe_start_status = startup.maybe_status;
     report.maybe_start_cml = startup.maybe_cml;
-    sweep(&mut owner, &mut report);
+    let mut producer = observations::Producer::new();
+    let thermal = sweep(&mut owner, &mut report);
+    producer.publish(&report, thermal);
     log_records(&report);
     publish(report);
     let spawned = std::thread::Builder::new()
         .name(THREAD_NAME.to_owned())
         .stack_size(THREAD_STACK_BYTES)
-        .spawn(move || run(owner, report));
+        .spawn(move || run(owner, report, producer));
     if let Err(error) = spawned {
         log::error!("gamma601_safe_boot=fault category=thread_spawn error={error}");
     }
@@ -229,7 +236,11 @@ fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: Startup
 
 // Kept a distinct frame so the build's stack audit can bound it (`firmware-stack-budget.ts`).
 #[inline(never)]
-fn run(mut owner: RuntimeI2cOwner<'static>, mut report: SafeBootReport) -> ! {
+fn run(
+    mut owner: RuntimeI2cOwner<'static>,
+    mut report: SafeBootReport,
+    mut producer: observations::Producer,
+) -> ! {
     let mut sweeps: u32 = 0;
     #[cfg(feature = "gamma601-vout-check")]
     let mut check = vout_check::VoutCheck::pending();
@@ -248,7 +259,8 @@ fn run(mut owner: RuntimeI2cOwner<'static>, mut report: SafeBootReport) -> ! {
                 log::warn!("gamma601_safe_boot=fault category=off_command error={error:#}");
             }
         }
-        sweep(&mut owner, &mut report);
+        let thermal = sweep(&mut owner, &mut report);
+        producer.publish(&report, thermal);
         publish(report);
         // The check reads the fresh sweep; the next sweep restores the fan duty.
         #[cfg(feature = "gamma601-vout-check")]
@@ -259,6 +271,9 @@ fn run(mut owner: RuntimeI2cOwner<'static>, mut report: SafeBootReport) -> ! {
         sweeps = sweeps.wrapping_add(1);
         if sweeps % LOG_EVERY_SWEEPS == 0 {
             log_records(&report);
+            // SAFETY: a null handle names this thread; the call only reads its stack watermark.
+            let free_bytes = unsafe { sys::uxTaskGetStackHighWaterMark(std::ptr::null_mut()) };
+            log::info!("gamma601_safe_boot_stack free_bytes={free_bytes}");
         }
     }
 }
@@ -276,7 +291,7 @@ fn identify(mut read: impl FnMut() -> Controller) -> Controller {
 }
 
 /// Reads everything, then sets the fan: full until the output is confirmed off.
-fn sweep(owner: &mut RuntimeI2cOwner<'_>, report: &mut SafeBootReport) {
+fn sweep(owner: &mut RuntimeI2cOwner<'_>, report: &mut SafeBootReport) -> ThermalAcquisitions {
     if matches!(report.controller, Controller::Found(_)) {
         hardware::read_controller(owner, report);
     }
@@ -284,7 +299,7 @@ fn sweep(owner: &mut RuntimeI2cOwner<'_>, report: &mut SafeBootReport) {
     if let Err(error) = hardware::configure_thermal(owner, report.fan_duty_percent) {
         log::warn!("gamma601_safe_boot=fault category=fan_configuration error={error:#}");
     }
-    hardware::read_thermal(owner, report);
+    hardware::read_thermal(owner, report)
 }
 
 fn log_records(report: &SafeBootReport) {

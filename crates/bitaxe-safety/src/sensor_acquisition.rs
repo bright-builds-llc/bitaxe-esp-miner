@@ -162,13 +162,69 @@ pub fn reduce_sensor_sweep(
     acquired_at: MonotonicMillis,
     board_power_target_watts: f64,
 ) -> Result<(ProducerSensorState, ProducerSequences), SequenceOverflow> {
+    reduce_sweep(
+        prior,
+        sequences,
+        outcomes,
+        Stamp {
+            boot_session,
+            acquired_at,
+        },
+        board_power_target_watts,
+        FaultReason::Ina260ReadFailed,
+    )
+}
+
+/// The sweep reduction for a board whose power facts come from a TPS546 regulator; only a
+/// failed power read is labelled differently.
+pub fn reduce_tps546_sensor_sweep(
+    prior: ProducerSensorState,
+    sequences: ProducerSequences,
+    outcomes: SensorSweepOutcomes,
+    boot_session: BootSessionId,
+    acquired_at: MonotonicMillis,
+    board_power_target_watts: f64,
+) -> Result<(ProducerSensorState, ProducerSequences), SequenceOverflow> {
+    reduce_sweep(
+        prior,
+        sequences,
+        outcomes,
+        Stamp {
+            boot_session,
+            acquired_at,
+        },
+        board_power_target_watts,
+        FaultReason::Tps546ReadFailed,
+    )
+}
+
+#[derive(Clone, Copy)]
+struct Stamp {
+    boot_session: BootSessionId,
+    acquired_at: MonotonicMillis,
+}
+
+fn reduce_sweep(
+    prior: ProducerSensorState,
+    sequences: ProducerSequences,
+    outcomes: SensorSweepOutcomes,
+    Stamp {
+        boot_session,
+        acquired_at,
+    }: Stamp,
+    board_power_target_watts: f64,
+    power_read_failed: FaultReason,
+) -> Result<(ProducerSensorState, ProducerSequences), SequenceOverflow> {
     let (power, power_sequence) = reduce_power(
         prior.power,
         sequences.power,
         outcomes.power,
-        boot_session,
-        acquired_at,
+        Stamp {
+            boot_session,
+            acquired_at,
+        },
         board_power_target_watts,
+        power_read_failed,
     )?;
     let (temperature, asic_temperature_sequence) = reduce_temperature(
         prior.thermal.temperature_truth(),
@@ -211,9 +267,12 @@ fn reduce_power(
     prior: PowerObservation,
     prior_sequence: ObservationSequence,
     outcome: AcquisitionOutcome<Ina260RawSample>,
-    boot_session: BootSessionId,
-    acquired_at: MonotonicMillis,
+    Stamp {
+        boot_session,
+        acquired_at,
+    }: Stamp,
     board_power_target_watts: f64,
+    read_failed: FaultReason,
 ) -> Result<(PowerObservation, ObservationSequence), SequenceOverflow> {
     match outcome {
         AcquisitionOutcome::Success(sample) => prior.record_ina260_success(
@@ -226,10 +285,7 @@ fn reduce_power(
         AcquisitionOutcome::Unavailable(reason) => {
             Ok((PowerObservation::unavailable(reason), prior_sequence))
         }
-        AcquisitionOutcome::ReadFailed => Ok((
-            prior.record_fault(FaultReason::Ina260ReadFailed),
-            prior_sequence,
-        )),
+        AcquisitionOutcome::ReadFailed => Ok((prior.record_fault(read_failed), prior_sequence)),
         AcquisitionOutcome::InvalidSample => Ok((
             prior.record_fault(FaultReason::PowerReadingInvalid),
             prior_sequence,

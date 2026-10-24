@@ -2,7 +2,7 @@
 //!
 //! Reference: `reference/esp-miner/main/thermal/EMC2101.c`
 
-#[cfg(test)]
+#[cfg(any(test, feature = "board-gamma-601"))]
 use bitaxe_safety::sensor_acquisition::decode_emc2101_external_temperature;
 use bitaxe_safety::sensor_acquisition::{
     apply_ultra205_emc2101_temperature_offset, decode_emc2101_internal_temperature,
@@ -12,9 +12,9 @@ use bitaxe_safety::sensor_acquisition::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Emc2101ReadRegister {
     InternalTemperature,
-    #[cfg(test)]
+    #[cfg(any(test, feature = "board-gamma-601"))]
     ExternalTemperatureMsb,
-    #[cfg(test)]
+    #[cfg(any(test, feature = "board-gamma-601"))]
     ExternalTemperatureLsb,
     TachometerLsb,
     TachometerMsb,
@@ -24,9 +24,9 @@ impl Emc2101ReadRegister {
     pub(crate) const fn address(self) -> u8 {
         match self {
             Self::InternalTemperature => 0x00,
-            #[cfg(test)]
+            #[cfg(any(test, feature = "board-gamma-601"))]
             Self::ExternalTemperatureMsb => 0x01,
-            #[cfg(test)]
+            #[cfg(any(test, feature = "board-gamma-601"))]
             Self::ExternalTemperatureLsb => 0x10,
             Self::TachometerLsb => 0x46,
             Self::TachometerMsb => 0x47,
@@ -96,7 +96,8 @@ const fn fan_duty_code(percent: u8) -> u8 {
     ((63_u16 * percent as u16) / 100) as u8
 }
 
-#[cfg(test)]
+/// The external diode's temperature: the Gamma 601's BM1370 (`EMC2101_get_external_temp`).
+#[cfg(any(test, feature = "board-gamma-601"))]
 pub(crate) fn read_external_temperature_acquisition(
     bus: &mut impl Emc2101RegisterReader,
 ) -> AcquisitionOutcome<f64> {
