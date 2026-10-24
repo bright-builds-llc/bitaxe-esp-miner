@@ -1010,6 +1010,58 @@ Attempt 001 (2026-10-22): `soak_failed` before any write; outcome
   client now reports `soak_device_timeout` or `soak_device_unreachable`
   (`device.test.mjs`). The next attempt uses a fresh handoff.
 
+Phase F 205 regression contract (attempt ordinals 001 onward):
+
+Ultra 205 board seam regression check hardware: enabled.
+
+- **Objective:** `--soak regression-001` on production Ultra 205 firmware
+  at the clean, pushed HEAD after the phase F2 shared-code changes,
+  installed state-preserving. It runs `watchdog-001`'s checks:
+  - 3 minutes of hashing with a nonzero hashrate and an accepted share;
+  - a pause whose status moves only from `active` to `stopping` to
+    `paused`;
+  - a zeroed hashrate while stopping;
+  - a fresh task watchdog in every sample;
+  - before any write, a baseline reporting `storedBoard` `205` with
+    `boardIdentity` `match`.
+  On the 205's real paths this checks the F2 changes: the chip family and
+  platform identity from board identity, results through `AsicFamily`, the
+  board-aware safety limits and cooling core, the shared fan authority,
+  the extracted preparation reply wait, per-board dispatch admission and
+  profile parsing.
+- **Precondition:** only the 205 attached (barrel power and its direct
+  USB-C cable), registered as board 205; the tree clean and pushed.
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/local-mining-soak/` and `umask 077`:**
+  1. `just detect-ultra205`;
+  2. `just flash-monitor --board 205 --port <port>
+     --capture-timeout-seconds 360`, state-preserving;
+  3. `just otawww-endpoint preflight|serve|finish --private-root
+     P/endpoint`, with a Connect in the dedicated Gate tab;
+  4. `just local-mining-soak preflight --soak regression-001 --private-root
+     P/attempt-NNN --endpoint-root P/endpoint --package-manifest
+     bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+     --pool-credentials pool-credentials.json`;
+  5. `just local-mining-soak run`, detached under `caffeinate`, as the soak
+     README describes.
+- **Allowed effects:**
+  - the install, with its resets;
+  - the Gate Connect for the handoff;
+  - the soak's own effects: saving the owner's pool, up to 15 minutes of
+    local mining at the default pair, one pause resent idempotently, and
+    the recovery pause.
+- **Prohibited effects:**
+  - a factory reset;
+  - a Gate Connect during the run;
+  - any other hardware command;
+  - network discovery;
+  - direct UART or pins;
+  - printing or copying the pool credentials.
+- **Evidence, recovery, retries and accepted outcomes:** as `watchdog-001`
+  (archived `task-preparation-rollback-cooling-watchdog`). Recovery is
+  `just local-mining-soak pause --private-root P/attempt-NNN`. Retries
+  follow the progress-gated attempt policy.
+
 ## Future
 
 ### task-stop-paths-hardware-evidence | 2026-10-21 | Hardware evidence for stops other than a pause
