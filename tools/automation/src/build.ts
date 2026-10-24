@@ -17,14 +17,16 @@ export type BuildFirmwareRequest = {
 /**
  * `overheat-trip-test` is the test-only firmware variant (ADR-0040); it keeps the normal artifact names.
  * `board-gamma-601` builds for the Gamma 601 (ADR-0041) under its own artifact names, and
- * `board-gamma-601-vout-check` its test-only core-voltage check variant under the same names.
+ * `board-gamma-601-vout-check` its test-only core-voltage check variant under the same names,
+ * and `board-gamma-601-mining` its test-only mining variant for the phase F3 contracts.
  */
 export type FirmwareBuildMode =
   | "normal"
   | "rollback-probe"
   | "overheat-trip-test"
   | "board-gamma-601"
-  | "board-gamma-601-vout-check";
+  | "board-gamma-601-vout-check"
+  | "board-gamma-601-mining";
 
 /** Per-mode Cargo inputs; each mode owns its target directory so builds never share ESP-IDF state. */
 export function firmwareBuildPlan(buildMode: FirmwareBuildMode): {
@@ -62,6 +64,13 @@ export function firmwareBuildPlan(buildMode: FirmwareBuildMode): {
         artifactPrefix: "bitaxe-gamma601-firmware",
         cargoTargetDir: ".bazel-firmware-gamma601-vout-check-target",
         cargoFeatures: ["--features", "gamma601-vout-check"],
+        otaRollbackProbe: "0",
+      };
+    case "board-gamma-601-mining":
+      return {
+        artifactPrefix: "bitaxe-gamma601-firmware",
+        cargoTargetDir: ".bazel-firmware-gamma601-mining-target",
+        cargoFeatures: ["--features", "gamma601-mining"],
         otaRollbackProbe: "0",
       };
   }
@@ -168,7 +177,7 @@ export async function buildFirmware(
   if (disassembly.timedOut || disassembly.exitCode !== 0) {
     throw new Error("firmware stack disassembly failed");
   }
-  if (request.buildMode === "board-gamma-601") {
+  if (request.buildMode === "board-gamma-601" || request.buildMode === "board-gamma-601-mining") {
     verifyGamma601StackBudget(disassembly.stdout);
   } else if (request.buildMode === "board-gamma-601-vout-check") {
     verifyGamma601StackBudget(disassembly.stdout, { voutCheck: true });

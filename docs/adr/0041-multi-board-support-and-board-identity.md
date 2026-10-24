@@ -165,6 +165,20 @@ not a guard anyone designed.
      keep the ASIC in reset meanwhile, but no hardware evidence yet shows
      that the hold survives a panic or watchdog reset. The latch and the
      `VOUT_MAX` anchor refuse a second check until all power is removed.
+7. **The 601 mines first in a test-only variant.** `gamma601-mining`
+   (`just package-gamma601-mining`) is the only 601 build that may power
+   the BM1370 and admit mining dispatch, for the phase F3 hardware
+   contracts:
+   - Only it and `gamma601-vout-check` compile the TPS546 configuration
+     writes, `CLEAR_FAULTS` and `OPERATION` on. A production 601 build
+     cannot turn the output on, and the variant-isolation gate refuses a
+     production ELF that carries the enable.
+   - It is tied to board 601 like the check, needs
+     `--allow-test-firmware gamma601-mining`, and is never released.
+   - Production 601 dispatch is promoted only on F3's hardware evidence
+     (phase F4).
+   - Until its power path and preparation land (phase F2), it boots the
+     safe boot with its own marker.
 
 ## Consequences
 

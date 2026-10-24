@@ -27,6 +27,14 @@ mod observations;
 #[cfg(feature = "gamma601-vout-check")]
 mod vout_check;
 
+#[cfg(all(feature = "gamma601-vout-check", feature = "gamma601-mining"))]
+compile_error!("the gamma601-vout-check and gamma601-mining variants are separate builds");
+
+/// The boot line only the test-only mining variant compiles (ADR-0041); the packager and the
+/// flash tool check it against the recorded variant.
+#[cfg(feature = "gamma601-mining")]
+const MINING_VARIANT_MARKER: &str = "firmware_variant=gamma601-mining";
+
 /// Upstream reads the controller identity up to six times, 3 ms apart.
 const IDENTIFY_ATTEMPTS: usize = 6;
 const IDENTIFY_BACKOFF_MS: u32 = 3;
@@ -214,6 +222,8 @@ fn turn_off_at_startup(bus: &mut safety_adapter::BitaxeI2cBus<'static>) -> Start
 fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: StartupController) {
     #[cfg(feature = "gamma601-vout-check")]
     log::info!("{}", vout_check::VARIANT_MARKER);
+    #[cfg(feature = "gamma601-mining")]
+    log::info!("{MINING_VARIANT_MARKER}");
     let mut report = SafeBootReport::initial(reset_held);
     report.controller = startup.controller;
     report.maybe_pre_id_status = startup.maybe_pre_id_status;

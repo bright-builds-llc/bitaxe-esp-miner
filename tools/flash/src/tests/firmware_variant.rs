@@ -282,3 +282,57 @@ fn flash_cli_parses_the_core_voltage_check_allowance() {
         Some(FirmwareVariant::Gamma601VoutCheck)
     );
 }
+
+const GAMMA_MINING_ELF: &[u8] =
+    b"synthetic elf firmware_board=601 firmware_variant=gamma601-mining";
+
+#[test]
+fn the_mining_variant_installs_only_on_the_gamma_601() {
+    // Act
+    let gamma = require_firmware_variant_board(FirmwareVariant::Gamma601Mining, BoardId::Gamma601);
+    let ultra = require_firmware_variant_board(FirmwareVariant::Gamma601Mining, BoardId::Ultra205)
+        .expect_err("the 205 must refuse the 601 mining variant");
+
+    // Assert
+    assert!(gamma.is_ok(), "{gamma:?}");
+    assert!(ultra
+        .to_string()
+        .contains("reason=test_firmware_board_mismatch"));
+}
+
+#[test]
+fn the_mining_variant_bytes_admit_only_their_own_variant() {
+    // Act
+    let own = require_firmware_variant_bytes(FirmwareVariant::Gamma601Mining, GAMMA_MINING_ELF);
+    let check =
+        require_firmware_variant_bytes(FirmwareVariant::Gamma601VoutCheck, GAMMA_MINING_ELF)
+            .expect_err("the core-voltage check must refuse the mining marker");
+    let production = require_firmware_variant_bytes(FirmwareVariant::Production, GAMMA_MINING_ELF)
+        .expect_err("production must refuse the mining marker");
+
+    // Assert
+    assert!(own.is_ok(), "{own:?}");
+    assert!(check
+        .to_string()
+        .contains("reason=test_firmware_marker_missing"));
+    assert!(production
+        .to_string()
+        .contains("reason=test_firmware_bytes_in_production_package"));
+}
+
+#[test]
+fn installing_the_mining_variant_requires_naming_it() {
+    // Act
+    let without = admit_firmware_variant(FirmwareVariant::Gamma601Mining, None)
+        .expect_err("the mining variant needs its allowance");
+    let named = admit_firmware_variant(
+        FirmwareVariant::Gamma601Mining,
+        Some(FirmwareVariant::Gamma601Mining),
+    );
+
+    // Assert
+    assert!(without
+        .to_string()
+        .contains("reason=test_firmware_requires_allowance"));
+    assert!(named.is_ok(), "{named:?}");
+}

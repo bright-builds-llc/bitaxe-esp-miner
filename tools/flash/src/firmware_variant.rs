@@ -10,6 +10,7 @@ use crate::*;
 /// Boot-line literals each compiled into the ELF only by its own test variant.
 const OVERHEAT_TRIP_TEST_MARKER: &[u8] = b"firmware_variant=overheat-trip-test";
 const GAMMA601_VOUT_CHECK_MARKER: &[u8] = b"firmware_variant=gamma601-vout-check";
+const GAMMA601_MINING_MARKER: &[u8] = b"firmware_variant=gamma601-mining";
 
 /// Firmware variant compiled into a package; mirrors `//firmware/bitaxe:firmware_variant`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -20,6 +21,8 @@ pub(crate) enum FirmwareVariant {
     OverheatTripTest,
     /// One bounded core-voltage check on the Gamma 601; never released.
     Gamma601VoutCheck,
+    /// The Gamma 601 powering its BM1370 and mining, for the phase F3 contracts; never released.
+    Gamma601Mining,
 }
 
 impl FirmwareVariant {
@@ -29,13 +32,15 @@ impl FirmwareVariant {
             Self::Production => None,
             Self::OverheatTripTest => Some((OVERHEAT_TRIP_TEST_MARKER, BoardId::Ultra205)),
             Self::Gamma601VoutCheck => Some((GAMMA601_VOUT_CHECK_MARKER, BoardId::Gamma601)),
+            Self::Gamma601Mining => Some((GAMMA601_MINING_MARKER, BoardId::Gamma601)),
         }
     }
 }
 
-const TEST_VARIANTS: [FirmwareVariant; 2] = [
+const TEST_VARIANTS: [FirmwareVariant; 3] = [
     FirmwareVariant::OverheatTripTest,
     FirmwareVariant::Gamma601VoutCheck,
+    FirmwareVariant::Gamma601Mining,
 ];
 
 /// Reads the recorded variant; a manifest without one predates ADR-0040 and is production.

@@ -15,6 +15,10 @@ board-gamma-601 = []
 # in reset. Built only through the `--//firmware/bitaxe:firmware_variant=gamma601-vout-check`
 # 601 package, never released.
 gamma601-vout-check = ["board-gamma-601"]
+# Test-only (ADR-0041): the 601 firmware that may power the BM1370 and admit mining dispatch,
+# for the phase F3 hardware contracts. Built only through the
+# `--//firmware/bitaxe:firmware_variant=gamma601-mining` 601 package, never released.
+gamma601-mining = ["board-gamma-601"]
 
 [dependencies]
 anyhow.workspace = true

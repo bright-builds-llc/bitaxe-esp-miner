@@ -312,6 +312,12 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   Gamma 601 safe boot plus one bounded core-voltage check with the ASIC in
   reset. Build it only with `just package-gamma601-vout-check`, install it
   only on the 601 under an active task contract, and never release it.
+- `gamma601-mining` (ADR-0041 item 7) is test-only too. It is the only 601
+  build that may power the BM1370 and mine, for the phase F3 contracts; for
+  now it boots the safe boot.
+  Build it only with `just package-gamma601-mining`, install it only on the
+  601 under an active task contract, and never release it. Production 601
+  builds cannot turn the TPS546 output on.
 - Each test variant targets one board, and the other board's build,
   package and flash paths refuse it.
 - The manifest records `firmware_variant`, checked against the ELF marker.

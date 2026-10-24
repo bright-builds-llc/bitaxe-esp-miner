@@ -476,6 +476,16 @@ action.
       5 V ±10 % limit (5.5 V) with little margin;
     - `operator_sensor_runtime.rs`'s `BOARD_POWER_TARGET_WATTS` (12 W) is
       the 205's catalog target and runs only on the 205.
+  - F2 mining variant:
+    - [x] the test-only `gamma601-mining` variant (ADR-0041 item 7,
+      `just package-gamma601-mining`), wired like the core-voltage check
+      through Cargo, Bazel, the packager, the manifest, the flash tool
+      (`--allow-test-firmware gamma601-mining`), the release refusal and
+      the isolation gate. Only it and the check compile the TPS546
+      enabling writes. The isolation gate also refuses the enable's own
+      context literal (`tps546_operation_on_enable`) in a production ELF,
+      and a source-ownership test keeps that literal in the gated enable. It boots the safe boot for now; the production power
+      path, preparation and dispatch land in it next;
   - F2 chip bring-up:
     - [x] `bm1370::plan` builds the bring-up as adapter actions in the
       firmware's two phases: chip detection (status, reset pulse, 115200

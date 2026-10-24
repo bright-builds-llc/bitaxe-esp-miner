@@ -7,11 +7,17 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// The boot markers, and the core-voltage check's record, which only its variant compiles.
+// The boot markers, the core-voltage check's record, and the TPS546 enable's context literal,
+// which only the test variants compile. The source check below keeps that literal in the enable.
+// `Tps546Bus::operation_on`'s error context (firmware/bitaxe/src/safety_adapter/i2c_bus/tps546.rs).
+export const ENABLE_LITERAL = 'tps546_operation_on_enable';
+
 export const TEST_VARIANT_MARKERS = [
   'firmware_variant=overheat-trip-test',
   'firmware_variant=gamma601-vout-check',
+  'firmware_variant=gamma601-mining',
   'usb_gamma601_vout_check',
+  ENABLE_LITERAL,
 ];
 
 export function main(elves) {

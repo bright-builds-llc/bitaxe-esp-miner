@@ -8,6 +8,7 @@ import type { CommandSpec } from "./contracts.generated.js";
 import { FirmwareBoardMarkerError, type FirmwareBoard } from "./firmware-board.js";
 import {
   FirmwareVariantMarkerError,
+  GAMMA601_MINING_MARKER,
   GAMMA601_VOUT_CHECK_MARKER,
   OVERHEAT_TRIP_TEST_MARKER,
   type FirmwareVariant,
@@ -21,6 +22,7 @@ const productionElf = Buffer.from("\x7fELF production firmware");
 const testElf = Buffer.from(`\x7fELF ${OVERHEAT_TRIP_TEST_MARKER} local_overheat_trip_c=55`);
 const gammaElf = Buffer.from("\x7fELF firmware_board=601 safe boot");
 const gammaCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_VOUT_CHECK_MARKER}`);
+const gammaMiningElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_MINING_MARKER}`);
 
 /** A workspace holding the package inputs and the managed ESP-IDF tool paths packaging resolves. */
 async function packageWorkspace(elf: Buffer): Promise<string> {
@@ -227,6 +229,43 @@ test("a 601 core-voltage check package records its variant", async () => {
     const manifestGenerator = runs.find((spec) => spec.args[0] === "package-firmware");
     assert.ok(manifestGenerator !== undefined);
     assert.equal(argAfter(manifestGenerator, "--firmware-variant"), "gamma601-vout-check");
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a 601 mining package records its variant", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaMiningElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-mining", runs, "601");
+
+    // Assert
+    assert.equal(error, undefined);
+    const manifestGenerator = runs.find((spec) => spec.args[0] === "package-firmware");
+    assert.ok(manifestGenerator !== undefined);
+    assert.equal(argAfter(manifestGenerator, "--firmware-variant"), "gamma601-mining");
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("the mining variant is refused for the Ultra 205 before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaMiningElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-mining", runs, "205");
+
+    // Assert
+    assert.ok(error instanceof FirmwareVariantMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_board_mismatch" });
+    assert.equal(runs.length, 0);
   } finally {
     await rm(root, { recursive: true });
   }

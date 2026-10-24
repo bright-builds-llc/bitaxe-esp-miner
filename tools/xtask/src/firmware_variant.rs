@@ -19,6 +19,8 @@ pub(crate) enum FirmwareVariant {
     OverheatTripTest,
     /// Test-only Gamma 601 firmware that runs one bounded core-voltage check.
     Gamma601VoutCheck,
+    /// Test-only Gamma 601 firmware that may power its BM1370 and mine, for phase F3.
+    Gamma601Mining,
 }
 
 impl FirmwareVariant {
@@ -27,7 +29,7 @@ impl FirmwareVariant {
         match self {
             Self::Production => None,
             Self::OverheatTripTest => Some(BoardId::Ultra205),
-            Self::Gamma601VoutCheck => Some(BoardId::Gamma601),
+            Self::Gamma601VoutCheck | Self::Gamma601Mining => Some(BoardId::Gamma601),
         }
     }
 }
@@ -68,6 +70,7 @@ mod tests {
             FirmwareVariant::Production,
             FirmwareVariant::OverheatTripTest,
             FirmwareVariant::Gamma601VoutCheck,
+            FirmwareVariant::Gamma601Mining,
         ];
 
         // Act
@@ -82,7 +85,8 @@ mod tests {
             [
                 "\"production\"",
                 "\"overheat-trip-test\"",
-                "\"gamma601-vout-check\""
+                "\"gamma601-vout-check\"",
+                "\"gamma601-mining\""
             ]
         );
     }
@@ -122,6 +126,8 @@ mod tests {
             (Some(FirmwareVariant::Gamma601VoutCheck), BoardId::Ultra205),
             (Some(FirmwareVariant::OverheatTripTest), BoardId::Ultra205),
             (Some(FirmwareVariant::OverheatTripTest), BoardId::Gamma601),
+            (Some(FirmwareVariant::Gamma601Mining), BoardId::Gamma601),
+            (Some(FirmwareVariant::Gamma601Mining), BoardId::Ultra205),
             (Some(FirmwareVariant::Production), BoardId::Gamma601),
             (None, BoardId::Gamma601),
         ];
@@ -133,6 +139,9 @@ mod tests {
             .collect();
 
         // Assert
-        assert_eq!(admitted, [true, false, true, false, true, true]);
+        assert_eq!(
+            admitted,
+            [true, false, true, false, true, false, true, true]
+        );
     }
 }

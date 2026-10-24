@@ -2,6 +2,7 @@
 const PRODUCTION_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const SELF_TEST_SOURCE: &str = include_str!("self_test_runtime.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
+const TPS546_BUS_SOURCE: &str = include_str!("safety_adapter/i2c_bus/tps546.rs");
 
 fn body_of<'a>(source: &'a str, signature: &str) -> &'a str {
     let start = source.find(signature).expect("signature present");
@@ -53,4 +54,18 @@ fn the_board_is_read_after_the_settings_and_before_the_hardware() {
     let hardware = position(run_body, "initialize_hardware(");
     // Assert
     assert!(settings < identity && boot_settings < hardware);
+}
+
+#[test]
+fn the_regulator_enable_carries_the_isolation_gate_s_literal_in_test_builds_only() {
+    // Arrange
+    let gate = TPS546_BUS_SOURCE
+        .find(r#"#[cfg(any(feature = "gamma601-vout-check", feature = "gamma601-mining"))]
+impl Tps546Bus"#)
+        .expect("the enabling writes are gated to the test variants");
+    // Act
+    let body = body_of(&TPS546_BUS_SOURCE[gate..], "pub(crate) fn operation_on(");
+    // Assert
+    // `scripts/verify-firmware-variant-isolation.mjs` refuses this literal in production ELFs.
+    assert!(body.contains(r#".context("tps546_operation_on_enable")"#));
 }

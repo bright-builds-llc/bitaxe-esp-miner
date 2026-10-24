@@ -1,13 +1,14 @@
 //! TPS546 PMBus access for the Gamma 601 safe boot (ADR-0041).
 //!
 //! The bus offers the closed reads of `tps546::ReadCommand` and the writes of `OffWrite`, which
-//! can only turn the output off. Only the test-only `gamma601-vout-check` build adds the Gamma
-//! configuration's writes, `CLEAR_FAULTS` and `OPERATION` on. No build can store configuration.
+//! can only turn the output off. Only the test-only `gamma601-vout-check` and `gamma601-mining`
+//! builds add the Gamma configuration's writes, `CLEAR_FAULTS` and `OPERATION` on, so no
+//! production build can power the ASIC. No build can store configuration.
 //!
 //! Reference: `reference/esp-miner/main/power/TPS546.c`
 
 use super::*;
-#[cfg(feature = "gamma601-vout-check")]
+#[cfg(any(feature = "gamma601-vout-check", feature = "gamma601-mining"))]
 use bitaxe_safety::tps546::{
     config::{self, ConfigWrite},
     enable,
@@ -81,8 +82,9 @@ impl Tps546Bus<'_, '_, '_> {
     }
 }
 
-/// The core-voltage check's writes (ADR-0041, phase D): compiled into its test variant only.
-#[cfg(feature = "gamma601-vout-check")]
+/// The writes that configure the controller and turn its output on (ADR-0041 phase D and item 7):
+/// compiled into the `gamma601-vout-check` and `gamma601-mining` test variants only.
+#[cfg(any(feature = "gamma601-vout-check", feature = "gamma601-mining"))]
 impl Tps546Bus<'_, '_, '_> {
     /// Writes one entry of the Gamma plan. Only `gamma_config_plan` makes a `ConfigWrite`; a
     /// command outside the plan, or an NVM command, is still refused before the bus.
@@ -120,9 +122,11 @@ impl Tps546Bus<'_, '_, '_> {
         self.send(&enable::CLEAR_FAULTS)
     }
 
-    /// Turns the output on; the armed evidence is spent.
+    /// Turns the output on; the armed evidence is spent. The context literal is how the
+    /// variant-isolation gate finds the enable in an ELF, whatever its symbols are called.
     pub(crate) fn operation_on(&mut self, _armed: enable::EnableArmed) -> Result<()> {
         self.send(&enable::OPERATION_ON)
+            .context("tps546_operation_on_enable")
     }
 
     fn send(&mut self, bytes: &[u8]) -> Result<()> {
