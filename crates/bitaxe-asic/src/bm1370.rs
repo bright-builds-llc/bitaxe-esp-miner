@@ -10,6 +10,7 @@
 //! its own hardware evidence (phase F); nothing here inherits Ultra 205 verification.
 
 pub mod init;
+pub mod plan;
 pub mod protocol;
 pub mod result;
 pub mod shutdown;

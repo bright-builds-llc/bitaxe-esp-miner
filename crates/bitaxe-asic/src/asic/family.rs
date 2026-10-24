@@ -4,7 +4,18 @@
 //! result lookups), `components/asic/asic.c` (`ASIC_get_asic_job_frequency_ms`) and
 //! `main/device_config.h` (`default_asic_timeout`).
 
-use super::{JobId, ProductionResult, ValidJobIds};
+use super::{ChipIdCountFrameDisposition, JobId, ProductionResult, ValidJobIds};
+use crate::{bm1370::Bm1370ProtocolFault, error::Bm1366ProtocolFault};
+use thiserror::Error;
+
+/// Why one frame of the chip count failed the count, in the family's own terms.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+pub enum ChipCountFrameFault {
+    #[error(transparent)]
+    Bm1366(#[from] Bm1366ProtocolFault),
+    #[error(transparent)]
+    Bm1370(#[from] Bm1370ProtocolFault),
+}
 
 /// A BM13xx chip family.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -59,6 +70,19 @@ impl AsicFamily {
             return timeout_ms;
         }
         timeout_ms / asic_count.next_power_of_two()
+    }
+
+    /// Classifies one frame of the chip count: counted, skipped, or a failed count.
+    pub fn classify_chip_id_count_frame(
+        self,
+        bytes: &[u8],
+    ) -> Result<ChipIdCountFrameDisposition, ChipCountFrameFault> {
+        match self {
+            Self::Bm1366 => Ok(crate::bm1366::chip_detect::classify_chip_id_count_frame(
+                bytes,
+            )?),
+            Self::Bm1370 => Ok(crate::bm1370::plan::classify_chip_id_count_frame(bytes)?),
+        }
     }
 
     /// Classifies one complete receive frame for the production loop.

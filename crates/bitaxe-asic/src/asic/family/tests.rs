@@ -78,3 +78,44 @@ fn a_damaged_frame_is_discarded_by_either_family() {
         [ProductionResult::Discarded(crate::asic::ResultDiscardReason::InvalidPreamble); 2]
     );
 }
+
+#[test]
+fn the_bm1366_family_counts_a_bm1366_chip_id_frame() {
+    // Arrange
+    let mut frame = vec![
+        0xaa, 0x55, 0x13, 0x66, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ];
+    // The frame's CRC is a zero residue over everything after the preamble.
+    frame[10] = (0..=u8::MAX)
+        .find(|&last| {
+            frame[10] = last;
+            crate::bm1366::crc::crc5(&frame[2..]) == 0
+        })
+        .expect("a residue-zero byte exists");
+    // Act
+    let dispositions = [AsicFamily::Bm1366, AsicFamily::Bm1370]
+        .map(|family| family.classify_chip_id_count_frame(&frame));
+    // Assert
+    assert_eq!(
+        dispositions,
+        [
+            Ok(super::super::ChipIdCountFrameDisposition::Accept),
+            Ok(super::super::ChipIdCountFrameDisposition::SoftRetry)
+        ]
+    );
+}
+
+#[test]
+fn a_family_fault_keeps_the_chip_s_own_message() {
+    // Act
+    let fault = AsicFamily::Bm1366
+        .classify_chip_id_count_frame(&[0xaa])
+        .expect_err("a short frame fails the count");
+    // Assert
+    assert_eq!(
+        fault.to_string(),
+        crate::bm1366::chip_detect::classify_chip_id_count_frame(&[0xaa])
+            .expect_err("a short frame fails the count")
+            .to_string()
+    );
+}

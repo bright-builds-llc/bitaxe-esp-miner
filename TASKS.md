@@ -476,6 +476,26 @@ action.
       5 V ±10 % limit (5.5 V) with little margin;
     - `operator_sensor_runtime.rs`'s `BOARD_POWER_TARGET_WATTS` (12 W) is
       the 205's catalog target and runs only on the 205.
+  - F2 chip bring-up:
+    - [x] `bm1370::plan` builds the bring-up as adapter actions in the
+      firmware's two phases: chip detection (status, reset pulse, 115200
+      baud, the version masks and `CHIP_ID` read, then the count of the
+      expected chips) and the mining-ready init (upstream's frames, the
+      ramp, the nonce space, then the max-baud switch, a cleared receive
+      buffer and `InitializedNoMining`). Its frames match the golden
+      fixture. The executor's chip count classifies frames through
+      `AsicFamily::classify_chip_id_count_frame`, so a 601 counts BM1370s;
+      the 205's planner and actions are unchanged;
+      The 601's chip detection also takes upstream's UART flush and
+      100 ms before the reset and 100 ms after the baud reset
+      (`mining_start`, `asic_initialize`);
+    - the 601 preparation adapter runs these plans with the TPS546 power
+      steps, passes the counted chips to the mining-ready plan, and waits
+      upstream's 2000 ms after the init in progress-reporting chunks;
+    - the 205's plan lacks upstream's pre-init UART flush and the two
+      100 ms settle waits; adding them changes the verified 205 path, so
+      it is a separate change. Both boards fail closed on a trailing
+      partial frame after the count, where upstream stops counting;
   - F3 must show the 601's 22 W power stop against real mining power at
     its catalog settings before relying on it above the default.
   - [ ] F2: the firmware seams; the 601 is still refused mining.

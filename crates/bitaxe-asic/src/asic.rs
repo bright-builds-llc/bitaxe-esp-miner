@@ -11,7 +11,9 @@
 
 pub mod family;
 
-pub use family::AsicFamily;
+pub use family::{AsicFamily, ChipCountFrameFault};
+
+pub use crate::bm1366::chip_detect::ChipIdCountFrameDisposition;
 
 pub use crate::bm1366::registers::Bm1366Register as Register;
 

@@ -438,7 +438,7 @@ fn count_asic_chips_rx_loop(
             }
             Ok(Some(response)) => {
                 frames_seen = frames_seen.saturating_add(1);
-                match chip_detect::classify_chip_id_count_frame(&response) {
+                match crate::board_identity::ASIC_FAMILY.classify_chip_id_count_frame(&response) {
                     Ok(ChipIdCountFrameDisposition::Accept) => {
                         counted_chips = counted_chips.saturating_add(1);
                         if uart_trace_enabled() {
