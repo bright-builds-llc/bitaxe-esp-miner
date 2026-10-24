@@ -532,6 +532,8 @@ action.
         logs as `gamma601_regulator`; It boots the safe boot for now; the production power
       path, preparation and dispatch land in it next;
   - F2 owners and Worker:
+    - [x] the 205 regression check after F2 (`--soak regression-001`,
+      contract below) passed on 2026-10-24, attempt 001 (`09490a0f`);
     - [x] dispatch admission per board: `board_identity::
       MINING_DISPATCH_ADMITTED` (the 205 always; the 601 only in
       `gamma601-mining`) gates `production_handle_available`, so a
@@ -1012,7 +1014,7 @@ Attempt 001 (2026-10-22): `soak_failed` before any write; outcome
 
 Phase F 205 regression contract (attempt ordinals 001 onward):
 
-Ultra 205 board seam regression check hardware: enabled.
+Closed after attempt 001 passed (2026-10-24); no enable line remains.
 
 - **Objective:** `--soak regression-001` on production Ultra 205 firmware
   at the clean, pushed HEAD after the phase F2 shared-code changes,
@@ -1061,6 +1063,14 @@ Ultra 205 board seam regression check hardware: enabled.
   (archived `task-preparation-rollback-cooling-watchdog`). Recovery is
   `just local-mining-soak pause --private-root P/attempt-NNN`. Retries
   follow the progress-gated attempt policy.
+
+Attempt 001 (2026-10-24, `09490a0f`): passed; outcome `complete`.
+- 181 s of hashing, 13 accepted shares and 0 rejected, no outages;
+- the stop moved only from `active` through `stopping` to `paused`, with
+  the hashrate zeroed and no `active` sample at idle power;
+- the watchdog was fresh in every sample, and the board report matched;
+- an independent recomputation agrees on every metric;
+- summary: `docs/parity/evidence/20261024-ultra205-f2-regression.md`.
 
 ## Future
 
