@@ -640,6 +640,14 @@ action.
     its catalog settings before relying on it above the default.
   - [ ] F2: the firmware seams; the 601 is still refused mining.
   - [ ] F3: hardware on the 601, each step under its own contract.
+    - [x] F3.1 software: the test-only `gamma601-chip-check` variant
+      (ADR-0041 item 8) and its check (`gamma601/chip_check.rs`, record in
+      `bitaxe_safety::gamma601_chip_check`), wired like the mining
+      variant; the shared reset-reason guard moves to
+      `gamma601/check_guard.rs`; the count loop retains its last count
+      (`asic_adapter::last_counted_chips`) for the record; the build's
+      stack audit bounds the check's frame;
+    - [ ] F3.1 hardware: the chip check contract below;
   - [ ] F4: self-test, soaks and promotion.
 
 Each phase ends with the full gate, an independent review, commit and
@@ -1071,6 +1079,54 @@ Attempt 001 (2026-10-24, `09490a0f`): passed; outcome `complete`.
 - the watchdog was fresh in every sample, and the board report matched;
 - an independent recomputation agrees on every metric;
 - summary: `docs/parity/evidence/20261024-ultra205-f2-regression.md`.
+
+Phase F3.1 chip check contract (attempt ordinals 001 onward):
+
+Gamma 601 chip check hardware: enabled.
+
+- **Objective:** the first BM1370 chip detection. The test-only
+  `gamma601-chip-check` firmware (ADR-0041 item 8), installed
+  state-preserving at the clean, pushed HEAD, runs its one check 30 s after
+  boot and replays `usb_gamma601_chip_check`. Passing means
+  `result=passed`, `chips=1`, VOUT within 50 mV of 1150 mV at the verify,
+  and `off=confirmed`; the record also gives the diode before and after,
+  the peak IOUT and regulator temperature and the window from the
+  power-on sequence to the off command (`on_ms`).
+- **Precondition:** only the 601 attached (barrel power and USB through a
+  USB-A port), registered as board 601; all power removed at least once
+  since the core-voltage check, so the controller holds no earlier
+  configuration; the tree clean and pushed.
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/gamma-601-chip-check/` and `umask 077`:**
+  1. `just detect-ultra205`;
+  2. `just package-gamma601-chip-check`;
+  3. `just flash-monitor --board 601 --port <port> --allow-test-firmware
+     gamma601-chip-check --capture-timeout-seconds 360`, state-preserving;
+     its capture holds the replayed records;
+  4. `just package --board 601`, then `just flash --board 601 --port
+     <port>`, state-preserving, and confirm the boot reports the production
+     variant.
+- **Allowed effects:** the two installs and their resets; the one check:
+  the TPS546 configured and on at 1.15 V, about 6 s to the off command on
+  a healthy bus and at most about 16 s on a degraded one (ADR-0041 item
+  8), the ASIC reset released only for the chip count; the fan at 100 %
+  for the check. The firmware refuses a second check until all power is
+  removed.
+- **Prohibited effects:** work frames, a frequency change, mining, a
+  second check without all power removed, a restart, OTA or other HTTP
+  request, flash, reset or other USB reset while the check may run (from
+  30 s after boot until its record concludes; step 4 starts only after),
+  a factory reset, any other hardware command, network
+  discovery, direct UART or pins.
+- **Evidence and privacy:** the capture stays in `P` (mode 0600 files);
+  committed evidence is a redacted summary of the closed record's fields,
+  checked independently, with `just verify-redaction`.
+- **Recovery:** the production reinstall in step 4. If the record shows the
+  output not confirmed off, remove all power (barrel and USB) before
+  anything else; the next boot's safe boot commands it off.
+- **Stop rules:** `refused`, `aborted`, a count other than one, or off not
+  confirmed: stop after the production reinstall and analyse before another
+  attempt (progress-gated policy).
 
 ## Future
 
