@@ -1100,9 +1100,12 @@ Gamma 601 chip check hardware: enabled.
   `scratch/gamma-601-chip-check/` and `umask 077`:**
   1. `just detect-ultra205`;
   2. `just package-gamma601-chip-check`;
-  3. `just flash-monitor --board 601 --port <port> --allow-test-firmware
-     gamma601-chip-check --capture-timeout-seconds 360`, state-preserving;
-     its capture holds the replayed records;
+  3. `just flash-monitor --board 601 --port <port> --manifest
+     bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
+     --allow-test-firmware gamma601-chip-check --capture-timeout-seconds
+     360`, state-preserving; its capture holds the replayed records.
+     Without `--manifest` the tool builds the production package and
+     refuses the allowance (attempt 001, no effect);
   4. `just package --board 601`, then `just flash --board 601 --port
      <port>`, state-preserving, and confirm the boot reports the production
      variant.
