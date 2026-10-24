@@ -1276,6 +1276,24 @@ js_test(
     entry_point = "verify-firmware-stack-audits.mjs",
 )
 
+# The same thread audits on the Gamma 601's production ELF, which runs the same Worker, HTTP,
+# BAP and owner threads beside its safe boot (ADR-0041 item 5, amended).
+js_test(
+    name = "firmware_stack_audits_gamma601_test",
+    args = ["$(rootpath //firmware/bitaxe:firmware_gamma601)"],
+    data = [
+        "bap-stack-audit.mjs",
+        "control-stack-audit.mjs",
+        "http-stack-audit.mjs",
+        "link-stack-audit.mjs",
+        "writer-stack-audit.mjs",
+        ":virtual_emulator_sources",
+        "//firmware/bitaxe:firmware_gamma601",
+        "//firmware/bitaxe:stack_audit_owner_sources",
+    ],
+    entry_point = "verify-firmware-stack-audits.mjs",
+)
+
 js_test(
     name = "verify_firmware_stack_audits_test",
     data = [

@@ -564,8 +564,11 @@ action.
       builds: it now runs the owner (24 KiB), two pool workers, the ASIC
       worker, the fan controller and the supervisor beside its safe-boot
       thread;
-    - the 601 owner and stack audits (the control, writer, owner-entry
-      and link audits run only on the 205 ELF) get 601 runs before F3;
+    - [x] the thread stack audits run on the 601's production ELF too
+      (`//scripts:firmware_stack_audits_gamma601_test`: control, writer,
+      link, HTTP and BAP all fit, the writer with 672 bytes to spare, as on
+      the 205), and the owner-entry, realignment and atomics audits pass
+      on the 601 production and `gamma601-mining` ELFs;
     - the Worker needs owner decisions first: the 601 capability's model
       and revision strings (upstream's `devicemodel` is `gamma`), whether
       the V1 subscribe model follows them, the Gate repository's schema
