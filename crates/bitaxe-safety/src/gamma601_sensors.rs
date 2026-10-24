@@ -6,8 +6,10 @@
 //! `Power_get_vreg_temp`) and `main/power/vcore.c` (the core voltage is VOUT over the voltage
 //! domains, one on the Gamma).
 
+use crate::observation::FaultReason;
 use crate::power::Ina260RawSample;
 use crate::sensor_acquisition::AcquisitionOutcome;
+use crate::tps546::StatusWord;
 
 /// The most negative IOUT taken as the sensor's offset rather than a fault. With the output
 /// off the 601 reads about -0.2 A (`docs/parity/evidence/20261022-gamma601-safe-boot.md`).
@@ -56,6 +58,22 @@ pub fn power_outcome(
         power_watts: vout * iout + power_offset_watts,
         read_failed: false,
     })
+}
+
+/// The fault the regulator's status word puts on the power fact, as upstream's
+/// `TPS546_check_status`: an unread status is a failed read.
+#[must_use]
+pub fn regulator_fault(
+    maybe_status: Option<StatusWord>,
+    output_expected_on: bool,
+) -> Option<FaultReason> {
+    match maybe_status {
+        None => Some(FaultReason::Tps546ReadFailed),
+        Some(status) if status.power_fault(output_expected_on) => {
+            Some(FaultReason::Tps546PowerFault)
+        }
+        Some(_) => None,
+    }
 }
 
 /// The core voltage in millivolts: VOUT over the Gamma's one voltage domain.

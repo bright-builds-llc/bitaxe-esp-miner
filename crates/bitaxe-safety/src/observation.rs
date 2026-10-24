@@ -204,6 +204,8 @@ pub enum FaultReason {
     Ina260ReadFailed,
     /// A TPS546 board's regulator telemetry could not be read.
     Tps546ReadFailed,
+    /// A TPS546 board's regulator reports a power fault in its status word.
+    Tps546PowerFault,
     InputVoltageUnsafe,
     PowerLimitExceeded,
     PowerReadingInvalid,
@@ -221,6 +223,7 @@ impl FaultReason {
             Self::CoreVoltageReadingInvalid => "core_voltage_reading_invalid",
             Self::Ina260ReadFailed => "ina260_read_failed",
             Self::Tps546ReadFailed => "tps546_read_failed",
+            Self::Tps546PowerFault => "tps546_power_fault",
             Self::InputVoltageUnsafe => "input_voltage_unsafe",
             Self::PowerLimitExceeded => "power_limit_exceeded",
             Self::PowerReadingInvalid => "power_reading_invalid",

@@ -171,12 +171,16 @@ pub fn reduce_sensor_sweep(
             acquired_at,
         },
         board_power_target_watts,
-        FaultReason::Ina260ReadFailed,
+        PowerFaults {
+            read_failed: FaultReason::Ina260ReadFailed,
+            maybe_regulator_fault: None,
+        },
     )
 }
 
-/// The sweep reduction for a board whose power facts come from a TPS546 regulator; only a
-/// failed power read is labelled differently.
+/// The sweep reduction for a board whose power facts come from a TPS546 regulator. A failed
+/// power read is labelled as the regulator's, and `maybe_regulator_fault` (from its status
+/// word) faults the power fact whatever the readings say.
 pub fn reduce_tps546_sensor_sweep(
     prior: ProducerSensorState,
     sequences: ProducerSequences,
@@ -184,6 +188,7 @@ pub fn reduce_tps546_sensor_sweep(
     boot_session: BootSessionId,
     acquired_at: MonotonicMillis,
     board_power_target_watts: f64,
+    maybe_regulator_fault: Option<FaultReason>,
 ) -> Result<(ProducerSensorState, ProducerSequences), SequenceOverflow> {
     reduce_sweep(
         prior,
@@ -194,7 +199,10 @@ pub fn reduce_tps546_sensor_sweep(
             acquired_at,
         },
         board_power_target_watts,
-        FaultReason::Tps546ReadFailed,
+        PowerFaults {
+            read_failed: FaultReason::Tps546ReadFailed,
+            maybe_regulator_fault,
+        },
     )
 }
 
@@ -202,6 +210,13 @@ pub fn reduce_tps546_sensor_sweep(
 struct Stamp {
     boot_session: BootSessionId,
     acquired_at: MonotonicMillis,
+}
+
+/// How the power source labels its faults.
+#[derive(Clone, Copy)]
+struct PowerFaults {
+    read_failed: FaultReason,
+    maybe_regulator_fault: Option<FaultReason>,
 }
 
 fn reduce_sweep(
@@ -213,19 +228,22 @@ fn reduce_sweep(
         acquired_at,
     }: Stamp,
     board_power_target_watts: f64,
-    power_read_failed: FaultReason,
+    power_faults: PowerFaults,
 ) -> Result<(ProducerSensorState, ProducerSequences), SequenceOverflow> {
-    let (power, power_sequence) = reduce_power(
-        prior.power,
-        sequences.power,
-        outcomes.power,
-        Stamp {
-            boot_session,
-            acquired_at,
-        },
-        board_power_target_watts,
-        power_read_failed,
-    )?;
+    let (power, power_sequence) = match power_faults.maybe_regulator_fault {
+        Some(reason) => (prior.power.record_fault(reason), sequences.power),
+        None => reduce_power(
+            prior.power,
+            sequences.power,
+            outcomes.power,
+            Stamp {
+                boot_session,
+                acquired_at,
+            },
+            board_power_target_watts,
+            power_faults.read_failed,
+        )?,
+    };
     let (temperature, asic_temperature_sequence) = reduce_temperature(
         prior.thermal.temperature_truth(),
         sequences.asic_temperature,

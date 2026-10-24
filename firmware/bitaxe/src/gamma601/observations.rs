@@ -12,6 +12,7 @@ use bitaxe_safety::observation::{BootSessionId, MonotonicMillis};
 use bitaxe_safety::sensor_acquisition::{
     reduce_tps546_sensor_sweep, ProducerSensorState, ProducerSequences, SensorSweepOutcomes,
 };
+use bitaxe_safety::tps546::StatusWord;
 
 /// A sample older than this is stale, as on the 205; the sweep runs at twice this rate.
 const STALE_AFTER_MS: u64 = 1_000;
@@ -63,6 +64,8 @@ impl Producer {
             self.boot_session,
             acquired_at,
             f64::from(entry.power_consumption_target()),
+            // The safe boot keeps the output off, so `OFF` is not a fault here.
+            gamma601_sensors::regulator_fault(report.maybe_status.map(StatusWord), false),
         ) {
             Ok((state, sequences)) => {
                 self.state = state.mark_stale_at(acquired_at, STALE_AFTER_MS);

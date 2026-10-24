@@ -103,6 +103,7 @@ pub(crate) fn read_controller(owner: &mut RuntimeI2cOwner<'_>, report: &mut Safe
     let maybe_vout = maybe_raw_vout
         .zip(maybe_mode)
         .and_then(|(raw, mode)| tps546::decode_vout(raw, mode));
+    report.maybe_status = maybe_status.map(|status| status.0);
     report.maybe_faults = maybe_status.map(StatusWord::faults);
     report.maybe_off = maybe_status
         .zip(maybe_vout)

@@ -40,6 +40,8 @@ pub struct SafeBootReport {
     pub controller: Controller,
     /// `None` until the status and output have both been read.
     pub maybe_off: Option<OffState>,
+    /// `STATUS_WORD` at this sweep.
+    pub maybe_status: Option<u16>,
     pub maybe_faults: Option<u16>,
     /// `STATUS_CML` at this sweep.
     pub maybe_cml: Option<u8>,
@@ -67,6 +69,7 @@ impl SafeBootReport {
             reset_held,
             controller: Controller::Unread,
             maybe_off: None,
+            maybe_status: None,
             maybe_faults: None,
             maybe_cml: None,
             maybe_pre_id_status: None,

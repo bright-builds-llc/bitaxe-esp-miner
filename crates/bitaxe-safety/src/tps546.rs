@@ -156,10 +156,21 @@ const STATUS_OFF: u16 = 0x0040;
 /// `CLEAR_FAULTS`, which the safe boot never sends, so a fault may predate this boot.
 const STATUS_FAULTS: u16 = 0x0020 | 0x0010 | 0x0008 | 0x0004 | 0x0002 | 0xf000 | 0x0200 | 0x0100;
 
+/// The bits upstream's `TPS546_check_status` treats as a power fault besides `OFF`: VOUT_OV,
+/// IOUT_OC, VIN_UV and TEMP.
+const STATUS_POWER_FAULTS: u16 = 0x0020 | 0x0010 | 0x0008 | 0x0004;
+
 impl StatusWord {
     #[must_use]
     pub const fn output_off(self) -> bool {
         self.0 & STATUS_OFF != 0
+    }
+
+    /// Whether upstream would report a power fault: one of its fault bits, or the output off
+    /// while it should be on. The latched `CML` bit is not one of them.
+    #[must_use]
+    pub const fn power_fault(self, output_expected_on: bool) -> bool {
+        self.0 & STATUS_POWER_FAULTS != 0 || (output_expected_on && self.output_off())
     }
 
     /// The fault bits that are set, with the deliberate `OFF` masked.

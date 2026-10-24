@@ -419,7 +419,23 @@ action.
       `MiningSafetyLimits` (`board_identity::MINING_SAFETY_LIMITS`, now a
       `const fn` of the catalog). The safe10 inventories pin the new calls.
       The host simulation and the bitaxe-api tests keep the 205's limits;
-    - the TPS546 fault state (`VCORE_check_fault`) becomes a safety fact;
+    - [x] the TPS546 status word faults the 601's power fact
+      (`tps546_power_fault`), so the verdict refuses mining, on upstream's
+      `TPS546_check_status` bits: VOUT_OV, IOUT_OC, VIN_UV and TEMP, and
+      `OFF` while the output should be on. The latched `CML` bit seen on
+      the bench is not one of them. An unread status word is a failed
+      regulator read. The safe boot passes "output expected off"; the
+      production power backend passes its real state, from the raw status
+      word the report now keeps. `sensor_acquisition.rs` is at 605 of 628
+      lines, so the next addition there splits it;
+    - the production power backend, for the regulator fault:
+      - sends `CLEAR_FAULTS` at init, as upstream's `TPS546_init`, before
+        polling; a VIN_UV or TEMP bit latched at power-up otherwise keeps
+        the power fact faulted for the whole boot;
+      - passes `output_expected_on = true` once it enables the output;
+      - fills the API's `power_fault` field (`maybe_power_fault`, always
+        `None` today), which upstream reports from
+        `VCORE_get_fault_string`;
     - the simulation interpreter drives the BM1370 through its lowered
       adapter actions;
     - the closed safety-fact vocabularies follow the board's
@@ -454,9 +470,6 @@ action.
       chip temperature as -1 until the ASIC is initialised
       (`Thermal_get_chip_temp`), and the raw negative idle current; the
       601 reports the diode reading and 0 A;
-    - the TPS546 status faults (VOUT_OV, IOUT_OC, temperature) reach no
-      observation or verdict yet (upstream `TPS546_check_status` sets
-      `power_fault`); that item must land before 601 mining;
     - the vout-check variant's 250 ms samples now also read the external
       diode, two more EMC2101 reads than its passed hardware run made;
     - the 601's VIN read 5.41 to 5.47 V on the bench, inside the shared
