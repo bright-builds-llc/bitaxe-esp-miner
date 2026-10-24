@@ -566,13 +566,19 @@ action.
       - admission is `profile_admissible_for_board`, the same answer on
         the 205;
       - the shared `await_preparation_actuation` holds the reply wait;
-    - still for the 601: its boot gate must retain the UART and the ASIC
-      reset for the executor, which today requires an enable line the 601
-      lacks (`store_production_peripherals`, `production_handle_available`
-      and `production_ready` all need `maybe_enable`). The reset handle
-      must keep GPIO1 readable: `AsicReset::new` makes the pin output-only,
-      after which `gamma601::reset_held()` reads low whatever is driven,
-      silently defeating the regulator's reset interlock; the cooling proof after a stop needs the board-aware rule;
+    - [x] the 601's boot gate (`asic_adapter/board_601.rs`) hands the ASIC
+      UART (TX 17, RX 18, as upstream's `serial.c`) and the reset, still
+      held low, to the executor; the executor needs no enable line on the
+      601 (`power_line_retained`). The reset pin is output-only once the
+      executor owns it, so the reset owner tracks whether it holds the
+      reset low (`AsicReset::holds_reset_low`, counted released before the
+      release write), and `gamma601::reset_held()` asks it first. Once
+      the handover starts, nothing but the retained owner confirming the
+      hold reads as held: a failed handover, a busy or poisoned lock all
+      read as not held, and a reset driver whose handover fails is kept
+      driving low rather than dropped (a drop disables the pin). The 601 baseline
+      stays unconfirmed, so no Worker starts with the 205's capability
+      until the 601's owners and Worker capability land; the cooling proof after a stop needs the board-aware rule;
       the adapter struct keeps its `Ultra205` name until a rename;
     - the 205's plan lacks upstream's pre-init UART flush and the two
       100 ms settle waits; adding them changes the verified 205 path, so

@@ -168,15 +168,25 @@ pub fn store_production_peripherals(
     }
 }
 
+/// Whether the board's ASIC power line is retained: the Ultra 205's enable GPIO. The Gamma 601
+/// has none; its core voltage is the regulator's, owned by its safe-boot thread.
+fn power_line_retained(state: &ProductionAsicState) -> bool {
+    #[cfg(feature = "board-gamma-601")]
+    {
+        let _ = state;
+        true
+    }
+    #[cfg(not(feature = "board-gamma-601"))]
+    state.maybe_enable.is_some()
+}
+
 #[must_use]
 pub fn production_handle_available() -> bool {
     // Every actuation admission asks this, so a board whose own records name another board is
     // never driven (ADR-0041). Its identity is read at boot, before any run can start.
     crate::board_identity::hardware_control_permitted()
         && production_state().lock().ok().is_some_and(|state| {
-            state.maybe_uart.is_some()
-                && state.maybe_reset.is_some()
-                && state.maybe_enable.is_some()
+            state.maybe_uart.is_some() && state.maybe_reset.is_some() && power_line_retained(&state)
         })
 }
 
@@ -186,10 +196,14 @@ pub fn production_ready() -> bool {
         state.production_ready
             && state.maybe_uart.is_some()
             && state.maybe_reset.is_some()
-            && state.maybe_enable.is_some()
+            && power_line_retained(&state)
     })
 }
 
+#[cfg(feature = "board-gamma-601")]
+mod board_601;
+#[cfg(feature = "board-gamma-601")]
+pub use board_601::{begin_reset_handover, executor_holds_reset, store_board_601_peripherals};
 mod admission;
 pub use admission::{
     block_production_dispatch, execute_chip_detection_actions,

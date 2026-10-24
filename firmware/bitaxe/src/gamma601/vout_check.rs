@@ -320,8 +320,8 @@ fn check_latch_armed() -> bool {
 /// Arms the RTC latch and holds the ASIC reset pad low, so a reset while the output may be on
 /// cannot release the ASIC before the next boot drives the pin itself.
 fn hold_reset_latch() -> Result<(), ()> {
-    // SAFETY: same single-thread latch access as `check_latch_armed`; GPIO1 is driven low by
-    // `hold_asic_reset_early` and no HAL driver owns it.
+    // SAFETY: same single-thread latch access as `check_latch_armed`. GPIO1 is driven low by the
+    // executor's reset owner, which the check never asks to release; the hold latches that low.
     unsafe {
         core::ptr::write_volatile(core::ptr::addr_of_mut!(RTC_CHECK_LATCH), LATCH_ARMED);
         if sys::gpio_hold_en(sys::gpio_num_t_GPIO_NUM_1) == sys::ESP_OK {

@@ -42,6 +42,9 @@ impl<'d> AsicEnable<'d> {
 
 pub struct AsicReset<'d> {
     reset: PinDriver<'d, Output>,
+    /// Whether this owner last drove the line low. The pin is output-only, so its level cannot
+    /// be read back; the Gamma 601's regulator interlock asks this instead.
+    holds_low: bool,
 }
 
 impl<'d> AsicReset<'d> {
@@ -55,7 +58,15 @@ impl<'d> AsicReset<'d> {
         let mut reset = PinDriver::output(reset_pin)?;
         reset.set_low()?;
         crate::panic_cutoff::mark_reset_configured();
-        Ok(Self { reset })
+        Ok(Self {
+            reset,
+            holds_low: true,
+        })
+    }
+
+    /// Whether the reset is held low by this owner.
+    pub fn holds_reset_low(&self) -> bool {
+        self.holds_low
     }
 
     pub fn reset_pulse(&mut self, low_ms: u32, high_ms: u32) -> Result<()> {
@@ -73,8 +84,11 @@ impl<'d> AsicReset<'d> {
 
         check()?;
         self.reset.set_low()?;
+        self.holds_low = true;
         cancellable_delay(low_ms, check)?;
         check()?;
+        // Counted released before the write, so a failed write never reads as held.
+        self.holds_low = false;
         self.reset.set_high()?;
         cancellable_delay(high_ms, check)?;
         Ok(())
@@ -82,6 +96,7 @@ impl<'d> AsicReset<'d> {
 
     pub fn hold_reset_low(&mut self) -> Result<()> {
         self.reset.set_low()?;
+        self.holds_low = true;
         crate::production_mining_session::revocation::note_asic_halted(
             crate::runtime_uptime::millis(),
         );

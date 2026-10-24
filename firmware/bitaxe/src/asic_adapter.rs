@@ -52,6 +52,11 @@ pub enum BootMiningBaseline {
     Unconfirmed,
 }
 
+#[cfg(feature = "board-gamma-601")]
+mod board_601;
+#[cfg(feature = "board-gamma-601")]
+pub use board_601::retain_board_601_peripherals;
+
 pub fn run_boot_gate_with_peripherals<UART, RESET, ENABLE, TX, RX>(
     peripherals: AsicBootPeripherals<UART, RESET, ENABLE, TX, RX>,
 ) -> Result<BootMiningBaseline>

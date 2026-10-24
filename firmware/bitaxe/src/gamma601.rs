@@ -73,8 +73,13 @@ pub(crate) fn hold_asic_reset_early() {
     RESET_DRIVEN.store(driven, Ordering::Release);
 }
 
-/// Whether the reset pin is driven and reads low.
+/// Whether the ASIC is held in reset: by the executor's reset owner once the boot gate retains
+/// the pin (output-only, so its level cannot be read back), and before that by the early drive,
+/// read back from the pin.
 pub(crate) fn reset_held() -> bool {
+    if let Some(held) = asic_adapter::production::executor_holds_reset() {
+        return held;
+    }
     RESET_DRIVEN.load(Ordering::Acquire)
         && unsafe { sys::gpio_get_level(sys::gpio_num_t_GPIO_NUM_1) } == 0
 }
@@ -113,7 +118,8 @@ pub(crate) fn initialize_hardware(
         }
     };
     let pins = peripherals.pins;
-    // GPIO1 was driven low by `hold_asic_reset_early`; its HAL token is never used.
+    // GPIO1 was driven low by `hold_asic_reset_early`; the boot gate below hands it, still low,
+    // to the executor's reset owner.
     let reset_held = reset_held();
     if !reset_held {
         log::error!("gamma601_safe_boot=fault category=reset_pin");
@@ -147,7 +153,12 @@ pub(crate) fn initialize_hardware(
         input_available,
     );
     (
-        asic_adapter::run_boot_gate_without_peripherals("board_601_safe_boot"),
+        asic_adapter::retain_board_601_peripherals(
+            peripherals.uart1,
+            pins.gpio1,
+            pins.gpio17,
+            pins.gpio18,
+        ),
         Some(peripherals.modem),
     )
 }

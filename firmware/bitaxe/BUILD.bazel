@@ -593,6 +593,7 @@ rust_test(
     name = "board_identity_source_ownership_tests",
     srcs = [
         "src/asic_adapter/production.rs",
+        "src/asic_adapter/board_601.rs",
         "src/board_identity_source_ownership_test.rs",
         "src/gamma601.rs",
         "src/gamma601/actuation.rs",

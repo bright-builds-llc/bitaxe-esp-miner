@@ -6,6 +6,7 @@ const TPS546_BUS_SOURCE: &str = include_str!("safety_adapter/i2c_bus/tps546.rs")
 const GAMMA601_SOURCE: &str = include_str!("gamma601.rs");
 const GAMMA601_ACTUATION_SOURCE: &str = include_str!("gamma601/actuation.rs");
 const SAFETY_ADAPTER_SOURCE: &str = include_str!("safety_adapter.rs");
+const BOARD_601_BOOT_GATE_SOURCE: &str = include_str!("asic_adapter/board_601.rs");
 
 fn body_of<'a>(source: &'a str, signature: &str) -> &'a str {
     let start = source.find(signature).expect("signature present");
@@ -99,4 +100,24 @@ fn the_601_applies_fan_commands_by_the_shared_authority_and_regulator_commands_o
     assert!(GAMMA601_ACTUATION_SOURCE.contains("safety_adapter::decide_fan_duty(command)"));
     assert!(production_arm.contains("SafetyActuationReply::Refused"));
     assert!(!production_arm.contains("regulator::"));
+}
+
+#[test]
+fn the_601_boot_gate_never_confirms_a_baseline_so_no_worker_starts() {
+    // Act
+    let confirms = BOARD_601_BOOT_GATE_SOURCE.matches("BootMiningBaseline::Confirmed").count();
+    // Assert
+    assert_eq!(confirms, 0);
+    assert!(BOARD_601_BOOT_GATE_SOURCE.contains("production::store_board_601_peripherals(uart, reset)"));
+}
+
+#[test]
+fn the_601_reset_interlock_asks_the_executor_s_reset_owner_first() {
+    // Arrange
+    let body = body_of(GAMMA601_SOURCE, "pub(crate) fn reset_held() -> bool {");
+    // Act
+    let maybe_owner = body.find("asic_adapter::production::executor_holds_reset()");
+    let maybe_pin = body.find("gpio_get_level");
+    // Assert
+    assert!(maybe_owner.zip(maybe_pin).is_some_and(|(owner, pin)| owner < pin));
 }
