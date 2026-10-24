@@ -313,9 +313,13 @@ impl BootstrapTiming {
         self.0.lock().expect("bounded recorder").binding = Some(binding);
         self.event(TimingStage::ReaderBound);
     }
-    pub(super) fn quarantine_released(&self, bytes: usize, deadline: Instant) -> bool {
+    pub(super) fn quarantine_released(
+        &self,
+        bytes: usize,
+        now: Instant,
+        deadline: Instant,
+    ) -> bool {
         let mut r = self.0.lock().expect("bounded recorder");
-        let now = Instant::now();
         if now >= deadline {
             return false;
         }

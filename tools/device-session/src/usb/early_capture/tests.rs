@@ -1,4 +1,43 @@
 use super::*;
+/// Generous bound for waits on observed state; host load only slows them down.
+const WAIT_LIMIT: Duration = Duration::from_secs(60);
+/// A capture window no test outlives, so only `TestClock::advance` closes it.
+const OPEN_WINDOW: Duration = Duration::from_secs(3600);
+/// Host time plus explicit steps, so a test decides when the capture window closes.
+#[derive(Default)]
+struct TestClock(Mutex<Duration>);
+impl TestClock {
+    fn advance(&self, step: Duration) {
+        *self.0.lock().expect("test clock") += step;
+    }
+}
+impl CaptureClock for TestClock {
+    fn now(&self) -> Instant {
+        Instant::now() + *self.0.lock().expect("test clock")
+    }
+}
+fn test_window(clock: &Arc<TestClock>) -> CaptureWindow {
+    CaptureWindow {
+        duration: OPEN_WINDOW,
+        clock: clock.clone(),
+    }
+}
+fn wait_until(mut condition: impl FnMut() -> bool) -> bool {
+    let end = Instant::now() + WAIT_LIMIT;
+    while !condition() {
+        if Instant::now() >= end {
+            return false;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    true
+}
+fn captured(capture: &EarlyCapture) -> usize {
+    capture.state.lock().expect("state").captured
+}
+fn released(capture: &EarlyCapture) -> bool {
+    capture.state.lock().expect("state").released
+}
 #[cfg(target_os = "macos")]
 fn pty() -> (File, File, Candidate) {
     use std::ffi::CStr;
@@ -42,25 +81,28 @@ fn slow_admission_does_not_delay_actual_receiving() {
     // Arrange
     let (mut master, _slave, candidate) = pty();
     let lease = Arc::new(File::open("/dev/null").expect("lease stand-in"));
+    let clock = Arc::new(TestClock::default());
     let mut capture = EarlyCapture::start(
         candidate,
         lease,
-        Duration::from_millis(900),
+        test_window(&clock),
         Vec::with_capacity(4096),
         None,
     )
     .expect("capture");
     // Act: a real writer produces a bootstrap-sized record before either admission completes.
     master.write_all(&[b'x'; 92]).expect("PTY write");
-    thread::sleep(Duration::from_millis(200));
-    let received = capture.state.lock().expect("state").captured;
+    let drained_before_admission = wait_until(|| captured(&capture) == 92);
     capture.admit();
-    let result = capture.finish(false, Duration::from_secs(2));
+    let released_in_window = wait_until(|| released(&capture));
+    clock.advance(OPEN_WINDOW);
+    let result = capture.finish(false, WAIT_LIMIT);
     // Assert
-    assert_eq!(
-        received, 92,
+    assert!(
+        drained_before_admission,
         "bytes must be actively drained while admission is pending"
     );
+    assert!(released_in_window);
     assert_eq!(result.expect("admitted result").bytes.len(), 92);
 }
 
@@ -71,19 +113,24 @@ fn admission_after_capture_expiry_never_releases_quarantine() {
         super::super::process::SignalSupervisor::acquire().expect("capture signal owner");
     // Arrange
     let (_master, _slave, candidate) = pty();
+    let clock = Arc::new(TestClock::default());
     let mut capture = EarlyCapture::start(
         candidate,
         Arc::new(File::open("/dev/null").expect("lease")),
-        Duration::from_millis(40),
+        test_window(&clock),
         Vec::with_capacity(512),
         None,
     )
     .expect("capture");
     // Act
-    thread::sleep(Duration::from_millis(100));
+    let opened = wait_until(|| capture.opened());
+    clock.advance(OPEN_WINDOW);
+    let expired = capture.expired();
     capture.admit();
-    let result = capture.finish(false, Duration::from_secs(1));
+    let result = capture.finish(false, WAIT_LIMIT);
     // Assert
+    assert!(opened);
+    assert!(expired);
     assert_eq!(
         result.expect_err("late admission").detail,
         "admission_incomplete"
@@ -101,7 +148,7 @@ fn overflow_preserves_first_failure_and_never_returns_truncated_success() {
     let mut capture = EarlyCapture::start(
         candidate,
         Arc::new(File::open("/dev/null").expect("lease")),
-        Duration::from_secs(1),
+        test_window(&Arc::new(TestClock::default())),
         Vec::with_capacity(16),
         None,
     )
@@ -113,7 +160,7 @@ fn overflow_preserves_first_failure_and_never_returns_truncated_success() {
     }
     capture.admit();
     master.write_all(&[b'x'; 92]).expect("write");
-    let result = capture.finish(false, Duration::from_secs(2));
+    let result = capture.finish(false, WAIT_LIMIT);
     // Assert
     assert_eq!(result.expect_err("overflow").detail, "capture_overflow");
     assert_eq!(
@@ -132,13 +179,13 @@ fn cancellation_drops_reader_and_releases_worker_lease_reference() {
     let mut capture = EarlyCapture::start(
         candidate,
         lease.clone(),
-        Duration::from_secs(10),
+        CaptureWindow::host(Duration::from_secs(10)),
         Vec::with_capacity(512),
         None,
     )
     .expect("capture");
     // Act
-    let result = capture.finish(true, Duration::from_secs(1));
+    let result = capture.finish(true, WAIT_LIMIT);
     // Assert
     assert_eq!(result.expect_err("cancelled").detail, "capture_cancelled");
     assert!(capture.thread.is_none());
@@ -210,7 +257,7 @@ fn failed_join_retains_actual_flock_until_worker_finishes() {
         receiver,
         thread: Some(worker),
         maybe_timing: None,
-        duration: Duration::from_secs(1),
+        window: CaptureWindow::host(Duration::from_secs(1)),
     };
     drop(lease);
     // Act
@@ -228,7 +275,13 @@ fn failed_join_retains_actual_flock_until_worker_finishes() {
         0
     );
     release.send(()).expect("release worker");
-    assert!(capture.finish(true, Duration::from_secs(1)).is_err());
+    assert_eq!(
+        capture
+            .finish(true, WAIT_LIMIT)
+            .expect_err("worker result")
+            .detail,
+        "capture_cancelled"
+    );
     assert_eq!(
         unsafe { libc::flock(contender.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) },
         0
@@ -247,12 +300,12 @@ fn signal_handoff_preserves_pending_interrupt_and_prevents_open() {
     let mut capture = EarlyCapture::start(
         candidate,
         Arc::new(File::open("/dev/null").expect("lease")),
-        Duration::from_secs(1),
+        CaptureWindow::host(Duration::from_secs(1)),
         Vec::with_capacity(512),
         None,
     )
     .expect("capture");
-    let result = capture.finish(false, Duration::from_secs(1));
+    let result = capture.finish(false, WAIT_LIMIT);
     // Assert
     assert_eq!(
         result.expect_err("signal cancellation").detail,
@@ -271,12 +324,13 @@ fn timing_records_one_reader_and_truthful_quarantine_byte_count() {
     // Arrange
     let timing = BootstrapTiming::default();
     timing.bind(Instant::now(), "physical", "nonce");
-    timing.early_mode(Duration::from_millis(250));
+    timing.early_mode(OPEN_WINDOW);
     let (mut master, _slave, candidate) = pty();
+    let clock = Arc::new(TestClock::default());
     let mut capture = EarlyCapture::start(
         candidate,
         Arc::new(File::open("/dev/null").expect("lease")),
-        Duration::from_millis(250),
+        test_window(&clock),
         Vec::with_capacity(512),
         Some(timing.clone()),
     )
@@ -287,13 +341,13 @@ fn timing_records_one_reader_and_truthful_quarantine_byte_count() {
     }
     // Act
     master.write_all(&[b'x'; 92]).expect("write");
-    thread::sleep(Duration::from_millis(50));
+    assert!(wait_until(|| captured(&capture) == 92));
     assert_eq!(timing.snapshot()["quarantineReleased"], false);
     assert!(capture.receiver.try_recv().is_err());
     capture.admit();
-    let output = capture
-        .finish(false, Duration::from_secs(1))
-        .expect("complete");
+    assert!(wait_until(|| released(&capture)));
+    clock.advance(OPEN_WINDOW);
+    let output = capture.finish(false, WAIT_LIMIT).expect("complete");
     // Assert
     let value = timing.snapshot();
     assert_eq!(output.bytes.len(), 92);

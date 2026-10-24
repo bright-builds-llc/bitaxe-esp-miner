@@ -23,6 +23,30 @@ pub(super) struct CaptureState {
 }
 pub(super) const MAX_CAPTURE_BYTES: usize = 16 * 1024 * 1024;
 const THREAD_STACK: usize = 256 * 1024;
+/// Monotonic time source for the capture window, so tests can close it explicitly.
+pub(super) trait CaptureClock: Send + Sync {
+    fn now(&self) -> Instant;
+}
+struct HostClock;
+impl CaptureClock for HostClock {
+    fn now(&self) -> Instant {
+        Instant::now()
+    }
+}
+/// The capture window's length, measured from the reader's open by its clock.
+#[derive(Clone)]
+pub(super) struct CaptureWindow {
+    pub duration: Duration,
+    pub clock: Arc<dyn CaptureClock>,
+}
+impl CaptureWindow {
+    pub fn host(duration: Duration) -> Self {
+        Self {
+            duration,
+            clock: Arc::new(HostClock),
+        }
+    }
+}
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct NodeIdentity {
     dev: u64,
@@ -97,13 +121,13 @@ pub(super) struct EarlyCapture {
     receiver: Receiver<Result<MonitorOutput, UsbSessionError>>,
     thread: Option<JoinHandle<()>>,
     maybe_timing: Option<BootstrapTiming>,
-    duration: Duration,
+    window: CaptureWindow,
 }
 impl EarlyCapture {
     pub fn start(
         candidate: Candidate,
         lease: Arc<File>,
-        duration: Duration,
+        window: CaptureWindow,
         mut bytes: Vec<u8>,
         maybe_timing: Option<BootstrapTiming>,
     ) -> Result<Self, UsbSessionError> {
@@ -118,12 +142,13 @@ impl EarlyCapture {
             admitted.clone(),
             cancelled.clone(),
             maybe_timing.clone(),
+            window.clone(),
         );
         let thread = thread::Builder::new()
             .name("usb-early-reader".into())
             .stack_size(THREAD_STACK)
             .spawn(move || {
-                let (candidate, state, admitted, cancelled, timing) = args;
+                let (candidate, state, admitted, cancelled, timing, window) = args;
                 // The same lock descriptor survives even when the parent cannot join.
                 let _lease = lease;
                 let result = receive(
@@ -131,7 +156,7 @@ impl EarlyCapture {
                     &state,
                     &admitted,
                     &cancelled,
-                    duration,
+                    &window,
                     bytes,
                     timing.as_ref(),
                 );
@@ -152,7 +177,7 @@ impl EarlyCapture {
             receiver,
             thread: Some(thread),
             maybe_timing,
-            duration,
+            window,
         })
     }
     pub fn check(&self, snapshot: &UsbDeviceSnapshot) -> Result<(), UsbSessionError> {
@@ -170,7 +195,7 @@ impl EarlyCapture {
             .lock()
             .expect("bounded state")
             .opened_at
-            .is_some_and(|at| at.elapsed() >= self.duration)
+            .is_some_and(|at| self.window.clock.now() >= at + self.window.duration)
     }
     pub fn opened(&self) -> bool {
         self.state.lock().expect("bounded state").opened
@@ -237,10 +262,11 @@ fn receive(
     state: &Mutex<State>,
     admitted: &AtomicBool,
     cancelled: &AtomicBool,
-    duration: Duration,
+    window: &CaptureWindow,
     mut bytes: Vec<u8>,
     timing: Option<&BootstrapTiming>,
 ) -> Result<MonitorOutput, UsbSessionError> {
+    let clock = window.clock.as_ref();
     let capacity = bytes.capacity().min(MAX_CAPTURE_BYTES);
     if cancelled.load(Ordering::Acquire) || super::process::maybe_pending_signal().is_some() {
         if let Some(t) = timing {
@@ -254,7 +280,8 @@ fn receive(
     let reader =
         ReceiveOnlyReader::open(&candidate.port).map_err(|_| failure("reader_open_failed"))?;
     let mut reader = super::timing::TimedReader::new(reader, timing.cloned());
-    let opened = Instant::now();
+    let opened = clock.now();
+    let deadline = opened + window.duration;
     state.lock().expect("bounded state").opened_at = Some(opened);
     if let Some(t) = timing {
         t.event(TimingStage::Opened);
@@ -280,16 +307,17 @@ fn receive(
             }
             return Err(failure("capture_cancelled"));
         }
-        if opened.elapsed() >= duration {
+        if clock.now() >= deadline {
             if let Some(t) = timing {
                 t.event(TimingStage::CaptureDeadlineReached);
             }
             break;
         }
         if !released && admitted.load(Ordering::Acquire) {
+            let now = clock.now();
             released = timing.map_or_else(
-                || Instant::now() < opened + duration,
-                |t| t.quarantine_released(bytes.len(), opened + duration),
+                || now < deadline,
+                |t| t.quarantine_released(bytes.len(), now, deadline),
             );
             state.lock().expect("bounded state").released = released;
             if !released {
@@ -412,7 +440,7 @@ impl super::UsbSession {
         self.capture.maybe_owner = Some(EarlyCapture::start(
             candidate,
             self.lease.receiver_guard(),
-            duration,
+            CaptureWindow::host(duration),
             bytes,
             self.maybe_timing.clone(),
         )?);

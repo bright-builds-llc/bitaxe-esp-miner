@@ -34690,3 +34690,61 @@ Residual risks:
   cut short (for example by a full disk) leaves partial tools that later
   builds do not repair.
 
+### task-early-capture-test-determinism | 2026-10-24 | Make the early-capture tests deterministic under host load
+
+Three `bitaxe-device-session` tests from `5bda5b91` failed together during a
+loaded full gate and passed alone:
+`failed_join_retains_actual_flock_until_worker_finishes`,
+`slow_admission_does_not_delay_actual_receiving` and
+`timing_records_one_reader_and_truthful_quarantine_byte_count`.
+
+- [x] Find the timing assumptions: fixed sleeps (200 ms, 50 ms) standing in
+      for the reader draining the PTY, a real-time capture window (40 ms to
+      1 s) that starts when the reader thread opens and closes before a
+      descheduled test admits, and 1 to 2 s join limits.
+- [x] Inject the capture window's clock (`CaptureWindow`, `CaptureClock`;
+      production uses `CaptureWindow::host`) so tests close the window
+      explicitly, and replace the sleeps with 60 s bounded waits on the
+      observed state. `quarantine_released` takes the caller's `now`.
+- [x] Keep every assertion at least as strong. The second join in the flock
+      test now asserts the worker's own `capture_cancelled` result, and the
+      expiry test also asserts `expired()`.
+- [x] Verify under load and stalls.
+
+Authorization: local Rust test and source edits, tests, builds, commit and
+push only. No detector, USB device, flash, monitor or other hardware effect.
+
+Verification (2026-10-24):
+- Failure signal: plain CPU load (load average above 120 with
+  `cargo build --all-targets` and burners) did not reproduce the failure. A
+  staller that pauses the test binary with SIGSTOP for 0.3 to 2 s at a time
+  did: on the old code 8 of 20 runs failed, with real failures at
+  `slow_admission` (`tests.rs:64`, window closed, 5 times), `timing_records`
+  (`tests.rs:296`, 2 times) and `failed_join` (`tests.rs:232`, 1 time).
+- Fix: `cargo test -q -p bitaxe-device-session early_capture` passed 30 of 30
+  runs under the staller plus build load, 30 of 30 more counted without
+  stopping, 30 of 30 beside `bazel build //...` and `cargo build`, and 30 of
+  30 under the staller on the final tree. The filtered run takes about 0.9 s
+  instead of about 2 s.
+- Gates: `cargo fmt --all`; `cargo clippy -p bitaxe-device-session
+  --all-targets --all-features -D warnings`; the 207 crate tests; `cargo
+  build -p bitaxe-flash --all-targets`; Bazel `//tools/device-session:tests`,
+  `//tools/automation:automation_test`,
+  `//scripts:verify_native_usb_ownership_test` and
+  `//scripts:verify_native_usb_symbols_test` (it failed to build once while
+  the firmware image built alongside, then passed);
+  `bun scripts/bright-builds-check.ts all`.
+
+Completion review: the early-capture tests no longer depend on scheduling.
+Each wait is a bounded condition, and only the test closes the capture
+window. Production timing is unchanged: the host clock reads `Instant::now()`
+exactly where it did before.
+Residual risks:
+- A panic while a test holds the signal supervisor poisons
+  `SIGNAL_HANDLER_LOCK`. Every later `SignalSupervisor::acquire` in the
+  process then fails, which is why one real failure showed up as several.
+  Production deliberately fails closed on the poisoned lock; this change
+  leaves that alone.
+- The workspace `cargo build --workspace` does not build on a macOS host
+  (`esp-idf-sys` rejects `aarch64-apple-darwin`); load runs used the default
+  members.
