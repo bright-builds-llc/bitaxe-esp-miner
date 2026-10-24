@@ -74,7 +74,7 @@ pub(crate) fn hold_asic_reset_early() {
 }
 
 /// Whether the reset pin is driven and reads low.
-fn reset_held() -> bool {
+pub(crate) fn reset_held() -> bool {
     RESET_DRIVEN.load(Ordering::Acquire)
         && unsafe { sys::gpio_get_level(sys::gpio_num_t_GPIO_NUM_1) } == 0
 }

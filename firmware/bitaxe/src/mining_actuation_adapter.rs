@@ -1,4 +1,5 @@
-//! Ordinary ESP adapter for the pure Ultra 205 mining-actuation coordinator.
+//! Ordinary ESP adapter for the pure mining-actuation coordinator. The Ultra 205's steps are
+//! here; the Gamma 601's board steps (its regulator and the BM1370) are in `gamma601`.
 
 mod preparation_trace;
 
@@ -34,6 +35,10 @@ use crate::safety_adapter::{
 
 mod clock;
 use clock::ProductionClock;
+mod error;
+pub use error::MiningActuationAdapterError;
+#[cfg(feature = "board-gamma-601")]
+mod gamma601;
 mod live;
 mod polled_stop;
 mod preparation;
@@ -42,60 +47,6 @@ const FAN_PROOF_TIMEOUT_MS: u64 = 3_000;
 const FAN_PROOF_POLL_MS: u64 = 50;
 const COOLING_PROOF_POLL_MS: u64 = 500;
 const SAFE_COOLING_THRESHOLD_C: f64 = 45.0;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MiningActuationAdapterError {
-    WorkerGenerationRevoked,
-    SafetyObservationsUnavailable,
-    SafetyOwnerUnavailable,
-    SafetyQueueFull,
-    SafetyReplyTimedOut,
-    SafetyHardwareWriteFailed,
-    FanRpmProofTimedOut,
-    UnsupportedProfile,
-    Asic(ProductionAsicBlocker),
-    AsicPlanInvalid,
-    CoolingProofTimedOut,
-    CoolingProofRequired,
-}
-
-impl MiningActuationAdapterError {
-    #[must_use]
-    pub const fn hardware_preparation_failure(self) -> HardwarePreparationFailure {
-        match self {
-            Self::WorkerGenerationRevoked
-            | Self::SafetyObservationsUnavailable
-            | Self::SafetyOwnerUnavailable
-            | Self::SafetyQueueFull
-            | Self::UnsupportedProfile => HardwarePreparationFailure::Rejected,
-            Self::SafetyReplyTimedOut | Self::FanRpmProofTimedOut | Self::CoolingProofTimedOut => {
-                HardwarePreparationFailure::TimedOut
-            }
-            Self::SafetyHardwareWriteFailed
-            | Self::Asic(_)
-            | Self::AsicPlanInvalid
-            | Self::CoolingProofRequired => HardwarePreparationFailure::DeviceFault,
-        }
-    }
-
-    #[must_use]
-    pub const fn category(self) -> &'static str {
-        match self {
-            Self::WorkerGenerationRevoked => "worker_generation_revoked",
-            Self::SafetyObservationsUnavailable => "safety_observations_unavailable",
-            Self::SafetyOwnerUnavailable => "safety_owner_unavailable",
-            Self::SafetyQueueFull => "safety_queue_full",
-            Self::SafetyReplyTimedOut => "safety_reply_timed_out",
-            Self::SafetyHardwareWriteFailed => "safety_hardware_write_failed",
-            Self::FanRpmProofTimedOut => "fan_rpm_proof_timed_out",
-            Self::UnsupportedProfile => "unsupported_profile",
-            Self::Asic(_) => "asic_actuation_failed",
-            Self::AsicPlanInvalid => "asic_plan_invalid",
-            Self::CoolingProofTimedOut => "cooling_proof_timed_out",
-            Self::CoolingProofRequired => "cooling_proof_required",
-        }
-    }
-}
 
 use crate::production_mining_session::cooling_core::{
     post_command_fan, FanStamp as ObservationStamp,
@@ -201,7 +152,18 @@ impl Ultra205MiningActuationAdapter {
                 return Err(MiningActuationAdapterError::SafetyOwnerUnavailable)
             }
         };
-        let deadline = crate::runtime_uptime::millis().saturating_add(3_000);
+        self.await_preparation_actuation(&pending, 3_000, progress)
+    }
+
+    /// Waits up to `timeout_ms` for a queued effect's reply, the preparation's admission held
+    /// throughout.
+    fn await_preparation_actuation(
+        &self,
+        pending: &PendingSafetyActuation,
+        timeout_ms: u64,
+        progress: &mut dyn FnMut(),
+    ) -> Result<(), MiningActuationAdapterError> {
+        let deadline = crate::runtime_uptime::millis().saturating_add(timeout_ms);
         loop {
             self.check_preparation_admission()?;
             match pending.poll() {
@@ -373,6 +335,7 @@ impl Ultra205MiningActuationAdapter {
         self.wait_for_cooling_proof_with_progress(&mut |_| {})
     }
 
+    #[cfg(not(feature = "board-gamma-601"))]
     fn reduce_frequency_and_reset_nonce(
         &mut self,
         progress: &mut dyn FnMut(),
@@ -430,7 +393,10 @@ impl Ultra205MiningActuationAdapter {
 
     fn requested_profile_is_admissible(&self) -> bool {
         self.maybe_requested_profile.is_some_and(|profile| {
-            crate::production_mining_session::shutdown_budget::profile_admissible(profile)
+            crate::production_mining_session::shutdown_budget::profile_admissible_for_board(
+                crate::board_identity::catalog_entry(),
+                profile,
+            )
         })
     }
 }
@@ -463,6 +429,14 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 if !self.requested_profile_is_admissible() {
                     return Err(MiningActuationAdapterError::UnsupportedProfile);
                 }
+                // The 601's power steps come before its chip steps: power it only when the ASIC
+                // executor already holds the UART and the reset.
+                #[cfg(feature = "board-gamma-601")]
+                if !crate::asic_adapter::production::production_handle_available() {
+                    return Err(MiningActuationAdapterError::Asic(
+                        ProductionAsicBlocker::UartFailed,
+                    ));
+                }
                 let observations = crate::safety_adapter::observation_snapshot();
                 if !crate::safety_adapter::safety_actuation_available()
                     || !observations.is_mining_safe_at(
@@ -478,12 +452,24 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
             PreparationStep::RequireFreshNonzeroFanRpm => {
                 self.wait_for_post_command_fan_proof(progress)
             }
+            #[cfg(not(feature = "board-gamma-601"))]
             PreparationStep::SetCoreVoltage(voltage) => {
                 self.request_preparation_voltage(Self::core_voltage(voltage)?, progress)
             }
+            #[cfg(feature = "board-gamma-601")]
+            PreparationStep::SetCoreVoltage(voltage) => self.gamma601_power_on(voltage, progress),
             PreparationStep::WaitForCoreVoltageStabilization500Ms => {
                 self.cancellable_delay(u64::from(CORE_VOLTAGE_STABILIZATION_MS))
             }
+            #[cfg(feature = "board-gamma-601")]
+            PreparationStep::EnableAsic => self.gamma601_verify_power(progress),
+            #[cfg(feature = "board-gamma-601")]
+            PreparationStep::ResetAndDetectExactlyOneChip => self.gamma601_detect_chips(progress),
+            #[cfg(feature = "board-gamma-601")]
+            PreparationStep::InitializeMiningReadyWithFrequencyRamp(frequency) => {
+                self.gamma601_initialize(frequency, progress)
+            }
+            #[cfg(not(feature = "board-gamma-601"))]
             PreparationStep::EnableAsic => {
                 crate::asic_adapter::production::set_asic_power_enabled_guarded(
                     true,
@@ -491,6 +477,7 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 )
                 .map_err(MiningActuationAdapterError::Asic)
             }
+            #[cfg(not(feature = "board-gamma-601"))]
             PreparationStep::ResetAndDetectExactlyOneChip => {
                 let decision = Bm1366InitPlan::chip_detect_with_options(
                     Self::preflight(),
@@ -510,6 +497,7 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 )
                 .map_err(MiningActuationAdapterError::Asic)
             }
+            #[cfg(not(feature = "board-gamma-601"))]
             PreparationStep::InitializeMiningReadyWithFrequencyRamp(frequency) => {
                 let profile = Self::asic_profile(frequency)?;
                 self.maybe_asic_profile = Some(profile);
@@ -564,6 +552,9 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
             SafeShutdownStep::ReduceFrequencyAndResetNonce => {
                 self.reduce_frequency_and_reset_nonce(&mut || {})
             }
+            #[cfg(feature = "board-gamma-601")]
+            SafeShutdownStep::HoldResetLow => self.gamma601_hold_reset(),
+            #[cfg(not(feature = "board-gamma-601"))]
             SafeShutdownStep::HoldResetLow => {
                 crate::asic_adapter::production::execute_safe_shutdown_actions(&[
                     Bm1366AdapterAction::HOLD_RESET_LOW,
@@ -572,9 +563,16 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
             }
             // Pinned upstream VCORE_set_voltage(0) performs no DS4432U write;
             // GPIO10 removes VCORE. Repeating the desired low state is safe.
+            #[cfg(not(feature = "board-gamma-601"))]
             SafeShutdownStep::DisableCoreVoltage | SafeShutdownStep::DisableAsic => {
                 crate::asic_adapter::production::set_asic_power_enabled(false)
                     .map_err(MiningActuationAdapterError::Asic)
+            }
+            // The 601's VCORE_set_voltage(0) is the TPS546 off, and it has no enable line;
+            // repeating the off is safe.
+            #[cfg(feature = "board-gamma-601")]
+            SafeShutdownStep::DisableAsic | SafeShutdownStep::DisableCoreVoltage => {
+                self.gamma601_power_off()
             }
             SafeShutdownStep::SetFanDutyTo100Percent => {
                 self.cooling_fan_full_applied = false;

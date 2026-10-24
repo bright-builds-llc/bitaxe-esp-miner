@@ -544,9 +544,36 @@ action.
       The 601's chip detection also takes upstream's UART flush and
       100 ms before the reset and 100 ms after the baud reset
       (`mining_start`, `asic_initialize`);
-    - the 601 preparation adapter runs these plans with the TPS546 power
-      steps, passes the counted chips to the mining-ready plan, and waits
-      upstream's 2000 ms after the init in progress-reporting chunks;
+    - [x] the 601's board steps in the shared preparation and safe stop
+      (`mining_actuation_adapter/gamma601.rs`), beside the 205's arms,
+      which keep their pinned text:
+      - `SetCoreVoltage` is `PowerOnRegulator`, the shared 500 ms wait
+        follows, and `EnableAsic` is `VerifyRegulator` (the 601 has no
+        enable line);
+      - `ResetAndDetectExactlyOneChip` and the mining-ready init run the
+        `bm1370::plan` actions through the shared executor with the
+        catalog's chip count, then wait upstream's 2000 ms in 100 ms
+        progress-reporting slices;
+      - the stop skips the frequency ramp, holds the reset and turns the
+        regulator off without the session's admission. This deviates from
+        upstream's `mining_stop` order (ramp, reset, voltage off): the
+        revoked lease has already cut the regulator within 100 ms, so the
+        ramp would drive an unpowered chip;
+      - the preparation refuses at its first step unless the executor
+        holds the UART and the reset, so the regulator is never powered
+        for a chip nothing can drive;
+      - a production 601 refuses the power steps;
+      - admission is `profile_admissible_for_board`, the same answer on
+        the 205;
+      - the shared `await_preparation_actuation` holds the reply wait;
+    - still for the 601: its boot gate must retain the UART and the ASIC
+      reset for the executor, which today requires an enable line the 601
+      lacks (`store_production_peripherals`, `production_handle_available`
+      and `production_ready` all need `maybe_enable`). The reset handle
+      must keep GPIO1 readable: `AsicReset::new` makes the pin output-only,
+      after which `gamma601::reset_held()` reads low whatever is driven,
+      silently defeating the regulator's reset interlock; the cooling proof after a stop needs the board-aware rule;
+      the adapter struct keeps its `Ultra205` name until a rename;
     - the 205's plan lacks upstream's pre-init UART flush and the two
       100 ms settle waits; adding them changes the verified 205 path, so
       it is a separate change. Both boards fail closed on a trailing
