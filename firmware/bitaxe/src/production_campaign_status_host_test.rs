@@ -29,5 +29,11 @@ mod operator_sensor_diagnostics;
 #[allow(dead_code)]
 mod readiness_trace;
 
+/// The host test projects the Ultra 205's campaign status.
+mod board_identity {
+    pub(crate) const MINING_SAFETY_LIMITS: bitaxe_api::MiningSafetyLimits =
+        bitaxe_api::MiningSafetyLimits::ultra_205();
+}
+
 #[path = "production_mining_session/campaign_status.rs"]
 mod campaign_status;

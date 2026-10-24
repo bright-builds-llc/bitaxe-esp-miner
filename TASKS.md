@@ -553,6 +553,13 @@ action.
       protocol setting, a failed spawn) is logged and boot continues to
       HTTP. Only a build that admits dispatch grants idle fan control, so
       a production 601 keeps the safe boot's idle fan;
+    - [x] the campaign status record's observation requirements follow
+      the built board's limits (`vr_temp_celsius` true on the 601). The
+      flash tool's campaign parser still expects the 205's set; it learns
+      the 601's with the F3 campaign admission, which today admits only
+      board 205. The Worker's revocation-detail grammar
+      (`scripts/str005-v2-serial/safety-diagnostics.mjs` `FACTS`, a
+      mirror of the Gate's) gains `vr_temperature` with the Worker work;
     - F3 records the 601's boot heap and stack high-water marks in both
       builds: it now runs the owner (24 KiB), two pool workers, the ASIC
       worker, the fan controller and the supervisor beside its safe-boot

@@ -113,12 +113,12 @@ pub(super) struct CampaignObservationRequirements {
 }
 
 impl CampaignObservationRequirements {
-    const ULTRA_205: Self = Self {
+    const BUILT_BOARD: Self = Self {
         power_watts: true,
         bus_voltage_volts: true,
         current_amps: true,
         chip_temp_celsius: true,
-        vr_temp_celsius: false,
+        vr_temp_celsius: crate::board_identity::MINING_SAFETY_LIMITS.requires_vr_temperature(),
         fan_rpm: true,
     };
 }
@@ -321,7 +321,7 @@ impl CampaignStatusTracker {
             safety: if safety_fresh { "fresh" } else { "stale" },
             fresh_observation_count: observation_freshness.fresh_count(),
             observation_freshness,
-            observation_requirements: CampaignObservationRequirements::ULTRA_205,
+            observation_requirements: CampaignObservationRequirements::BUILT_BOARD,
             pool_config: match self.pool_config {
                 PoolConfigurationStatus::NotRead => "not_read",
                 PoolConfigurationStatus::LocalOwnerSupplied => "local_owner_supplied",
