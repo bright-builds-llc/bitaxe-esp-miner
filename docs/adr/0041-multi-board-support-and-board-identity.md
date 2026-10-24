@@ -94,6 +94,16 @@ not a guard anyone designed.
      30 %, and sets the EMC2101's external-diode configuration;
    - starts none of the Ultra 205's safety, sensor, fan or mining owners,
      so it has no Worker channel;
+     - *Amended 2026-10-24 (phase F2):* the 601 now starts the safety
+       supervisor, the production mining owner and the fan controller. Its
+       sensors and actuation stay the safe-boot thread's, so it still
+       starts no sensor owner, and the 205-only self-test and diagnostic
+       owners never start. Only `gamma601-mining` admits dispatch (item
+       7); a production 601 refuses every run before its fan or regulator
+       moves, and keeps the safe boot's idle fan. An owner that fails to
+       start is logged and boot continues to HTTP. Its boot baseline stays
+       unconfirmed, so it still has no Worker channel until its own Worker
+       capability exists;
    - refuses an HTTP firmware update whose image carries another board's
      marker. Both builds do this.
 

@@ -244,7 +244,8 @@ impl OrdinaryEspProductionSessionAdapter {
                             qualified.then_some(revocation::FanControllerOwner::Campaign),
                         );
                     }
-                } else if revocation::permits(None)
+                } else if crate::board_identity::MINING_DISPATCH_ADMITTED
+                    && revocation::permits(None)
                     && !self.safe_stop_pending()
                     && cooling_core::baseline_safe(
                         &crate::board_identity::MINING_SAFETY_LIMITS,
@@ -255,7 +256,8 @@ impl OrdinaryEspProductionSessionAdapter {
                     // No lease is reserved, active or shutting down, and the chip has
                     // cooled to the baseline, so upstream's idle duties may lower the
                     // fan (ADR-0038). A Start that never prepared leaves the cooling
-                    // review's 100% until this holds.
+                    // review's 100% until this holds. A build that cannot mine (a
+                    // production 601) keeps its safe boot's fan instead.
                     set_fan_controller_owner(Some(revocation::FanControllerOwner::Idle(
                         revocation::grant_idle_fan(),
                     )));

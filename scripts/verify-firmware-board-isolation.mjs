@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 // Gate: each board's firmware ELF carries only its own board facts (ADR-0041). The Ultra 205
 // ELF names the 205 and holds no Gamma 601 safe-boot code; the 601 ELF names the 601, carries
-// its safe boot and links none of the 205's sensor, fan, ASIC-initialization or safety owners.
+// its safe boot and its own runtime owners, and links none of the 205's sensor owner or ADC.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Each literal was chosen as present in one board's ELF and absent from the other's, so none is
-// vacuous.
-// The 601 still links shared API and settings code that names the 205's parts; what it must not
-// link are the owners that drive them, whose thread names and start lines are below.
+// Each forbidden literal was chosen as present in the other board's ELF, so none is vacuous.
+// Both boards run the fan controller and the mining owner (ADR-0041 item 5, amended); the 601
+// still links shared API and settings code that names the 205's parts, but never the 205's
+// sensor owner, whose thread name and start lines are below.
 export const BOARD_LITERALS = {
   '205': {
     required: ['firmware_board=205', 'operator-sensors', 'fan-controller'],
@@ -17,16 +17,18 @@ export const BOARD_LITERALS = {
     forbidden: ['firmware_board=601', 'usb_gamma601_safe_boot'],
   },
   '601': {
-    required: ['firmware_board=601', 'usb_gamma601_safe_boot', 'mining_owner=absent'],
+    required: [
+      'firmware_board=601',
+      'usb_gamma601_safe_boot',
+      'mining_owner=started board=601',
+      'fan-controller',
+    ],
     forbidden: [
       'firmware_board=205',
-      // The 205's sensor and fan owner threads, ASIC initialization and safety supervisor.
+      // The 205's sensor owner thread and its core-voltage ADC.
       'operator-sensors',
-      'fan-controller',
       'operator_sensor_runtime=started',
       'core_voltage_adc=available',
-      'asic_init',
-      'safety_supervisor',
     ],
   },
 };

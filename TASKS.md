@@ -544,10 +544,21 @@ action.
       profile is parsed against the built board's catalog
       (`from_device_settings_for_board`), so a 601 admits its 600 and
       625 MHz and caps the voltage at its regulator's 1.20 V up front;
-    - next: the safety supervisor on the 601, then the production owner
-      and the fan controller (skipping the 205-only self-test and
-      diagnostic admissions), with 601 owner and stack audits, and the
-      board-isolation literals inverted (ADR-0041 item 5 amended);
+    - [x] the 601 starts the safety supervisor, the production owner and
+      the fan controller (`gamma601::start_runtime_owners`), skipping the
+      205-only self-test and diagnostic admissions; ADR-0041 item 5 is
+      amended and the board-isolation gate now requires the 601's owners
+      and still forbids the 205's sensor owner and ADC. The baseline stays
+      unconfirmed, so no Worker. An owner that fails to start (an SV2
+      protocol setting, a failed spawn) is logged and boot continues to
+      HTTP. Only a build that admits dispatch grants idle fan control, so
+      a production 601 keeps the safe boot's idle fan;
+    - F3 records the 601's boot heap and stack high-water marks in both
+      builds: it now runs the owner (24 KiB), two pool workers, the ASIC
+      worker, the fan controller and the supervisor beside its safe-boot
+      thread;
+    - the 601 owner and stack audits (the control, writer, owner-entry
+      and link audits run only on the 205 ELF) get 601 runs before F3;
     - the Worker needs owner decisions first: the 601 capability's model
       and revision strings (upstream's `devicemodel` is `gamma`), whether
       the V1 subscribe model follows them, the Gate repository's schema

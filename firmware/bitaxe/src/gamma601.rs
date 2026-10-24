@@ -163,10 +163,39 @@ pub(crate) fn initialize_hardware(
     )
 }
 
-/// The 601 starts no safety, sensor, fan or mining owner: the safe-boot thread holds the board.
+/// Starts the 601's runtime owners: the safety supervisor, the production mining owner and the
+/// fan controller (ADR-0041 item 5, amended). Its sensors and actuation stay the safe-boot
+/// thread's, so it starts no sensor owner; the 205-only self-test and diagnostic owners never
+/// start. Only the mining variant admits dispatch (`MINING_DISPATCH_ADMITTED`); a production 601
+/// refuses every run, and keeps its safe boot's fan, before its fan or regulator moves. Never a
+/// diagnostic Serial/JTAG owner. A failure is logged and boot continues to HTTP, so the owner can
+/// still repair the settings that caused it; the safe-boot thread keeps the board safe meanwhile.
 pub(crate) fn start_runtime_owners() -> anyhow::Result<bool> {
-    log::info!("mining_owner=absent reason=board_601_safe_boot");
+    if let Err(error) = start_owners() {
+        log::error!("mining_owner=unavailable board=601 error={error:#}");
+    }
     Ok(false)
+}
+
+fn start_owners() -> anyhow::Result<()> {
+    crate::safety_adapter::start_safety_supervisor()?;
+    if let Err(decision) = settings_adapter::configured_protocol_plan() {
+        return Err(anyhow::anyhow!(
+            "production_protocol_owner_unavailable:{}",
+            decision.label()
+        ));
+    }
+    crate::production_mining_session::start()?;
+    crate::fan_controller_runtime::start()?;
+    log::info!(
+        "mining_owner=started board=601 dispatch={}",
+        if crate::board_identity::MINING_DISPATCH_ADMITTED {
+            "admitted"
+        } else {
+            "deferred"
+        }
+    );
+    Ok(())
 }
 
 /// Shows the startup screen once; the safe boot has no runtime screen flow.
