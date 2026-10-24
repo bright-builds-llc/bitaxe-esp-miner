@@ -647,7 +647,13 @@ action.
       `gamma601/check_guard.rs`; the count loop retains its last count
       (`asic_adapter::last_counted_chips`) for the record; the build's
       stack audit bounds the check's frame;
-    - [ ] F3.1 hardware: the chip check contract below;
+    - [x] F3.1 hardware: passed on attempt 002, exactly one BM1370
+      (`docs/parity/evidence/20261024-gamma601-chip-check.md`);
+      production reinstalled;
+    - [ ] F3.2 open item from F3.1: the EMC2101 external channel read
+      127.75 C (raw `0x3FE`, not a rejected fault code) unpowered and after
+      detection; read it after the full BM1370 init before settling the
+      cooling proof's board rule;
   - [ ] F4: self-test, soaks and promotion.
 
 Each phase ends with the full gate, an independent review, commit and
@@ -1080,9 +1086,9 @@ Attempt 001 (2026-10-24, `09490a0f`): passed; outcome `complete`.
 - an independent recomputation agrees on every metric;
 - summary: `docs/parity/evidence/20261024-ultra205-f2-regression.md`.
 
-Phase F3.1 chip check contract (attempt ordinals 001 onward):
-
-Gamma 601 chip check hardware: enabled.
+Phase F3.1 chip check contract (attempt ordinals 001 onward), closed:
+attempt 002 passed (`docs/parity/evidence/20261024-gamma601-chip-check.md`)
+and production is reinstalled.
 
 - **Objective:** the first BM1370 chip detection. The test-only
   `gamma601-chip-check` firmware (ADR-0041 item 8), installed
