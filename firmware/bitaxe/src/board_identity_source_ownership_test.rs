@@ -7,6 +7,9 @@ const GAMMA601_SOURCE: &str = include_str!("gamma601.rs");
 const GAMMA601_ACTUATION_SOURCE: &str = include_str!("gamma601/actuation.rs");
 const SAFETY_ADAPTER_SOURCE: &str = include_str!("safety_adapter.rs");
 const BOARD_601_BOOT_GATE_SOURCE: &str = include_str!("asic_adapter/board_601.rs");
+const BOARD_IDENTITY_SOURCE: &str = include_str!("board_identity.rs");
+const LIVE_HARDWARE_SOURCE: &str = include_str!("production_mining_session/live_hardware.rs");
+const DEVICE_PROFILE_SOURCE: &str = include_str!("settings_adapter/device_profile.rs");
 
 fn body_of<'a>(source: &'a str, signature: &str) -> &'a str {
     let start = source.find(signature).expect("signature present");
@@ -120,4 +123,45 @@ fn the_601_reset_interlock_asks_the_executor_s_reset_owner_first() {
     let maybe_pin = body.find("gpio_get_level");
     // Assert
     assert!(maybe_owner.zip(maybe_pin).is_some_and(|(owner, pin)| owner < pin));
+}
+
+#[test]
+fn the_asic_production_handle_requires_this_build_to_admit_dispatch() {
+    // Act
+    let body = body_of(
+        PRODUCTION_SOURCE,
+        "pub fn production_handle_available() -> bool {",
+    );
+    // Assert
+    assert!(body.contains("crate::board_identity::MINING_DISPATCH_ADMITTED"));
+}
+
+#[test]
+fn the_601_builds_refuse_live_changes_and_admit_dispatch_only_when_mining() {
+    // Arrange
+    let gamma = &BOARD_IDENTITY_SOURCE[BOARD_IDENTITY_SOURCE
+        .find(r#"#[cfg(feature = "board-gamma-601")]
+mod built"#)
+        .expect("the 601 build's facts")..];
+    // Act / Assert
+    assert!(gamma.contains(r#"DISPATCH_ADMITTED: bool = cfg!(feature = "gamma601-mining");"#));
+    assert!(gamma.contains("LIVE_HARDWARE_CHANGES: bool = false;"));
+}
+
+#[test]
+fn the_live_path_returns_before_any_change_when_the_board_has_none() {
+    // Arrange
+    let body = body_of(LIVE_HARDWARE_SOURCE, "pub(super) fn service_live_hardware_settings(");
+    // Act
+    let maybe_guard = body.find("!crate::board_identity::LIVE_HARDWARE_CHANGES");
+    let maybe_change = body.find("apply_live_core_voltage");
+    // Assert
+    assert!(maybe_guard.zip(maybe_change).is_some_and(|(guard, change)| guard < change));
+}
+
+#[test]
+fn the_saved_profile_is_checked_against_the_built_board() {
+    // Act / Assert
+    assert!(DEVICE_PROFILE_SOURCE.contains("from_device_settings_for_board("));
+    assert!(DEVICE_PROFILE_SOURCE.contains("crate::board_identity::catalog_entry()"));
 }

@@ -531,6 +531,29 @@ action.
         the 2.8 s USB heartbeat deadline (`power_on` blocks about 1 s). The vout check's off-command warning now
         logs as `gamma601_regulator`; It boots the safe boot for now; the production power
       path, preparation and dispatch land in it next;
+  - F2 owners and Worker:
+    - [x] dispatch admission per board: `board_identity::
+      MINING_DISPATCH_ADMITTED` (the 205 always; the 601 only in
+      `gamma601-mining`) gates `production_handle_available`, so a
+      production 601 refuses at the preparation's first step, before the
+      fan;
+    - [x] the 205-only live voltage and frequency path stays off on the
+      601 (`LIVE_HARDWARE_CHANGES`; its BM1366 PLL frames would reach the
+      BM1370 at the shared 490, 525 and 550 MHz), and the live and local
+      profile checks use `profile_admissible_for_board`. The saved device
+      profile is parsed against the built board's catalog
+      (`from_device_settings_for_board`), so a 601 admits its 600 and
+      625 MHz and caps the voltage at its regulator's 1.20 V up front;
+    - next: the safety supervisor on the 601, then the production owner
+      and the fan controller (skipping the 205-only self-test and
+      diagnostic admissions), with 601 owner and stack audits, and the
+      board-isolation literals inverted (ADR-0041 item 5 amended);
+    - the Worker needs owner decisions first: the 601 capability's model
+      and revision strings (upstream's `devicemodel` is `gamma`), whether
+      the V1 subscribe model follows them, the Gate repository's schema
+      change and Update Authority signature, re-pinning Gate, and whether
+      a production 601 runs a Worker that refuses every Start or none
+      until F4;
   - F2 chip bring-up:
     - [x] `bm1370::plan` builds the bring-up as adapter actions in the
       firmware's two phases: chip detection (status, reset pulse, 115200

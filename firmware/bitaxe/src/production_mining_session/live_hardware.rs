@@ -39,7 +39,8 @@ impl OrdinaryEspProductionSessionAdapter {
         snapshot: &ProductionSessionSnapshot,
         now_ms: u64,
     ) {
-        if now_ms < self.live_hardware.next_due_ms {
+        if !crate::board_identity::LIVE_HARDWARE_CHANGES || now_ms < self.live_hardware.next_due_ms
+        {
             return;
         }
         self.live_hardware.next_due_ms = now_ms.saturating_add(LIVE_HARDWARE_CADENCE_MS);
@@ -68,9 +69,12 @@ impl OrdinaryEspProductionSessionAdapter {
         }
         let target = match crate::settings_adapter::device_profile::device_mining_profile()
             .and_then(|target| {
-                shutdown_budget::profile_admissible(target)
-                    .then_some(target)
-                    .ok_or(DeviceProfileRefusal::FrequencyOutOfRange)
+                shutdown_budget::profile_admissible_for_board(
+                    crate::board_identity::catalog_entry(),
+                    target,
+                )
+                .then_some(target)
+                .ok_or(DeviceProfileRefusal::FrequencyOutOfRange)
             }) {
             Ok(target) => {
                 self.live_hardware.maybe_last_refusal = None;

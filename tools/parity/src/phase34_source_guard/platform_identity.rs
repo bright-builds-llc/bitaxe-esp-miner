@@ -39,6 +39,8 @@ fn phase34_source_guard_rejects_platform_substitution_and_effects() {
         "PLATFORM_BOARD: PlatformBoard = PlatformBoard::Ultra205;",
         "PLATFORM_ASIC: PlatformAsic = PlatformAsic::Bm1366;",
         "FAMILY: AsicFamily = AsicFamily::Bm1366;",
+        "DISPATCH_ADMITTED: bool = true;",
+        "LIVE_HARDWARE_CHANGES: bool = true;",
     ] {
         assert!(
             ultra_205_build.contains(fact),

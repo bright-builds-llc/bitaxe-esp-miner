@@ -594,8 +594,11 @@ rust_test(
     srcs = [
         "src/asic_adapter/production.rs",
         "src/asic_adapter/board_601.rs",
+        "src/board_identity.rs",
         "src/board_identity_source_ownership_test.rs",
         "src/gamma601.rs",
+        "src/settings_adapter/device_profile.rs",
+        "src/production_mining_session/live_hardware.rs",
         "src/gamma601/actuation.rs",
         "src/safety_adapter.rs",
         "src/safety_adapter/i2c_bus/tps546.rs",

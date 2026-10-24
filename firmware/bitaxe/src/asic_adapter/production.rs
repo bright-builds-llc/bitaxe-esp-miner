@@ -185,6 +185,7 @@ pub fn production_handle_available() -> bool {
     // Every actuation admission asks this, so a board whose own records name another board is
     // never driven (ADR-0041). Its identity is read at boot, before any run can start.
     crate::board_identity::hardware_control_permitted()
+        && crate::board_identity::MINING_DISPATCH_ADMITTED
         && production_state().lock().ok().is_some_and(|state| {
             state.maybe_uart.is_some() && state.maybe_reset.is_some() && power_line_retained(&state)
         })

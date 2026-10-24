@@ -433,8 +433,11 @@ impl OrdinaryEspProductionSessionAdapter {
 /// The saved pair, checked against the board catalog and the shutdown budget.
 fn saved_profile() -> Result<MiningHardwareProfile, DeviceProfileRefusal> {
     crate::settings_adapter::device_profile::device_mining_profile().and_then(|profile| {
-        shutdown_budget::profile_admissible(profile)
-            .then_some(profile)
-            .ok_or(DeviceProfileRefusal::FrequencyOutOfRange)
+        shutdown_budget::profile_admissible_for_board(
+            crate::board_identity::catalog_entry(),
+            profile,
+        )
+        .then_some(profile)
+        .ok_or(DeviceProfileRefusal::FrequencyOutOfRange)
     })
 }

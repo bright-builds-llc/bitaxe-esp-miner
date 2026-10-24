@@ -22,6 +22,8 @@ mod built {
     pub(super) const PLATFORM_BOARD: PlatformBoard = PlatformBoard::Ultra205;
     pub(super) const PLATFORM_ASIC: PlatformAsic = PlatformAsic::Bm1366;
     pub(super) const FAMILY: AsicFamily = AsicFamily::Bm1366;
+    pub(super) const DISPATCH_ADMITTED: bool = true;
+    pub(super) const LIVE_HARDWARE_CHANGES: bool = true;
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::ultra_205_catalog_entry()
     }
@@ -38,6 +40,12 @@ mod built {
     pub(super) const PLATFORM_BOARD: PlatformBoard = PlatformBoard::Gamma601;
     pub(super) const PLATFORM_ASIC: PlatformAsic = PlatformAsic::Bm1370;
     pub(super) const FAMILY: AsicFamily = AsicFamily::Bm1370;
+    /// Only the test-only mining variant admits BM1370 dispatch until phase F4 promotes it on
+    /// hardware evidence (ADR-0041 item 7).
+    pub(super) const DISPATCH_ADMITTED: bool = cfg!(feature = "gamma601-mining");
+    /// The live voltage and frequency path drives the DS4432U and BM1366 frames; the 601 keeps
+    /// its prepared profile until a BM1370 live path lands.
+    pub(super) const LIVE_HARDWARE_CHANGES: bool = false;
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::gamma_601_catalog_entry()
     }
@@ -56,6 +64,10 @@ pub(crate) const PLATFORM_BOARD: PlatformBoard = built::PLATFORM_BOARD;
 pub(crate) const PLATFORM_ASIC: PlatformAsic = built::PLATFORM_ASIC;
 /// The built board's chip family: its job-id step, job interval and result layout.
 pub(crate) const ASIC_FAMILY: AsicFamily = built::FAMILY;
+/// Whether this build may drive its ASIC for mining at all.
+pub(crate) const MINING_DISPATCH_ADMITTED: bool = built::DISPATCH_ADMITTED;
+/// Whether a lease may change its voltage and frequency live (ADR-0037 decision 4).
+pub(crate) const LIVE_HARDWARE_CHANGES: bool = built::LIVE_HARDWARE_CHANGES;
 /// The ranges the built board's mining-safety facts must hold.
 pub(crate) const MINING_SAFETY_LIMITS: MiningSafetyLimits =
     MiningSafetyLimits::for_board(built::catalog());
