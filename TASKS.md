@@ -560,6 +560,12 @@ action.
       board 205. The Worker's revocation-detail grammar
       (`scripts/str005-v2-serial/safety-diagnostics.mjs` `FACTS`, a
       mirror of the Gate's) gains `vr_temperature` with the Worker work;
+    - [x] the panic cutoff on the 601 is recorded as an ADR-0041 item 7
+      residual risk: the existing handler drives the reset low at once and
+      drives nothing on GPIO10; the regulator stays on until the next
+      boot's safe boot, with the reset undriven between reboot and the
+      next boot's first act, as upstream. A pad hold through the panic is
+      a later change with its own fault-injection evidence;
     - F3 records the 601's boot heap and stack high-water marks in both
       builds: it now runs the owner (24 KiB), two pool workers, the ASIC
       worker, the fan controller and the supervisor beside its safe-boot

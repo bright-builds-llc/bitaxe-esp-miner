@@ -189,6 +189,15 @@ not a guard anyone designed.
      (phase F4).
    - Until its power path and preparation land (phase F2), it boots the
      safe boot with its own marker.
+   - Residual risk, a panic while mining: the panic handler's latch write
+     drives the ASIC reset low at once (GPIO1 is an output once the
+     executor owns it; its GPIO10 write drives nothing on the 601). The
+     TPS546 keeps its output on through the reboot until the next boot's
+     safe boot commands it off, and between the reboot and the next
+     boot's first act the reset line is not driven. Upstream has the same
+     window. Holding the pad low through the panic needs register-level
+     writes in the panic path and fault-injection evidence on hardware,
+     under its own authorization.
 
 ## Consequences
 
