@@ -409,3 +409,111 @@ fn operation_on_is_the_only_output_on_write() {
     // Assert
     assert_eq!((CLEAR_FAULTS, OPERATION_ON), ([0x03], [0x01, 0x80]));
 }
+
+#[test]
+fn a_production_enable_arms_from_a_clean_off_baseline() {
+    // Act
+    let armed = arm_production(
+        1.15,
+        StatusWord(OFF),
+        Readback::Matched,
+        confirmed_off(),
+        true,
+    );
+    // Assert
+    assert!(armed.is_ok(), "{armed:?}");
+}
+
+#[test]
+fn a_production_enable_refuses_what_the_check_refuses() {
+    // Act
+    let refusals = [
+        arm_production(
+            1.25,
+            StatusWord(OFF),
+            Readback::Matched,
+            confirmed_off(),
+            true,
+        ),
+        arm_production(
+            1.15,
+            StatusWord(0),
+            Readback::Matched,
+            confirmed_off(),
+            true,
+        ),
+        arm_production(
+            1.15,
+            StatusWord(OFF | 0x0010),
+            Readback::Matched,
+            confirmed_off(),
+            true,
+        ),
+        arm_production(
+            1.15,
+            StatusWord(OFF),
+            Readback::Unread,
+            confirmed_off(),
+            true,
+        ),
+        arm_production(
+            1.15,
+            StatusWord(OFF),
+            Readback::Matched,
+            confirmed_off(),
+            false,
+        ),
+    ]
+    .map(|armed| armed.err());
+    // Assert
+    assert_eq!(
+        refusals,
+        [
+            Some(EnableRefusal::TargetOutOfRange),
+            Some(EnableRefusal::BaselineOutputOn),
+            Some(EnableRefusal::BaselineFaults),
+            Some(EnableRefusal::ReadbackUnmatched),
+            Some(EnableRefusal::ResetNotHeld),
+        ]
+    );
+}
+
+#[test]
+fn a_settled_production_enable_reads_on_near_its_target_without_new_faults() {
+    // Act
+    let settled = judge_settled(
+        1.15,
+        StatusWord(OFF | 0x0002),
+        0x80,
+        StatusWord(0x0002),
+        1.146,
+    );
+    // Assert
+    assert_eq!(settled, Ok(()));
+}
+
+#[test]
+fn an_unsettled_production_enable_names_why() {
+    // Arrange
+    let baseline = StatusWord(OFF);
+    // Act
+    let failures = [
+        judge_settled(1.15, baseline, 0x00, StatusWord(0), 1.15),
+        judge_settled(1.15, baseline, 0x80, StatusWord(OFF), 1.15),
+        judge_settled(1.15, baseline, 0x80, StatusWord(0), f64::NAN),
+        judge_settled(1.15, baseline, 0x80, StatusWord(0), 1.21),
+        judge_settled(1.15, baseline, 0x80, StatusWord(0x0020), 1.15),
+    ]
+    .map(Result::err);
+    // Assert
+    assert_eq!(
+        failures,
+        [
+            Some(SettleFailure::OperationNotOn),
+            Some(SettleFailure::OutputOff),
+            Some(SettleFailure::NonFiniteVout),
+            Some(SettleFailure::VoutOutOfBand),
+            Some(SettleFailure::NewFault),
+        ]
+    );
+}

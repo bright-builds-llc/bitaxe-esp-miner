@@ -52,8 +52,8 @@ pub enum Encoding {
     Vout,
 }
 
-/// One configuration write. Only [`gamma_config_plan`] makes one, so a bus that takes it can
-/// write nothing outside the plan.
+/// One configuration write. Only [`gamma_config_plan`] and the live [`vout_command_write`] make
+/// one, so a bus that takes it can write nothing outside the plan's registers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ConfigWrite {
     command: u8,
@@ -228,6 +228,36 @@ pub fn gamma_config_plan(
     .into_iter()
     .collect::<Result<_, _>>()
     .map(GammaConfigPlan)
+}
+
+/// The `VOUT_COMMAND` write for a new target while the output is on (upstream
+/// `TPS546_set_vout`), within the configuration's 1.00-1.20 V clamp and only for the expected
+/// `VOUT_MODE`.
+pub fn vout_command_write(vout_mode: u8, target_volts: f64) -> Result<ConfigWrite, ConfigRefusal> {
+    if vout_mode != EXPECTED_VOUT_MODE {
+        return Err(ConfigRefusal::VoutModeUnexpected);
+    }
+    if !(TARGET_MIN_VOLTS..=TARGET_MAX_VOLTS).contains(&target_volts) {
+        return Err(ConfigRefusal::TargetOutOfRange);
+    }
+    encode_vout(target_volts, vout_mode)
+        .map(|encoded| write(0x21, true, encoded, Encoding::Vout))
+        .ok_or(ConfigRefusal::Unencodable)
+}
+
+/// The registers a live voltage change requires to still hold this firmware's configuration:
+/// `VOUT_MAX` and `VOUT_SCALE_LOOP`, as the plan writes them. A controller that lost its power
+/// since, and so its volatile configuration, reads back otherwise.
+pub fn live_guard_writes(vout_mode: u8) -> Result<[ConfigWrite; 2], ConfigRefusal> {
+    if vout_mode != EXPECTED_VOUT_MODE {
+        return Err(ConfigRefusal::VoutModeUnexpected);
+    }
+    let vout_max = encode_vout(VOUT_MAX_VOLTS, vout_mode).ok_or(ConfigRefusal::Unencodable)?;
+    let scale_loop = encode_linear11(0.25).ok_or(ConfigRefusal::Unencodable)?;
+    Ok([
+        write(0x24, true, vout_max, Encoding::Vout),
+        write(0x29, true, scale_loop, Encoding::Linear11),
+    ])
 }
 
 const fn write(command: u8, word: bool, value: u16, encoding: Encoding) -> ConfigWrite {

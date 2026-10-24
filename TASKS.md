@@ -484,7 +484,24 @@ action.
       the isolation gate. Only it and the check compile the TPS546
       enabling writes. The isolation gate also refuses the enable's own
       context literal (`tps546_operation_on_enable`) in a production ELF,
-      and a source-ownership test keeps that literal in the gated enable. It boots the safe boot for now; the production power
+      and a source-ownership test keeps that literal in the gated enable.
+    - [x] `gamma601/regulator.rs` holds the TPS546 steps the test variants
+      share (the vout check now calls them unchanged): `VOUT_MODE` and
+      status reads, the configuration's write and readback, and off with
+      confirmation. The mining variant adds the production core voltage:
+      - `power_on`: off until confirmed, configure and read back,
+        re-confirm off, `CLEAR_FAULTS`, a clean off baseline, `OPERATION`
+        on through `enable::arm_production` with the ASIC reset held, then
+        after `SETTLE_MS` `OPERATION` read back on, VOUT within 50 mV of
+        the target and no new fault (`enable::judge_settled`);
+      - `set_vout`: a live `VOUT_COMMAND` within the 1.00-1.20 V clamp,
+        only while `VOUT_MAX` and `VOUT_SCALE_LOOP` still read as this
+        boot wrote them (`config::live_guard_writes`), then read back;
+      - they have no caller yet. Their caller keeps the fan at full before
+        the enable, holds the reset pad latched through it, turns the
+        output off on any `Err`, and never runs on the thread that owns
+        the 2.8 s USB heartbeat deadline (`power_on` blocks about 1 s). The vout check's off-command warning now
+        logs as `gamma601_regulator`; It boots the safe boot for now; the production power
       path, preparation and dispatch land in it next;
   - F2 chip bring-up:
     - [x] `bm1370::plan` builds the bring-up as adapter actions in the

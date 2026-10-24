@@ -68,6 +68,75 @@ pub fn arm(
     }
 }
 
+/// Arms one production enable, which has no window to judge: the target within the
+/// configuration's clamp, a baseline that reports the output off with no fault but CML, the
+/// readback matched, the output confirmed off after the configuration, and the ASIC reset held.
+pub fn arm_production(
+    target_volts: f64,
+    baseline: StatusWord,
+    readback: Readback,
+    off_after_config: ConfirmedOff,
+    reset_held: bool,
+) -> Result<EnableArmed, EnableRefusal> {
+    let judge = EnableJudge::new(target_volts, baseline)?;
+    arm(&judge, readback, off_after_config, reset_held)
+}
+
+/// Why a production enable did not settle.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SettleFailure {
+    /// `OPERATION` does not read back as on.
+    OperationNotOn,
+    /// The controller reports its output off.
+    OutputOff,
+    NonFiniteVout,
+    /// VOUT is not within `VOUT_TOLERANCE_VOLTS` of the target.
+    VoutOutOfBand,
+    /// A fault bit is set that the baseline did not carry.
+    NewFault,
+}
+
+impl SettleFailure {
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::OperationNotOn => "operation_not_on",
+            Self::OutputOff => "output_off",
+            Self::NonFiniteVout => "non_finite_vout",
+            Self::VoutOutOfBand => "vout_out_of_band",
+            Self::NewFault => "new_fault",
+        }
+    }
+}
+
+/// Judges a production enable after `SETTLE_MS`, as upstream reads `OPERATION` back after
+/// `TPS546_set_vout`: `OPERATION` on, the output not reported off, VOUT within the tolerance of
+/// the target, and no fault bit beyond the baseline's.
+pub fn judge_settled(
+    target_volts: f64,
+    baseline: StatusWord,
+    operation: u8,
+    status: StatusWord,
+    vout_volts: f64,
+) -> Result<(), SettleFailure> {
+    if operation != OPERATION_ON[1] {
+        return Err(SettleFailure::OperationNotOn);
+    }
+    if status.output_off() {
+        return Err(SettleFailure::OutputOff);
+    }
+    if !vout_volts.is_finite() {
+        return Err(SettleFailure::NonFiniteVout);
+    }
+    if (vout_volts - target_volts).abs() > VOUT_TOLERANCE_VOLTS {
+        return Err(SettleFailure::VoutOutOfBand);
+    }
+    if status.faults() & !baseline.faults() != 0 {
+        return Err(SettleFailure::NewFault);
+    }
+    Ok(())
+}
+
 /// One sample's readings, decoded.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Readings {

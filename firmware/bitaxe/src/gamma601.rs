@@ -24,6 +24,8 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 mod observations;
+#[cfg(any(feature = "gamma601-vout-check", feature = "gamma601-mining"))]
+mod regulator;
 #[cfg(feature = "gamma601-vout-check")]
 mod vout_check;
 

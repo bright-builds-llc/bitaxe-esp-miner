@@ -30,6 +30,8 @@ pub enum ReadCommand {
     ReadVout,
     ReadIout,
     ReadTemperature,
+    /// `OPERATION`, read back after the production enable as upstream does.
+    Operation,
 }
 
 impl ReadCommand {
@@ -44,6 +46,7 @@ impl ReadCommand {
             Self::ReadVout => 0x8b,
             Self::ReadIout => 0x8c,
             Self::ReadTemperature => 0x8d,
+            Self::Operation => 0x01,
         }
     }
 
@@ -52,7 +55,7 @@ impl ReadCommand {
     pub const fn length(self) -> usize {
         match self {
             Self::DeviceId => 7,
-            Self::VoutMode | Self::StatusCml => 1,
+            Self::VoutMode | Self::StatusCml | Self::Operation => 1,
             Self::StatusWord
             | Self::ReadVin
             | Self::ReadVout

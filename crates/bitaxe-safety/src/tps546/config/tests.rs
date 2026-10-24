@@ -276,3 +276,56 @@ fn the_catalog_core_voltage_ceiling_is_the_plan_s_clamp() {
     // Assert
     assert_eq!(f64::from(ceiling_mv), TARGET_MAX_VOLTS * 1000.0);
 }
+
+#[test]
+fn a_live_voltage_change_writes_the_plan_s_vout_command() {
+    // Arrange
+    let plan = gamma_config_plan(off(), EXPECTED_VOUT_MODE, 1.10).expect("plan");
+    let planned = plan
+        .writes()
+        .iter()
+        .find(|write| write.command() == 0x21)
+        .copied()
+        .expect("VOUT_COMMAND planned");
+    // Act
+    let live = vout_command_write(EXPECTED_VOUT_MODE, 1.10).expect("write");
+    // Assert
+    assert_eq!(live, planned);
+}
+
+#[test]
+fn a_live_voltage_change_keeps_the_configuration_s_clamp() {
+    // Act
+    let refusals = [
+        vout_command_write(EXPECTED_VOUT_MODE, 0.99),
+        vout_command_write(EXPECTED_VOUT_MODE, 1.21),
+        vout_command_write(0x17, 1.15),
+    ]
+    .map(Result::err);
+    // Assert
+    assert_eq!(
+        refusals,
+        [
+            Some(ConfigRefusal::TargetOutOfRange),
+            Some(ConfigRefusal::TargetOutOfRange),
+            Some(ConfigRefusal::VoutModeUnexpected),
+        ]
+    );
+}
+
+#[test]
+fn the_live_guard_expects_the_plan_s_vout_max_and_loop_scale() {
+    // Arrange
+    let plan = gamma_config_plan(off(), EXPECTED_VOUT_MODE, 1.15).expect("plan");
+    let planned = |command| {
+        plan.writes()
+            .iter()
+            .find(|write| write.command() == command)
+            .copied()
+            .expect("planned")
+    };
+    // Act
+    let guards = live_guard_writes(EXPECTED_VOUT_MODE).expect("guards");
+    // Assert
+    assert_eq!(guards, [planned(0x24), planned(0x29)]);
+}

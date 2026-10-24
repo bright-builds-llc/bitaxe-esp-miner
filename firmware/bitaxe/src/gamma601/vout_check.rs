@@ -17,12 +17,13 @@
 //!
 //! Reference: `reference/esp-miner/main/power/TPS546.c` (`TPS546_init`, `TPS546_set_vout`).
 
+use super::regulator;
 use crate::safety_adapter::{gamma601 as hardware, RuntimeI2cOwner};
 use bitaxe_safety::gamma601_safe_boot::{Controller, SafeBootReport};
 use bitaxe_safety::gamma601_vout_check::{CheckResult, Readback, VoutCheckRecord};
 use bitaxe_safety::tps546::config;
 use bitaxe_safety::tps546::enable::{self, EnableJudge, Readings, Sample, Step};
-use bitaxe_safety::tps546::{ConfirmedOff, OffState, ReadCommand, StatusWord};
+use bitaxe_safety::tps546::{ConfirmedOff, OffState, StatusWord};
 use esp_idf_svc::sys;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -34,8 +35,6 @@ const START_AFTER_MS: u64 = 30_000;
 const TARGET_VOLTS: f64 = 1.15;
 const TARGET_MV: u32 = 1_150;
 const SAMPLE_PERIOD_MS: u64 = 250;
-/// The off command is repeated, one sample period apart, until the output confirms off.
-const OFF_CONFIRM_ATTEMPTS: u32 = 8;
 const FAN_FULL_PERCENT: u8 = 100;
 const VOUT_MAX_COMMAND: u8 = 0x24;
 /// Set in RTC memory before the enable and cleared once the output is confirmed off after it.
@@ -126,7 +125,7 @@ fn run_check(
     {
         record.conclude(result, reason);
     }
-    record.maybe_off = turn_off_and_confirm(owner, report);
+    record.maybe_off = regulator::turn_off_and_confirm(owner, report);
     if record.maybe_off == Some(OffState::Confirmed) && !interrupted {
         release_reset_latch();
     }
@@ -159,7 +158,7 @@ fn configure_and_enable(
     let mut budget = hardware::budget();
     hardware::command_off(&mut owner.tps546(&mut budget))
         .map_err(|_| refused("off_command_failed"))?;
-    let vout_mode = read_vout_mode(owner).ok_or(refused("vout_mode_unread"))?;
+    let vout_mode = regulator::read_vout_mode(owner).ok_or(refused("vout_mode_unread"))?;
     record.maybe_vout_mode = Some(vout_mode);
     let plan = config::gamma_config_plan(off, vout_mode, TARGET_VOLTS)
         .map_err(|refusal| refused(refusal.label()))?;
@@ -169,7 +168,7 @@ fn configure_and_enable(
         .tps546(&mut budget)
         .clear_faults()
         .map_err(|_| refused("clear_faults_failed"))?;
-    let baseline = read_status(owner).ok_or(refused("baseline_unread"))?;
+    let baseline = regulator::read_status(owner).ok_or(refused("baseline_unread"))?;
     record.maybe_faults_before = Some(baseline.faults());
     let mut judge =
         EnableJudge::new(TARGET_VOLTS, baseline).map_err(|refusal| refused(refusal.label()))?;
@@ -234,7 +233,7 @@ fn configure(
     if already_configured(owner, writes, vout_mode)? {
         return Err(refused("controller_already_configured"));
     }
-    let written = write_and_read_back(owner, writes, vout_mode);
+    let written = regulator::write_and_read_back(owner, writes, vout_mode).map_err(refused);
     let mut configured = report;
     hardware::read_controller(owner, &mut configured);
     record.maybe_config_faults = configured.maybe_faults;
@@ -268,21 +267,6 @@ fn already_configured(
     Ok(config::readback_matches(vout_max, read, vout_mode))
 }
 
-fn write_and_read_back(
-    owner: &mut RuntimeI2cOwner<'_>,
-    writes: &[config::ConfigWrite],
-    vout_mode: u8,
-) -> Result<Readback, Ended> {
-    for write in writes {
-        let mut budget = hardware::budget();
-        owner
-            .tps546(&mut budget)
-            .write_config(write)
-            .map_err(|_| refused("config_write_failed"))?;
-    }
-    read_back(owner, writes, vout_mode)
-}
-
 /// Samples every `SAMPLE_PERIOD_MS` until the judge ends the window, or the ASIC reset is
 /// found released.
 fn run_window(
@@ -311,29 +295,6 @@ fn run_window(
     }
 }
 
-/// Reads every register back; the first one that differs from what was written is recorded.
-fn read_back(
-    owner: &mut RuntimeI2cOwner<'_>,
-    writes: &[config::ConfigWrite],
-    vout_mode: u8,
-) -> Result<Readback, Ended> {
-    for write in writes {
-        let mut budget = hardware::budget();
-        let read = owner
-            .tps546(&mut budget)
-            .read_config(write)
-            .map_err(|_| refused("config_readback_failed"))?;
-        if !config::readback_matches(write, read, vout_mode) {
-            return Ok(Readback::Mismatch {
-                command: write.command(),
-                wrote: write.value(),
-                read,
-            });
-        }
-    }
-    Ok(Readback::Matched)
-}
-
 /// One sample: the controller's telemetry and status, and the board temperature. Any failed
 /// read makes the whole sample missing.
 fn sample(owner: &mut RuntimeI2cOwner<'_>, report: SafeBootReport) -> Option<Readings> {
@@ -348,50 +309,6 @@ fn sample(owner: &mut RuntimeI2cOwner<'_>, report: SafeBootReport) -> Option<Rea
         board_temp_c: reading.maybe_board_temperature_celsius?,
         status: StatusWord(reading.maybe_faults?),
     })
-}
-
-/// Commands the output off, restoring upstream's on/off configuration, and repeats until it
-/// confirms off or the attempts run out. `None` when no reading succeeded. Nothing here formats
-/// an error: this path runs when the output may still be on, so it keeps its stack shallow.
-fn turn_off_and_confirm(
-    owner: &mut RuntimeI2cOwner<'_>,
-    report: SafeBootReport,
-) -> Option<OffState> {
-    let mut maybe_state = None;
-    for _ in 0..OFF_CONFIRM_ATTEMPTS {
-        let mut budget = hardware::budget();
-        if hardware::command_off(&mut owner.tps546(&mut budget)).is_err() {
-            log::warn!("gamma601_vout_check=fault category=off_command");
-        }
-        std::thread::sleep(Duration::from_millis(SAMPLE_PERIOD_MS));
-        let mut reading = report;
-        hardware::read_controller(owner, &mut reading);
-        maybe_state = reading.maybe_off.or(maybe_state);
-        if maybe_state == Some(OffState::Confirmed) {
-            break;
-        }
-    }
-    maybe_state
-}
-
-fn read_vout_mode(owner: &mut RuntimeI2cOwner<'_>) -> Option<u8> {
-    let mut budget = hardware::budget();
-    let mut mode = [0_u8; 1];
-    owner
-        .tps546(&mut budget)
-        .read(ReadCommand::VoutMode, &mut mode)
-        .ok()
-        .map(|()| mode[0])
-}
-
-fn read_status(owner: &mut RuntimeI2cOwner<'_>) -> Option<StatusWord> {
-    let mut budget = hardware::budget();
-    let mut word = [0_u8; 2];
-    owner
-        .tps546(&mut budget)
-        .read(ReadCommand::StatusWord, &mut word)
-        .ok()
-        .map(|()| StatusWord(u16::from_le_bytes(word)))
 }
 
 fn check_latch_armed() -> bool {
