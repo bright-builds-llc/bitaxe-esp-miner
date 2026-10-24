@@ -100,3 +100,35 @@ fn the_fan_runs_full_until_the_output_is_confirmed_off() {
     // Assert
     assert_eq!(duties, [100, 30]);
 }
+
+#[test]
+fn an_unconfirmed_off_output_keeps_the_fan_full_whatever_is_commanded() {
+    // Arrange
+    let unconfirmed = SafeBootReport::initial(true);
+    // Act
+    let duty = unconfirmed.fan_duty_with(Some(30), false);
+    // Assert
+    assert_eq!(duty, FAN_DUTY_UNCONFIRMED_PERCENT);
+}
+
+#[test]
+fn an_owner_s_duty_applies_once_off_is_confirmed_or_the_output_is_deliberately_on() {
+    // Arrange
+    let confirmed = SafeBootReport {
+        maybe_off: Some(OffState::Confirmed),
+        ..SafeBootReport::initial(true)
+    };
+    let mining = SafeBootReport::initial(true);
+    // Act
+    let duties = [
+        confirmed.fan_duty_with(None, false),
+        confirmed.fan_duty_with(Some(55), false),
+        mining.fan_duty_with(None, true),
+        mining.fan_duty_with(Some(70), true),
+    ];
+    // Assert
+    assert_eq!(
+        duties,
+        [FAN_DUTY_PERCENT, 55, FAN_DUTY_UNCONFIRMED_PERCENT, 70]
+    );
+}

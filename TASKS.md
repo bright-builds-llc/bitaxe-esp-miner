@@ -497,7 +497,35 @@ action.
       - `set_vout`: a live `VOUT_COMMAND` within the 1.00-1.20 V clamp,
         only while `VOUT_MAX` and `VOUT_SCALE_LOOP` still read as this
         boot wrote them (`config::live_guard_writes`), then read back;
-      - they have no caller yet. Their caller keeps the fan at full before
+      - `power_on` stops at the enable and returns the baseline;
+        `verify_on` judges the settled output later, so the bus owner never
+        blocks for the settle (the preparation's 500 ms stabilization wait
+        sits between them, as upstream's `mining_start` waits 500 ms);
+    - [x] the 601's safe-boot thread is the board's safety actuation owner
+      (`gamma601/actuation.rs`): between sweeps it services the shared
+      queue (`service_next_board_actuation_request`). Fan commands go
+      through the authority the 205 also uses (`decide_fan_duty`, factored
+      out of the 205's apply with the same results) and keep the safe
+      boot's rule: full while the output is neither deliberately on nor
+      confirmed off (`SafeBootReport::fan_duty_with`). In the mining
+      variant only, `PowerOnRegulator`, `VerifyRegulator`,
+      `SetRegulatorVoltage` and `TurnRegulatorOff` drive the regulator;
+      any failed step turns the output off. While an owner has the output
+      on, the safe boot stops re-asserting off; once the enable is
+      verified, the power fact counts `OFF` as a fault. The output never
+      outlives its authority: on every pass, at least each sweep, the
+      thread runs the revocation deadline check itself (every 100 ms
+      while the output is on, and after each regulator command, so a
+      lapsed 2.8 s heartbeat starts the off within 3 s) and turns the
+      output off when the enabling permit is revoked (a lapsed Worker
+      heartbeat, or an unsafe observation through the verdict) or the
+      enable is unverified after 5 s. Only a Worker generation's permit,
+      which lapses with its heartbeat, may turn the output on. A command
+      with a revoked permit is refused and turns a live output off. An owner's fan duty is cleared
+      on every enable and off. The thread sweeps and publishes just before and
+      after each regulator command, so the observations stay fresh for
+      the waiting owner. Production 601 builds refuse regulator commands;
+      - their callers still keep the fan at full before
         the enable, holds the reset pad latched through it, turns the
         output off on any `Err`, and never runs on the thread that owns
         the 2.8 s USB heartbeat deadline (`power_on` blocks about 1 s). The vout check's off-command warning now

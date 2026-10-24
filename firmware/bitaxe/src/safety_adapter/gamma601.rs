@@ -75,6 +75,12 @@ pub(crate) fn configure_thermal(owner: &mut RuntimeI2cOwner<'_>, duty_percent: u
     bus.write_emc2101(Emc2101WriteRegister::BetaCompensation, EMC2101_BETA)
 }
 
+/// Sets the fan duty alone, for an owner's fan command.
+pub(crate) fn write_fan_duty(owner: &mut RuntimeI2cOwner<'_>, duty_percent: u8) -> Result<()> {
+    let mut budget = budget();
+    emc2101::write_fan_duty_percent(&mut owner.actuators(&mut budget), duty_percent)
+}
+
 /// Reads the controller's status and telemetry into `report`.
 pub(crate) fn read_controller(owner: &mut RuntimeI2cOwner<'_>, report: &mut SafeBootReport) {
     let mut budget = budget();

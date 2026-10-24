@@ -3,6 +3,9 @@ const PRODUCTION_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const SELF_TEST_SOURCE: &str = include_str!("self_test_runtime.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 const TPS546_BUS_SOURCE: &str = include_str!("safety_adapter/i2c_bus/tps546.rs");
+const GAMMA601_SOURCE: &str = include_str!("gamma601.rs");
+const GAMMA601_ACTUATION_SOURCE: &str = include_str!("gamma601/actuation.rs");
+const SAFETY_ADAPTER_SOURCE: &str = include_str!("safety_adapter.rs");
 
 fn body_of<'a>(source: &'a str, signature: &str) -> &'a str {
     let start = source.find(signature).expect("signature present");
@@ -68,4 +71,32 @@ impl Tps546Bus"#)
     // Assert
     // `scripts/verify-firmware-variant-isolation.mjs` refuses this literal in production ELFs.
     assert!(body.contains(r#".context("tps546_operation_on_enable")"#));
+}
+
+#[test]
+fn the_601_safe_boot_thread_is_its_board_s_only_actuation_consumer() {
+    // Arrange
+    let board_service = "pub(crate) fn service_next_board_actuation_request(";
+    let gate = SAFETY_ADAPTER_SOURCE
+        .find(board_service)
+        .and_then(|at| SAFETY_ADAPTER_SOURCE[..at].rfind("#[cfg("))
+        .expect("the board service is gated");
+    // Act
+    let calls = GAMMA601_SOURCE
+        .matches("safety_adapter::service_next_board_actuation_request(")
+        .count();
+    // Assert
+    assert!(SAFETY_ADAPTER_SOURCE[gate..].starts_with(r#"#[cfg(feature = "board-gamma-601")]"#));
+    assert_eq!(calls, 1);
+    assert!(!GAMMA601_SOURCE.contains("service_next_safety_actuation_request("));
+}
+
+#[test]
+fn the_601_applies_fan_commands_by_the_shared_authority_and_regulator_commands_only_when_mining() {
+    // Arrange
+    let production_arm = body_of(GAMMA601_ACTUATION_SOURCE, "#[cfg(not(feature = \"gamma601-mining\"))]\nfn apply_regulator(");
+    // Act / Assert
+    assert!(GAMMA601_ACTUATION_SOURCE.contains("safety_adapter::decide_fan_duty(command)"));
+    assert!(production_arm.contains("SafetyActuationReply::Refused"));
+    assert!(!production_arm.contains("regulator::"));
 }

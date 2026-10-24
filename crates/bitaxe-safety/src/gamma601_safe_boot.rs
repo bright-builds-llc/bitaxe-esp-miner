@@ -95,8 +95,19 @@ impl SafeBootReport {
     /// The fan duty for the current state: full until the output is confirmed off.
     #[must_use]
     pub fn fan_duty_for_state(&self) -> u8 {
-        if self.off_confirmed() {
-            FAN_DUTY_PERCENT
+        self.fan_duty_with(None, false)
+    }
+
+    /// The fan duty once an owner may command it. While the output is deliberately on, the
+    /// owner's duty applies, full until it commands one. Otherwise an output not confirmed off
+    /// keeps the fan full, whatever was commanded, and a confirmed-off output takes the owner's
+    /// duty or the safe boot's.
+    #[must_use]
+    pub fn fan_duty_with(&self, maybe_commanded: Option<u8>, output_on: bool) -> u8 {
+        if output_on {
+            maybe_commanded.unwrap_or(FAN_DUTY_UNCONFIRMED_PERCENT)
+        } else if self.off_confirmed() {
+            maybe_commanded.unwrap_or(FAN_DUTY_PERCENT)
         } else {
             FAN_DUTY_UNCONFIRMED_PERCENT
         }

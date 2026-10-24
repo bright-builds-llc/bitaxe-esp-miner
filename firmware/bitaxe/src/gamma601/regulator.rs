@@ -99,13 +99,13 @@ pub(super) fn turn_off_and_confirm(
 }
 
 #[cfg(feature = "gamma601-mining")]
-pub(crate) use production::{power_on, set_vout};
+pub(crate) use production::{power_on, set_vout, verify_on};
 
 /// The production core voltage, only in the mining variant.
 #[cfg(feature = "gamma601-mining")]
 mod production {
     use super::*;
-    use bitaxe_safety::tps546::enable::{self, EnableRefusal, SettleFailure, SETTLE_MS};
+    use bitaxe_safety::tps546::enable::{self, EnableRefusal, SettleFailure};
     use bitaxe_safety::tps546::{config::ConfigRefusal, ConfirmedOff};
 
     /// Configures the controller for `target_mv` and turns its output on, as upstream's
@@ -113,16 +113,17 @@ mod production {
     /// 1. commanded off until it confirms off;
     /// 2. configured and read back, still off, then re-confirmed off;
     /// 3. faults cleared and a clean, off baseline read;
-    /// 4. `OPERATION` on through a token armed from those checks and a held ASIC reset;
-    /// 5. after `SETTLE_MS`, `OPERATION` read back on, VOUT near the target and no new fault.
+    /// 4. `OPERATION` on through a token armed from those checks and a held ASIC reset.
     ///
-    /// An `Err` before the enable write leaves the output off. After the write the output may
-    /// be on even when it reports an error, so the caller turns it off on any `Err`.
+    /// Returns the baseline for [`verify_on`], which judges the output once it has settled; the
+    /// caller waits in between without blocking the bus owner. An `Err` before the enable write
+    /// leaves the output off. After the write the output may be on even when it reports an
+    /// error, so the caller turns it off on any `Err`.
     pub(crate) fn power_on(
         owner: &mut RuntimeI2cOwner<'_>,
         report: SafeBootReport,
         target_mv: u16,
-    ) -> Result<(), &'static str> {
+    ) -> Result<StatusWord, &'static str> {
         let target_volts = f64::from(target_mv) / 1000.0;
         let off = turn_off_and_confirm(owner, report)
             .and_then(OffState::confirmed)
@@ -154,7 +155,19 @@ mod production {
             .tps546(&mut budget)
             .operation_on(armed)
             .map_err(|_| "enable_write_failed")?;
-        std::thread::sleep(Duration::from_millis(u64::from(SETTLE_MS)));
+        Ok(baseline)
+    }
+
+    /// Judges a settled enable, as upstream reads `OPERATION` back after `TPS546_set_vout`:
+    /// `OPERATION` on, VOUT within the tolerance of `target_mv` and no fault bit beyond
+    /// `baseline`'s. The caller turns the output off on any `Err`.
+    pub(crate) fn verify_on(
+        owner: &mut RuntimeI2cOwner<'_>,
+        report: SafeBootReport,
+        target_mv: u16,
+        baseline: StatusWord,
+    ) -> Result<(), &'static str> {
+        let target_volts = f64::from(target_mv) / 1000.0;
         let operation = read_operation(owner).ok_or("operation_unread")?;
         let mut reading = report;
         hardware::read_controller(owner, &mut reading);

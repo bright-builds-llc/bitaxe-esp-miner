@@ -111,6 +111,25 @@ pub(crate) enum SafetyActuationCommand {
         voltage: Ultra205CoreVoltage,
         permit: crate::production_mining_session::revocation::WorkPermit,
     },
+    /// The Gamma 601's TPS546 configured and turned on at `millivolts`, with the ASIC reset
+    /// held (ADR-0041 item 7; the mining variant only).
+    #[cfg(feature = "gamma601-mining")]
+    PowerOnRegulator {
+        millivolts: u16,
+        permit: crate::production_mining_session::revocation::WorkPermit,
+    },
+    /// The 601's settled output judged against the last `PowerOnRegulator`; off unless it holds.
+    #[cfg(feature = "gamma601-mining")]
+    VerifyRegulator,
+    /// The 601's TPS546 output changed to `millivolts` while it is on.
+    #[cfg(feature = "gamma601-mining")]
+    SetRegulatorVoltage {
+        millivolts: u16,
+        permit: crate::production_mining_session::revocation::WorkPermit,
+    },
+    /// The 601's TPS546 output turned off and confirmed off.
+    #[cfg(feature = "gamma601-mining")]
+    TurnRegulatorOff,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -162,7 +181,7 @@ impl PendingSafetyActuation {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SafetyActuationReply {
+pub(crate) enum SafetyActuationReply {
     Applied,
     HardwareWriteFailed,
     /// The command's authority no longer holds; nothing was written.
@@ -314,6 +333,33 @@ pub(crate) fn service_next_safety_actuation_request(
     SafetyActuationOwnerWait::Serviced
 }
 
+/// Services the next request for a board whose own thread owns the bus (the Gamma 601's safe
+/// boot), applying it through `apply`. The thread replies as the 205's sensor owner does.
+#[cfg(feature = "board-gamma-601")]
+pub(crate) fn service_next_board_actuation_request(
+    inbox: &SafetyActuationOwnerInbox,
+    timeout: Duration,
+    apply: impl FnOnce(SafetyActuationCommand) -> SafetyActuationReply,
+) -> SafetyActuationOwnerWait {
+    let envelope = match inbox.request_receiver.recv_timeout(timeout) {
+        Ok(envelope) => envelope,
+        Err(mpsc::RecvTimeoutError::Timeout) => return SafetyActuationOwnerWait::TimedOut,
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            ACTUATION_OWNER_AVAILABLE.store(false, Ordering::Release);
+            return SafetyActuationOwnerWait::Disconnected;
+        }
+    };
+    let (command, reply_sender) = envelope.into_parts();
+    let reply = apply(command);
+    if reply == SafetyActuationReply::HardwareWriteFailed {
+        log::warn!("safety_actuation=fault category=hardware_write_failed");
+    }
+    if reply_sender.send(reply).is_err() {
+        log::warn!("safety_actuation=fault category=reply_receiver_unavailable");
+    }
+    SafetyActuationOwnerWait::Serviced
+}
+
 fn operator_sensor_outcome(
     outcome: RuntimeI2cBudgetOutcome,
 ) -> crate::operator_sensor_diagnostics::OperatorSensorOutcome {
@@ -333,27 +379,32 @@ fn operator_sensor_outcome(
     }
 }
 
-fn apply_safety_actuation(
-    owner: &mut RuntimeI2cOwner<'_>,
-    budget: &mut RuntimeI2cBudget,
-    command: SafetyActuationCommand,
-) -> SafetyActuationReply {
-    let mut bus = owner.actuators(budget);
-    let result = match command {
+/// What a fan command may do now, by the authority both boards' actuation owners share.
+pub(crate) enum FanDecision {
+    /// Write this duty.
+    Write(u8),
+    /// Write nothing; reply this.
+    Reply(SafetyActuationReply),
+    /// Not a fan command.
+    NotFan,
+}
+
+pub(crate) fn decide_fan_duty(command: SafetyActuationCommand) -> FanDecision {
+    match command {
         SafetyActuationCommand::SetFanDuty(percent) => {
             if percent.get() < 100 && !crate::production_mining_session::revocation::permits(None) {
-                return SafetyActuationReply::HardwareWriteFailed;
+                return FanDecision::Reply(SafetyActuationReply::HardwareWriteFailed);
             }
-            emc2101::write_fan_duty_percent(&mut bus, percent.get())
+            FanDecision::Write(percent.get())
         }
         SafetyActuationCommand::SetControllerFanDuty { duty, owner } => {
             if !crate::production_mining_session::revocation::permits_controller_fan(
                 owner,
                 duty.get(),
             ) {
-                return SafetyActuationReply::Refused;
+                return FanDecision::Reply(SafetyActuationReply::Refused);
             }
-            emc2101::write_fan_duty_percent(&mut bus, duty.get())
+            FanDecision::Write(duty.get())
         }
         SafetyActuationCommand::RestoreCoolingBaseline { generation } => {
             let now_ms = crate::runtime_uptime::millis();
@@ -367,13 +418,32 @@ fn apply_safety_actuation(
                     now_ms,
                 )
             {
-                return SafetyActuationReply::HardwareWriteFailed;
+                return FanDecision::Reply(SafetyActuationReply::HardwareWriteFailed);
             }
-            emc2101::write_fan_duty_percent(&mut bus, FanDutyPercent::PAUSED.get())
+            FanDecision::Write(FanDutyPercent::PAUSED.get())
         }
         SafetyActuationCommand::SetFanDutyAfterCoolingProof => {
-            emc2101::write_fan_duty_percent(&mut bus, FanDutyPercent::PAUSED.get())
+            FanDecision::Write(FanDutyPercent::PAUSED.get())
         }
+        _ => FanDecision::NotFan,
+    }
+}
+
+fn apply_safety_actuation(
+    owner: &mut RuntimeI2cOwner<'_>,
+    budget: &mut RuntimeI2cBudget,
+    command: SafetyActuationCommand,
+) -> SafetyActuationReply {
+    let mut bus = owner.actuators(budget);
+    let result = match command {
+        SafetyActuationCommand::SetFanDuty(_)
+        | SafetyActuationCommand::SetControllerFanDuty { .. }
+        | SafetyActuationCommand::RestoreCoolingBaseline { .. }
+        | SafetyActuationCommand::SetFanDutyAfterCoolingProof => match decide_fan_duty(command) {
+            FanDecision::Write(duty) => emc2101::write_fan_duty_percent(&mut bus, duty),
+            FanDecision::Reply(reply) => return reply,
+            FanDecision::NotFan => return SafetyActuationReply::HardwareWriteFailed,
+        },
         SafetyActuationCommand::SetCoreVoltage(voltage) => {
             if !crate::production_mining_session::revocation::permits(None) {
                 return SafetyActuationReply::HardwareWriteFailed;
@@ -386,6 +456,12 @@ fn apply_safety_actuation(
             }
             ds4432u::write_core_voltage(&mut bus, voltage)
         }
+        // The 601's regulator commands: this owner drives no regulator.
+        #[cfg(feature = "gamma601-mining")]
+        SafetyActuationCommand::PowerOnRegulator { .. }
+        | SafetyActuationCommand::VerifyRegulator
+        | SafetyActuationCommand::SetRegulatorVoltage { .. }
+        | SafetyActuationCommand::TurnRegulatorOff => return SafetyActuationReply::Refused,
     };
     match result {
         Ok(()) => SafetyActuationReply::Applied,

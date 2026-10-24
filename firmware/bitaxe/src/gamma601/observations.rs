@@ -38,7 +38,13 @@ impl Producer {
     /// Reduces the sweep just read into the observations and publishes them.
     // Kept a distinct frame so the build's stack audit can bound it (`firmware-stack-budget.ts`).
     #[inline(never)]
-    pub(super) fn publish(&mut self, report: &SafeBootReport, thermal: ThermalAcquisitions) {
+    /// `output_on` says the regulator is deliberately on, so its `OFF` bit is a fault.
+    pub(super) fn publish(
+        &mut self,
+        report: &SafeBootReport,
+        thermal: ThermalAcquisitions,
+        output_on: bool,
+    ) {
         let entry = crate::board_identity::catalog_entry();
         let readings = RegulatorReadings {
             maybe_vin_volts: report.maybe_vin_volts,
@@ -64,8 +70,7 @@ impl Producer {
             self.boot_session,
             acquired_at,
             f64::from(entry.power_consumption_target()),
-            // The safe boot keeps the output off, so `OFF` is not a fault here.
-            gamma601_sensors::regulator_fault(report.maybe_status.map(StatusWord), false),
+            gamma601_sensors::regulator_fault(report.maybe_status.map(StatusWord), output_on),
         ) {
             Ok((state, sequences)) => {
                 self.state = state.mark_stale_at(acquired_at, STALE_AFTER_MS);

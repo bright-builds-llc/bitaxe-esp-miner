@@ -23,6 +23,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
+mod actuation;
 mod observations;
 #[cfg(any(feature = "gamma601-vout-check", feature = "gamma601-mining"))]
 mod regulator;
@@ -41,7 +42,7 @@ const MINING_VARIANT_MARKER: &str = "firmware_variant=gamma601-mining";
 const IDENTIFY_ATTEMPTS: usize = 6;
 const IDENTIFY_BACKOFF_MS: u32 = 3;
 /// Twice per stale window, so the published observations stay fresh between sweeps.
-const SWEEP_PERIOD: Duration = Duration::from_millis(500);
+const SWEEP_PERIOD_MS: u64 = 500;
 /// One sweep in this many writes the records to the general log, every 5 s. A receive-only
 /// console sees them through the USB replay, not these lines.
 const LOG_EVERY_SWEEPS: u32 = 10;
@@ -232,15 +233,19 @@ fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: Startup
     report.maybe_pre_id_cml = startup.maybe_pre_id_cml;
     report.maybe_start_status = startup.maybe_status;
     report.maybe_start_cml = startup.maybe_cml;
+    // This thread owns the bus, so it is the safety actuation owner (ADR-0041).
+    let (registration, inbox) = safety_adapter::prepare_safety_actuation_owner();
+    if let Err(error) = safety_adapter::publish_safety_actuation_owner(registration) {
+        log::error!("gamma601_safe_boot=fault category=actuation_owner error={error:#}");
+    }
     let mut producer = observations::Producer::new();
-    let thermal = sweep(&mut owner, &mut report);
-    producer.publish(&report, thermal);
+    let state = actuation::ActuationState::default();
+    refresh(&mut owner, &mut report, &mut producer, &state);
     log_records(&report);
-    publish(report);
     let spawned = std::thread::Builder::new()
         .name(THREAD_NAME.to_owned())
         .stack_size(THREAD_STACK_BYTES)
-        .spawn(move || run(owner, report, producer));
+        .spawn(move || run(owner, report, producer, inbox));
     if let Err(error) = spawned {
         log::error!("gamma601_safe_boot=fault category=thread_spawn error={error}");
     }
@@ -252,28 +257,40 @@ fn run(
     mut owner: RuntimeI2cOwner<'static>,
     mut report: SafeBootReport,
     mut producer: observations::Producer,
+    inbox: safety_adapter::SafetyActuationOwnerInbox,
 ) -> ! {
     let mut sweeps: u32 = 0;
+    let mut state = actuation::ActuationState::default();
     #[cfg(feature = "gamma601-vout-check")]
     let mut check = vout_check::VoutCheck::pending();
     loop {
-        std::thread::sleep(SWEEP_PERIOD);
+        let next_sweep_ms = crate::runtime_uptime::millis().saturating_add(SWEEP_PERIOD_MS);
+        service_until(
+            &mut owner,
+            &mut report,
+            &mut producer,
+            &mut state,
+            &inbox,
+            next_sweep_ms,
+        );
         if !matches!(report.controller, Controller::Found(_)) {
             report.controller = identify(|| {
                 let mut budget = hardware::budget();
                 hardware::identify_controller(&mut owner.tps546(&mut budget))
             });
         }
-        // Re-assert off whenever it is not confirmed; the writes can only turn the output off.
-        if matches!(report.controller, Controller::Found(_)) && !report.off_confirmed() {
+        // Re-assert off whenever it is not confirmed, unless an owner turned the output on; the
+        // writes can only turn the output off.
+        if matches!(report.controller, Controller::Found(_))
+            && !report.off_confirmed()
+            && !state.regulator_on
+        {
             let mut budget = hardware::budget();
             if let Err(error) = hardware::command_off(&mut owner.tps546(&mut budget)) {
                 log::warn!("gamma601_safe_boot=fault category=off_command error={error:#}");
             }
         }
-        let thermal = sweep(&mut owner, &mut report);
-        producer.publish(&report, thermal);
-        publish(report);
+        refresh(&mut owner, &mut report, &mut producer, &state);
         // The check reads the fresh sweep; the next sweep restores the fan duty.
         #[cfg(feature = "gamma601-vout-check")]
         if check.poll(&mut owner, &report) {
@@ -290,6 +307,63 @@ fn run(
     }
 }
 
+/// Applies queued actuation requests until `deadline_ms`. Around a regulator command the thread
+/// sweeps and publishes too, so the observations stay fresh for the owner waiting on it.
+fn service_until(
+    owner: &mut RuntimeI2cOwner<'_>,
+    report: &mut SafeBootReport,
+    producer: &mut observations::Producer,
+    state: &mut actuation::ActuationState,
+    inbox: &safety_adapter::SafetyActuationOwnerInbox,
+    deadline_ms: u64,
+) {
+    loop {
+        actuation::enforce_authority(owner, state, *report);
+        let now_ms = crate::runtime_uptime::millis();
+        if now_ms >= deadline_ms {
+            return;
+        }
+        let mut wait_ms = deadline_ms - now_ms;
+        if state.regulator_on {
+            wait_ms = wait_ms.min(actuation::ON_AUTHORITY_CHECK_MS);
+        }
+        let waited = safety_adapter::service_next_board_actuation_request(
+            inbox,
+            Duration::from_millis(wait_ms),
+            |command| {
+                let regulator = actuation::drives_regulator(command);
+                if regulator {
+                    refresh(owner, report, producer, state);
+                }
+                let reply = actuation::apply(owner, state, *report, command);
+                if regulator {
+                    actuation::enforce_authority(owner, state, *report);
+                    refresh(owner, report, producer, state);
+                }
+                reply
+            },
+        );
+        if waited == safety_adapter::SafetyActuationOwnerWait::Disconnected {
+            std::thread::sleep(Duration::from_millis(
+                deadline_ms.saturating_sub(crate::runtime_uptime::millis()),
+            ));
+            return;
+        }
+    }
+}
+
+/// One sweep, published as the observations and the safe-boot record.
+fn refresh(
+    owner: &mut RuntimeI2cOwner<'_>,
+    report: &mut SafeBootReport,
+    producer: &mut observations::Producer,
+    state: &actuation::ActuationState,
+) {
+    let thermal = sweep(owner, report, state);
+    producer.publish(report, thermal, state.output_verified_on());
+    publish(*report);
+}
+
 fn identify(mut read: impl FnMut() -> Controller) -> Controller {
     let mut controller = Controller::Unread;
     for _ in 0..IDENTIFY_ATTEMPTS {
@@ -302,12 +376,17 @@ fn identify(mut read: impl FnMut() -> Controller) -> Controller {
     controller
 }
 
-/// Reads everything, then sets the fan: full until the output is confirmed off.
-fn sweep(owner: &mut RuntimeI2cOwner<'_>, report: &mut SafeBootReport) -> ThermalAcquisitions {
+/// Reads everything, then sets the fan: full until the output is confirmed off, unless an owner
+/// turned it on; otherwise the owner's duty, or the safe boot's.
+fn sweep(
+    owner: &mut RuntimeI2cOwner<'_>,
+    report: &mut SafeBootReport,
+    state: &actuation::ActuationState,
+) -> ThermalAcquisitions {
     if matches!(report.controller, Controller::Found(_)) {
         hardware::read_controller(owner, report);
     }
-    report.fan_duty_percent = report.fan_duty_for_state();
+    report.fan_duty_percent = state.fan_duty(report);
     if let Err(error) = hardware::configure_thermal(owner, report.fan_duty_percent) {
         log::warn!("gamma601_safe_boot=fault category=fan_configuration error={error:#}");
     }
