@@ -1,29 +1,34 @@
 use super::*;
+use bitaxe_config::catalog::ultra_205_catalog_entry;
 
 fn profile(frequency_mhz: f32, core_voltage_mv: u16) -> MiningHardwareProfile {
     MiningHardwareProfile::from_device_settings(Some(frequency_mhz), Some(core_voltage_mv))
         .expect("catalog pair")
 }
 
-fn reading(celsius: f64, acquired_at_ms: u64) -> Option<ChipReading> {
-    Some(ChipReading {
-        celsius,
+fn sample(cool: bool, acquired_at_ms: u64) -> Option<CoolingSample> {
+    Some(CoolingSample {
         acquired_at_ms,
+        cool,
     })
 }
 
-/// Cool readings every 500 ms from `from_ms` through `to_ms`, the last step returned.
+/// Cool samples every 500 ms from `from_ms` through `to_ms`, the last step returned.
 fn cool_until(overheat: &mut OverheatRecovery, from_ms: u64, to_ms: u64) -> OverheatStep {
     let mut step = OverheatStep::Cooling;
     for at in (from_ms..=to_ms).step_by(500) {
-        step = overheat.observe(reading(44.0, at), at);
+        step = overheat.observe(sample(true, at), at);
     }
     step
 }
 
 fn entered(frequency_mhz: f32, core_voltage_mv: u16) -> OverheatRecovery {
     let mut overheat = OverheatRecovery::default();
-    overheat.enter(profile(frequency_mhz, core_voltage_mv), 0);
+    overheat.enter(
+        ultra_205_catalog_entry(),
+        profile(frequency_mhz, core_voltage_mv),
+        0,
+    );
     overheat
 }
 
@@ -71,7 +76,7 @@ fn an_overheat_holds_the_asic_down_while_cooling() {
 }
 
 #[test]
-fn recovery_waits_for_thirty_seconds_of_cool_readings() {
+fn recovery_waits_for_thirty_seconds_of_cool_samples() {
     // Arrange
     let mut overheat = entered(575.0, 1300);
     // Act
@@ -81,7 +86,7 @@ fn recovery_waits_for_thirty_seconds_of_cool_readings() {
 }
 
 #[test]
-fn thirty_seconds_of_cool_readings_recover_at_the_lowered_pair() {
+fn thirty_seconds_of_cool_samples_recover_at_the_lowered_pair() {
     // Arrange
     let mut overheat = entered(575.0, 1300);
     // Act
@@ -101,25 +106,11 @@ fn a_recovered_overheat_no_longer_holds_the_asic_down() {
 }
 
 #[test]
-fn a_reading_at_exactly_forty_five_counts_as_cool() {
-    // Arrange
-    let mut overheat = entered(575.0, 1300);
-    overheat.observe(reading(45.0, 1_000), 1_000);
-    // Act
-    let mut step = OverheatStep::Cooling;
-    for at in (1_500..=31_000).step_by(500) {
-        step = overheat.observe(reading(45.0, at), at);
-    }
-    // Assert
-    assert_eq!(step, OverheatStep::Recover(profile(475.0, 1200)));
-}
-
-#[test]
-fn a_reading_above_forty_five_restarts_the_cooling_time() {
+fn a_sample_that_is_not_cool_restarts_the_cooling_time() {
     // Arrange
     let mut overheat = entered(575.0, 1300);
     cool_until(&mut overheat, 1_000, 20_000);
-    overheat.observe(reading(45.1, 20_500), 20_500);
+    overheat.observe(sample(false, 20_500), 20_500);
     // Act
     let step = cool_until(&mut overheat, 21_000, 31_000);
     // Assert
@@ -127,7 +118,7 @@ fn a_reading_above_forty_five_restarts_the_cooling_time() {
 }
 
 #[test]
-fn a_missing_reading_restarts_the_cooling_time() {
+fn a_missing_sample_restarts_the_cooling_time() {
     // Arrange
     let mut overheat = entered(575.0, 1300);
     cool_until(&mut overheat, 1_000, 20_000);
@@ -139,36 +130,36 @@ fn a_missing_reading_restarts_the_cooling_time() {
 }
 
 #[test]
-fn a_stale_reading_does_not_count_as_cool() {
-    // Arrange: the sensor's last value is 1.5 s old.
+fn a_stale_sample_does_not_count_as_cool() {
+    // Arrange: each sample is 1.5 s old.
     let mut overheat = entered(575.0, 1300);
     // Act
     let mut step = OverheatStep::Cooling;
     for at in (2_000..=40_000).step_by(500) {
-        step = overheat.observe(reading(44.0, at - 1_500), at);
+        step = overheat.observe(sample(true, at - 1_500), at);
     }
     // Assert
     assert_eq!(step, OverheatStep::Cooling);
 }
 
 #[test]
-fn a_reading_taken_before_the_overheat_does_not_count() {
+fn a_sample_taken_before_the_overheat_does_not_count() {
     // Arrange
     let mut overheat = OverheatRecovery::default();
-    overheat.enter(profile(575.0, 1300), 10_000);
+    overheat.enter(ultra_205_catalog_entry(), profile(575.0, 1300), 10_000);
     // Act
-    let step = overheat.observe(reading(30.0, 9_900), 10_000);
+    let step = overheat.observe(sample(true, 9_900), 10_000);
     // Assert
     assert_eq!(step, OverheatStep::Cooling);
 }
 
 #[test]
-fn two_cool_readings_with_a_long_gap_are_not_continuous() {
+fn two_cool_samples_with_a_long_gap_are_not_continuous() {
     // Arrange: nothing was observed for 29 s between them.
     let mut overheat = entered(575.0, 1300);
-    overheat.observe(reading(44.0, 1_000), 1_000);
+    overheat.observe(sample(true, 1_000), 1_000);
     // Act
-    let step = overheat.observe(reading(44.0, 31_000), 31_000);
+    let step = overheat.observe(sample(true, 31_000), 31_000);
     // Assert
     assert_eq!(step, OverheatStep::Cooling);
 }
@@ -218,7 +209,7 @@ fn resuming_never_cancels_an_overheat_still_cooling() {
 #[test]
 fn the_lowest_recoverable_pair_lands_on_the_catalog_floor() {
     // Arrange / Act
-    let lowered = reduced_profile(profile(500.0, 1200));
+    let lowered = reduced_profile(ultra_205_catalog_entry(), profile(500.0, 1200));
     // Assert
     assert_eq!(lowered, Some(profile(400.0, 1100)));
 }
@@ -228,7 +219,7 @@ fn observing_with_no_overheat_reports_clear() {
     // Arrange
     let mut overheat = OverheatRecovery::default();
     // Act
-    let step = overheat.observe(reading(44.0, 1_000), 1_000);
+    let step = overheat.observe(sample(true, 1_000), 1_000);
     // Assert
     assert_eq!(step, OverheatStep::Clear);
 }
@@ -250,7 +241,7 @@ fn after_a_reboot_recovery_still_waits_for_cooling() {
     let mut overheat = OverheatRecovery::default();
     overheat.enter_after_boot(Some(profile(485.0, 1200)), false, 0);
     // Act
-    let step = overheat.observe(reading(60.0, 1_000), 1_000);
+    let step = overheat.observe(sample(false, 1_000), 1_000);
     // Assert
     assert_eq!(step, OverheatStep::Cooling);
 }

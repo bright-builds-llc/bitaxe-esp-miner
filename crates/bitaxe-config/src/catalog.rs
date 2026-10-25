@@ -119,6 +119,7 @@ pub struct BoardCapabilities {
     tps546: bool,
     plug_sense: bool,
     asic_enable: bool,
+    emc_internal_temp: bool,
 }
 
 impl BoardCapabilities {
@@ -150,6 +151,13 @@ impl BoardCapabilities {
     #[must_use]
     pub const fn asic_enable(&self) -> bool {
         self.asic_enable
+    }
+
+    /// Returns whether the chip temperature is the EMC2101's internal sensor, which reads with
+    /// the ASIC down, rather than the ASIC's own diode (upstream `emc_internal_temp`).
+    #[must_use]
+    pub const fn emc_internal_temp(&self) -> bool {
+        self.emc_internal_temp
     }
 }
 
@@ -306,6 +314,13 @@ const DS4432U_INA260_CAPABILITIES: BoardCapabilities = BoardCapabilities {
     tps546: false,
     plug_sense: true,
     asic_enable: true,
+    emc_internal_temp: true,
+};
+
+/// The Max reads its chip temperature from the EMC2101's external diode.
+const MAX_CAPABILITIES: BoardCapabilities = BoardCapabilities {
+    emc_internal_temp: false,
+    ..DS4432U_INA260_CAPABILITIES
 };
 
 const DS4432U_INA260_NO_ASIC_ENABLE_CAPABILITIES: BoardCapabilities = BoardCapabilities {
@@ -314,6 +329,7 @@ const DS4432U_INA260_NO_ASIC_ENABLE_CAPABILITIES: BoardCapabilities = BoardCapab
     tps546: false,
     plug_sense: true,
     asic_enable: false,
+    emc_internal_temp: true,
 };
 
 const TPS546_CAPABILITIES: BoardCapabilities = BoardCapabilities {
@@ -322,6 +338,7 @@ const TPS546_CAPABILITIES: BoardCapabilities = BoardCapabilities {
     tps546: true,
     plug_sense: false,
     asic_enable: false,
+    emc_internal_temp: false,
 };
 
 const BOARD_CATALOG: &[BoardCatalogEntry] = &[
@@ -330,7 +347,7 @@ const BOARD_CATALOG: &[BoardCatalogEntry] = &[
         "Max",
         ASIC_BM1397,
         1,
-        DS4432U_INA260_CAPABILITIES,
+        MAX_CAPABILITIES,
         12,
         VerificationScope::NotHardwareVerified,
     ),
@@ -339,7 +356,7 @@ const BOARD_CATALOG: &[BoardCatalogEntry] = &[
         "Max",
         ASIC_BM1397,
         1,
-        DS4432U_INA260_CAPABILITIES,
+        MAX_CAPABILITIES,
         12,
         VerificationScope::NotHardwareVerified,
     ),

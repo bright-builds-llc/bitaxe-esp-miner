@@ -2,6 +2,30 @@
 // live stop rule applied to each, and the verdict over the whole run. Samples carry only
 // metadata; no endpoint, pool or credential value ever enters them.
 
+/** Input power at or below this, freshly measured, shows the Ultra 205's ASIC powered down. */
+export const IDLE_POWER_W = 5;
+/**
+ * The Ultra 205's live stop limits, as for the lease soaks: input 4.5–5.5 V, at most 15 W, ASIC below
+ * 75 C, and its idle power. It reports no regulator temperature to judge. A soak's `limits` replace them.
+ */
+export const LIMITS = Object.freeze({ minimumInputMv: 4500, maximumInputMv: 5500, maximumPowerW: 15, maximumChipTempC: 75,
+  idlePowerW: IDLE_POWER_W, maybeMaximumVrTempC: null });
+/**
+ * The Gamma 601's limits (ADR-0041):
+ * - power up to 22 W, the firmware's own stop (19 W target plus the 3 W margin,
+ *   `crates/bitaxe-api/src/observation/limits.rs`);
+ * - idle up to 6.5 W: its power reads VOUT x IOUT plus a fixed 5 W offset
+ *   (`crates/bitaxe-safety/src/gamma601_sensors.rs`), so a powered-down ASIC reads about 5.0 W, and
+ *   the 205's 5 W would refuse it on a rounding. 1.5 W above the offset absorbs the regulator's
+ *   IOUT offset on a disabled output, and stays far below hashing power, which already adds the
+ *   offset to the ASIC's own several watts;
+ * - the regulator temperature stops above 90 C, under the firmware's 105 C throttle;
+ * - the chip and input limits as on the 205.
+ */
+export const GAMMA601_LIMITS = Object.freeze({ ...LIMITS, maximumPowerW: 22, idlePowerW: 6.5, maybeMaximumVrTempC: 90 });
+/** The limits a soak runs under: its own, or the Ultra 205's. */
+export const limitsOf = (soak) => soak?.limits ?? LIMITS;
+
 /**
  * The soaks a contract may run, each with its own enable line (owner decisions 2026-10-17/18).
  * - Soak 001 mines 30 continuous minutes.
@@ -31,6 +55,9 @@
  *   come back with no resume command and accumulate 5 minutes within 15 of first seeing the boot,
  *   outages tolerated as in soak 002. It then turns mining on boot off, pauses and restarts: the
  *   device must stay paused for 2 minutes.
+ * - Gamma 601 first mining 001 is the 601's first local mining (ADR-0041 phase F3), on the test-only
+ *   `gamma601-mining` firmware: 10 continuous minutes at 400 MHz / 1150 mV, saved and read back with
+ *   the pool before the resume, under the 601's limits (`GAMMA601_LIMITS`).
  */
 export const SOAKS = Object.freeze({
   "001": Object.freeze({ id: "001", activeMs: 30 * 60_000, requireHashrate: false, maybeMaximumOutageMs: null,
@@ -84,6 +111,11 @@ export const SOAKS = Object.freeze({
   "boot-resume-001": Object.freeze({ id: "boot-resume-001", kind: "boot-resume", task: "task-local-mining-boot-resume",
     activeMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
     enableLine: "Ultra 205 local mining boot resume check hardware: enabled." }),
+  "gamma601-first-001": Object.freeze({ id: "gamma601-first-001", task: "task-gamma-601-bring-up",
+    firmwareVariant: "gamma601-mining", activeMs: 10 * 60_000, requireHashrate: true, maybeMaximumOutageMs: null,
+    maybeDeadlineMs: null, requireStoredBoard: "601", limits: GAMMA601_LIMITS,
+    profile: Object.freeze({ frequencyMhz: 400, coreVoltageMv: 1150 }),
+    enableLine: "Gamma 601 first local mining hardware: enabled." }),
 });
 export const SAMPLE_INTERVAL_MS = 2000;
 /** A longer gap between successive samples breaks continuity. */
@@ -94,10 +126,6 @@ export const START_ALLOWANCE_MS = 5 * 60_000;
 export const STOP_ALLOWANCE_MS = 180_000;
 /** The run never mines past this, measured from the resume: the soak's own, or start, its time and slack. */
 export const runDeadlineMs = (soak) => soak.maybeDeadlineMs ?? START_ALLOWANCE_MS + soak.activeMs + 5 * 60_000;
-/** Input power at or below this, freshly measured, shows the ASIC powered down. */
-export const IDLE_POWER_W = 5;
-/** Live stop limits, as for the lease soaks: input 4.5–5.5 V, at most 15 W, ASIC below 75 C. */
-export const LIMITS = Object.freeze({ minimumInputMv: 4500, maximumInputMv: 5500, maximumPowerW: 15, maximumChipTempC: 75 });
 
 const number = (value) => (typeof value === "number" && Number.isFinite(value) ? value : null);
 
@@ -146,16 +174,22 @@ export function sampleFromInfo(info, atMs) {
 /** Whether every reading the limits use is fresh. */
 export const readingsFresh = (sample) => Object.values(sample.fresh).every(Boolean);
 
-/**
- * Whether the ASIC is shown powered down: paused, not mining, the stop confirmed, and freshly
- * measured idle power. `stopping` means the ordered safe-stop has not yet confirmed, though the
- * ASIC already idles.
- */
-export const hardwareStopped = (sample) =>
-  sample.miningPaused && !mining(sample) && sample.miningActivity !== "stopping" && idlePower(sample);
+/** Whether a fresh input power reading shows the ASIC idle, under `limits`. */
+export const idlePowerUnder = (limits) => (sample) => sample.fresh.power && sample.powerW !== null && sample.powerW <= limits.idlePowerW;
+/** `idlePowerUnder` the Ultra 205's limits. */
+export const idlePower = idlePowerUnder(LIMITS);
 
-/** Whether a fresh input power reading shows the ASIC idle. */
-export const idlePower = (sample) => sample.fresh.power && sample.powerW !== null && sample.powerW <= IDLE_POWER_W;
+/**
+ * Whether the ASIC is shown powered down under `limits`: paused, not mining, the stop confirmed, and
+ * freshly measured idle power. `stopping` means the ordered safe-stop has not yet confirmed, though
+ * the ASIC already idles.
+ */
+export const hardwareStoppedUnder = (limits) => {
+  const idle = idlePowerUnder(limits);
+  return (sample) => sample.miningPaused && !mining(sample) && sample.miningActivity !== "stopping" && idle(sample);
+};
+/** `hardwareStoppedUnder` the Ultra 205's limits. */
+export const hardwareStopped = hardwareStoppedUnder(LIMITS);
 
 /** Whether the device reports active mining in this sample. The live limits key on this. */
 export const mining = (sample) => sample.miningActivity === "active" && !sample.miningPaused;
@@ -168,19 +202,24 @@ export const mining = (sample) => sample.miningActivity === "active" && !sample.
  * most. Plain soaks hash above 10 W. A stale reading counts as hashing: the stale-readings live stop
  * bounds staleness, as for the limits. Mining time, outages and breaks count this.
  */
-export const hashing = (sample) =>
-  mining(sample) && !(sample.fresh.power && (sample.powerW === null || sample.powerW <= IDLE_POWER_W));
+export const hashingUnder = (limits) => (sample) =>
+  mining(sample) && !(sample.fresh.power && (sample.powerW === null || sample.powerW <= limits.idlePowerW));
+/** `hashingUnder` the Ultra 205's limits. */
+export const hashing = hashingUnder(LIMITS);
 
 /** Samples whose status reports mining while the ASIC is not hashing. */
-export const statusOnlySamples = (samples) => samples.filter((sample) => mining(sample) && !hashing(sample)).length;
+export const statusOnlySamples = (samples, limits = LIMITS) => {
+  const hashes = hashingUnder(limits);
+  return samples.filter((sample) => mining(sample) && !hashes(sample)).length;
+};
 
 /**
  * The first live stop this sample trips against the run's baseline, or null. A reset, a device
  * pause, a fault or an overheat always stops. While the device mines, the electrical and thermal
  * limits apply, as the firmware's own protection does, and readings stale on two samples in a row
- * stop the run (`maybePrevious` is the sample before).
+ * stop the run (`maybePrevious` is the sample before). `limits` are the soak's.
  */
-export function liveStop(sample, baseline, maybePrevious = null) {
+export function liveStop(sample, baseline, maybePrevious = null, limits = LIMITS) {
   if (sample.bootSession !== baseline.bootSession) return "soak_device_reset";
   if (sample.pauseReason !== null) return "soak_device_paused_itself";
   if (sample.hardwareFault) return "soak_hardware_fault";
@@ -192,17 +231,23 @@ export function liveStop(sample, baseline, maybePrevious = null) {
   }
   // A stale reading reads as 0, so each limit judges only a fresh value; the rule above bounds staleness.
   const { fresh } = sample;
-  if (fresh.input && (sample.inputMv === null || sample.inputMv < LIMITS.minimumInputMv || sample.inputMv > LIMITS.maximumInputMv)) {
+  if (fresh.input && (sample.inputMv === null || sample.inputMv < limits.minimumInputMv || sample.inputMv > limits.maximumInputMv)) {
     return "soak_input_voltage";
   }
-  if (fresh.power && (sample.powerW === null || sample.powerW > LIMITS.maximumPowerW)) return "soak_power";
-  if (fresh.chipTemp && (sample.chipTempC === null || sample.chipTempC >= LIMITS.maximumChipTempC)) return "soak_chip_temperature";
+  if (fresh.power && (sample.powerW === null || sample.powerW > limits.maximumPowerW)) return "soak_power";
+  if (fresh.chipTemp && (sample.chipTempC === null || sample.chipTempC >= limits.maximumChipTempC)) return "soak_chip_temperature";
+  // Judged only when the device reports it. A stale regulator reading reads as 0, so it never trips;
+  // the firmware itself refuses to mine on a TPS546 board without a fresh one.
+  if (limits.maybeMaximumVrTempC !== null && sample.vrTempC !== null && sample.vrTempC > limits.maybeMaximumVrTempC) {
+    return "soak_vr_temperature";
+  }
   if (fresh.fan && (sample.fanRpm === null || sample.fanRpm <= 0)) return "soak_fan_stopped";
   return null;
 }
 
 /** Continuous hashing measured from the first hashing sample, broken by any gap or other sample. */
-export function activeSpanMs(samples) {
+export function activeSpanMs(samples, limits = LIMITS) {
+  const hashing = hashingUnder(limits);
   let longest = 0, maybeStart = null, maybeLast = null;
   for (const sample of samples) {
     const continuous = maybeLast !== null && sample.atMs - maybeLast.atMs <= MAXIMUM_SAMPLE_GAP_MS;
@@ -222,7 +267,8 @@ export function activeSpanMs(samples) {
  * apart counts. Outages are the intervals from one hashing sample to the next hashing sample when
  * another sample or a longer gap lies between; they start only once hashing has begun.
  */
-export function miningLog(samples) {
+export function miningLog(samples, limits = LIMITS) {
+  const hashing = hashingUnder(limits);
   let activeMs = 0, maybeLastMining = null, broken = false;
   const outagesMs = [];
   for (const sample of samples) {
@@ -254,13 +300,14 @@ export function increases(samples, key) {
 
 /** The verdict over a run: its baseline, the samples while mining, and the final paused sample. */
 export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["001"] }) {
+  const limits = limitsOf(soak);
   const failures = [];
   const fail = (code) => { if (!failures.includes(code)) failures.push(code); };
   if (maybeStop) fail(maybeStop);
-  samples.forEach((sample, index) => { const stop = liveStop(sample, baseline, samples[index - 1] ?? null); if (stop) fail(stop); });
-  const active = samples.filter(hashing);
-  const span = activeSpanMs(samples);
-  const log = miningLog(samples);
+  samples.forEach((sample, index) => { const stop = liveStop(sample, baseline, samples[index - 1] ?? null, limits); if (stop) fail(stop); });
+  const active = samples.filter(hashingUnder(limits));
+  const span = activeSpanMs(samples, limits);
+  const log = miningLog(samples, limits);
   const tolerant = soak.maybeMaximumOutageMs !== null;
   if ((tolerant ? log.activeMs : span) < soak.activeMs) fail("soak_active_time_short");
   if (tolerant && log.outagesMs.some((outageMs) => outageMs > soak.maybeMaximumOutageMs)) fail("soak_outage_unrecovered");
@@ -272,7 +319,7 @@ export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["
   const accepted = increases(samples, "sharesAccepted");
   const rejected = increases(samples, "sharesRejected");
   if (accepted < 1) fail("soak_no_accepted_share");
-  finalFailures(baseline, maybeFinal).forEach(fail);
+  finalFailures(baseline, maybeFinal, limits).forEach(fail);
   return {
     schema: "local-mining-soak-result-v1",
     soak: soak.id,
@@ -285,7 +332,7 @@ export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["
       maximum_outage_ms: Math.max(0, ...log.outagesMs, log.maybeOpenOutageMs ?? 0),
       ...wifiMetrics(samples),
       active_samples: active.length,
-      status_only_samples: statusOnlySamples(samples),
+      status_only_samples: statusOnlySamples(samples, limits),
       samples: samples.length,
       maximum_sample_gap_ms: maximumGapMs,
       shares_accepted: accepted,
@@ -297,11 +344,11 @@ export function judge({ baseline, samples, maybeFinal, maybeStop, soak = SOAKS["
 }
 
 /** The final sample's failures: the same boot, the ASIC powered down, mining on boot off, no pause reason. */
-export function finalFailures(baseline, maybeFinal) {
+export function finalFailures(baseline, maybeFinal, limits = LIMITS) {
   if (!maybeFinal) return ["soak_final_state_missing"];
   return [
     maybeFinal.bootSession !== baseline.bootSession && "soak_device_reset",
-    !hardwareStopped(maybeFinal) && "soak_not_stopped_after",
+    !hardwareStoppedUnder(limits)(maybeFinal) && "soak_not_stopped_after",
     maybeFinal.startMiningOnBoot && "soak_mine_on_boot_enabled",
     maybeFinal.pauseReason !== null && "soak_device_paused_itself",
   ].filter(Boolean);

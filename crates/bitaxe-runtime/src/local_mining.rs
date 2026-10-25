@@ -7,12 +7,19 @@
 //! Two deliberate differences from upstream:
 //! - The lowered pair must lie in the board catalog (ADR-0038 sub-decision 1).
 //!   Otherwise mining stays stopped until the operator resumes.
-//! - Cooling needs 30 s of continuous fresh chip readings at 45 C or less.
-//!   Upstream's loop asks for the same, but on the Ultra 205 its chip reading is
-//!   invalid while the ASIC is uninitialized, so in practice it waits a fixed 30 s.
-//!   This firmware reads the EMC2101 die temperature while the ASIC is off, as the
-//!   ordered safe-stop already relies on.
+//! - Cooling needs 30 s of continuous fresh cool samples
+//!   ([`TelemetryObservations::restart_cooling_sample`]). On the Ultra 205 that is
+//!   the chip at 45 C or less: upstream's loop asks for the same, but there its chip
+//!   reading is invalid while the ASIC is uninitialized, so in practice it waits a
+//!   fixed 30 s. This firmware reads the EMC2101 die temperature while the ASIC is
+//!   off, as the ordered safe-stop already relies on. On the Gamma 601, whose diode
+//!   cannot be read with the chip down, it is the chip reported unpowered and the
+//!   regulator at 95 C or less, as upstream waits for 600-series boards.
+//!
+//! [`TelemetryObservations::restart_cooling_sample`]: bitaxe_api::TelemetryObservations::restart_cooling_sample
 
+use bitaxe_api::CoolingSample;
+use bitaxe_config::catalog::BoardCatalogEntry;
 use bitaxe_safety::thermal::{ASIC_THROTTLE_TEMP_C, SAFE_RESTART_TEMP_C};
 use bitaxe_stratum::v1::production_session::MiningHardwareProfile;
 
@@ -46,22 +53,14 @@ const _: () = assert!(
     LOCAL_OVERHEAT_TRIP_C > SAFE_RESTART_TEMP_C && LOCAL_OVERHEAT_TRIP_C <= ASIC_THROTTLE_TEMP_C
 );
 
-/// How long readings must stay at or below the restart temperature (upstream's six
-/// 5 s cooling cycles).
+/// How long samples must stay cool (upstream's six 5 s cooling cycles).
 pub const OVERHEAT_COOLING_MS: u64 = 30_000;
 /// Upstream's `ASIC_REDUCTION`: the step both frequency (MHz) and voltage (mV) drop.
 pub const OVERHEAT_REDUCTION: u16 = 100;
-/// A reading older than this is not fresh (the sensor sweep marks it stale at 1 s).
+/// A sample older than this is not fresh (the sensor sweep marks it stale at 1 s).
 pub const CHIP_READING_FRESH_MS: u64 = 1_000;
-/// Cool readings further apart than this are not continuous; the 30 s restarts.
+/// Cool samples further apart than this are not continuous; the 30 s restarts.
 pub const COOLING_MAX_GAP_MS: u64 = 2_000;
-
-/// One chip temperature reading and when the sensor took it.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ChipReading {
-    pub celsius: f64,
-    pub acquired_at_ms: u64,
-}
 
 /// Whether a revocation was an overheat, judged from the chip reading taken with it
 /// rather than from the first failing fact, which may name another fact first.
@@ -87,15 +86,23 @@ pub const OVERHEAT_ENTRY_SETTINGS: OverheatSettings = OverheatSettings {
     overheat_mode: true,
 };
 
-/// The lowered pair after cooling, or `None` when it leaves the board catalog.
+/// The lowered pair after cooling, or `None` when it leaves the built board's catalog.
 #[must_use]
-pub fn reduced_profile(profile: MiningHardwareProfile) -> Option<MiningHardwareProfile> {
+pub fn reduced_profile(
+    entry: BoardCatalogEntry,
+    profile: MiningHardwareProfile,
+) -> Option<MiningHardwareProfile> {
     let frequency = profile.frequency().mhz().checked_sub(OVERHEAT_REDUCTION)?;
     let voltage = profile
         .core_voltage()
         .millivolts()
         .checked_sub(OVERHEAT_REDUCTION)?;
-    MiningHardwareProfile::from_device_settings(Some(f32::from(frequency)), Some(voltage)).ok()
+    MiningHardwareProfile::from_device_settings_for_board(
+        entry,
+        Some(f32::from(frequency)),
+        Some(voltage),
+    )
+    .ok()
 }
 
 /// One tick's outcome.
@@ -116,10 +123,10 @@ enum Phase {
     #[default]
     Clear,
     Cooling {
-        profile: MiningHardwareProfile,
-        /// Whether recovery lowers the pair; not after a reboot, which may follow a
-        /// recovery that already lowered it.
-        lower: bool,
+        /// The pair to restart at after cooling; `None` stays stopped. An overheat
+        /// lowers the pair, but not after a reboot, which may follow a recovery that
+        /// already lowered it.
+        maybe_restart: Option<MiningHardwareProfile>,
         entered_at_ms: u64,
         maybe_cool_since_ms: Option<u64>,
         maybe_last_cool_ms: Option<u64>,
@@ -134,12 +141,11 @@ pub struct OverheatRecovery {
 }
 
 impl OverheatRecovery {
-    /// An overheat stopped mining at `profile`. The shell saves
-    /// [`OVERHEAT_ENTRY_SETTINGS`] and runs the ordered safe-stop.
-    pub fn enter(&mut self, profile: MiningHardwareProfile, now_ms: u64) {
+    /// An overheat stopped mining at `profile` on the board `entry` describes. The
+    /// shell saves [`OVERHEAT_ENTRY_SETTINGS`] and runs the ordered safe-stop.
+    pub fn enter(&mut self, entry: BoardCatalogEntry, profile: MiningHardwareProfile, now_ms: u64) {
         self.phase = Phase::Cooling {
-            profile,
-            lower: true,
+            maybe_restart: reduced_profile(entry, profile),
             entered_at_ms: now_ms,
             maybe_cool_since_ms: None,
             maybe_last_cool_ms: None,
@@ -167,21 +173,19 @@ impl OverheatRecovery {
             return;
         };
         self.phase = Phase::Cooling {
-            profile: saved,
-            lower: false,
+            maybe_restart: Some(saved),
             entered_at_ms: now_ms,
             maybe_cool_since_ms: None,
             maybe_last_cool_ms: None,
         };
     }
 
-    /// One cooling tick. Only a fresh reading taken after the overheat counts. A
-    /// hot, stale or missing reading, or a gap between cool readings, restarts the
-    /// 30 s.
-    pub fn observe(&mut self, maybe_reading: Option<ChipReading>, now_ms: u64) -> OverheatStep {
+    /// One cooling tick. Only a fresh sample taken after the overheat counts. A
+    /// sample that is not cool, a stale or missing one, or a gap between cool
+    /// samples, restarts the 30 s.
+    pub fn observe(&mut self, maybe_sample: Option<CoolingSample>, now_ms: u64) -> OverheatStep {
         let Phase::Cooling {
-            profile,
-            lower,
+            maybe_restart,
             entered_at_ms,
             maybe_cool_since_ms,
             maybe_last_cool_ms,
@@ -192,17 +196,16 @@ impl OverheatRecovery {
                 _ => OverheatStep::Clear,
             };
         };
-        let maybe_cool_at_ms = maybe_reading
-            .filter(|reading| {
-                reading.acquired_at_ms >= entered_at_ms
-                    && now_ms.saturating_sub(reading.acquired_at_ms) <= CHIP_READING_FRESH_MS
-                    && reading.celsius <= SAFE_RESTART_TEMP_C
+        let maybe_cool_at_ms = maybe_sample
+            .filter(|sample| {
+                sample.cool
+                    && sample.acquired_at_ms >= entered_at_ms
+                    && now_ms.saturating_sub(sample.acquired_at_ms) <= CHIP_READING_FRESH_MS
             })
-            .map(|reading| reading.acquired_at_ms);
+            .map(|sample| sample.acquired_at_ms);
         let Some(cool_at_ms) = maybe_cool_at_ms else {
             self.phase = Phase::Cooling {
-                profile,
-                lower,
+                maybe_restart,
                 entered_at_ms,
                 maybe_cool_since_ms: None,
                 maybe_last_cool_ms: None,
@@ -216,8 +219,7 @@ impl OverheatRecovery {
             _ => cool_at_ms,
         };
         self.phase = Phase::Cooling {
-            profile,
-            lower,
+            maybe_restart,
             entered_at_ms,
             maybe_cool_since_ms: Some(cool_since_ms),
             maybe_last_cool_ms: Some(cool_at_ms),
@@ -225,11 +227,6 @@ impl OverheatRecovery {
         if cool_at_ms.saturating_sub(cool_since_ms) < OVERHEAT_COOLING_MS {
             return OverheatStep::Cooling;
         }
-        let maybe_restart = if lower {
-            reduced_profile(profile)
-        } else {
-            Some(profile)
-        };
         match maybe_restart {
             Some(reduced) => {
                 self.phase = Phase::Clear;
@@ -260,3 +257,7 @@ impl OverheatRecovery {
 #[cfg(test)]
 #[path = "local_mining/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "local_mining/board_tests.rs"]
+mod board_tests;

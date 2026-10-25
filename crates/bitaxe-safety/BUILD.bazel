@@ -39,6 +39,8 @@ rust_library(
         "src/fault.rs",
         "src/gamma601_chip_check.rs",
         "src/gamma601_chip_check/tests.rs",
+        "src/gamma601_diode.rs",
+        "src/gamma601_diode/tests.rs",
         "src/gamma601_hash_check.rs",
         "src/gamma601_hash_check/tests.rs",
         "src/gamma601_hash_check/window.rs",

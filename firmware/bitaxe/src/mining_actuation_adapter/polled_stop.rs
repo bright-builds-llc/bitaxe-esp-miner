@@ -3,14 +3,11 @@
 //! The blocking wait and the polled stop share one predicate, so a proof means the same
 //! thing on both paths.
 
-use super::{
-    MiningActuationAdapterError, Ultra205MiningActuationAdapter, SAFE_COOLING_THRESHOLD_C,
-};
+use super::{MiningActuationAdapterError, Ultra205MiningActuationAdapter};
 use crate::mining_actuation::{
     begin_safe_stop_with_progress, poll_cooling_proof, CoolingProofBackend, PendingCoolingProof,
     SafeShutdownStep, SafeStopProgress,
 };
-use bitaxe_safety::observation::MonotonicMillis;
 use bitaxe_stratum::v1::production_session::HardwareSafeStopPurpose;
 
 impl Ultra205MiningActuationAdapter {
@@ -41,23 +38,20 @@ impl Ultra205MiningActuationAdapter {
             .ok_or(MiningActuationAdapterError::CoolingProofRequired)
     }
 
-    /// One check: mining-safe observations and a fresh, finite chip reading at or below
-    /// 45 C, taken after the window opened. A proof is kept for the paused fan duty.
+    /// One check of the board's stop rule (`cooling_core::stop_cooling_proven`): on the 205 a
+    /// fresh chip reading at or below 45 C taken after the window opened; on the 601 the
+    /// regulator cool with the chip unpowered, and the window open long enough. A proof is
+    /// kept for the paused fan duty.
     pub(super) fn observe_cooling_proof(&mut self) -> bool {
         let Ok(started_at_ms) = self.cooling_window_started_at_ms() else {
             return false;
         };
-        let observations = crate::safety_adapter::observation_snapshot();
-        let maybe_temperature = observations.chip_temp_celsius.maybe_last_good();
-        let proven = observations.is_mining_safe_at(
+        let proven = crate::production_mining_session::cooling_core::stop_cooling_proven(
             &crate::board_identity::MINING_SAFETY_LIMITS,
-            MonotonicMillis::new(crate::runtime_uptime::millis()),
-        ) && observations.chip_temp_celsius.is_fresh()
-            && maybe_temperature.is_some_and(|sample| {
-                sample.acquired_at().get() > started_at_ms
-                    && sample.value().is_finite()
-                    && *sample.value() <= SAFE_COOLING_THRESHOLD_C
-            });
+            &crate::safety_adapter::observation_snapshot(),
+            started_at_ms,
+            crate::runtime_uptime::millis(),
+        );
         if proven {
             self.cooling_proven = true;
         }

@@ -287,6 +287,35 @@ not a guard anyone designed.
       capability on every field but the board, and its signature against
       the compiled trust. The Worker threads are the 205's, with the same
       stacks.
+11. **The 601's chip temperature counts only once the BM1370 is
+    initialized.** Its EMC2101 external channel reads the BM1370's diode,
+    which reads 127.75 C (raw `0x3FE`) until the init's analog-mux write and
+    37.5 to 40 C after it (phase F3.2). Upstream reads it only after its
+    init (`thermal.c`).
+    - **Stages** (`bitaxe_safety::gamma601_diode`): with the output
+      confirmed off the chip temperature is `Unavailable(AsicUnpowered)`;
+      powered before this run's init completes it is
+      `Unavailable(AsicNotInitialized)`; once the executor reports the init
+      for the generation the output is on for, the reading counts, latched
+      until the off is confirmed. While initialized, an exact 127.75 C is a
+      fault (a chip that lost its configuration), and a read failure or a
+      stale reading revokes as before. The executor's init flag is an
+      atomic, so the sweep never waits on the init ramp's lock.
+    - **The verdict** skips the chip temperature only for those two reasons
+      and only on a board whose chip temperature comes from the ASIC's
+      diode (`emc_internal_temp` false in the catalog, as upstream's
+      `device_config.h`). The 205's board-sensor reading is unchanged.
+    - **The window cap:** powered but uninitialized for more than 20 s is a
+      fault (`bm1370_init_overdue`).
+    - **Cooling after a stop and overheat recovery** cannot use the diode
+      with the chip unpowered. On the 601 they need the chip unpowered and
+      the regulator at or below 95 C, for at least 30 s: upstream's own
+      600-series rule (`power_management_task.c`). Run admission on the 601
+      also needs the chip unpowered.
+    - **My calls:** every 601 stop proof takes the 30 s, not only after an
+      overheat; a regulator overheat still ends the run stopped rather than
+      recovering as upstream does; the overheat-recovery reduced profile
+      follows the built board's catalog (it used the 205's).
 
 
 ## Consequences

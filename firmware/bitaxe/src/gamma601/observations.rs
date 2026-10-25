@@ -3,9 +3,13 @@
 //!
 //! Reference: `reference/esp-miner/main/power/power.c` and `main/thermal/thermal.c`.
 
+use super::actuation::ActuationState;
 use crate::operator_sensor_runtime::{new_boot_session_id, project_observations};
 use crate::safety_adapter::gamma601::ThermalAcquisitions;
 use bitaxe_safety::core_voltage_acquisition::CoreVoltageProducerState;
+use bitaxe_safety::gamma601_diode::{
+    chip_temperature_outcome, next_stage, DiodeStage, UninitializedWindow,
+};
 use bitaxe_safety::gamma601_safe_boot::SafeBootReport;
 use bitaxe_safety::gamma601_sensors::{self, RegulatorReadings};
 use bitaxe_safety::observation::{BootSessionId, MonotonicMillis};
@@ -23,6 +27,10 @@ pub(super) struct Producer {
     state: ProducerSensorState,
     sequences: ProducerSequences,
     core_voltage: CoreVoltageProducerState,
+    /// Whether the BM1370's diode reading counts (ADR-0041 item 11). Boot starts powered but
+    /// uninitialized, the cautious stage, until the safe boot confirms the output off.
+    diode_stage: DiodeStage,
+    uninitialized: UninitializedWindow,
 }
 
 impl Producer {
@@ -32,20 +40,32 @@ impl Producer {
             state: ProducerSensorState::default(),
             sequences: ProducerSequences::default(),
             core_voltage: CoreVoltageProducerState::default(),
+            diode_stage: DiodeStage::PoweredUninitialized,
+            uninitialized: UninitializedWindow::default(),
         }
     }
 
     /// Reduces the sweep just read into the observations and publishes them.
     // Kept a distinct frame so the build's stack audit can bound it (`firmware-stack-budget.ts`).
     #[inline(never)]
-    /// `output_on` says the regulator is deliberately on, so its `OFF` bit is a fault.
+    /// `state` says whether the regulator is deliberately on (so its `OFF` bit is a fault) and
+    /// for which generation, which decides whether the chip's diode reading counts.
     pub(super) fn publish(
         &mut self,
         report: &SafeBootReport,
         thermal: ThermalAcquisitions,
-        output_on: bool,
+        state: &ActuationState,
     ) {
         let entry = crate::board_identity::catalog_entry();
+        let init_matches_generation = state.powered_generation().is_some_and(|generation| {
+            crate::asic_adapter::production::bm1370_initialized_for(generation)
+        });
+        self.diode_stage = next_stage(
+            self.diode_stage,
+            report.off_confirmed(),
+            state.regulator_on,
+            init_matches_generation,
+        );
         let readings = RegulatorReadings {
             maybe_vin_volts: report.maybe_vin_volts,
             maybe_iout_amps: report.maybe_iout_amps,
@@ -58,11 +78,23 @@ impl Producer {
                 report.off_confirmed(),
                 f64::from(entry.family_facts().power_offset_watts),
             ),
-            asic_temperature_celsius: thermal.chip_temperature,
+            asic_temperature_celsius: chip_temperature_outcome(
+                self.diode_stage,
+                state.regulator_on,
+                thermal.chip_temperature,
+            ),
             vr_temperature_celsius: gamma601_sensors::vr_temperature_outcome(readings),
             tachometer_rpm: thermal.tachometer,
         };
         let acquired_at = MonotonicMillis::new(crate::runtime_uptime::millis());
+        // The init window is a run's: it counts only while the regulator is commanded on, so a
+        // boot whose off is slow to confirm is not called an overdue init.
+        let window_stage = if state.regulator_on {
+            self.diode_stage
+        } else {
+            DiodeStage::Unpowered
+        };
+        let maybe_overdue = self.uninitialized.observe(window_stage, acquired_at.get());
         match reduce_tps546_sensor_sweep(
             self.state,
             self.sequences,
@@ -70,7 +102,11 @@ impl Producer {
             self.boot_session,
             acquired_at,
             f64::from(entry.power_consumption_target()),
-            gamma601_sensors::regulator_fault(report.maybe_status.map(StatusWord), output_on),
+            gamma601_sensors::regulator_fault(
+                report.maybe_status.map(StatusWord),
+                state.output_verified_on(),
+            )
+            .or(maybe_overdue),
         ) {
             Ok((state, sequences)) => {
                 self.state = state.mark_stale_at(acquired_at, STALE_AFTER_MS);

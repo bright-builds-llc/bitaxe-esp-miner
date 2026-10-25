@@ -140,10 +140,16 @@ impl TelemetryObservations {
             Ok(fact) => fact,
             Err(rejection) => return Some(rejection.verdict(SafetyFact::Current)),
         };
-        let chip_temperature = match admissible(&self.chip_temp_celsius, now) {
-            Ok(fact) => fact,
-            Err(rejection) => return Some(rejection.verdict(SafetyFact::ChipTemperature)),
-        };
+        // An ASIC-diode board's chip has no reading while unpowered or uninitialized.
+        let maybe_chip_temperature =
+            if limits.chip_temperature_not_expected(&self.chip_temp_celsius) {
+                None
+            } else {
+                match admissible(&self.chip_temp_celsius, now) {
+                    Ok(fact) => Some(fact),
+                    Err(rejection) => return Some(rejection.verdict(SafetyFact::ChipTemperature)),
+                }
+            };
         if let Err(rejection) = admissible(&self.fan_rpm, now) {
             return Some(rejection.verdict(SafetyFact::FanRpm));
         }
@@ -162,7 +168,7 @@ impl TelemetryObservations {
             power.0,
             bus_voltage.0,
             current.0,
-            chip_temperature.0,
+            maybe_chip_temperature.map(|(celsius, _)| celsius),
             vr_temperature.0,
         )?;
         let (value, age_ms) = match fact {
@@ -170,8 +176,11 @@ impl TelemetryObservations {
             SafetyFact::BusVoltage => bus_voltage,
             SafetyFact::Current => current,
             SafetyFact::VrTemperature => vr_temperature,
-            // Fan RPM has freshness but no range limit, so it never fails here.
-            SafetyFact::ChipTemperature | SafetyFact::FanRpm => chip_temperature,
+            // Fan RPM has freshness but no range limit, so it never fails here, and a skipped
+            // chip temperature is never out of range.
+            SafetyFact::ChipTemperature | SafetyFact::FanRpm => {
+                maybe_chip_temperature.unwrap_or((f64::NAN, 0))
+            }
         };
         Some(SafetyVerdict {
             fact,
@@ -224,3 +233,7 @@ fn maybe_milli(value: f64) -> Option<i64> {
 #[cfg(test)]
 #[path = "safety_verdict_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "chip_rule_tests.rs"]
+mod chip_rule_tests;

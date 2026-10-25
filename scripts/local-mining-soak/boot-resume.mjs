@@ -78,9 +78,9 @@ async function setMineOnBoot(client, value) {
 /**
  * Recovery: pause at once, then turn mining on boot off if it does not already read off, then
  * confirm the ASIC powered down. The pause comes first because the setting only matters at the next
- * boot, and a refused write must not keep the device mining. Never throws.
+ * boot, and a refused write must not keep the device mining. `limits` are the soak's. Never throws.
  */
-export async function pauseThenRestore({ client, now, sleep, note }) {
+export async function pauseThenRestore({ client, now, sleep, note, limits }) {
   let paused = false;
   const pause = async () => {
     try { await client.command("pause"); paused = true; await note({ event: "paused", atMs: now() }); }
@@ -91,7 +91,7 @@ export async function pauseThenRestore({ client, now, sleep, note }) {
   try { mineOnBootOff = (await client.info()).startMiningOnBoot === false; } catch { /* restore below */ }
   // A device still restarting may come back mining; until a pause lands, each write attempt re-sends it.
   if (!mineOnBootOff) mineOnBootOff = await restoreMineOnBoot({ client, now, sleep, note, beforeWrite: async () => { if (!paused) await pause(); } });
-  const maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
+  const maybeFinal = await pauseAndConfirm({ client, now, sleep, note, limits });
   return { mineOnBootOff, maybeFinal };
 }
 

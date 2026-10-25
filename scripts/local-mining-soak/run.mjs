@@ -4,8 +4,8 @@
 // pause and confirm the ASIC powered down. From the resume on, every path pauses the device. The
 // device, clock, journal and lease result are injected, so the sequence is tested without hardware.
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { activeSpanMs, hardwareStopped, hashing, judge, liveStop, mining, miningLog, runDeadlineMs, sampleFromInfo,
-  SAMPLE_INTERVAL_MS, SOAKS, START_ALLOWANCE_MS, STOP_ALLOWANCE_MS } from "./judge.mjs";
+import { activeSpanMs, hardwareStoppedUnder, hashingUnder, judge, LIMITS, limitsOf, liveStop, mining, miningLog, runDeadlineMs,
+  sampleFromInfo, SAMPLE_INTERVAL_MS, SOAKS, START_ALLOWANCE_MS, STOP_ALLOWANCE_MS } from "./judge.mjs";
 import { judgeLease, leasePhases } from "./lease.mjs";
 import { handoverPhases, judgeHandover } from "./handover.mjs";
 import { breakWatcher } from "./break-log.mjs";
@@ -48,7 +48,7 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
   if (maybeStop !== null) await note({ event: "live_stop", code: maybeStop });
   // The stopping check journals and judges every sample of the pause.
   const maybeStopSamples = soak.kind === "stopping" ? [] : null;
-  const maybeFinal = await pauseAndConfirm({ client, now, sleep, note, maybeStopSamples });
+  const maybeFinal = await pauseAndConfirm({ client, now, sleep, note, maybeStopSamples, limits: limitsOf(soak) });
   const judged = { baseline, samples, maybeFinal, soak, maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) };
   const verdict = soak.kind === "lease" ? judgeLease({ ...judged, marks }) : soak.kind === "handover" ? judgeHandover(judged) : judge(judged);
   if (maybeStopSamples !== null) {
@@ -72,8 +72,9 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
 }
 
 /**
- * Admits the run's paused baseline and saves the owner's pool; refuses before any write unless the
- * device runs the expected firmware on the handed-off boot, paused, with the ASIC shown powered down.
+ * Admits the run's paused baseline and saves the owner's pool, then the soak's `profile` if it has
+ * one; refuses before any write unless the device runs the expected firmware on the handed-off boot,
+ * paused, with the ASIC shown powered down, and before the resume unless each setting reads back.
  */
 export async function admitBaseline({ client, expected, settings, now, note, soak = null }) {
   const baselineInfo = await client.info();
@@ -93,22 +94,34 @@ export async function admitBaseline({ client, expected, settings, now, note, soa
   requireCondition(baseline.miningPaused && !mining(baseline) && !baseline.startMiningOnBoot && baseline.pauseReason === null,
     "soak_baseline_not_paused");
   // The stopped proof must be reachable before anything starts, or no run could end judged.
-  requireCondition(hardwareStopped(baseline), "soak_baseline_not_stopped");
+  requireCondition(hardwareStoppedUnder(limitsOf(soak))(baseline), "soak_baseline_not_stopped");
   await note({ event: "baseline", sample: baseline });
   await client.patch(settings);
   requireCondition(poolSaved(await client.info(), settings), "soak_pool_not_saved");
   await note({ event: "pool_saved" });
+  if (soak?.profile) await saveProfile({ client, profile: soak.profile, now, note });
   return baseline;
+}
+
+/** Saves the soak's frequency and core voltage and confirms the device reports both. */
+async function saveProfile({ client, profile, now, note }) {
+  await client.patch({ frequency: profile.frequencyMhz, coreVoltage: profile.coreVoltageMv });
+  const saved = sampleFromInfo(await client.info(), now());
+  requireCondition(saved.frequencyMhz === profile.frequencyMhz && saved.coreVoltageMv === profile.coreVoltageMv,
+    "soak_profile_not_saved");
+  await note({ event: "profile_saved", frequencyMhz: profile.frequencyMhz, coreVoltageMv: profile.coreVoltageMv });
 }
 
 /** A plain soak's phases: mine until its mining time, continuous or, if tolerant, accumulated. */
 export function localPhases({ soak, samples, resumedAt }) {
+  const limits = limitsOf(soak);
+  const hashing = hashingUnder(limits);
   return {
     outageSamples: () => samples,
     onSample(sample) {
       if (!samples.some(hashing) && sample.atMs - resumedAt > START_ALLOWANCE_MS) return "soak_mining_not_started";
-      if (soak.maybeMaximumOutageMs === null) return activeSpanMs(samples) >= soak.activeMs ? null : undefined;
-      const log = miningLog(samples);
+      if (soak.maybeMaximumOutageMs === null) return activeSpanMs(samples, limits) >= soak.activeMs ? null : undefined;
+      const log = miningLog(samples, limits);
       if (log.maybeLastMiningAtMs !== null && sample.atMs - log.maybeLastMiningAtMs > soak.maybeMaximumOutageMs) {
         return "soak_outage_unrecovered";
       }
@@ -120,10 +133,11 @@ export function localPhases({ soak, samples, resumedAt }) {
 /**
  * Samples until the phases finish (null) or a stop code. `phases.onSample` returns null when done,
  * a stop code, or undefined to go on; `phases.outageSamples` names the samples whose outage counts
- * while the device cannot be reached.
+ * while the device cannot be reached. `stopRule` also receives the soak's limits.
  */
 export async function sampleLoop({ client, baseline, samples, resumedAt, now, sleep, note, isInterrupted, soak, phases, watcher,
   stopRule = liveStop }) {
+  const limits = limitsOf(soak);
   let maybeLastReachedAt = resumedAt;
   // A tolerant soak waits out a recovering outage up to its bound; a strict one stops sooner.
   const unreachableStopMs = soak.unreachableStopMs ?? soak.maybeMaximumOutageMs ?? UNREACHABLE_STOP_MS;
@@ -136,7 +150,7 @@ export async function sampleLoop({ client, baseline, samples, resumedAt, now, sl
       watcher?.unreachable(samples.at(-1));
       if (now() - maybeLastReachedAt > unreachableStopMs) return "soak_device_unreachable";
       // An outage keeps counting while the device cannot be reached.
-      const maybeLastMiningAtMs = miningLog(phases.outageSamples()).maybeLastMiningAtMs;
+      const maybeLastMiningAtMs = miningLog(phases.outageSamples(), limits).maybeLastMiningAtMs;
       if (soak.maybeMaximumOutageMs !== null && maybeLastMiningAtMs !== null &&
         now() - maybeLastMiningAtMs > soak.maybeMaximumOutageMs) return "soak_outage_unrecovered";
       continue;
@@ -146,9 +160,9 @@ export async function sampleLoop({ client, baseline, samples, resumedAt, now, sl
     const maybePrevious = samples.at(-1) ?? null;
     samples.push(sample);
     await note({ event: "sample", sample });
-    const maybeStop = stopRule(sample, baseline, maybePrevious);
+    const maybeStop = stopRule(sample, baseline, maybePrevious, limits);
     if (maybeStop !== null) return maybeStop;
-    await watcher?.observe(sample, hashing(sample));
+    await watcher?.observe(sample, hashingUnder(limits)(sample));
     // A log read can take seconds; it never counts against the unreachable bound.
     maybeLastReachedAt = Math.max(maybeLastReachedAt, now());
     const outcome = await phases.onSample(sample);
@@ -160,9 +174,10 @@ export async function sampleLoop({ client, baseline, samples, resumedAt, now, sl
  * Pauses, then waits for the ordered safe-stop: two samples in a row with the ASIC shown powered
  * down. Never throws; the pause is retried while the allowance lasts. With `maybeStopSamples`,
  * every sample from the first pause attempt on is journaled and kept there: a request whose
- * response is lost may still have paused the device.
+ * response is lost may still have paused the device. `limits` set the idle power that shows it.
  */
-export async function pauseAndConfirm({ client, now, sleep, note, maybeStopSamples = null }) {
+export async function pauseAndConfirm({ client, now, sleep, note, maybeStopSamples = null, limits = LIMITS }) {
+  const hardwareStopped = hardwareStoppedUnder(limits);
   const pausedAt = now();
   let pauseSent = false, maybeLastPauseAt = null, maybeStopped = null;
   while (now() - pausedAt <= STOP_ALLOWANCE_MS) {

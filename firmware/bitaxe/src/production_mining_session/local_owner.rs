@@ -332,9 +332,10 @@ impl OrdinaryEspProductionSessionAdapter {
             stratum_v1_supported: self.protocol_gate.is_ready(),
             // The run's preparation proves the fan, so it may begin from a stopped fan.
             safety_fresh: cooling_core::preparation_safety(
-                observations.is_mining_safe_at(
+                cooling_core::admission_safe(
                     &crate::board_identity::MINING_SAFETY_LIMITS,
-                    MonotonicMillis::new(now_ms),
+                    &observations,
+                    now_ms,
                 ),
                 nonzero_rpm,
                 true,

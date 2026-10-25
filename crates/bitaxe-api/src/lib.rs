@@ -80,9 +80,9 @@ pub use network::{
     WifiScanResponseError, MAX_WIFI_SCAN_NETWORKS,
 };
 pub use observation::{
-    project_observation, MiningSafetyLimits, ObservationReasonWire, ObservationStampWire,
-    ObservationStateWire, ObservationStore, ObservationTruthWire, SafetyFact, SafetyFactState,
-    SafetyVerdict, TelemetryObservations,
+    project_observation, ChipTemperatureSource, CoolingSample, MiningSafetyLimits,
+    ObservationReasonWire, ObservationStampWire, ObservationStateWire, ObservationStore,
+    ObservationTruthWire, SafetyFact, SafetyFactState, SafetyVerdict, TelemetryObservations,
 };
 pub use operator_snapshot::{
     BootSessionId, OperatorSnapshotIdentity, OperatorSnapshotIdentityError,

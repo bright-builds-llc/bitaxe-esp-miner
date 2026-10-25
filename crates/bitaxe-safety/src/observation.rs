@@ -176,6 +176,11 @@ pub enum UnavailableReason {
     CoreVoltageUnavailable,
     ThermalReadingUnavailable,
     TachometerUnavailable,
+    /// An ASIC-diode board's chip is unpowered, so its diode has no reading.
+    AsicUnpowered,
+    /// An ASIC-diode board's chip is powered but not yet initialized, so its diode reads
+    /// the unconfigured value.
+    AsicNotInitialized,
 }
 
 impl UnavailableReason {
@@ -189,6 +194,8 @@ impl UnavailableReason {
             Self::CoreVoltageUnavailable => "core_voltage_unavailable",
             Self::ThermalReadingUnavailable => "thermal_reading_unavailable",
             Self::TachometerUnavailable => "tachometer_unavailable",
+            Self::AsicUnpowered => "asic_unpowered",
+            Self::AsicNotInitialized => "asic_not_initialized",
         }
     }
 }
@@ -210,6 +217,8 @@ pub enum FaultReason {
     PowerLimitExceeded,
     PowerReadingInvalid,
     ThermalReadingInvalid,
+    /// The Gamma 601's BM1370 stayed powered but uninitialized past its cap.
+    Bm1370InitOverdue,
 }
 
 impl FaultReason {
@@ -228,6 +237,7 @@ impl FaultReason {
             Self::PowerLimitExceeded => "power_limit_exceeded",
             Self::PowerReadingInvalid => "power_reading_invalid",
             Self::ThermalReadingInvalid => "thermal_reading_invalid",
+            Self::Bm1370InitOverdue => "bm1370_init_overdue",
         }
     }
 }

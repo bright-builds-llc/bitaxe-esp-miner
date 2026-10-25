@@ -46,7 +46,6 @@ mod preparation;
 const FAN_PROOF_TIMEOUT_MS: u64 = 3_000;
 const FAN_PROOF_POLL_MS: u64 = 50;
 const COOLING_PROOF_POLL_MS: u64 = 500;
-const SAFE_COOLING_THRESHOLD_C: f64 = 45.0;
 
 use crate::production_mining_session::cooling_core::{
     post_command_fan, FanStamp as ObservationStamp,

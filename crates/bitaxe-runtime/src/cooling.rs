@@ -1,8 +1,11 @@
 //! Fan-only orchestration has no ASIC, voltage, pool, or budget capability.
-use bitaxe_api::{MiningSafetyLimits, TelemetryObservations};
+use bitaxe_api::{ChipTemperatureSource, MiningSafetyLimits, TelemetryObservations};
 use bitaxe_safety::observation::MonotonicMillis;
 
 pub const FAN_PROOF_TIMEOUT_MS: u64 = 3_000;
+/// An ASIC-diode board's stop proof waits at least this long after its window opens, as
+/// upstream's 600-series recovery waits a fixed 30 s with the diode unreadable.
+pub const ASIC_DIODE_STOP_COOLING_MS: u64 = crate::local_mining::OVERHEAT_COOLING_MS;
 #[derive(Clone, Copy, Debug)]
 pub struct FanStamp {
     pub boot_session: u64,
@@ -25,16 +28,61 @@ pub fn post_command_fan(
 pub fn preparation_safety(base_safe: bool, nonzero_rpm: bool, never_prepared_worker: bool) -> bool {
     base_safe && (nonzero_rpm || never_prepared_worker)
 }
+/// Mining-safe observations and a cool restart sample, without a time rule: the chip at or
+/// below 45 C, or on an ASIC-diode board the chip reported unpowered and the regulator at or
+/// below 95 C.
 pub fn baseline_safe(
     limits: &MiningSafetyLimits,
     observations: &TelemetryObservations,
     now_ms: u64,
 ) -> bool {
     observations.is_mining_safe_at(limits, MonotonicMillis::new(now_ms))
-        && observations
-            .chip_temp_celsius
-            .maybe_last_good()
-            .is_some_and(|sample| *sample.value() <= 45.0)
+        && cool_sample(limits, observations, |_| true)
+}
+/// Whether a run may qualify its fan. A board-sensor board needs mining-safe observations.
+/// An ASIC-diode board also needs [`baseline_safe`]'s sample, so a reboot that left its
+/// regulator on, with the chip not reported unpowered, is not admitted.
+pub fn admission_safe(
+    limits: &MiningSafetyLimits,
+    observations: &TelemetryObservations,
+    now_ms: u64,
+) -> bool {
+    match limits.chip_temperature_source() {
+        ChipTemperatureSource::BoardSensor => {
+            observations.is_mining_safe_at(limits, MonotonicMillis::new(now_ms))
+        }
+        ChipTemperatureSource::AsicDiode => baseline_safe(limits, observations, now_ms),
+    }
+}
+/// The terminal stop's cooling proof: mining-safe observations and a cool restart sample taken
+/// after the window opened. An ASIC-diode board also needs [`ASIC_DIODE_STOP_COOLING_MS`]
+/// since the window opened.
+pub fn stop_cooling_proven(
+    limits: &MiningSafetyLimits,
+    observations: &TelemetryObservations,
+    window_start_ms: u64,
+    now_ms: u64,
+) -> bool {
+    let waited = match limits.chip_temperature_source() {
+        ChipTemperatureSource::BoardSensor => true,
+        ChipTemperatureSource::AsicDiode => {
+            now_ms.saturating_sub(window_start_ms) >= ASIC_DIODE_STOP_COOLING_MS
+        }
+    };
+    waited
+        && observations.is_mining_safe_at(limits, MonotonicMillis::new(now_ms))
+        && cool_sample(limits, observations, |acquired_at_ms| {
+            acquired_at_ms > window_start_ms
+        })
+}
+fn cool_sample(
+    limits: &MiningSafetyLimits,
+    observations: &TelemetryObservations,
+    taken_in_window: impl Fn(u64) -> bool,
+) -> bool {
+    observations
+        .restart_cooling_sample(limits)
+        .is_some_and(|sample| sample.cool && taken_in_window(sample.acquired_at_ms))
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CoolingError {
@@ -78,7 +126,7 @@ pub fn qualify(backend: &mut impl CoolingBackend) -> Result<u16, CoolingError> {
     let started = backend.now_ms();
     let baseline = backend.observations();
     let limits = backend.safety_limits();
-    if !backend.admitted() || !baseline.is_mining_safe_at(&limits, MonotonicMillis::new(started)) {
+    if !backend.admitted() || !admission_safe(&limits, &baseline, started) {
         return Err(CoolingError::Rejected);
     }
     let maybe_baseline = stamp(&baseline);
@@ -90,7 +138,7 @@ pub fn qualify(backend: &mut impl CoolingBackend) -> Result<u16, CoolingError> {
         }
         let now = backend.now_ms();
         let observations = backend.observations();
-        if !observations.is_mining_safe_at(&limits, MonotonicMillis::new(now)) {
+        if !admission_safe(&limits, &observations, now) {
             return Err(CoolingError::Rejected);
         }
         if maybe_applied_at.is_none() && backend.poll()? == FanReply::Applied {
@@ -144,3 +192,6 @@ pub fn restore(backend: &mut impl CoolingBackend) -> Result<(), CoolingError> {
         backend.wait();
     }
 }
+#[cfg(test)]
+#[path = "cooling/tests.rs"]
+mod tests;

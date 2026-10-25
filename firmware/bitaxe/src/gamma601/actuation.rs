@@ -47,6 +47,19 @@ impl ActuationState {
         report.fan_duty_with(self.maybe_fan_duty, self.regulator_on)
     }
 
+    /// The generation the output is on for, in `WorkerGeneration::raw` form; `None` while it is
+    /// off or in builds that never turn it on for a run.
+    pub(super) fn powered_generation(&self) -> Option<u32> {
+        #[cfg(feature = "gamma601-mining")]
+        return self
+            .maybe_permit
+            .filter(|_| self.regulator_on)
+            .and_then(|permit| permit.maybe_generation())
+            .map(|generation| generation.raw());
+        #[cfg(not(feature = "gamma601-mining"))]
+        None
+    }
+
     /// Whether the output is on and judged settled, so its `OFF` bit is a fault.
     pub(super) fn output_verified_on(&self) -> bool {
         #[cfg(feature = "gamma601-mining")]

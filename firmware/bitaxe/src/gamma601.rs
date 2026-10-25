@@ -494,7 +494,7 @@ fn refresh(
     state: &actuation::ActuationState,
 ) {
     let thermal = sweep(owner, report, state);
-    producer.publish(report, thermal, state.output_verified_on());
+    producer.publish(report, thermal, state);
     publish(*report);
 }
 

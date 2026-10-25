@@ -961,6 +961,7 @@ rust_test(
         "src/production_mining_session/bwg.rs",
         "src/production_mining_session/live_hardware.rs",
         "src/asic_adapter/production/admission.rs",
+        "src/asic_adapter/production/bm1370_init.rs",
         "src/production_mining_session/inbox.rs",
         "src/production_mining_session/readiness.rs",
         "src/production_mining_session/safe_stop.rs",

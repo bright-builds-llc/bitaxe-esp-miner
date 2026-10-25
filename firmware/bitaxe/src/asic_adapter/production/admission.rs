@@ -9,6 +9,7 @@ pub fn block_production_dispatch() -> Result<(), ProductionAsicBlocker> {
         return Err(ProductionAsicBlocker::UartFailed);
     };
     state.production_ready = false;
+    clear_bm1370_initialized();
     Ok(())
 }
 
@@ -47,6 +48,7 @@ pub fn set_asic_power_enabled_guarded(
     }
     if !enabled {
         state.production_ready = false;
+        clear_bm1370_initialized();
     }
     let enable = state
         .maybe_enable
@@ -87,6 +89,7 @@ pub fn execute_chip_detection_actions_guarded_with_progress(
         return Err(ProductionAsicBlocker::UartFailed);
     };
     state.production_ready = false;
+    clear_bm1370_initialized();
     if !crate::production_mining_session::revocation::permits(maybe_generation) {
         return Err(ProductionAsicBlocker::AsicInitFailed);
     }
@@ -122,6 +125,7 @@ pub fn execute_mining_ready_actions_guarded_with_progress(
         return Err(ProductionAsicBlocker::UartFailed);
     };
     state.production_ready = false;
+    clear_bm1370_initialized();
     if !crate::production_mining_session::revocation::permits(maybe_generation) {
         return Err(ProductionAsicBlocker::AsicInitFailed);
     }
@@ -133,6 +137,7 @@ pub fn execute_mining_ready_actions_guarded_with_progress(
         return Err(ProductionAsicBlocker::AsicInitFailed);
     }
     state.production_ready = true;
+    record_bm1370_initialized(maybe_generation);
     status::publish_production_asic_status(ProductionAsicStatus::InitializedForProduction);
     Ok(())
 }

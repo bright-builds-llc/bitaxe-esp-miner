@@ -228,6 +228,17 @@ mod tests {
     }
 
     #[test]
+    fn the_gamma_601_first_run_profile_is_admissible() {
+        // Arrange: the owner's F3.3 pair, the catalog minimum.
+        let entry = bitaxe_config::catalog::gamma_601_catalog_entry();
+        let profile = MiningHardwareProfile::for_board(entry, 400, 1_150, 100).expect("profile");
+        // Act
+        let admitted = profile_admissible_for_board(entry, profile);
+        // Assert
+        assert!(admitted);
+    }
+
+    #[test]
     fn a_board_whose_chip_the_firmware_does_not_drive_is_not_admitted() {
         // Arrange
         let entry = bitaxe_config::board_catalog()

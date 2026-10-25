@@ -45,6 +45,10 @@ pub const ASIC_THROTTLE_TEMP_C: f64 = 75.0;
 /// A TPS546 board stops mining above this regulator temperature
 /// (`reference/esp-miner/main/tasks/power_management_task.c`, `TPS546_THROTTLE_TEMP`).
 pub const TPS546_VR_THROTTLE_TEMP_C: f64 = 105.0;
+/// After an overheat, an ASIC-diode board restarts only with its regulator at or below this,
+/// 10 C under the throttle, since the diode cannot be read with the chip down
+/// (`reference/esp-miner/main/tasks/power_management_task.c:183-207`).
+pub const TPS546_VR_RESTART_TEMP_C: f64 = TPS546_VR_THROTTLE_TEMP_C - 10.0;
 pub const SAFE_RESTART_TEMP_C: f64 = 45.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]

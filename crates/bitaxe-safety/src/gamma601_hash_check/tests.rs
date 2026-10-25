@@ -423,3 +423,13 @@ fn a_gap_longer_than_allowed_stops_even_with_a_good_reading() {
     // Assert
     assert_eq!(stop, Some(HashStop::MissedSample));
 }
+
+#[test]
+fn the_diode_gate_rejects_the_shared_unconfigured_reading() {
+    // Arrange
+    let unconfigured = crate::gamma601_diode::BM1370_DIODE_UNCONFIGURED_C;
+    // Act
+    let gated = diode_gate(Some(unconfigured), Some(unconfigured));
+    // Assert
+    assert_eq!(gated, None);
+}

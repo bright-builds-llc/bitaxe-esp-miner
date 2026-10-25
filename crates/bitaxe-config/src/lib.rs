@@ -276,4 +276,22 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn the_emc_internal_temperature_flag_mirrors_upstream_device_config() {
+        // Arrange: device_config.h sets `.emc_internal_temp = true` on exactly these boards.
+        let expected = ["0.11", "201", "202", "203", "204", "205", "400", "401"];
+
+        // Act
+        let flagged: Vec<&str> = board_catalog()
+            .iter()
+            .filter(|entry| entry.capabilities().emc_internal_temp())
+            .map(|entry| entry.board_version())
+            .collect();
+
+        // Assert
+        assert_eq!(flagged, expected);
+        assert!(ultra_205_catalog_entry().capabilities().emc_internal_temp());
+        assert!(!gamma_601_catalog_entry().capabilities().emc_internal_temp());
+    }
 }

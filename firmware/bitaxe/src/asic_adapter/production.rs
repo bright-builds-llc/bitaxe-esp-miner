@@ -205,6 +205,10 @@ pub fn production_ready() -> bool {
 mod board_601;
 #[cfg(feature = "board-gamma-601")]
 pub use board_601::{begin_reset_handover, executor_holds_reset, store_board_601_peripherals};
+mod bm1370_init;
+pub use bm1370_init::{
+    bm1370_initialized_for, clear_bm1370_initialized, record_bm1370_initialized,
+};
 mod admission;
 pub use admission::{
     block_production_dispatch, execute_chip_detection_actions,
@@ -230,6 +234,7 @@ pub fn execute_safe_shutdown_actions_with_progress(
         return Err(ProductionAsicBlocker::UartFailed);
     };
     state.production_ready = false;
+    clear_bm1370_initialized();
     if let Some(uart) = state.maybe_uart.as_mut() {
         uart.set_worker_generation(None);
     }

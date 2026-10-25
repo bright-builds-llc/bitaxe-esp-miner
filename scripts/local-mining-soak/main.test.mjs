@@ -84,3 +84,30 @@ test("a journal without a baseline yields none", () => {
   // Act / Assert
   assert.equal(baselineOfJournal(`${JSON.stringify({ event: "pool_saved" })}\n`), null);
 });
+
+test("the 601 soak runs only on the gamma601-mining firmware", () => {
+  // Arrange
+  const soak = SOAKS["gamma601-first-001"];
+  // Act / Assert
+  assert.doesNotThrow(() => requireFirmwareVariant({ firmware_variant: "gamma601-mining" }, soak));
+  assert.throws(() => requireFirmwareVariant({ firmware_variant: "production" }, soak), { code: "soak_firmware_variant" });
+  assert.throws(() => requireFirmwareVariant({}, soak), { code: "soak_firmware_variant" });
+});
+
+test("every 205 soak refuses the gamma601-mining firmware", () => {
+  // Arrange
+  const others = Object.values(SOAKS).filter((soak) => soak.id !== "gamma601-first-001");
+  // Act / Assert
+  for (const soak of others) {
+    assert.throws(() => requireFirmwareVariant({ firmware_variant: "gamma601-mining" }, soak), { code: "soak_firmware_variant" }, soak.id);
+  }
+});
+
+test("the 601 soak has its own enable line in the 601 bring-up task", () => {
+  // Arrange
+  const block = `## Active\n\n### task-gamma-601-bring-up | x\n\nGamma 601 first local mining hardware: enabled.\n\n## Other\n`;
+  // Act / Assert
+  assert.equal(soakTaskLine("gamma601-first-001"), "Gamma 601 first local mining hardware: enabled.");
+  assert.doesNotThrow(() => requireSoakTask(block, "gamma601-first-001"));
+  assert.throws(() => requireSoakTask(block.replace("Gamma 601 first", "Ultra 205 first"), "gamma601-first-001"), { code: "soak_task_disabled" });
+});

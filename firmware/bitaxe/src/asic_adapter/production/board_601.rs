@@ -21,6 +21,7 @@ pub fn store_board_601_peripherals(
     state.maybe_uart = Some(uart_static);
     state.maybe_reset = Some(reset_static);
     state.production_ready = false;
+    super::clear_bm1370_initialized();
     RESET_RETAINED.store(true, Ordering::Release);
 }
 

@@ -14,7 +14,7 @@ use bitaxe_config::{ConfigValidationError, NvsWrite};
 use bitaxe_runtime::local_mining::persistence::{
     overheat_cleared_writes, overheat_entry_writes, recovery_pair_writes, stop_marker_write,
 };
-use bitaxe_runtime::local_mining::{reduced_profile, ChipReading, OverheatRecovery, OverheatStep};
+use bitaxe_runtime::local_mining::{reduced_profile, OverheatRecovery, OverheatStep};
 
 #[derive(Default)]
 pub(super) struct OverheatState {
@@ -72,9 +72,10 @@ impl OrdinaryEspProductionSessionAdapter {
     /// The run ended in an overheat at `profile`.
     pub(super) fn enter_overheat(&mut self, profile: MiningHardwareProfile, now_ms: u64) {
         let overheat = &mut self.local.overheat;
-        overheat.recovery.enter(profile, now_ms);
+        let entry = crate::board_identity::catalog_entry();
+        overheat.recovery.enter(entry, profile, now_ms);
         overheat.clear_after_preparation = true;
-        let stays_stopped = reduced_profile(profile).is_none();
+        let stays_stopped = reduced_profile(entry, profile).is_none();
         super::retained(
             log::Level::Warn,
             &format!("local_mining=overheat stays_stopped={stays_stopped}"),
@@ -98,7 +99,12 @@ impl OrdinaryEspProductionSessionAdapter {
             }
             self.local.overheat.maybe_unsaved_pair = None;
         }
-        match self.local.overheat.recovery.observe(chip_reading(), now_ms) {
+        match self
+            .local
+            .overheat
+            .recovery
+            .observe(cooling_sample(), now_ms)
+        {
             OverheatStep::Recover(pair) => {
                 super::retained(log::Level::Info, "local_mining=overheat_recovered");
                 // After a reboot the pair is the saved one: saving it again could only
@@ -158,13 +164,9 @@ fn save(what: &str, writes: Result<Vec<NvsWrite>, Vec<ConfigValidationError>>) -
     result.is_ok()
 }
 
-/// The latest good chip reading and when the sensor took it.
-fn chip_reading() -> Option<ChipReading> {
+/// The board's latest restart-cooling sample: the chip reading on the 205, the regulator with
+/// the chip unpowered on the 601 (ADR-0041 item 11).
+fn cooling_sample() -> Option<bitaxe_api::CoolingSample> {
     crate::safety_adapter::observation_snapshot()
-        .chip_temp_celsius
-        .maybe_last_good()
-        .map(|sample| ChipReading {
-            celsius: *sample.value(),
-            acquired_at_ms: sample.acquired_at().get(),
-        })
+        .restart_cooling_sample(&crate::board_identity::MINING_SAFETY_LIMITS)
 }

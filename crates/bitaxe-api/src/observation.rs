@@ -9,9 +9,11 @@ use bitaxe_safety::{
 };
 use serde::{Deserialize, Serialize};
 
+mod cooling_sample;
 mod limits;
 mod safety_verdict;
-pub use limits::MiningSafetyLimits;
+pub use cooling_sample::CoolingSample;
+pub use limits::{ChipTemperatureSource, MiningSafetyLimits};
 pub use safety_verdict::{SafetyFact, SafetyFactState, SafetyVerdict};
 
 /// Stable public state labels for one observed fact.
@@ -145,7 +147,7 @@ fn maybe_out_of_range_fact(
     power_watts: f64,
     bus_voltage_volts: f64,
     current_amps: f64,
-    chip_temp_celsius: f64,
+    maybe_chip_temp_celsius: Option<f64>,
     vr_temp_celsius: f64,
 ) -> Option<SafetyFact> {
     let min_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 - INPUT_VOLTAGE_MARGIN_RATIO);
@@ -161,9 +163,11 @@ fn maybe_out_of_range_fact(
     if !(current_amps.is_finite() && current_amps >= 0.0) {
         return Some(SafetyFact::Current);
     }
-    if !(chip_temp_celsius.is_finite()
-        && (MIN_PLAUSIBLE_TEMP_C..ASIC_THROTTLE_TEMP_C).contains(&chip_temp_celsius))
-    {
+    // `None` only where the board's limits skip an unpowered or uninitialized ASIC diode.
+    if maybe_chip_temp_celsius.is_some_and(|chip_temp_celsius| {
+        !(chip_temp_celsius.is_finite()
+            && (MIN_PLAUSIBLE_TEMP_C..ASIC_THROTTLE_TEMP_C).contains(&chip_temp_celsius))
+    }) {
         return Some(SafetyFact::ChipTemperature);
     }
     if !limits.vr_temperature_in_range(vr_temp_celsius) {

@@ -19,7 +19,7 @@ import { poolSettings } from "./pool.mjs";
 import { runSoak } from "./run.mjs";
 import { pauseThenRestore, runBootResume } from "./boot-resume.mjs";
 import { restoreAndStop, runOverheat, settingsOf } from "./overheat.mjs";
-import { SOAKS } from "./judge.mjs";
+import { limitsOf, SOAKS } from "./judge.mjs";
 
 export const SOAK_TASK = "task-local-mining-evidence-soaks";
 /** The task that owns a soak: its own `task`, or the evidence soaks' task. */
@@ -211,8 +211,9 @@ async function pause(root) {
   const context = (await proof(root, "context.json")).value; requireCondition(context.schema === CONTEXT_SCHEMA, "soak_context");
   const endpoint = (await proof(context.endpoint_root, "endpoint.private.json")).value;
   const events = [];
+  // The soak's own idle power shows its ASIC powered down.
   const recovery = { client: deviceClient(endpoint), now: Date.now, sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
-    note: async (event) => { events.push(event.event); } };
+    note: async (event) => { events.push(event.event); }, limits: limitsOf(SOAKS[context.soak]) };
   let { mineOnBootOff, maybeFinal } = await pauseThenRestore(recovery);
   // An overheat check that died may have left its raised pair, the fan at 100% or a device pause:
   // restore the settings its journaled baseline recorded.

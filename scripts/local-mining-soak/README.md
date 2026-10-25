@@ -1,7 +1,7 @@
 # Local mining soak
 
 `just local-mining-soak preflight|run|pause` runs one local mining soak on the admitted
-Ultra 205 (ADR-0038 task 6). Each soak needs its own exact enable line,
+Ultra 205 (ADR-0038 task 6), or, for `gamma601-first-001`, on the admitted Gamma 601. Each soak needs its own exact enable line,
 `Ultra 205 local mining soak <id> hardware: enabled.` (or the soak's own
 `enableLine`), in the active block of the task that owns it. A soak names
 its task in `SOAKS` (`task`); otherwise it is the archived
@@ -69,6 +69,11 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   `task-local-mining-boot-resume`. Its enable line is `Ultra 205 local mining
   boot resume check hardware: enabled.` See [Boot-resume
   check](#boot-resume-check).
+- `gamma601-first-001` is the Gamma 601's first local mining, owned by
+  `task-gamma-601-bring-up`. Its enable line is `Gamma 601 first local
+  mining hardware: enabled.` It runs only on the test-only
+  `gamma601-mining` firmware. See [Gamma 601 first
+  mining](#gamma-601-first-mining).
 
 There is no Gate lease. The device mines the pool saved in its NVS once the
 operator resumes it, and stops when paused. The soak:
@@ -84,7 +89,7 @@ operator resumes it, and stops when paused. The soak:
    40 minutes; soak 002: 150 minutes);
 5. pauses on every path from the resume on, then waits up to 180 s for the
    ordered safe-stop: two samples in a row with fresh input power at most
-   5 W, both journaled. Then it judges.
+   5 W (the 601: 6.5 W), both journaled. Then it judges.
 
 **Crash tripwire:** a run refuses (`soak_previous_panic`) before any write
 when the device's last reset was a panic. That boot's dump waits in the
@@ -99,7 +104,7 @@ paused baseline, and each limit judges only a fresh reading.
 
 **Mining** in every soak means hashing: the status reads `active`, not
 paused, and no fresh input power reading shows the ASIC idle (5 W or
-less). A stale power reading counts as hashing; the stale-readings live
+less; the 601: 6.5 W or less). A stale power reading counts as hashing; the stale-readings live
 stop bounds staleness. Mining time, outages, spans, breaks, the start and
 restore checks and the break logs all count hashing, and so do
 `first_mining_*` and `local_stopped_after_ready_ms`. Runs recorded before
@@ -116,8 +121,8 @@ limit maxima in each verdict cover those samples.
 
 Live stops: a reset, a device pause (`pauseReason`), a hardware or power fault,
 an overheat. While mining it also stops on input outside 4.5–5.5 V, more than
-15 W, an ASIC at 75 C or above, a stopped fan, or readings stale on two
-samples in a row. It also stops if the
+15 W (the 601: 22 W), an ASIC at 75 C or above, a stopped fan, or readings stale on two
+samples in a row. The 601 also stops on a regulator above 90 C. It also stops if the
 device is unreachable for 30 s, or if mining has not started 5 minutes after
 the resume.
 
@@ -215,7 +220,8 @@ read off (retried for up to 180 s), then confirms the ASIC powered down.
 local overheat trip is 55 C instead of 75 C, so the recovery fires at
 normal mining temperatures, about 60 C. Preflight refuses a package whose
 `firmware_variant` does not match the soak: this check runs only on the
-test variant, and every other soak only on production.
+test variant, `gamma601-first-001` only on `gamma601-mining`, and every
+other soak only on production.
 
 1. It admits the paused baseline and saves the pool, as every soak does,
    and saves 500 MHz / 1200 mV. From the default 485 MHz the lowered pair
@@ -251,6 +257,34 @@ because a trip's ordered safe-stop proves the chip cool before
 did not fire, and stops the check at once (`overheat_trip_missed`). The
 trip must come within 10 minutes of hashing, and the restart or the device
 pause within 10 minutes of the trip. The run deadline is 45 minutes.
+
+## Gamma 601 first mining
+
+`--soak gamma601-first-001` is the 601's first local mining (ADR-0041
+phase F3). Preflight takes the 601's package manifest,
+`bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json` from
+`just package-gamma601-mining`, and refuses any other `firmware_variant`;
+every Ultra 205 soak refuses `gamma601-mining`.
+
+1. Before any write, the baseline must report `storedBoard` `601` with
+   `boardIdentity` `match` (`soak_board_identity`).
+2. It saves the pool, then, in a second `PATCH /api/system`, the soak's
+   `profile`: `frequency` 400 and `coreVoltage` 1150. `/api/system/info`
+   must read both back (`profile_saved`), or it refuses before the resume
+   (`soak_profile_not_saved`). The profile stays saved afterwards.
+3. It mines 10 continuous minutes and needs a nonzero hashrate and an
+   accepted share. The run deadline is 20 minutes.
+
+Its limits (`GAMMA601_LIMITS` in `judge.mjs`) differ from the 205's:
+
+- power stops above 22 W, the firmware's own 601 stop (19 W target plus
+  3 W margin);
+- the 601 reads power as VOUT x IOUT plus a fixed 5 W offset, so a
+  powered-down ASIC reads about 5.0 W. It counts as idle at 6.5 W or
+  less, for the stopped proof, hashing and the recovery `pause`;
+- `vrTemp` stops above 90 C when the device reports it, below the
+  firmware's 105 C throttle;
+- the chip (75 C) and input (4.5–5.5 V) limits are the 205's.
 
 `P/attempt-NNN` holds `context.json`, `journal.ndjson` and `result.json`.
 These hold metadata only: the endpoint stays in `P/endpoint`, and no pool

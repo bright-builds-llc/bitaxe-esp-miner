@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { activeSpanMs, hardwareStopped, hashing, increases, judge, mining, miningLog, LIMITS, liveStop, MAXIMUM_SAMPLE_GAP_MS, sampleFromInfo,
-  SOAKS, statusOnlySamples } from "./judge.mjs";
+import { activeSpanMs, GAMMA601_LIMITS, hardwareStopped, hardwareStoppedUnder, hashing, increases, judge, mining, miningLog, LIMITS, liveStop,
+  MAXIMUM_SAMPLE_GAP_MS, sampleFromInfo, SOAKS, statusOnlySamples } from "./judge.mjs";
 
 const SOAK_ACTIVE_MS = SOAKS["001"].activeMs;
 
@@ -331,4 +331,71 @@ test("a stop that has not yet confirmed is not powered down, though the ASIC idl
   const sample = paused({ miningActivity: "stopping", power: 0.8 });
   // Act / Assert
   assert.equal(hardwareStopped(sample), false);
+});
+
+const GAMMA601 = SOAKS["gamma601-first-001"];
+/** A paused 601 reading: its power carries the fixed 5 W offset, plus the regulator's residual. */
+const gamma601Paused = (overrides = {}) => paused({ power: 5.2, ...overrides });
+
+test("the 601 soak runs under the 601's limits", () => {
+  // Arrange / Act
+  const { limits } = GAMMA601;
+  // Assert
+  assert.equal(limits, GAMMA601_LIMITS);
+  assert.equal(limits.maximumPowerW, 22);
+  assert.equal(limits.idlePowerW, 6.5);
+  assert.equal(limits.maybeMaximumVrTempC, 90);
+  assert.equal(limits.maximumChipTempC, 75);
+  assert.deepEqual([limits.minimumInputMv, limits.maximumInputMv], [4500, 5500]);
+});
+
+test("the 601 soak stops above 22 W, not at the 205's 15 W", () => {
+  // Arrange
+  const baseline = sampleFromInfo(info(), 0);
+  const at = (power) => sampleFromInfo(info({ power }), 2000);
+  // Act / Assert
+  assert.equal(liveStop(at(21.9), baseline, null, GAMMA601.limits), null);
+  assert.equal(liveStop(at(22.1), baseline, null, GAMMA601.limits), "soak_power");
+  assert.equal(liveStop(at(15.5), baseline), "soak_power");
+});
+
+test("the 601's powered-down ASIC reads its 5 W offset and still shows stopped", () => {
+  // Arrange
+  const stopped = hardwareStoppedUnder(GAMMA601.limits);
+  // Act / Assert
+  assert.equal(stopped(gamma601Paused()), true);
+  assert.equal(stopped(gamma601Paused({ power: 6.5 })), true);
+  assert.equal(stopped(gamma601Paused({ power: 6.6 })), false);
+  assert.equal(hardwareStopped(gamma601Paused()), false);
+});
+
+test("the 601 soak stops on a regulator above 90 C, and the 205's soaks never judge it", () => {
+  // Arrange
+  const baseline = sampleFromInfo(info(), 0);
+  const at = (overrides) => sampleFromInfo(info(overrides), 2000);
+  // Act / Assert
+  assert.equal(liveStop(at({ vrTemp: 90 }), baseline, null, GAMMA601.limits), null);
+  assert.equal(liveStop(at({ vrTemp: 90.5 }), baseline, null, GAMMA601.limits), "soak_vr_temperature");
+  assert.equal(liveStop(at({ vrTemp: undefined }), baseline, null, GAMMA601.limits), null);
+  assert.equal(liveStop(at({ vrTemp: 95 }), baseline), null);
+});
+
+test("ten minutes of 601 mining at 17 W, stopped at 5.2 W, passes", () => {
+  // Arrange
+  const samples = activeRun(GAMMA601.activeMs, { power: 17 });
+  // Act
+  const verdict = judge({ baseline: samples[0], samples, maybeFinal: gamma601Paused(), soak: GAMMA601 });
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.soak, "gamma601-first-001");
+});
+
+test("a 601 status that reads active at its idle offset is not hashing", () => {
+  // Arrange
+  const samples = activeRun(GAMMA601.activeMs, { power: 6 });
+  // Act
+  const verdict = judge({ baseline: samples[0], samples, maybeFinal: gamma601Paused(), soak: GAMMA601 });
+  // Assert
+  assert.ok(verdict.failures.includes("soak_active_time_short"));
+  assert.equal(verdict.metrics.status_only_samples, samples.length);
 });
