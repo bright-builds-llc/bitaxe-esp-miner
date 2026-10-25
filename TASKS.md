@@ -650,6 +650,13 @@ action.
     - [x] F3.1 hardware: passed on attempt 002, exactly one BM1370
       (`docs/parity/evidence/20261024-gamma601-chip-check.md`);
       production reinstalled;
+    - [ ] F3.2 software: the test-only `gamma601-hash-check` variant
+      (ADR-0041 item 9), the shared powered-check runner
+      (`gamma601/check_power.rs`), the hash stage (`gamma601/hash_check.rs`),
+      its judges and record (`bitaxe_safety::gamma601_hash_check`), the
+      genesis known answer (`bm1370::known_answer`) and the firmware result
+      verifier (`bitaxe_stratum::v1::verify_asic_result`);
+    - [ ] F3.2 hardware: the hash check contract below;
     - [ ] F3.2 open item from F3.1: the EMC2101 external channel read
       127.75 C (raw `0x3FE`, not a rejected fault code) unpowered and after
       detection; read it after the full BM1370 init before settling the
@@ -1136,6 +1143,55 @@ and production is reinstalled.
 - **Stop rules:** `refused`, `aborted`, a count other than one, or off not
   confirmed: stop after the production reinstall and analyse before another
   attempt (progress-gated policy).
+
+Phase F3.2 hash check contract (attempt ordinals 001 onward):
+
+Gamma 601 hash check hardware: enabled.
+
+- **Objective:** the BM1370's first hashing. The test-only
+  `gamma601-hash-check` firmware (ADR-0041 item 9), installed
+  state-preserving at the clean, pushed HEAD, runs its one check 30 s after
+  boot and replays `usb_gamma601_hash_check`. Passing means
+  `result=passed`, `chips=1`, at least 3 verified results with invalid ones
+  at most a tenth, and `off=confirmed`; the record also gives the diode
+  after the init (`diode_gate_c`, `diode_max_c`), the telemetry extremes,
+  the best difficulty and the on time. `genesis_hit` is information only.
+- **Precondition:** only the 601 attached (barrel power and USB through a
+  USB-A port), registered as board 601. The owner removes all power (barrel
+  and USB) once before attempt 001 and before any later attempt, since the
+  firmware refuses a second check until then. The tree clean and pushed.
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/gamma-601-hash-check/` and `umask 077`:**
+  1. `just detect-ultra205`;
+  2. `just package-gamma601-hash-check`;
+  3. `just flash-monitor --board 601 --port <port> --manifest
+     bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
+     --allow-test-firmware gamma601-hash-check --capture-timeout-seconds
+     360`, state-preserving; its capture holds the replayed records;
+  4. `just package --board 601`, then `just flash --board 601 --port
+     <port>`, state-preserving, then `just monitor --board 601 --port
+     <port> --capture-timeout-seconds 360` to confirm production
+     (`identity=match`, no check record).
+- **Allowed effects:** the two installs and their resets; the one check:
+  the TPS546 configured and on at 1.15 V for at most 45 s, chip
+  detection, the BM1370 init and ramp to 300 MHz, one genesis job hashed
+  for at most 20 s; the fan at 100 % for the check.
+- **Prohibited effects:** a pool or any Stratum traffic, any other
+  frequency or voltage, a second check without all power removed, a
+  restart, OTA or other HTTP request, flash, reset or other USB reset while
+  the check may run (from 30 s after boot until its record concludes; step
+  4 starts only after), a factory reset, network discovery, direct UART or
+  pins.
+- **Evidence and privacy:** the capture stays in `P` (mode 0600 files);
+  committed evidence is a redacted summary of the closed record's fields,
+  checked independently against the captures, with `just
+  verify-redaction`.
+- **Recovery:** the production reinstall in step 4. If the record shows the
+  output not confirmed off, remove all power (barrel and USB) before
+  anything else; the next boot's safe boot commands it off.
+- **Stop rules:** `refused`, `aborted` (including `diode_unusable`), a
+  failed pass rule, or off not confirmed: stop after the production
+  reinstall and analyse before another attempt (progress-gated policy).
 
 ## Future
 
