@@ -660,6 +660,12 @@ action.
       the genesis nonce returned
       (`docs/parity/evidence/20261024-gamma601-hash-check.md`); production
       reinstalled;
+    - [x] 601 Worker software (ADR-0041 item 10): every 601 build runs the
+      Worker. The baseline confirms with the reset retained, the output
+      confirmed off and the safe-boot thread running; the board's signed
+      capability and model; a production 601 refuses Start before budget;
+      the Gate pinned at `b775145`;
+    - [ ] 601 Worker hardware: the contract below;
     - [x] F3.2 open item from F3.1: after the BM1370 init the EMC2101
       external channel reads 37.5 to 40.0 C while hashing; the 127.75 C
       before is the uninitialized channel. The cooling proof's board rule
@@ -1195,6 +1201,37 @@ and production is reinstalled.
 - **Stop rules:** `refused`, `aborted` (including `diode_unusable`), a
   failed pass rule, or off not confirmed: stop after the production
   reinstall and analyse before another attempt (progress-gated policy).
+
+Phase F3 601 Worker contract (attempt ordinals 001 onward):
+
+Gamma 601 Worker boot hardware: enabled.
+
+- **Objective:** the production 601 package at the clean, pushed HEAD
+  boots with its Worker ready, its board still held safe.
+- **Precondition:** only the 601 attached, registered as board 601; the
+  tree clean and pushed.
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/gamma-601-worker/` and `umask 077`:**
+  1. `just detect-ultra205`;
+  2. `just package --board 601`;
+  3. `just flash-monitor --board 601 --port <port>
+     --capture-timeout-seconds 360`, state-preserving.
+- **Passing means:** the capture shows the Worker prepared on the 601 (no
+  `boot_baseline_unconfirmed`, `recovery_failed` or Worker start failure),
+  `built=601 stored=601 identity=match`, the safe-boot records with
+  `reset_held=true` and `off=confirmed`, and one boot.
+- **Allowed effects:** the one production install and its reset; the
+  first Worker boot writes its Device Identity seed to NVS.
+- **Prohibited effects:** any test variant, a Gate session, a Worker Start,
+  a factory reset, HTTP requests, network discovery, direct UART or pins.
+- **Evidence and privacy:** the capture stays in `P` (mode 0600 files);
+  committed evidence is a redacted summary of closed fields, with `just
+  verify-redaction`.
+- **Recovery:** if the Worker is unavailable or the board is not held
+  safe, the production package from before this change
+  (`59c178a9`) is reinstalled with the same command.
+- **Stop rules:** any failed criterion: stop and analyse before another
+  attempt (progress-gated policy).
 
 ## Future
 
