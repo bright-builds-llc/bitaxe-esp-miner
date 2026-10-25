@@ -87,6 +87,16 @@ pub fn chip_temperature_outcome(
     }
 }
 
+/// Whether the BM1370 draws no hashing load, so the regulator's IOUT offset may read negative
+/// (`gamma601_sensors::power_outcome`): the output confirmed off, the regulator commanded off
+/// (work is already blocked; the current is decaying), or the chip powered but not yet
+/// initialized (held in reset). Only an initialized chip with the regulator commanded on is
+/// loaded, and only its negative reading is invalid.
+#[must_use]
+pub fn chip_unloaded(stage: DiodeStage, off_confirmed: bool, regulator_commanded_on: bool) -> bool {
+    off_confirmed || !regulator_commanded_on || stage != DiodeStage::Initialized
+}
+
 /// How long the chip has stayed powered but uninitialized.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct UninitializedWindow {

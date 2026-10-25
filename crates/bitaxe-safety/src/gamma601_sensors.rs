@@ -27,14 +27,18 @@ pub struct RegulatorReadings {
 /// The power facts in the shared reducer's sample shape:
 /// - the input voltage is VIN;
 /// - the power is VOUT × IOUT plus the family's offset, from the raw IOUT, as upstream;
-/// - the current is IOUT. Only with the output confirmed off is an offset down to
-///   `IOUT_OFFSET_FLOOR_AMPS` reported as zero, so it can never hide power while mining.
+/// - the current is IOUT. Only while the chip draws no hashing load (`unloaded`: the output
+///   confirmed off, or the BM1370 powered but not yet initialized, so held in reset) is an
+///   offset down to `IOUT_OFFSET_FLOOR_AMPS` reported as zero. An initialized chip's negative
+///   reading stays invalid, so the floor can never hide power while mining. Phase F3.3's first
+///   attempt found the regulator's offset (about -0.2 A on the 601) read negative in the first
+///   sweep after the enable, which revoked the run.
 ///
 /// Any other negative or non-finite IOUT is an invalid sample.
 #[must_use]
 pub fn power_outcome(
     readings: RegulatorReadings,
-    output_confirmed_off: bool,
+    unloaded: bool,
     power_offset_watts: f64,
 ) -> AcquisitionOutcome<Ina260RawSample> {
     let (Some(vin), Some(iout), Some(vout)) = (
@@ -44,7 +48,7 @@ pub fn power_outcome(
     ) else {
         return AcquisitionOutcome::ReadFailed;
     };
-    let floor_amps = if output_confirmed_off {
+    let floor_amps = if unloaded {
         IOUT_OFFSET_FLOOR_AMPS
     } else {
         0.0

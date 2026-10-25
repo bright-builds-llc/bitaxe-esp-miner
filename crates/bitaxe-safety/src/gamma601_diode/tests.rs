@@ -165,3 +165,17 @@ fn a_powering_down_chip_s_real_reading_still_counts() {
     // Assert
     assert_eq!(outcome, AcquisitionOutcome::Success(80.0));
 }
+
+#[test]
+fn only_an_initialized_chip_with_the_regulator_on_is_loaded() {
+    // Act
+    let unloaded = [
+        chip_unloaded(Initialized, false, true),
+        chip_unloaded(Initialized, false, false),
+        chip_unloaded(Initialized, true, true),
+        chip_unloaded(PoweredUninitialized, false, true),
+        chip_unloaded(Unpowered, true, false),
+    ];
+    // Assert
+    assert_eq!(unloaded, [false, true, true, true, true]);
+}

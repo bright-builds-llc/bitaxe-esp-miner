@@ -67,7 +67,7 @@ fn the_offset_floor_admits_exactly_its_bound_with_the_output_off() {
 }
 
 #[test]
-fn a_negative_current_is_invalid_unless_the_output_is_confirmed_off() {
+fn a_negative_current_is_invalid_while_the_chip_draws_its_load() {
     // Act
     let outcome = power_outcome(readings(-0.2), false, GAMMA_POWER_OFFSET_WATTS);
     // Assert
@@ -346,4 +346,16 @@ fn power_is_fresh_again_once_the_regulator_fault_clears() {
         cleared_sequences.power.get(),
         faulted_sequences.power.get() + 1
     );
+}
+
+#[test]
+fn an_unloaded_chip_s_negative_offset_reports_zero_current_with_the_output_on() {
+    // Act
+    let sample = sample(power_outcome(
+        readings(-0.2),
+        true,
+        GAMMA_POWER_OFFSET_WATTS,
+    ));
+    // Assert
+    assert_eq!(sample.current_amps, 0.0);
 }
