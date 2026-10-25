@@ -668,8 +668,14 @@ action.
     - [x] 601 Worker hardware: passed on attempt 001, the Worker started
       with the baseline confirmed and the board held safe
       (`docs/parity/evidence/20261025-gamma601-worker-boot.md`);
-    - [ ] 205 regression at the 601 Worker commit (`2bf484b8`), at the next
-      session with the 205 attached;
+    - [ ] 205 regression at the 601 Worker commit (`2bf484b8`) and the F3.3
+      chip-temperature rule, at the next session with the 205 attached,
+      before anything else on the 205;
+    - [x] F3.3 software (ADR-0041 item 11): the 601's chip temperature by
+      stage, the board-aware verdict, cooling sample, stop proof, overheat
+      recovery and run admission, the 20 s init-window fault, the board's
+      reduced profile; the soak `gamma601-first-001`;
+    - [ ] F3.3 hardware: the first local mining contract below;
     - [x] F3.2 open item from F3.1: after the BM1370 init the EMC2101
       external channel reads 37.5 to 40.0 C while hashing; the 127.75 C
       before is the uninitialized channel. The cooling proof's board rule
@@ -1235,6 +1241,54 @@ attempt 001 passed (`docs/parity/evidence/20261025-gamma601-worker-boot.md`).
   (`59c178a9`) is reinstalled with the same command.
 - **Stop rules:** any failed criterion: stop and analyse before another
   attempt (progress-gated policy).
+
+Phase F3.3 first local mining contract (attempt ordinals 001 onward):
+
+Gamma 601 first local mining hardware: enabled.
+
+- **Objective:** the 601's first local mining. The test-only
+  `gamma601-mining` firmware at the clean, pushed HEAD mines for 10 minutes
+  at 400 MHz / 1150 mV with the owner's pool through the soak
+  `gamma601-first-001`, with at least one accepted share, then pauses and
+  proves stopped; production is then reinstalled.
+- **Precondition:** only the 601 attached, registered as board 601; the
+  tree clean and pushed; the owner's dedicated Gate tab available for the
+  endpoint handoff.
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/gamma-601-first-mining/` and `umask 077`:**
+  1. `just detect-ultra205`;
+  2. `just package-gamma601-mining`;
+  3. `just flash-monitor --board 601 --port <port> --manifest
+     bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
+     --allow-test-firmware gamma601-mining --capture-timeout-seconds 360`,
+     state-preserving;
+  4. `just otawww-endpoint preflight|serve|finish --private-root
+     P/endpoint`, with Connect in the dedicated Gate tab;
+  5. `just local-mining-soak preflight --soak gamma601-first-001
+     --private-root P/attempt-NNN --endpoint-root P/endpoint
+     --package-manifest bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
+     --pool-credentials pool-credentials.json`, then `run` with the same
+     arguments under `caffeinate`;
+  6. `just package --board 601`, `just flash --board 601 --port <port>`,
+     state-preserving, then `just monitor --board 601 --port <port>
+     --capture-timeout-seconds 360` to confirm production.
+- **Allowed effects:** the installs and their resets; the endpoint
+  handoff; the pool and the 400 MHz / 1150 mV profile saved over HTTP; 10
+  minutes of local mining with the owner's pool; the soak's pause and stop.
+- **Prohibited effects:** any other frequency or voltage, a Worker Start
+  or lease, a factory reset, network discovery beyond the handoff, direct
+  UART or pins. Pool values never leave `P` or the local credential file.
+- **Stops:** the soak's live stops (22 W, chip 75 C, regulator 90 C, input
+  outside 4.5 to 5.5 V, fan, stale readings, a reset, a fault) and the
+  firmware's own. Any stop ends the attempt: pause, reinstall production,
+  analyse before another attempt (progress-gated policy).
+- **Evidence and privacy:** the captures and journals stay in `P` (mode
+  0600 files); committed evidence is a redacted summary of closed fields,
+  checked independently, with `just verify-redaction`; no pool URL, port,
+  user, worker or password.
+- **Recovery:** `just local-mining-soak pause --private-root P/attempt-NNN`,
+  then the production reinstall in step 6. If the board does not stop,
+  remove all power (barrel and USB).
 
 ## Future
 
