@@ -73,6 +73,11 @@ pub(crate) const ASIC_FAMILY: AsicFamily = built::FAMILY;
 pub(crate) const MINING_DISPATCH_ADMITTED: bool = built::DISPATCH_ADMITTED;
 /// Whether a lease may change its voltage and frequency live (ADR-0037 decision 4).
 pub(crate) const LIVE_HARDWARE_CHANGES: bool = built::LIVE_HARDWARE_CHANGES;
+/// Whether this build may start mining at boot from the saved preference. The test-only
+/// `gamma601-mining` build never does: a run starts only from an explicit resume, once its
+/// contract's pool and profile are saved, never from a saved default pool at boot (ADR-0041
+/// item 11).
+pub(crate) const MINES_ON_BOOT: bool = !cfg!(feature = "gamma601-mining");
 /// The board model the Worker capability and the pool subscription name, as the Gate's
 /// reference-firmware board pairs spell it.
 pub(crate) const WORKER_MODEL: &str = built::WORKER_MODEL;

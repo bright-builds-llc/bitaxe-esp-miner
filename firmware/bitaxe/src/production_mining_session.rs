@@ -162,9 +162,11 @@ impl OrdinaryEspProductionSessionAdapter {
                     None
                 }
             };
-        if maybe_campaign_status
-            .as_ref()
-            .is_some_and(CampaignStatusTracker::requires_requested_run_bootstrap)
+        // A build that never mines on boot does not bootstrap a saved campaign's run either.
+        if crate::board_identity::MINES_ON_BOOT
+            && maybe_campaign_status
+                .as_ref()
+                .is_some_and(CampaignStatusTracker::requires_requested_run_bootstrap)
         {
             crate::runtime_snapshot::apply_command_effects_run_bootstrap();
         }

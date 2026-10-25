@@ -12,6 +12,7 @@ const LIVE_HARDWARE_SOURCE: &str = include_str!("production_mining_session/live_
 const DEVICE_PROFILE_SOURCE: &str = include_str!("settings_adapter/device_profile.rs");
 const CHIP_CHECK_SOURCE: &str = include_str!("gamma601/chip_check.rs");
 const WORKER_SESSION_SOURCE: &str = include_str!("bwg_worker_session.rs");
+const BOOT_GUARD_SOURCE: &str = include_str!("boot_guard.rs");
 const CHECK_POWER_SOURCE: &str = include_str!("gamma601/check_power.rs");
 
 fn body_of<'a>(source: &'a str, signature: &str) -> &'a str {
@@ -237,4 +238,16 @@ fn each_board_embeds_its_own_worker_capability() {
     assert!(ultra.is_some_and(|(board, capability)| board < capability));
     assert!(gamma.is_some_and(|(board, capability)| board < capability));
     assert!(ultra.zip(gamma).is_some_and(|((_, ultra_file), (gamma_board, _))| ultra_file < gamma_board));
+}
+
+#[test]
+fn the_601_mining_build_never_mines_on_boot() {
+    // Act
+    let fact = BOARD_IDENTITY_SOURCE.contains(
+        r#"pub(crate) const MINES_ON_BOOT: bool = !cfg!(feature = "gamma601-mining");"#,
+    );
+    let applied = BOOT_GUARD_SOURCE
+        .contains("return start_mining_on_boot && crate::board_identity::MINES_ON_BOOT;");
+    // Assert
+    assert!(fact && applied);
 }

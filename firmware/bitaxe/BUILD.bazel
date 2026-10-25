@@ -618,6 +618,7 @@ rust_test(
         "src/asic_adapter/board_601.rs",
         "src/board_identity.rs",
         "src/board_identity_source_ownership_test.rs",
+        "src/boot_guard.rs",
         "src/bwg_worker_session.rs",
         "src/gamma601.rs",
         "src/gamma601/check_power.rs",

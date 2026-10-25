@@ -312,6 +312,10 @@ not a guard anyone designed.
       the regulator at or below 95 C, for at least 30 s: upstream's own
       600-series rule (`power_management_task.c`). Run admission on the 601
       also needs the chip unpowered.
+    - **No mining at boot:** `gamma601-mining` ignores the saved
+      start-on-boot preference (which defaults to true, with the factory
+      install's default pool saved), so a run starts only from the soak's
+      explicit resume after its pool and profile are saved.
     - **My calls:** every 601 stop proof takes the 30 s, not only after an
       overheat; a regulator overheat still ends the run stopped rather than
       recovering as upstream does; the overheat-recovery reduced profile

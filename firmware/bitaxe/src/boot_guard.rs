@@ -36,7 +36,7 @@ pub(crate) fn boot_preference(start_mining_on_boot: bool) -> bool {
     }
     STREAK.store(u32::from(streak), Ordering::Release);
     if !starts_paused(streak) {
-        return start_mining_on_boot;
+        return start_mining_on_boot && crate::board_identity::MINES_ON_BOOT;
     }
     crate::device_pause::set(DevicePauseReason::CrashLoop);
     log::warn!(
