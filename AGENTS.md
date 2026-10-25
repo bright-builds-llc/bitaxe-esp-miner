@@ -328,6 +328,12 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   detected, initialized and ramped to 300 MHz, then one known job for at
   most 20 s. Build it only with `just package-gamma601-hash-check`, install
   it only on the 601 under an active task contract, and never release it.
+- `gamma601-overheat-trip-test` (ADR-0041 item 12, ADR-0040) is test-only
+  too. It is the `gamma601-mining` build with the local overheat trip lowered
+  to 55 C, for the 601 overheat check, and boots with its own marker in place
+  of the mining one. Build it only with
+  `just package-gamma601-overheat-trip-test`, install it only on the 601
+  under an active task contract, and never release it.
 - Each test variant targets one board, and the other board's build,
   package and flash paths refuse it.
 - The manifest records `firmware_variant`, checked against the ELF marker.

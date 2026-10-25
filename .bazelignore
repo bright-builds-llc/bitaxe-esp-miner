@@ -4,6 +4,7 @@
 .bazel-firmware-gamma601-mining-target
 .bazel-firmware-gamma601-chip-check-target
 .bazel-firmware-gamma601-hash-check-target
+.bazel-firmware-gamma601-overheat-trip-test-target
 .bazel-firmware-rollback-probe-target
 .bazel-firmware-target
 .embuild

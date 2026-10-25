@@ -107,3 +107,19 @@ fn the_lowered_pair_is_checked_against_the_built_board_s_catalog() {
     // Assert
     assert_eq!(lowered, [Some(gamma_601_profile(500.0, 1050)), None]);
 }
+
+#[test]
+fn the_gamma_601_overheat_check_restarts_at_400_mhz_and_1050_mv() {
+    // Act: the F3.4 overheat check's pair.
+    let lowered = reduced_profile(gamma_601_catalog_entry(), gamma_601_profile(500.0, 1150));
+    // Assert
+    assert_eq!(lowered, Some(gamma_601_profile(400.0, 1050)));
+}
+
+#[test]
+fn a_second_gamma_601_overheat_at_400_mhz_stays_stopped() {
+    // Act: 300 MHz is below the Gamma 601's catalog minimum.
+    let lowered = reduced_profile(gamma_601_catalog_entry(), gamma_601_profile(400.0, 1050));
+    // Assert
+    assert_eq!(lowered, None);
+}

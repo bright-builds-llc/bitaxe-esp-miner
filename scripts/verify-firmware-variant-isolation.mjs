@@ -20,6 +20,7 @@ export const TEST_VARIANT_MARKERS = [
   'usb_gamma601_chip_check',
   'firmware_variant=gamma601-hash-check',
   'usb_gamma601_hash_check',
+  'firmware_variant=gamma601-overheat-trip-test',
   'usb_gamma601_vout_check',
   ENABLE_LITERAL,
 ];

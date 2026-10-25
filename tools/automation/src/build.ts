@@ -19,8 +19,10 @@ export type BuildFirmwareRequest = {
  * `board-gamma-601` builds for the Gamma 601 (ADR-0041) under its own artifact names, and
  * `board-gamma-601-vout-check` its test-only core-voltage check variant under the same names,
  * `board-gamma-601-mining` its test-only mining variant for the phase F3 contracts,
- * `board-gamma-601-chip-check` its test-only chip check for the phase F3.1 contract, and
- * `board-gamma-601-hash-check` its test-only hash check for the phase F3.2 contract.
+ * `board-gamma-601-chip-check` its test-only chip check for the phase F3.1 contract,
+ * `board-gamma-601-hash-check` its test-only hash check for the phase F3.2 contract, and
+ * `board-gamma-601-overheat-trip-test` its test-only mining build with the lowered overheat trip
+ * (ADR-0041 item 12, ADR-0040).
  */
 export type FirmwareBuildMode =
   | "normal"
@@ -30,7 +32,8 @@ export type FirmwareBuildMode =
   | "board-gamma-601-vout-check"
   | "board-gamma-601-mining"
   | "board-gamma-601-chip-check"
-  | "board-gamma-601-hash-check";
+  | "board-gamma-601-hash-check"
+  | "board-gamma-601-overheat-trip-test";
 
 /** Per-mode Cargo inputs; each mode owns its target directory so builds never share ESP-IDF state. */
 export function firmwareBuildPlan(buildMode: FirmwareBuildMode): {
@@ -89,6 +92,13 @@ export function firmwareBuildPlan(buildMode: FirmwareBuildMode): {
         artifactPrefix: "bitaxe-gamma601-firmware",
         cargoTargetDir: ".bazel-firmware-gamma601-hash-check-target",
         cargoFeatures: ["--features", "gamma601-hash-check"],
+        otaRollbackProbe: "0",
+      };
+    case "board-gamma-601-overheat-trip-test":
+      return {
+        artifactPrefix: "bitaxe-gamma601-firmware",
+        cargoTargetDir: ".bazel-firmware-gamma601-overheat-trip-test-target",
+        cargoFeatures: ["--features", "gamma601-overheat-trip-test"],
         otaRollbackProbe: "0",
       };
   }
@@ -195,7 +205,11 @@ export async function buildFirmware(
   if (disassembly.timedOut || disassembly.exitCode !== 0) {
     throw new Error("firmware stack disassembly failed");
   }
-  if (request.buildMode === "board-gamma-601" || request.buildMode === "board-gamma-601-mining") {
+  if (
+    request.buildMode === "board-gamma-601"
+    || request.buildMode === "board-gamma-601-mining"
+    || request.buildMode === "board-gamma-601-overheat-trip-test"
+  ) {
     verifyGamma601StackBudget(disassembly.stdout);
   } else if (request.buildMode === "board-gamma-601-vout-check") {
     verifyGamma601StackBudget(disassembly.stdout, { voutCheck: true });

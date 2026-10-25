@@ -28,6 +28,10 @@ gamma601-chip-check = ["board-gamma-601"]
 # Built only through the `--//firmware/bitaxe:firmware_variant=gamma601-hash-check` 601
 # package, never released.
 gamma601-hash-check = ["board-gamma-601"]
+# Test-only (ADR-0041 item 12, ADR-0040): the 601 mining build with the local overheat trip
+# lowered to 55 C, for the 601 overheat check. Built only through the
+# `--//firmware/bitaxe:firmware_variant=gamma601-overheat-trip-test` 601 package, never released.
+gamma601-overheat-trip-test = ["gamma601-mining", "overheat-trip-test"]
 
 [dependencies]
 anyhow.workspace = true

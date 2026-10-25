@@ -11,6 +11,7 @@ import {
   GAMMA601_CHIP_CHECK_MARKER,
   GAMMA601_HASH_CHECK_MARKER,
   GAMMA601_MINING_MARKER,
+  GAMMA601_OVERHEAT_TRIP_TEST_MARKER,
   GAMMA601_VOUT_CHECK_MARKER,
   OVERHEAT_TRIP_TEST_MARKER,
   type FirmwareVariant,
@@ -27,6 +28,9 @@ const gammaCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_VOUT_CH
 const gammaMiningElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_MINING_MARKER}`);
 const gammaChipCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_CHIP_CHECK_MARKER}`);
 const gammaHashCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_HASH_CHECK_MARKER}`);
+const gammaOverheatElf = Buffer.from(
+  `\x7fELF firmware_board=601 ${GAMMA601_OVERHEAT_TRIP_TEST_MARKER} local_overheat_trip_c=55`,
+);
 
 /** A workspace holding the package inputs and the managed ESP-IDF tool paths packaging resolves. */
 async function packageWorkspace(elf: Buffer): Promise<string> {
@@ -359,6 +363,79 @@ test("a test package whose ELF also carries another test variant's marker fails 
     // Assert
     assert.ok(error instanceof FirmwareVariantMarkerError);
     assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_marker_foreign" });
+    assert.equal(runs.length, 0);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a 601 overheat package records its variant", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaOverheatElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-overheat-trip-test", runs, "601");
+
+    // Assert
+    assert.equal(error, undefined);
+    const manifestGenerator = runs.find((spec) => spec.args[0] === "package-firmware");
+    assert.ok(manifestGenerator !== undefined);
+    assert.equal(argAfter(manifestGenerator, "--firmware-variant"), "gamma601-overheat-trip-test");
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("the 601 overheat variant is refused for the Ultra 205 before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaOverheatElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-overheat-trip-test", runs, "205");
+
+    // Assert
+    assert.ok(error instanceof FirmwareVariantMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_board_mismatch" });
+    assert.equal(runs.length, 0);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a 601 overheat package whose ELF also carries the mining marker fails before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(Buffer.concat([gammaOverheatElf, Buffer.from(` ${GAMMA601_MINING_MARKER}`)]));
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-overheat-trip-test", runs, "601");
+
+    // Assert
+    assert.ok(error instanceof FirmwareVariantMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_marker_foreign" });
+    assert.equal(runs.length, 0);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("a 601 mining package whose ELF carries the 601 overheat marker instead fails before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaOverheatElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-mining", runs, "601");
+
+    // Assert
+    assert.ok(error instanceof FirmwareVariantMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_marker_missing" });
     assert.equal(runs.length, 0);
   } finally {
     await rm(root, { recursive: true });

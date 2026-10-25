@@ -316,10 +316,22 @@ not a guard anyone designed.
       start-on-boot preference (which defaults to true, with the factory
       install's default pool saved), so a run starts only from the soak's
       explicit resume after its pool and profile are saved.
+    - **The reduced overheat profile** keeps upstream's rule: 100 MHz and
+      100 mV off the pair, checked against the built board's catalog range
+      (ADR-0038), not the phase F plan's "nearest lower catalog pair". From
+      500/1150 the 601 restarts at 400/1050; from 400 MHz it stays stopped.
     - **My calls:** every 601 stop proof takes the 30 s, not only after an
       overheat; a regulator overheat still ends the run stopped rather than
       recovering as upstream does; the overheat-recovery reduced profile
       follows the built board's catalog (it used the 205's).
+12. **The 601's overheat is first checked with a lowered trip.**
+    `gamma601-overheat-trip-test` (`just
+    package-gamma601-overheat-trip-test`) is `gamma601-mining` with
+    ADR-0040's 55 C local overheat trip, for phase F3.4's check on the 601
+    only; it carries one boot marker of its own and is never released. The
+    local-mining soak's overheat kind follows the board: the 601's 22 W stop
+    and idle threshold, and its cooling rule (the chip unpowered, the
+    regulator at or below 95 C) where the 205 waits for its chip at 45 C.
 
 
 ## Consequences

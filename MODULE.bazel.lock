@@ -597,7 +597,7 @@
           "FILE:@@//tools/stratum-v2-fixture/Cargo.toml b1ec0b6c7654486217d99763879e908f6b44b9125f1e11a8531a9bfe8f501b8d",
           "FILE:@@//crates/bitaxe-worker-control/Cargo.toml b950e917308a45e8534aa8ec3b976a06d42d3a90e3dd72ce3b732239f4059002",
           "FILE:@@//crates/bitaxe-test-support/Cargo.toml cdefda371a942a3104e1a4961847f7eababb9cf2639d82beff1ed0099a5a8280",
-          "FILE:@@//firmware/bitaxe/Cargo.toml ddb81dbd0333a358f517cc32d1dc53d1012a2de723d7f37173b9456cc2fc05e8",
+          "FILE:@@//firmware/bitaxe/Cargo.toml 4771ed2c23c420a0f1dcb5f39fa4cd7fb0a3280b020988b23ce9178e94716d0a",
           "FILE:@@//firmware/virtual-ultra205/Cargo.toml deff0bc43860def522e5ea2adda25516dde0736719df061c4dbd0d92a1bcdb10",
           "FILE:@@//tools/bap-client/Cargo.toml 93cb8dfb2cb5259124be903941ce314f8c30a8bdedcce4c90cd107d921504ca4",
           "FILE:@@//tools/flash/Cargo.toml 2aa6cebb15cdf27b2f2f4549ca1a4722701dbdc3c2c340ccc6da2c3f8639dc4d",

@@ -48,7 +48,8 @@ mod regulator;
 #[cfg(feature = "gamma601-vout-check")]
 mod vout_check;
 
-/// The Gamma 601 test variants are separate builds.
+/// The Gamma 601 test variants are separate builds. `gamma601-overheat-trip-test` is not counted:
+/// it is the mining build, so it counts as `gamma601-mining`.
 const TEST_VARIANTS_BUILT: usize = cfg!(feature = "gamma601-vout-check") as usize
     + cfg!(feature = "gamma601-mining") as usize
     + cfg!(feature = "gamma601-chip-check") as usize
@@ -58,9 +59,21 @@ const _: () = assert!(
     "the Gamma 601 test variants are separate builds"
 );
 
+/// The 205's lowered overheat trip reaches the 601 only as the mining build's overheat variant
+/// (ADR-0040; ADR-0041 item 12), which boots with its own marker in place of the mining one.
+const _: () = assert!(
+    !cfg!(feature = "overheat-trip-test") || cfg!(feature = "gamma601-overheat-trip-test"),
+    "the Gamma 601 lowers its overheat trip only through gamma601-overheat-trip-test"
+);
+
 /// The boot line only the test-only mining variant compiles (ADR-0041); the packager and the
-/// flash tool check it against the recorded variant.
-#[cfg(feature = "gamma601-mining")]
+/// flash tool check it against the recorded variant. The overheat variant, a mining build too,
+/// carries its own marker instead (`board_identity::overheat_trip_boot_line`), so its ELF holds
+/// exactly one.
+#[cfg(all(
+    feature = "gamma601-mining",
+    not(feature = "gamma601-overheat-trip-test")
+))]
 const MINING_VARIANT_MARKER: &str = "firmware_variant=gamma601-mining";
 
 /// How long the boot waits for the safe-boot thread to confirm the output off before it
@@ -346,8 +359,12 @@ fn turn_off_at_startup(bus: &mut safety_adapter::BitaxeI2cBus<'static>) -> Start
 fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: StartupController) {
     #[cfg(feature = "gamma601-vout-check")]
     log::info!("{}", vout_check::VARIANT_MARKER);
-    #[cfg(feature = "gamma601-mining")]
+    #[cfg(all(
+        feature = "gamma601-mining",
+        not(feature = "gamma601-overheat-trip-test")
+    ))]
     log::info!("{MINING_VARIANT_MARKER}");
+    // The overheat build's one marker is startup's retained line, which the soak reads.
     #[cfg(feature = "gamma601-chip-check")]
     log::info!("{}", chip_check::VARIANT_MARKER);
     #[cfg(feature = "gamma601-hash-check")]

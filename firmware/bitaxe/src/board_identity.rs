@@ -142,6 +142,20 @@ pub(crate) fn hardware_control_permitted() -> bool {
     identity().permits_hardware_control()
 }
 
+/// The test-only overheat build's retained boot line (ADR-0040; ADR-0041 item 12): the build's
+/// one variant marker, per board, and the lowered trip the overheat harness reads.
+#[cfg(feature = "overheat-trip-test")]
+pub(crate) fn overheat_trip_boot_line() -> String {
+    #[cfg(not(feature = "board-gamma-601"))]
+    const VARIANT_MARKER: &str = "firmware_variant=overheat-trip-test";
+    #[cfg(feature = "board-gamma-601")]
+    const VARIANT_MARKER: &str = "firmware_variant=gamma601-overheat-trip-test";
+    format!(
+        "{VARIANT_MARKER} local_overheat_trip_c={}",
+        bitaxe_runtime::local_mining::LOCAL_OVERHEAT_TRIP_C
+    )
+}
+
 /// The board's own periodic USB record, if its build has one: the Gamma 601 safe boot's.
 #[cfg(feature = "board-gamma-601")]
 pub(crate) fn maybe_board_runtime_marker() -> Option<String> {

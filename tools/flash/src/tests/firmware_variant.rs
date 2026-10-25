@@ -416,3 +416,82 @@ fn the_hash_check_bytes_admit_only_their_own_variant() {
         .to_string()
         .contains("reason=test_firmware_marker_missing"));
 }
+
+const GAMMA_OVERHEAT_TRIP_TEST_ELF: &[u8] =
+    b"synthetic elf firmware_board=601 firmware_variant=gamma601-overheat-trip-test local_overheat_trip_c=55";
+
+#[test]
+fn the_601_overheat_variant_installs_only_on_the_gamma_601_and_only_when_named() {
+    // Act
+    let gamma = require_firmware_variant_board(
+        FirmwareVariant::Gamma601OverheatTripTest,
+        BoardId::Gamma601,
+    );
+    let ultra = require_firmware_variant_board(
+        FirmwareVariant::Gamma601OverheatTripTest,
+        BoardId::Ultra205,
+    )
+    .expect_err("the 205 must refuse the 601 overheat variant");
+    let unnamed = admit_firmware_variant(FirmwareVariant::Gamma601OverheatTripTest, None)
+        .expect_err("the 601 overheat variant needs its allowance");
+    let mining_allowance = admit_firmware_variant(
+        FirmwareVariant::Gamma601OverheatTripTest,
+        Some(FirmwareVariant::Gamma601Mining),
+    )
+    .expect_err("the mining allowance must not admit the 601 overheat variant");
+
+    // Assert
+    assert!(gamma.is_ok(), "{gamma:?}");
+    assert!(ultra
+        .to_string()
+        .contains("reason=test_firmware_board_mismatch"));
+    assert!(unnamed
+        .to_string()
+        .contains("reason=test_firmware_requires_allowance"));
+    assert!(mining_allowance
+        .to_string()
+        .contains("reason=test_firmware_variant_mismatch"));
+}
+
+#[test]
+fn the_601_overheat_bytes_admit_only_their_own_variant() {
+    // Act
+    let own = require_firmware_variant_bytes(
+        FirmwareVariant::Gamma601OverheatTripTest,
+        GAMMA_OVERHEAT_TRIP_TEST_ELF,
+    );
+    let mining = require_firmware_variant_bytes(
+        FirmwareVariant::Gamma601Mining,
+        GAMMA_OVERHEAT_TRIP_TEST_ELF,
+    )
+    .expect_err("the mining variant must refuse the 601 overheat marker");
+    let overheat_205 = require_firmware_variant_bytes(
+        FirmwareVariant::OverheatTripTest,
+        GAMMA_OVERHEAT_TRIP_TEST_ELF,
+    )
+    .expect_err("the 205 overheat variant must refuse the 601 overheat marker");
+
+    // Assert
+    assert!(own.is_ok(), "{own:?}");
+    assert!(mining
+        .to_string()
+        .contains("reason=test_firmware_marker_missing"));
+    assert!(overheat_205
+        .to_string()
+        .contains("reason=test_firmware_marker_missing"));
+}
+
+#[test]
+fn a_601_overheat_application_that_also_carries_the_mining_marker_is_refused() {
+    // Arrange
+    let both = b"synthetic elf firmware_board=601 firmware_variant=gamma601-overheat-trip-test firmware_variant=gamma601-mining";
+
+    // Act
+    let error = require_firmware_variant_bytes(FirmwareVariant::Gamma601OverheatTripTest, both)
+        .expect_err("two markers must be refused");
+
+    // Assert
+    assert!(error
+        .to_string()
+        .contains("reason=test_firmware_marker_foreign"));
+}

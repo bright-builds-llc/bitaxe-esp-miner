@@ -316,3 +316,13 @@ test("the 601 hash check build owns its target directory and keeps the 601 artif
   assert.deepEqual(plan.cargoFeatures, ["--features", "gamma601-hash-check"]);
   assert.equal(plan.artifactPrefix, firmwareBuildPlan("board-gamma-601").artifactPrefix);
 });
+
+test("the 601 overheat build owns its target directory and keeps the 601 artifact names", () => {
+  // Act
+  const plan = firmwareBuildPlan("board-gamma-601-overheat-trip-test");
+
+  // Assert
+  assert.equal(plan.cargoTargetDir, ".bazel-firmware-gamma601-overheat-trip-test-target");
+  assert.deepEqual(plan.cargoFeatures, ["--features", "gamma601-overheat-trip-test"]);
+  assert.equal(plan.artifactPrefix, firmwareBuildPlan("board-gamma-601").artifactPrefix);
+});

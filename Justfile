@@ -158,6 +158,10 @@ package-gamma601-chip-check:
 package-gamma601-hash-check:
     bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-hash-check
 
+# Test-only Gamma 601 mining build with the local overheat trip lowered to 55 C, for the 601 overheat check (ADR-0041 item 12, ADR-0040), never released; flash needs `--allow-test-firmware gamma601-overheat-trip-test`; reinstall production afterwards.
+package-gamma601-overheat-trip-test:
+    bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-overheat-trip-test
+
 # Web UI raw/gzip/served bytes and www.bin SPIFFS use; `--append-history docs/web-ui/size-history.csv` records them.
 web-ui-sizes *args:
     bazel run //tools/automation:web_ui_sizes -- {{ args }}

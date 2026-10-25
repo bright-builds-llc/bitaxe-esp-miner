@@ -8,6 +8,7 @@ export const firmwareVariants = [
   "gamma601-mining",
   "gamma601-chip-check",
   "gamma601-hash-check",
+  "gamma601-overheat-trip-test",
 ] as const;
 
 export type FirmwareVariant = (typeof firmwareVariants)[number];
@@ -24,6 +25,11 @@ export const GAMMA601_MINING_MARKER = "firmware_variant=gamma601-mining";
 export const GAMMA601_CHIP_CHECK_MARKER = "firmware_variant=gamma601-chip-check";
 /** Boot-line literal compiled into the ELF only by the Gamma 601 hash check variant. */
 export const GAMMA601_HASH_CHECK_MARKER = "firmware_variant=gamma601-hash-check";
+/**
+ * Boot-line literal compiled into the ELF only by the Gamma 601 overheat variant, a mining
+ * build that carries this marker in place of the mining one.
+ */
+export const GAMMA601_OVERHEAT_TRIP_TEST_MARKER = "firmware_variant=gamma601-overheat-trip-test";
 
 const testVariantMarkers: Readonly<Record<TestVariant, string>> = {
   "overheat-trip-test": OVERHEAT_TRIP_TEST_MARKER,
@@ -31,6 +37,7 @@ const testVariantMarkers: Readonly<Record<TestVariant, string>> = {
   "gamma601-mining": GAMMA601_MINING_MARKER,
   "gamma601-chip-check": GAMMA601_CHIP_CHECK_MARKER,
   "gamma601-hash-check": GAMMA601_HASH_CHECK_MARKER,
+  "gamma601-overheat-trip-test": GAMMA601_OVERHEAT_TRIP_TEST_MARKER,
 };
 
 /** The board each test variant is built for; production builds for every board. */
@@ -40,6 +47,7 @@ const testVariantBoards: Readonly<Record<TestVariant, FirmwareBoard>> = {
   "gamma601-mining": "601",
   "gamma601-chip-check": "601",
   "gamma601-hash-check": "601",
+  "gamma601-overheat-trip-test": "601",
 };
 
 /** The ELF disagrees with the variant the package is about to record: a typed `package_invalid`. */
