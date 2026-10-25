@@ -675,7 +675,10 @@ action.
       stage, the board-aware verdict, cooling sample, stop proof, overheat
       recovery and run admission, the 20 s init-window fault, the board's
       reduced profile; the soak `gamma601-first-001`;
-    - [ ] F3.3 hardware: the first local mining contract below;
+    - [x] F3.3 hardware: passed on attempt 002, 10 minutes at 400 MHz with
+      32 shares accepted and none rejected
+      (`docs/parity/evidence/20261025-gamma601-first-local-mining.md`);
+      production reinstalled;
     - [x] F3.2 open item from F3.1: after the BM1370 init the EMC2101
       external channel reads 37.5 to 40.0 C while hashing; the 127.75 C
       before is the uninitialized channel. The cooling proof's board rule
@@ -1242,9 +1245,10 @@ attempt 001 passed (`docs/parity/evidence/20261025-gamma601-worker-boot.md`).
 - **Stop rules:** any failed criterion: stop and analyse before another
   attempt (progress-gated policy).
 
-Phase F3.3 first local mining contract (attempt ordinals 001 onward):
-
-Gamma 601 first local mining hardware: enabled.
+Phase F3.3 first local mining contract (attempt ordinals 001 onward),
+closed: attempt 002 passed
+(`docs/parity/evidence/20261025-gamma601-first-local-mining.md`) and
+production is reinstalled.
 
 - **Objective:** the 601's first local mining. The test-only
   `gamma601-mining` firmware at the clean, pushed HEAD mines for 10 minutes
@@ -1316,6 +1320,12 @@ Gamma 601 first local mining hardware: enabled.
   - **Outcome:** `continue_after_verified_fix` once the fix is gated,
     reviewed and pushed; attempt 002 takes a fresh handoff (the reinstall
     changes the boot) and a new private root.
+  - **Deviation:** the stop rule's production reinstall did not happen
+    before the analysis. The device stayed paused with the chip off on the
+    mining build until attempt 002's install; production was reinstalled
+    after attempt 002. The device also retried the run once after its
+    restart backoff, stopping the same way, before the soak was
+    interrupted and the device paused.
 
 ## Future
 
