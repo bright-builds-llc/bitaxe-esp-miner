@@ -1,8 +1,9 @@
 //! TPS546 PMBus access for the Gamma 601 safe boot (ADR-0041).
 //!
 //! The bus offers the closed reads of `tps546::ReadCommand` and the writes of `OffWrite`, which
-//! can only turn the output off. Only the test-only `gamma601-vout-check`, `gamma601-mining` and
-//! `gamma601-chip-check` builds add the Gamma configuration's writes, `CLEAR_FAULTS` and
+//! can only turn the output off. Only the test-only `gamma601-vout-check`, `gamma601-mining`,
+//! `gamma601-chip-check` and `gamma601-hash-check` builds add the Gamma configuration's writes,
+//! `CLEAR_FAULTS` and
 //! `OPERATION` on, so no production build can power the ASIC. No build can store configuration.
 //!
 //! Reference: `reference/esp-miner/main/power/TPS546.c`
@@ -11,7 +12,8 @@ use super::*;
 #[cfg(any(
     feature = "gamma601-vout-check",
     feature = "gamma601-mining",
-    feature = "gamma601-chip-check"
+    feature = "gamma601-chip-check",
+    feature = "gamma601-hash-check"
 ))]
 use bitaxe_safety::tps546::{
     config::{self, ConfigWrite},
@@ -87,12 +89,13 @@ impl Tps546Bus<'_, '_, '_> {
 }
 
 /// The writes that configure the controller and turn its output on (ADR-0041 phase D and item 7):
-/// compiled into the `gamma601-vout-check`, `gamma601-mining` and `gamma601-chip-check` test
-/// variants only.
+/// compiled into the `gamma601-vout-check`, `gamma601-mining`, `gamma601-chip-check` and
+/// `gamma601-hash-check` test variants only.
 #[cfg(any(
     feature = "gamma601-vout-check",
     feature = "gamma601-mining",
-    feature = "gamma601-chip-check"
+    feature = "gamma601-chip-check",
+    feature = "gamma601-hash-check"
 ))]
 impl Tps546Bus<'_, '_, '_> {
     /// Writes one entry of the Gamma plan. Only `gamma_config_plan` makes a `ConfigWrite`; a

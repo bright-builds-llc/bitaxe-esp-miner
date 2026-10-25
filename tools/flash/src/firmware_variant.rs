@@ -12,6 +12,7 @@ const OVERHEAT_TRIP_TEST_MARKER: &[u8] = b"firmware_variant=overheat-trip-test";
 const GAMMA601_VOUT_CHECK_MARKER: &[u8] = b"firmware_variant=gamma601-vout-check";
 const GAMMA601_MINING_MARKER: &[u8] = b"firmware_variant=gamma601-mining";
 const GAMMA601_CHIP_CHECK_MARKER: &[u8] = b"firmware_variant=gamma601-chip-check";
+const GAMMA601_HASH_CHECK_MARKER: &[u8] = b"firmware_variant=gamma601-hash-check";
 
 /// Firmware variant compiled into a package; mirrors `//firmware/bitaxe:firmware_variant`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -26,6 +27,8 @@ pub(crate) enum FirmwareVariant {
     Gamma601Mining,
     /// One bounded chip detection on the Gamma 601, for the phase F3.1 contract; never released.
     Gamma601ChipCheck,
+    /// One bounded hash check on the Gamma 601, for the phase F3.2 contract; never released.
+    Gamma601HashCheck,
 }
 
 impl FirmwareVariant {
@@ -37,15 +40,17 @@ impl FirmwareVariant {
             Self::Gamma601VoutCheck => Some((GAMMA601_VOUT_CHECK_MARKER, BoardId::Gamma601)),
             Self::Gamma601Mining => Some((GAMMA601_MINING_MARKER, BoardId::Gamma601)),
             Self::Gamma601ChipCheck => Some((GAMMA601_CHIP_CHECK_MARKER, BoardId::Gamma601)),
+            Self::Gamma601HashCheck => Some((GAMMA601_HASH_CHECK_MARKER, BoardId::Gamma601)),
         }
     }
 }
 
-const TEST_VARIANTS: [FirmwareVariant; 4] = [
+const TEST_VARIANTS: [FirmwareVariant; 5] = [
     FirmwareVariant::OverheatTripTest,
     FirmwareVariant::Gamma601VoutCheck,
     FirmwareVariant::Gamma601Mining,
     FirmwareVariant::Gamma601ChipCheck,
+    FirmwareVariant::Gamma601HashCheck,
 ];
 
 /// Reads the recorded variant; a manifest without one predates ADR-0040 and is production.

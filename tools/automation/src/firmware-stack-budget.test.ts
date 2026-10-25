@@ -193,3 +193,32 @@ test("the chip check variant refuses a check path over the combined budget", () 
   // Act / Assert
   assert.throws(() => verifyGamma601StackBudget(input, { chipCheck: true }), /chip check path/u);
 });
+
+test("the hash check variant also bounds its check's frame", () => {
+  // Arrange
+  const input = [
+    symbol("bitaxe_firmware::gamma601::run", "0x200"),
+    symbol(publishSymbol, "0x3e0"),
+    symbol(readinessSymbol, "0x1e0"),
+    symbol("bitaxe_firmware::gamma601::hash_check::run_check", "0x300"),
+  ].join("\n");
+
+  // Act
+  const result = verifyGamma601StackBudget(input, { hashCheck: true });
+
+  // Assert
+  assert.equal(result.maybeHashCheckFrameBytes, 768);
+});
+
+test("the hash check variant refuses a check path over the combined budget", () => {
+  // Arrange
+  const input = [
+    symbol("bitaxe_firmware::gamma601::run", "0x900"),
+    symbol(publishSymbol, "0x100"),
+    symbol(readinessSymbol, "0x1e0"),
+    symbol("bitaxe_firmware::gamma601::hash_check::run_check", "0x900"),
+  ].join("\n");
+
+  // Act / Assert
+  assert.throws(() => verifyGamma601StackBudget(input, { hashCheck: true }), /hash check path/u);
+});

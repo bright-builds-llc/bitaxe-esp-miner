@@ -20,3 +20,5 @@ mod share_validation;
 pub mod state;
 pub mod submit_response;
 pub mod telemetry_projection;
+
+pub use share_validation::{verify_asic_result, AsicResultCheck};

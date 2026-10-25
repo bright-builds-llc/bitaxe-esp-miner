@@ -9,6 +9,7 @@ import { FirmwareBoardMarkerError, type FirmwareBoard } from "./firmware-board.j
 import {
   FirmwareVariantMarkerError,
   GAMMA601_CHIP_CHECK_MARKER,
+  GAMMA601_HASH_CHECK_MARKER,
   GAMMA601_MINING_MARKER,
   GAMMA601_VOUT_CHECK_MARKER,
   OVERHEAT_TRIP_TEST_MARKER,
@@ -25,6 +26,7 @@ const gammaElf = Buffer.from("\x7fELF firmware_board=601 safe boot");
 const gammaCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_VOUT_CHECK_MARKER}`);
 const gammaMiningElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_MINING_MARKER}`);
 const gammaChipCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_CHIP_CHECK_MARKER}`);
+const gammaHashCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_HASH_CHECK_MARKER}`);
 
 /** A workspace holding the package inputs and the managed ESP-IDF tool paths packaging resolves. */
 async function packageWorkspace(elf: Buffer): Promise<string> {
@@ -263,6 +265,24 @@ test("the chip check variant is refused for the Ultra 205 before any tool runs",
   try {
     // Act
     const error = await packageWith(root, "gamma601-chip-check", runs, "205");
+
+    // Assert
+    assert.ok(error instanceof FirmwareVariantMarkerError);
+    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_board_mismatch" });
+    assert.equal(runs.length, 0);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
+test("the hash check variant is refused for the Ultra 205 before any tool runs", async () => {
+  // Arrange
+  const root = await packageWorkspace(gammaHashCheckElf);
+  const runs: CommandSpec<unknown>[] = [];
+
+  try {
+    // Act
+    const error = await packageWith(root, "gamma601-hash-check", runs, "205");
 
     // Assert
     assert.ok(error instanceof FirmwareVariantMarkerError);

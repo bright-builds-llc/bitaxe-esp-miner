@@ -154,6 +154,10 @@ package-gamma601-mining:
 package-gamma601-chip-check:
     bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-chip-check
 
+# Test-only Gamma 601 hash check for the phase F3.2 contract (ADR-0041), never released; flash needs `--allow-test-firmware gamma601-hash-check`; reinstall production afterwards.
+package-gamma601-hash-check:
+    bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-hash-check
+
 # Web UI raw/gzip/served bytes and www.bin SPIFFS use; `--append-history docs/web-ui/size-history.csv` records them.
 web-ui-sizes *args:
     bazel run //tools/automation:web_ui_sizes -- {{ args }}

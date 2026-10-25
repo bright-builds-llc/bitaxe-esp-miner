@@ -32,7 +32,7 @@ pub enum ChipCount {
 }
 
 impl ChipCount {
-    fn label(self) -> String {
+    pub(crate) fn label(self) -> String {
         match self {
             Self::Unread => "unread".to_owned(),
             Self::Counted(chips) => chips.to_string(),

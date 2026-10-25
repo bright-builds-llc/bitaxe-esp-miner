@@ -323,6 +323,11 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   and released from reset only for the chip count. Build it only with
   `just package-gamma601-chip-check`, install it only on the 601 under an
   active task contract, and never release it.
+- `gamma601-hash-check` (ADR-0041 item 9) is test-only too. It is the 601
+  safe boot plus one bounded hash check: the BM1370 powered at 1.15 V,
+  detected, initialized and ramped to 300 MHz, then one known job for at
+  most 20 s. Build it only with `just package-gamma601-hash-check`, install
+  it only on the 601 under an active task contract, and never release it.
 - Each test variant targets one board, and the other board's build,
   package and flash paths refuse it.
 - The manifest records `firmware_variant`, checked against the ELF marker.

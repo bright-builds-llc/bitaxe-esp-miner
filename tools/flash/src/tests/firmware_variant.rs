@@ -376,3 +376,43 @@ fn the_chip_check_bytes_admit_only_their_own_variant() {
         .to_string()
         .contains("reason=test_firmware_marker_missing"));
 }
+
+const GAMMA_HASH_CHECK_ELF: &[u8] =
+    b"synthetic elf firmware_board=601 firmware_variant=gamma601-hash-check";
+
+#[test]
+fn the_hash_check_installs_only_on_the_gamma_601_and_only_when_named() {
+    // Act
+    let gamma =
+        require_firmware_variant_board(FirmwareVariant::Gamma601HashCheck, BoardId::Gamma601);
+    let ultra =
+        require_firmware_variant_board(FirmwareVariant::Gamma601HashCheck, BoardId::Ultra205)
+            .expect_err("the 205 must refuse the 601 hash check");
+    let unnamed = admit_firmware_variant(FirmwareVariant::Gamma601HashCheck, None)
+        .expect_err("the hash check needs its allowance");
+
+    // Assert
+    assert!(gamma.is_ok(), "{gamma:?}");
+    assert!(ultra
+        .to_string()
+        .contains("reason=test_firmware_board_mismatch"));
+    assert!(unnamed
+        .to_string()
+        .contains("reason=test_firmware_requires_allowance"));
+}
+
+#[test]
+fn the_hash_check_bytes_admit_only_their_own_variant() {
+    // Act
+    let own =
+        require_firmware_variant_bytes(FirmwareVariant::Gamma601HashCheck, GAMMA_HASH_CHECK_ELF);
+    let chip_check =
+        require_firmware_variant_bytes(FirmwareVariant::Gamma601ChipCheck, GAMMA_HASH_CHECK_ELF)
+            .expect_err("the chip check variant must refuse the hash check marker");
+
+    // Assert
+    assert!(own.is_ok(), "{own:?}");
+    assert!(chip_check
+        .to_string()
+        .contains("reason=test_firmware_marker_missing"));
+}

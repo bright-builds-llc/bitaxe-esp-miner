@@ -233,6 +233,34 @@ not a guard anyone designed.
    value-free `usb_gamma601_chip_check` record. It is tied to board 601
    like the other test variants, needs `--allow-test-firmware
    gamma601-chip-check`, and is never released; dispatch stays refused.
+9. **The BM1370 first hashes in a test-only check.**
+   `gamma601-hash-check` (`just package-gamma601-hash-check`) runs item 8's
+   powered check (the shared `gamma601/check_power.rs`) and, once exactly
+   one chip answers:
+   - initializes the BM1370 through the executor
+     (`bm1370::plan::mining_ready_actions`), ramping to 300 MHz at
+     1.15 V, below upstream's 525 MHz for this first run (owner decision,
+     2026-10-24), then waits upstream's 2 s;
+   - requires two agreeing diode readings between 10 and 65 C, or ends
+     `diode_unusable` without sending work;
+   - sends the Bitcoin genesis header as one job and verifies every result
+     in firmware: the header rebuilt with the result's nonce and rolled
+     version bits, its double SHA-256 against the chip's ticket. It passes
+     with at least 3 verified results and invalid ones at most a tenth;
+     the genesis nonce itself is recorded but not expected, since the
+     chip rolls versions;
+   - stops on any telemetry limit (VOUT, VIN, power, IOUT, regulator and
+     chip temperature, fan, readings stale past 1.5 s) and enforces a 45 s
+     output-on cap; the init runs in segments ending at each delay, so a
+     stop acts within one ramp step, and the hashing window is at most
+     20 s.
+   - Residual risk, the stack: the build's audit bounds the check's
+     `run_check` frame, not the frames below it (the init, the result
+     reads, the double SHA-256). The thread has 16 KiB, and the record
+     reports the least free stack after the check.
+   It logs and replays a value-free `usb_gamma601_hash_check` record, needs
+   `--allow-test-firmware gamma601-hash-check`, and is never released;
+   dispatch stays refused and no pool is involved.
 
 
 ## Consequences

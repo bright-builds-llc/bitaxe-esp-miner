@@ -18,8 +18,9 @@ export type BuildFirmwareRequest = {
  * `overheat-trip-test` is the test-only firmware variant (ADR-0040); it keeps the normal artifact names.
  * `board-gamma-601` builds for the Gamma 601 (ADR-0041) under its own artifact names, and
  * `board-gamma-601-vout-check` its test-only core-voltage check variant under the same names,
- * `board-gamma-601-mining` its test-only mining variant for the phase F3 contracts, and
- * `board-gamma-601-chip-check` its test-only chip check for the phase F3.1 contract.
+ * `board-gamma-601-mining` its test-only mining variant for the phase F3 contracts,
+ * `board-gamma-601-chip-check` its test-only chip check for the phase F3.1 contract, and
+ * `board-gamma-601-hash-check` its test-only hash check for the phase F3.2 contract.
  */
 export type FirmwareBuildMode =
   | "normal"
@@ -28,7 +29,8 @@ export type FirmwareBuildMode =
   | "board-gamma-601"
   | "board-gamma-601-vout-check"
   | "board-gamma-601-mining"
-  | "board-gamma-601-chip-check";
+  | "board-gamma-601-chip-check"
+  | "board-gamma-601-hash-check";
 
 /** Per-mode Cargo inputs; each mode owns its target directory so builds never share ESP-IDF state. */
 export function firmwareBuildPlan(buildMode: FirmwareBuildMode): {
@@ -80,6 +82,13 @@ export function firmwareBuildPlan(buildMode: FirmwareBuildMode): {
         artifactPrefix: "bitaxe-gamma601-firmware",
         cargoTargetDir: ".bazel-firmware-gamma601-chip-check-target",
         cargoFeatures: ["--features", "gamma601-chip-check"],
+        otaRollbackProbe: "0",
+      };
+    case "board-gamma-601-hash-check":
+      return {
+        artifactPrefix: "bitaxe-gamma601-firmware",
+        cargoTargetDir: ".bazel-firmware-gamma601-hash-check-target",
+        cargoFeatures: ["--features", "gamma601-hash-check"],
         otaRollbackProbe: "0",
       };
   }
@@ -192,6 +201,8 @@ export async function buildFirmware(
     verifyGamma601StackBudget(disassembly.stdout, { voutCheck: true });
   } else if (request.buildMode === "board-gamma-601-chip-check") {
     verifyGamma601StackBudget(disassembly.stdout, { chipCheck: true });
+  } else if (request.buildMode === "board-gamma-601-hash-check") {
+    verifyGamma601StackBudget(disassembly.stdout, { hashCheck: true });
   } else {
     verifyFirmwareStackBudget(disassembly.stdout);
   }

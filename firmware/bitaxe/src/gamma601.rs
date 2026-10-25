@@ -2,8 +2,9 @@
 //!
 //! The 601 build boots with the ASIC held in reset and the TPS546 output off, and it never
 //! mines. Nothing in this build releases the reset or turns the output on; only the test-only
-//! `gamma601-vout-check` variant adds one bounded enable with the reset held (ADR-0041 item 6,
-//! `gamma601/vout_check.rs`). A thread keeps the controller off, the fan running (full until the
+//! variants add bounded checks: one enable with the reset held (`gamma601-vout-check`, ADR-0041
+//! item 6), the chip detection (`gamma601-chip-check`, item 8) and the hash check
+//! (`gamma601-hash-check`, item 9). A thread keeps the controller off, the fan running (full until the
 //! output is confirmed off) and the readings current. Wi-Fi, HTTP and the display's startup
 //! screen run as on the Ultra 205; the 205's safety, sensor, fan and mining owners are not
 //! started. The records reach a receive-only USB console through the USB replay's board slot
@@ -24,26 +25,38 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 mod actuation;
-#[cfg(any(feature = "gamma601-vout-check", feature = "gamma601-chip-check"))]
+#[cfg(any(
+    feature = "gamma601-vout-check",
+    feature = "gamma601-chip-check",
+    feature = "gamma601-hash-check"
+))]
 mod check_guard;
+#[cfg(any(feature = "gamma601-chip-check", feature = "gamma601-hash-check"))]
+mod check_power;
 #[cfg(feature = "gamma601-chip-check")]
 mod chip_check;
+#[cfg(feature = "gamma601-hash-check")]
+mod hash_check;
 mod observations;
 #[cfg(any(
     feature = "gamma601-vout-check",
     feature = "gamma601-mining",
-    feature = "gamma601-chip-check"
+    feature = "gamma601-chip-check",
+    feature = "gamma601-hash-check"
 ))]
 mod regulator;
 #[cfg(feature = "gamma601-vout-check")]
 mod vout_check;
 
-#[cfg(any(
-    all(feature = "gamma601-vout-check", feature = "gamma601-mining"),
-    all(feature = "gamma601-vout-check", feature = "gamma601-chip-check"),
-    all(feature = "gamma601-mining", feature = "gamma601-chip-check")
-))]
-compile_error!("the Gamma 601 test variants are separate builds");
+/// The Gamma 601 test variants are separate builds.
+const TEST_VARIANTS_BUILT: usize = cfg!(feature = "gamma601-vout-check") as usize
+    + cfg!(feature = "gamma601-mining") as usize
+    + cfg!(feature = "gamma601-chip-check") as usize
+    + cfg!(feature = "gamma601-hash-check") as usize;
+const _: () = assert!(
+    TEST_VARIANTS_BUILT <= 1,
+    "the Gamma 601 test variants are separate builds"
+);
 
 /// The boot line only the test-only mining variant compiles (ADR-0041); the packager and the
 /// flash tool check it against the recorded variant.
@@ -61,7 +74,11 @@ const LOG_EVERY_SWEEPS: u32 = 10;
 const THREAD_NAME: &str = "gamma601-safe-boot";
 /// The sweeps publish the shared observations through the same verdict and store as the 205's
 /// 8 KiB sensor owner, which the 601 does not start.
-#[cfg(not(any(feature = "gamma601-vout-check", feature = "gamma601-chip-check")))]
+#[cfg(not(any(
+    feature = "gamma601-vout-check",
+    feature = "gamma601-chip-check",
+    feature = "gamma601-hash-check"
+)))]
 const THREAD_STACK_BYTES: usize = 8 * 1024;
 /// The core-voltage check runs on this thread, deeper than the sweeps.
 #[cfg(feature = "gamma601-vout-check")]
@@ -69,10 +86,17 @@ const THREAD_STACK_BYTES: usize = 12 * 1024;
 /// The chip check runs on this thread and through the executor, deeper than the sweeps.
 #[cfg(feature = "gamma601-chip-check")]
 const THREAD_STACK_BYTES: usize = 12 * 1024;
+/// The hash check adds the init, the result reads and the hashing that verifies them.
+#[cfg(feature = "gamma601-hash-check")]
+const THREAD_STACK_BYTES: usize = 16 * 1024;
 
 static REPORT: Mutex<Option<SafeBootReport>> = Mutex::new(None);
 static RESET_DRIVEN: AtomicBool = AtomicBool::new(false);
-#[cfg(any(feature = "gamma601-vout-check", feature = "gamma601-chip-check"))]
+#[cfg(any(
+    feature = "gamma601-vout-check",
+    feature = "gamma601-chip-check",
+    feature = "gamma601-hash-check"
+))]
 static CHECK_REPLAY_TURN: bitaxe_safety::gamma601_vout_check::ReplayTurn =
     bitaxe_safety::gamma601_vout_check::ReplayTurn::new();
 
@@ -109,6 +133,10 @@ pub(crate) fn maybe_usb_marker() -> Option<String> {
     #[cfg(feature = "gamma601-chip-check")]
     if CHECK_REPLAY_TURN.next() == bitaxe_safety::gamma601_vout_check::ReplayRecord::Check {
         return Some(chip_check::usb_marker());
+    }
+    #[cfg(feature = "gamma601-hash-check")]
+    if CHECK_REPLAY_TURN.next() == bitaxe_safety::gamma601_vout_check::ReplayRecord::Check {
+        return Some(hash_check::usb_marker());
     }
     REPORT
         .lock()
@@ -288,6 +316,8 @@ fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: Startup
     log::info!("{MINING_VARIANT_MARKER}");
     #[cfg(feature = "gamma601-chip-check")]
     log::info!("{}", chip_check::VARIANT_MARKER);
+    #[cfg(feature = "gamma601-hash-check")]
+    log::info!("{}", hash_check::VARIANT_MARKER);
     let mut report = SafeBootReport::initial(reset_held);
     report.controller = startup.controller;
     report.maybe_pre_id_status = startup.maybe_pre_id_status;
@@ -326,6 +356,8 @@ fn run(
     let mut check = vout_check::VoutCheck::pending();
     #[cfg(feature = "gamma601-chip-check")]
     let mut check = chip_check::ChipCheck::pending();
+    #[cfg(feature = "gamma601-hash-check")]
+    let mut check = hash_check::HashCheck::pending();
     loop {
         let next_sweep_ms = crate::runtime_uptime::millis().saturating_add(SWEEP_PERIOD_MS);
         service_until(
@@ -355,7 +387,11 @@ fn run(
         }
         refresh(&mut owner, &mut report, &mut producer, &state);
         // The check reads the fresh sweep; the next sweep restores the fan duty.
-        #[cfg(any(feature = "gamma601-vout-check", feature = "gamma601-chip-check"))]
+        #[cfg(any(
+            feature = "gamma601-vout-check",
+            feature = "gamma601-chip-check",
+            feature = "gamma601-hash-check"
+        ))]
         if check.poll(&mut owner, &report) {
             // The check ended with its own off; the next sweep re-asserts off once more.
             report.maybe_off = None;
@@ -463,6 +499,8 @@ fn log_records(report: &SafeBootReport) {
     log::info!("{}", vout_check::usb_marker());
     #[cfg(feature = "gamma601-chip-check")]
     log::info!("{}", chip_check::usb_marker());
+    #[cfg(feature = "gamma601-hash-check")]
+    log::info!("{}", hash_check::usb_marker());
 }
 
 /// The Wi-Fi owner's status category; the record admits only closed tokens of it.

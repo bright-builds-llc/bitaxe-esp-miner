@@ -98,11 +98,19 @@ pub(super) fn turn_off_and_confirm(
     maybe_state
 }
 
-#[cfg(any(feature = "gamma601-mining", feature = "gamma601-chip-check"))]
+#[cfg(any(
+    feature = "gamma601-mining",
+    feature = "gamma601-chip-check",
+    feature = "gamma601-hash-check"
+))]
 pub(crate) use production::{power_on, set_vout, verify_on};
 
-/// The production core voltage, only in the mining variant and the chip check.
-#[cfg(any(feature = "gamma601-mining", feature = "gamma601-chip-check"))]
+/// The production core voltage, only in the mining variant and the chip and hash checks.
+#[cfg(any(
+    feature = "gamma601-mining",
+    feature = "gamma601-chip-check",
+    feature = "gamma601-hash-check"
+))]
 mod production {
     use super::*;
     use bitaxe_safety::tps546::enable::{self, EnableRefusal, SettleFailure};

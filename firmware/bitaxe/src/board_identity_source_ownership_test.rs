@@ -10,6 +10,8 @@ const BOARD_601_BOOT_GATE_SOURCE: &str = include_str!("asic_adapter/board_601.rs
 const BOARD_IDENTITY_SOURCE: &str = include_str!("board_identity.rs");
 const LIVE_HARDWARE_SOURCE: &str = include_str!("production_mining_session/live_hardware.rs");
 const DEVICE_PROFILE_SOURCE: &str = include_str!("settings_adapter/device_profile.rs");
+const CHIP_CHECK_SOURCE: &str = include_str!("gamma601/chip_check.rs");
+const CHECK_POWER_SOURCE: &str = include_str!("gamma601/check_power.rs");
 
 fn body_of<'a>(source: &'a str, signature: &str) -> &'a str {
     let start = source.find(signature).expect("signature present");
@@ -71,7 +73,8 @@ fn the_regulator_enable_carries_the_isolation_gate_s_literal_in_test_builds_only
             r#"#[cfg(any(
     feature = "gamma601-vout-check",
     feature = "gamma601-mining",
-    feature = "gamma601-chip-check"
+    feature = "gamma601-chip-check",
+    feature = "gamma601-hash-check"
 ))]
 impl Tps546Bus"#,
         )
@@ -170,4 +173,24 @@ fn the_saved_profile_is_checked_against_the_built_board() {
     // Act / Assert
     assert!(DEVICE_PROFILE_SOURCE.contains("from_device_settings_for_board("));
     assert!(DEVICE_PROFILE_SOURCE.contains("crate::board_identity::catalog_entry()"));
+}
+
+#[test]
+fn the_chip_check_never_initializes_or_hashes() {
+    // Act
+    let sources = [CHIP_CHECK_SOURCE, CHECK_POWER_SOURCE];
+    // Assert
+    // Only the hash check's own stage may run the init or send work (ADR-0041 items 8 and 9).
+    for source in sources {
+        assert!(!source.contains("mining_ready_actions"));
+        assert!(!source.contains("SendDiagnosticWork"));
+    }
+}
+
+#[test]
+fn the_chip_check_runs_nothing_after_its_detection() {
+    // Act
+    let body = body_of(CHIP_CHECK_SOURCE, "fn run_check(");
+    // Assert
+    assert!(body.contains("check_power::run_powered(owner, report, &SPEC, |_| Ok(()))"));
 }

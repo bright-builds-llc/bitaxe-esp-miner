@@ -1,9 +1,10 @@
 //! The BM1370 pure core against the independent oracle: init, chip detection, the baud switch,
 //! one job and its share, all on the host.
 
-use bitaxe_asic::asic::{AsicFamily, JobId, ProductionResult, ValidJobIds, WorkFields};
+use bitaxe_asic::asic::{AsicFamily, JobId, ProductionResult, ValidJobIds, WorkPayload};
 use bitaxe_asic::bm1370::{
     init::{initialization_plan, Bm1370InitConfig},
+    known_answer::{GENESIS_NONCE, GENESIS_WORK_FIELDS},
     protocol::Bm1370Command,
     result::parse_chip_id_response,
     work::encode_work_frame,
@@ -19,7 +20,8 @@ fn decode<const N: usize>(hex: &str) -> [u8; N] {
     value
 }
 
-/// The Bitcoin genesis block as BM1370 work with job id 24.
+/// The Bitcoin genesis block as BM1370 work with job id 24. The header stays an independent
+/// literal, so the oracle's reconstruction cross-checks the core's known-answer fields.
 fn genesis_fixture() -> NonceFixture {
     let header = decode::<80>(concat!(
         "01000000",
@@ -29,36 +31,13 @@ fn genesis_fixture() -> NonceFixture {
         "ffff001d",
         "1dac2b7c"
     ));
-    let mut payload = [0; 82];
-    payload[0] = 24;
-    payload[1] = 1;
-    payload[6..10].copy_from_slice(&header[72..76]);
-    payload[10..14].copy_from_slice(&header[68..72]);
-    payload[78..82].copy_from_slice(&header[..4]);
-    for word in 0..8 {
-        payload[14 + word * 4..18 + word * 4]
-            .copy_from_slice(&header[36 + (7 - word) * 4..40 + (7 - word) * 4]);
-        payload[46 + word * 4..50 + word * 4]
-            .copy_from_slice(&header[4 + (7 - word) * 4..8 + (7 - word) * 4]);
-    }
     NonceFixture {
-        work_payload: payload,
+        work_payload: *WorkPayload::new(AsicFamily::Bm1370.first_job_id(), GENESIS_WORK_FIELDS)
+            .bytes(),
         header,
-        nonce: 2_083_236_893,
+        nonce: GENESIS_NONCE,
         target_be: decode("00000000ffff0000000000000000000000000000000000000000000000000000"),
         provenance: "Bitcoin genesis block fixed public header and hash".to_owned(),
-    }
-}
-
-fn fields_from(payload: &[u8; 82]) -> WorkFields {
-    let array4 = |start: usize| -> [u8; 4] { payload[start..start + 4].try_into().expect("4") };
-    WorkFields {
-        starting_nonce: array4(2),
-        nbits: array4(6),
-        ntime: array4(10),
-        merkle_root: payload[14..46].try_into().expect("32"),
-        prev_block_hash: payload[46..78].try_into().expect("32"),
-        version: array4(78),
     }
 }
 
@@ -120,7 +99,7 @@ fn a_job_s_nonce_decodes_to_its_job_and_meets_the_target() {
     asic.install_nonce_fixture(fixture.clone())
         .expect("fixture");
     let job_id = AsicFamily::Bm1370.first_job_id();
-    let frame = encode_work_frame(job_id, fields_from(&fixture.work_payload)).expect("frame");
+    let frame = encode_work_frame(job_id, GENESIS_WORK_FIELDS).expect("frame");
     // Act
     let reply = asic.exchange(frame.as_slice()).expect("result");
     let result =

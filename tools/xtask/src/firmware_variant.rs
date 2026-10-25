@@ -23,6 +23,8 @@ pub(crate) enum FirmwareVariant {
     Gamma601Mining,
     /// Test-only Gamma 601 firmware that runs one bounded chip detection, for phase F3.1.
     Gamma601ChipCheck,
+    /// Test-only Gamma 601 firmware that runs one bounded hash check, for phase F3.2.
+    Gamma601HashCheck,
 }
 
 impl FirmwareVariant {
@@ -31,9 +33,10 @@ impl FirmwareVariant {
         match self {
             Self::Production => None,
             Self::OverheatTripTest => Some(BoardId::Ultra205),
-            Self::Gamma601VoutCheck | Self::Gamma601Mining | Self::Gamma601ChipCheck => {
-                Some(BoardId::Gamma601)
-            }
+            Self::Gamma601VoutCheck
+            | Self::Gamma601Mining
+            | Self::Gamma601ChipCheck
+            | Self::Gamma601HashCheck => Some(BoardId::Gamma601),
         }
     }
 }
@@ -76,6 +79,7 @@ mod tests {
             FirmwareVariant::Gamma601VoutCheck,
             FirmwareVariant::Gamma601Mining,
             FirmwareVariant::Gamma601ChipCheck,
+            FirmwareVariant::Gamma601HashCheck,
         ];
 
         // Act
@@ -92,7 +96,8 @@ mod tests {
                 "\"overheat-trip-test\"",
                 "\"gamma601-vout-check\"",
                 "\"gamma601-mining\"",
-                "\"gamma601-chip-check\""
+                "\"gamma601-chip-check\"",
+                "\"gamma601-hash-check\""
             ]
         );
     }
@@ -136,6 +141,8 @@ mod tests {
             (Some(FirmwareVariant::Gamma601Mining), BoardId::Ultra205),
             (Some(FirmwareVariant::Gamma601ChipCheck), BoardId::Gamma601),
             (Some(FirmwareVariant::Gamma601ChipCheck), BoardId::Ultra205),
+            (Some(FirmwareVariant::Gamma601HashCheck), BoardId::Gamma601),
+            (Some(FirmwareVariant::Gamma601HashCheck), BoardId::Ultra205),
             (Some(FirmwareVariant::Production), BoardId::Gamma601),
             (None, BoardId::Gamma601),
         ];
@@ -149,7 +156,7 @@ mod tests {
         // Assert
         assert_eq!(
             admitted,
-            [true, false, true, false, true, false, true, false, true, true]
+            [true, false, true, false, true, false, true, false, true, false, true, true]
         );
     }
 }

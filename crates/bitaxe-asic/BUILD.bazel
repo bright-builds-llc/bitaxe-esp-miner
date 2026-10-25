@@ -36,6 +36,7 @@ rust_library(
         "src/bm1368/work.rs",
         "src/bm1368.rs",
         "src/bm1370/init.rs",
+        "src/bm1370/known_answer.rs",
         "src/bm1370/plan.rs",
         "src/bm1370/protocol.rs",
         "src/bm1370/result.rs",

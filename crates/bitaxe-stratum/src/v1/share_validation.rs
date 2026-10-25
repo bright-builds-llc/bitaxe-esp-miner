@@ -4,7 +4,12 @@
 //! - `reference/esp-miner/components/stratum/mining.c:test_nonce_value`
 //! - `reference/esp-miner/components/stratum/utils.c:le256todouble`
 //! - `reference/esp-miner/main/tasks/asic_result_task.c`
+//!
+//! The header reconstruction is chip-neutral: BM1366 and BM1370 results share `NonceResult`.
 
+use bitaxe_asic::asic::{NonceResult, WorkFields};
+// `nonzero_version_test` names results through this module's scope by their BM1366 alias.
+#[cfg(test)]
 use bitaxe_asic::bm1366::result::Bm1366NonceResult;
 
 use super::coinbase::double_sha256;
@@ -80,29 +85,51 @@ pub(super) fn network_difficulty(compact_nbits: u32) -> Result<f64, StratumV1Err
     Ok(difficulty)
 }
 
+/// One ASIC result checked against its job's fields.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AsicResultCheck {
+    /// The share difficulty of the reconstructed header's SHA256d.
+    pub difficulty: f64,
+    /// Whether the hash passes the configured ticket mask's software model for ASIC
+    /// difficulty 256 (`bitaxe_asic::bm1366::expected_filter`).
+    pub meets_ticket: bool,
+}
+
+/// Rebuilds the header a result names, its version bits OR'd into the job's version, and
+/// checks its SHA256d. Neither observation changes share admission.
+#[must_use]
+pub fn verify_asic_result(fields: &WorkFields, result: NonceResult) -> AsicResultCheck {
+    let hash = double_sha256(&rolled_header(fields, result));
+    AsicResultCheck {
+        difficulty: TRUE_DIFFICULTY_ONE / little_endian_256_to_f64(hash),
+        meets_ticket: bitaxe_asic::bm1366::expected_filter::matches(&hash),
+    }
+}
+
 /// Derives both observations from the existing reconstructed digest; neither changes admission.
-pub(super) fn nonce_validation(work: &MiningWork, result: Bm1366NonceResult) -> (f64, bool) {
-    let header = reconstructed_header(work, result);
-    let hash = double_sha256(&header);
-    (
-        TRUE_DIFFICULTY_ONE / little_endian_256_to_f64(hash),
-        bitaxe_asic::bm1366::expected_filter::matches(&hash),
-    )
+pub(super) fn nonce_validation(work: &MiningWork, result: NonceResult) -> (f64, bool) {
+    let check = verify_asic_result(&work.fields, result);
+    (check.difficulty, check.meets_ticket)
 }
 #[cfg(test)]
-fn nonce_difficulty(work: &MiningWork, result: Bm1366NonceResult) -> f64 {
+fn nonce_difficulty(work: &MiningWork, result: NonceResult) -> f64 {
     nonce_validation(work, result).0
 }
 
-fn reconstructed_header(work: &MiningWork, result: Bm1366NonceResult) -> [u8; 80] {
+#[cfg(test)]
+fn reconstructed_header(work: &MiningWork, result: NonceResult) -> [u8; 80] {
+    rolled_header(&work.fields, result)
+}
+
+fn rolled_header(fields: &WorkFields, result: NonceResult) -> [u8; 80] {
     let mut header = [0; 80];
-    let base_version = u32::from_le_bytes(work.fields.version);
+    let base_version = u32::from_le_bytes(fields.version);
     let rolled_version = base_version | result.version_bits;
     header[0..4].copy_from_slice(&rolled_version.to_le_bytes());
-    header[4..36].copy_from_slice(&reverse_32bit_words(work.fields.prev_block_hash));
-    header[36..68].copy_from_slice(&reverse_32bit_words(work.fields.merkle_root));
-    header[68..72].copy_from_slice(&work.fields.ntime);
-    header[72..76].copy_from_slice(&work.fields.nbits);
+    header[4..36].copy_from_slice(&reverse_32bit_words(fields.prev_block_hash));
+    header[36..68].copy_from_slice(&reverse_32bit_words(fields.merkle_root));
+    header[68..72].copy_from_slice(&fields.ntime);
+    header[72..76].copy_from_slice(&fields.nbits);
     header[76..80].copy_from_slice(&result.nonce.to_le_bytes());
     header
 }
@@ -131,7 +158,9 @@ fn little_endian_256_to_f64(value: [u8; 32]) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use bitaxe_asic::asic::AsicFamily;
     use bitaxe_asic::bm1366::work::{Bm1366JobId, Bm1366WorkFields};
+    use bitaxe_asic::bm1370::known_answer::{GENESIS_NONCE, GENESIS_WORK_FIELDS};
 
     use super::*;
     use crate::v1::coinbase::hex_32;
@@ -213,6 +242,84 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn the_genesis_nonce_verifies_above_the_ticket_difficulty() {
+        // Arrange
+        let result = genesis_result(GENESIS_NONCE, 0);
+
+        // Act
+        let check = verify_asic_result(&GENESIS_WORK_FIELDS, result);
+
+        // Assert
+        assert!(check.meets_ticket);
+        assert!(check.difficulty > 256.0, "{}", check.difficulty);
+    }
+
+    #[test]
+    fn a_flipped_genesis_nonce_fails_the_ticket() {
+        // Arrange
+        let result = genesis_result(GENESIS_NONCE ^ 1, 0);
+
+        // Act
+        let check = verify_asic_result(&GENESIS_WORK_FIELDS, result);
+
+        // Assert
+        assert!(!check.meets_ticket);
+        assert!(check.difficulty < 256.0, "{}", check.difficulty);
+    }
+
+    #[test]
+    fn version_bits_are_ored_into_the_job_version() {
+        // Arrange: genesis version 1 carried only by the result, then by both.
+        let mut versionless = GENESIS_WORK_FIELDS;
+        versionless.version = [0; 4];
+        let expected = verify_asic_result(&GENESIS_WORK_FIELDS, genesis_result(GENESIS_NONCE, 0));
+
+        // Act
+        let rolled_in = verify_asic_result(&versionless, genesis_result(GENESIS_NONCE, 1));
+        let overlapping =
+            verify_asic_result(&GENESIS_WORK_FIELDS, genesis_result(GENESIS_NONCE, 1));
+
+        // Assert
+        assert_eq!(rolled_in, expected);
+        assert_eq!(overlapping, expected);
+    }
+
+    #[test]
+    fn nonce_validation_matches_verify_asic_result() {
+        // Arrange
+        let work = reference_work(
+            "0c859545a3498373a57452fac22eb7113df2a465000543520000000000000000",
+            "5bdc1968499c3393873edf8e07a1c3a50a97fc3a9d1a376bbf77087dd63778eb",
+            0x6470_25b5,
+        );
+        let result = reference_result(0x0a02_9ed1);
+
+        // Act
+        let (difficulty, meets_ticket) = nonce_validation(&work, result);
+
+        // Assert
+        assert_eq!(
+            AsicResultCheck {
+                difficulty,
+                meets_ticket
+            },
+            verify_asic_result(&work.fields, result)
+        );
+    }
+
+    /// A BM1370 result for the genesis job (job id 24).
+    fn genesis_result(nonce: u32, version_bits: u32) -> NonceResult {
+        NonceResult {
+            job_id: AsicFamily::Bm1370.first_job_id(),
+            nonce,
+            asic_index: 0,
+            core_id: 0,
+            small_core_id: 0,
+            version_bits,
+        }
+    }
+
     fn reference_work(prev_hash: &str, merkle: &str, ntime: u32) -> MiningWork {
         let prev_block_hash = hex_32(prev_hash, "reference_prev_hash")
             .expect("reference previous hash should decode");
@@ -237,8 +344,8 @@ mod tests {
         }
     }
 
-    fn reference_result(nonce: u32) -> Bm1366NonceResult {
-        Bm1366NonceResult {
+    fn reference_result(nonce: u32) -> NonceResult {
+        NonceResult {
             job_id: Bm1366JobId::new(0x28),
             nonce,
             asic_index: 0,

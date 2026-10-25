@@ -23,6 +23,11 @@ gamma601-mining = ["board-gamma-601"]
 # and released from reset only for the count, for the phase F3.1 contract. Built only through
 # the `--//firmware/bitaxe:firmware_variant=gamma601-chip-check` 601 package, never released.
 gamma601-chip-check = ["board-gamma-601"]
+# Test-only (ADR-0041): the 601 safe boot plus one bounded hash check, the BM1370 powered,
+# detected, initialized and ramped to 300 MHz, then one known job, for the phase F3.2 contract.
+# Built only through the `--//firmware/bitaxe:firmware_variant=gamma601-hash-check` 601
+# package, never released.
+gamma601-hash-check = ["board-gamma-601"]
 
 [dependencies]
 anyhow.workspace = true
