@@ -683,6 +683,17 @@ action.
       external channel reads 37.5 to 40.0 C while hashing; the 127.75 C
       before is the uninitialized channel. The cooling proof's board rule
       can use the diode after the init;
+  - [ ] F3.4 (owner decisions 2026-10-25): the overheat and lease-interrupt
+    stops on the 601; heartbeat loss, fault and outage injection are out of
+    scope.
+    - [ ] Overheat software: the `gamma601-overheat-trip-test` variant
+      (ADR-0041 item 12) and the overheat soak made board-aware, soak
+      `gamma601-overheat-001` at 500 MHz / 1150 mV;
+    - [ ] Overheat hardware: the contract below;
+    - [ ] Lease-interrupt software: the lease soak and the Gate soak made
+      board-aware, soak `gamma601-lease-001` at 400 MHz;
+    - [ ] Lease-interrupt hardware: its own contract, after the overheat
+      check passes.
   - [ ] F4: self-test, soaks and promotion.
 
 Each phase ends with the full gate, an independent review, commit and
@@ -1326,6 +1337,73 @@ production is reinstalled.
     after attempt 002. The device also retried the run once after its
     restart backoff, stopping the same way, before the soak was
     interrupted and the device paused.
+
+Phase F3.4 overheat contract (attempt ordinals 001 onward):
+
+Gamma 601 local mining overheat check hardware: enabled.
+
+- **Objective:** the 601's overheat stop and recovery on hardware. The
+  test-only `gamma601-overheat-trip-test` firmware (55 C local trip) at the
+  clean, pushed HEAD mines at 500 MHz / 1150 mV through the soak
+  `gamma601-overheat-001` until the trip; the device stops, cools under the
+  601's rule (the chip unpowered, the regulator at or below 95 C, at least
+  30 s), restarts at the reduced 400 MHz / 1050 mV and hashes. A second
+  trip there stays stopped, since 300 MHz is below the catalog. Passing
+  means the soak's `passed` with outcome `restarted` or
+  `restarted_then_stays_stopped`, hashing after the restart in either.
+- **Precondition:** only the 601 attached, registered as board 601; the
+  tree clean and pushed; the owner's Gate tab available for the endpoint
+  handoff; the device's saved pair 400/1150 (F3.3's).
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/gamma-601-overheat/` and `umask 077`:**
+  1. `just detect-ultra205`;
+  2. `just package-gamma601-overheat-trip-test`;
+  3. `just flash-monitor --board 601 --port <port> --manifest
+     bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
+     --allow-test-firmware gamma601-overheat-trip-test
+     --capture-timeout-seconds 360`, state-preserving, confirming the
+     boot marker;
+  4. `just otawww-endpoint preflight|serve|finish` with the owner's
+     Connect in the Gate tab;
+  5. `just local-mining-soak preflight --soak gamma601-overheat-001
+     --private-root P/attempt-NNN --endpoint-root P/endpoint-NNN
+     --package-manifest <manifest> --pool-credentials pool-credentials.json`,
+     then `pause`, then `run` under `caffeinate`;
+  6. `just package --board 601`, `just flash --board 601 --port <port>`,
+     state-preserving, and `just monitor --board 601 --port <port>
+     --capture-timeout-seconds 360` to confirm production. The settings
+     themselves are confirmed before this step by the soak's own restore:
+     it writes back the journaled baseline (400/1150, the baseline's fan
+     settings, `overheat_mode 0`) and requires it to hold for 60 s with the
+     device stopped; a state-preserving install keeps them.
+- **Allowed effects:** the installs and their resets; the handoff;
+  start-on-boot saved off; the pool and the 500/1150 profile saved over
+  HTTP; mining at 500/1150 until the trip; the device's own overheat
+  writes; the restart at 400/1050, mining for up to 5 minutes or until a
+  second trip; the harness's settings restore, one clearing resume at
+  400/1150 and the pause.
+- **Prohibited effects:** any other pair, a Worker Start or lease, a
+  factory reset, a manual resume, network discovery beyond the handoff,
+  direct UART or pins. Pool values never leave `P` or the credential file.
+- **Stops:** the soak's live stops (22 W, chip 75 C, regulator 90 C, input
+  outside 4.5 to 5.5 V, fan, stale readings, a reset, a fault) and a missed
+  trip (the chip at 60 C or more while hashing). Any stop: pause, reinstall
+  production (step 6) **before** analysing, then analyse (progress-gated
+  policy).
+- **Evidence and privacy:** captures and journals stay in `P` (mode 0600);
+  committed evidence is a redacted summary of closed fields, checked
+  independently against the captures, with `just verify-redaction`.
+- **Recovery:** `just local-mining-soak pause --private-root P/attempt-NNN`
+  (it restores the settings an overheat run changed); if the recovery does
+  not settle, keep the device paused, let it cool and run `pause` again;
+  then step 6. If the board does not stop, remove all power.
+- **Risks:** power at 500 MHz is unmeasured (about 19 W by scaling F3.3,
+  under the 22 W stop); 1050 mV at 400 MHz is untested on this chip. The
+  cleanup's clearing resume at 400/1150 follows the 601's cooling rule,
+  which cannot read the chip; if the die is still at 55 C it trips again
+  and the device pauses itself with `overheat_mode` set, so the restore
+  reads unconfirmed. The 55 C and 75 C trips still protect the chip;
+  accepted, with `pause` as the recovery.
 
 ## Future
 
