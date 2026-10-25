@@ -1296,6 +1296,26 @@ Gamma 601 first local mining hardware: enabled.
 - **Recovery:** `just local-mining-soak pause --private-root P/attempt-NNN`,
   then the production reinstall in step 6. If the board does not stop,
   remove all power (barrel and USB).
+- **Attempt 001 (`771f24e7`), stopped:** the endpoint handoff, the soak's
+  preflight and pause (start-on-boot saved off, the device paused and
+  stopped) and the run's pool and 400 MHz profile all passed. About 1 s
+  after the resume the run's generation was revoked on the power fact
+  (`state=fault`, about 5.0 W: the offset alone, so the regulator's output
+  was barely up), the run ended `Failed`, the 601's 30 s cooling proof held
+  it, and the soak was stopped and the device paused (`mine_on_boot_off`,
+  `paused`, `asic_stopped`). Cause, most likely: with the output no longer
+  confirmed off, any negative IOUT was an invalid power sample, and the
+  regulator's offset (about -0.2 A on this 601) reads negative before the
+  BM1370 draws a load. The log could not name the cause.
+  - **The fix:** the offset floor also applies while the BM1370 draws no
+    hashing load (`gamma601_diode::chip_unloaded`: not yet initialized, or
+    the regulator commanded off); an initialized chip's negative reading
+    with the regulator on stays invalid. The 601's producer now logs each
+    change of the power fact's fault cause with the raw IOUT, VOUT and
+    status (at most one line per 10 s), so a recurrence names its cause.
+  - **Outcome:** `continue_after_verified_fix` once the fix is gated,
+    reviewed and pushed; attempt 002 takes a fresh handoff (the reinstall
+    changes the boot) and a new private root.
 
 ## Future
 
