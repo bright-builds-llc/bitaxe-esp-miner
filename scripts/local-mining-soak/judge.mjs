@@ -7,9 +7,11 @@ export const IDLE_POWER_W = 5;
 /**
  * The Ultra 205's live stop limits, as for the lease soaks: input 4.5–5.5 V, at most 15 W, ASIC below
  * 75 C, and its idle power. It reports no regulator temperature to judge. A soak's `limits` replace them.
+ * `restartCooling` is what counts as cool for the overheat recovery's restart (`restartCool`): on the
+ * 205, a fresh chip reading at or below 45 C.
  */
 export const LIMITS = Object.freeze({ minimumInputMv: 4500, maximumInputMv: 5500, maximumPowerW: 15, maximumChipTempC: 75,
-  idlePowerW: IDLE_POWER_W, maybeMaximumVrTempC: null });
+  idlePowerW: IDLE_POWER_W, maybeMaximumVrTempC: null, restartCooling: Object.freeze({ kind: "chip", maximumC: 45 }) });
 /**
  * The Gamma 601's limits (ADR-0041):
  * - power up to 22 W, the firmware's own stop (19 W target plus the 3 W margin,
@@ -20,11 +22,28 @@ export const LIMITS = Object.freeze({ minimumInputMv: 4500, maximumInputMv: 5500
  *   IOUT offset on a disabled output, and stays far below hashing power, which already adds the
  *   offset to the ASIC's own several watts;
  * - the regulator temperature stops above 90 C, under the firmware's 105 C throttle;
+ * - cool for the overheat restart: the chip's diode has no reading once its ASIC is unpowered, so
+ *   the chip reads unavailable with reason `asic_unpowered` and the regulator reads fresh at or
+ *   below 95 C;
  * - the chip and input limits as on the 205.
  */
-export const GAMMA601_LIMITS = Object.freeze({ ...LIMITS, maximumPowerW: 22, idlePowerW: 6.5, maybeMaximumVrTempC: 90 });
+export const GAMMA601_LIMITS = Object.freeze({ ...LIMITS, maximumPowerW: 22, idlePowerW: 6.5, maybeMaximumVrTempC: 90,
+  restartCooling: Object.freeze({ kind: "vrUnpowered", maximumVrC: 95 }) });
 /** The limits a soak runs under: its own, or the Ultra 205's. */
 export const limitsOf = (soak) => soak?.limits ?? LIMITS;
+
+/** Whether a sample counts as cool for the overheat recovery's restart, under `limits.restartCooling`. */
+export function restartCool(limits) {
+  const rule = limits.restartCooling;
+  if (rule.kind === "chip") {
+    return (sample) => sample.fresh.chipTemp && sample.chipTempC !== null && sample.chipTempC <= rule.maximumC;
+  }
+  if (rule.kind === "vrUnpowered") {
+    return (sample) => sample.chipTempUnavailableReason === "asic_unpowered" && sample.vrTempFresh && sample.vrTempC !== null &&
+      sample.vrTempC <= rule.maximumVrC;
+  }
+  throw new Error(`unknown restart cooling rule: ${rule.kind}`);
+}
 
 /**
  * The soaks a contract may run, each with its own enable line (owner decisions 2026-10-17/18).
@@ -58,6 +77,13 @@ export const limitsOf = (soak) => soak?.limits ?? LIMITS;
  * - Gamma 601 first mining 001 is the 601's first local mining (ADR-0041 phase F3), on the test-only
  *   `gamma601-mining` firmware: 10 continuous minutes at 400 MHz / 1150 mV, saved and read back with
  *   the pool before the resume, under the 601's limits (`GAMMA601_LIMITS`).
+ * - Gamma 601 overheat check 001 is overheat check 001 on the 601 (ADR-0041 phase F3.4), on the
+ *   test-only `gamma601-overheat-trip-test` firmware (55 C trip), under the 601's limits. The
+ *   baseline must read 400 MHz / 1150 mV (`baselineProfile`, F3.3's measured pair), because the
+ *   cleanup's clearing resume runs at the restored baseline. At 500 MHz / 1150 mV it must trip, cool
+ *   by the 601's rule and restart at 400 MHz / 1050 mV (`restartProfile`), which must show a nonzero
+ *   hashrate (`requireRestartHashrate`); then it mines 5 minutes there, or trips again and pauses
+ *   itself, because the next step would leave the catalog.
  */
 export const SOAKS = Object.freeze({
   "001": Object.freeze({ id: "001", activeMs: 30 * 60_000, requireHashrate: false, maybeMaximumOutageMs: null,
@@ -116,6 +142,15 @@ export const SOAKS = Object.freeze({
     maybeDeadlineMs: null, requireStoredBoard: "601", limits: GAMMA601_LIMITS,
     profile: Object.freeze({ frequencyMhz: 400, coreVoltageMv: 1150 }),
     enableLine: "Gamma 601 first local mining hardware: enabled." }),
+  "gamma601-overheat-001": Object.freeze({ id: "gamma601-overheat-001", kind: "overheat", task: "task-gamma-601-bring-up",
+    firmwareVariant: "gamma601-overheat-trip-test", requireStoredBoard: "601", limits: GAMMA601_LIMITS,
+    frequencyMhz: 500, coreVoltageMv: 1150,
+    baselineProfile: Object.freeze({ frequencyMhz: 400, coreVoltageMv: 1150 }),
+    restartProfile: Object.freeze({ frequencyMhz: 400, coreVoltageMv: 1050 }), requireRestartHashrate: true,
+    tripBoundMs: 10 * 60_000, restartBoundMs: 10 * 60_000, afterActiveMs: 5 * 60_000, requireHashrate: true,
+    maybeMaximumOutageMs: 180_000, unreachableStopMs: 60_000, maybeDeadlineMs: 45 * 60_000,
+    enableLine: "Gamma 601 local mining overheat check hardware: enabled.",
+    outcomes: ["restarted", "restarted_then_stays_stopped"] }),
 });
 export const SAMPLE_INTERVAL_MS = 2000;
 /** A longer gap between successive samples breaks continuity. */
@@ -144,6 +179,10 @@ export function sampleFromInfo(info, atMs) {
     sharesRejected: number(info?.sharesRejected),
     chipTempC: number(info?.temp),
     vrTempC: number(info?.vrTemp),
+    // Kept out of `fresh`, so the readings every board's live stops need are unchanged.
+    vrTempFresh: info?.vrTempStatus?.state === "fresh",
+    chipTempUnavailableReason: info?.chipTempStatus?.reason?.kind === "unavailable" && typeof info.chipTempStatus.reason.code === "string"
+      ? info.chipTempStatus.reason.code : null,
     inputMv: number(info?.voltage),
     powerW: number(info?.power),
     fanRpm: number(info?.fanrpm),

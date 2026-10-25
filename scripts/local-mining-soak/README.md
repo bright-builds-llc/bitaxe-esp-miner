@@ -74,6 +74,11 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   mining hardware: enabled.` It runs only on the test-only
   `gamma601-mining` firmware. See [Gamma 601 first
   mining](#gamma-601-first-mining).
+- `gamma601-overheat-001` is the overheat check on the Gamma 601, owned by
+  `task-gamma-601-bring-up`. Its enable line is `Gamma 601 local mining
+  overheat check hardware: enabled.` It runs only on the test-only
+  `gamma601-overheat-trip-test` firmware. See [Gamma 601 overheat
+  check](#gamma-601-overheat-check).
 
 There is no Gate lease. The device mines the pool saved in its NVS once the
 operator resumes it, and stops when paused. The soak:
@@ -220,7 +225,8 @@ read off (retried for up to 180 s), then confirms the ASIC powered down.
 local overheat trip is 55 C instead of 75 C, so the recovery fires at
 normal mining temperatures, about 60 C. Preflight refuses a package whose
 `firmware_variant` does not match the soak: this check runs only on the
-test variant, `gamma601-first-001` only on `gamma601-mining`, and every
+test variant, `gamma601-first-001` only on `gamma601-mining`,
+`gamma601-overheat-001` only on `gamma601-overheat-trip-test`, and every
 other soak only on production.
 
 1. It admits the paused baseline and saves the pool, as every soak does,
@@ -285,6 +291,36 @@ Its limits (`GAMMA601_LIMITS` in `judge.mjs`) differ from the 205's:
 - `vrTemp` stops above 90 C when the device reports it, below the
   firmware's 105 C throttle;
 - the chip (75 C) and input (4.5–5.5 V) limits are the 205's.
+
+## Gamma 601 overheat check
+
+`--soak gamma601-overheat-001` is the [overheat check](#overheat-check) on
+the 601 (ADR-0041 phase F3.4), on the test-only
+`gamma601-overheat-trip-test` firmware (`just
+package-gamma601-overheat-trip-test`), whose local trip is 55 C. It runs
+under the 601's limits (above), including their idle power for every
+hashing, final and pause check. It differs from `overheat-001` in these
+ways:
+
+1. Before any write, the baseline must report `storedBoard` `601` with
+   `boardIdentity` `match` (`soak_board_identity`). It must also read
+   400 MHz / 1150 mV (`baselineProfile`, F3.3's measured pair), or the check
+   refuses before the resume (`overheat_baseline_profile`): the cleanup's
+   clearing resume runs at the restored baseline pair.
+2. It saves 500 MHz / 1150 mV and resumes until the trip.
+3. A stopped 601 has no chip reading: its chip reads unavailable with reason
+   `asic_unpowered`. So cool, for the restart and for the settle wait, means
+   that reason with a fresh `vrTemp` at 95 C or less (`restartCooling` in
+   `GAMMA601_LIMITS`); `asic_not_initialized` or a stale regulator is not
+   cool.
+4. The restart must come at 400 MHz / 1050 mV (`restartProfile`) and show a
+   nonzero hashrate while hashing there (`overheat_restart_no_hashrate`).
+   Then it mines 5 minutes (`restarted`), or trips again and pauses itself,
+   since the next step would leave the catalog
+   (`restarted_then_stays_stopped`). Both outcomes pass.
+
+The trip window, restart window, outage allowance, missed-trip stop (a
+hashing chip at 60 C) and the 45-minute deadline are `overheat-001`'s.
 
 `P/attempt-NNN` holds `context.json`, `journal.ndjson` and `result.json`.
 These hold metadata only: the endpoint stays in `P/endpoint`, and no pool

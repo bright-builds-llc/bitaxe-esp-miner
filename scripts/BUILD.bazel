@@ -2104,6 +2104,7 @@ js_binary(
     "lease",
     "main",
     "overheat",
+    "overheat-gamma601",
     "pool",
     "run",
     "stopped-proof",

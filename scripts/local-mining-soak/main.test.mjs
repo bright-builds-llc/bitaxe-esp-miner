@@ -111,3 +111,34 @@ test("the 601 soak has its own enable line in the 601 bring-up task", () => {
   assert.doesNotThrow(() => requireSoakTask(block, "gamma601-first-001"));
   assert.throws(() => requireSoakTask(block.replace("Gamma 601 first", "Ultra 205 first"), "gamma601-first-001"), { code: "soak_task_disabled" });
 });
+
+test("each firmware variant admits only its own soaks", () => {
+  // Arrange
+  const variants = ["production", "overheat-trip-test", "gamma601-mining", "gamma601-overheat-trip-test"];
+  // Act / Assert
+  for (const variant of variants) {
+    for (const soak of Object.values(SOAKS)) {
+      const own = (soak.firmwareVariant ?? "production") === variant;
+      const admit = () => requireFirmwareVariant({ firmware_variant: variant }, soak);
+      if (own) assert.doesNotThrow(admit, `${variant} ${soak.id}`);
+      else assert.throws(admit, { code: "soak_firmware_variant" }, `${variant} ${soak.id}`);
+    }
+  }
+});
+
+test("the 601 overheat check runs only on its own test firmware", () => {
+  // Arrange
+  const admitted = Object.values(SOAKS).filter((soak) => soak.firmwareVariant === "gamma601-overheat-trip-test").map((soak) => soak.id);
+  // Act / Assert
+  assert.deepEqual(admitted, ["gamma601-overheat-001"]);
+});
+
+test("the 601 overheat check has its own enable line in the 601 bring-up task", () => {
+  // Arrange
+  const line = "Gamma 601 local mining overheat check hardware: enabled.";
+  const block = `## Active\n\n### task-gamma-601-bring-up | x\n\n${line}\n\n## Other\n`;
+  // Act / Assert
+  assert.equal(soakTaskLine("gamma601-overheat-001"), line);
+  assert.doesNotThrow(() => requireSoakTask(block, "gamma601-overheat-001"));
+  assert.throws(() => requireSoakTask(block.replace(line, soakTaskLine("overheat-001")), "gamma601-overheat-001"), { code: "soak_task_disabled" });
+});

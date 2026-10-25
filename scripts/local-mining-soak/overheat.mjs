@@ -1,25 +1,25 @@
 // The overheat check (ADR-0038 decision 2, ADR-0040): on the test-only firmware whose local
 // overheat trip is 55 C, local mining at a raised but catalog pair trips at normal mining
-// temperatures. The device must stop, cool to 45 C or less for 30 s with the fan at 100%, and
-// restart 100 MHz and 100 mV lower. Then it either mines at the lowered pair, or trips again and
+// temperatures. The device must stop, cool for 30 s with the fan at 100% (the Ultra 205: the chip at
+// 45 C or less; the Gamma 601: its ASIC unpowered and the regulator at 95 C or less, `restartCool`),
+// and restart 100 MHz and 100 mV lower. Then it either mines at the lowered pair, or trips again and
 // pauses itself, because the next step would leave the catalog. Every path pauses, waits until
 // the firmware's recovery has settled (it continues while paused), then restores the original
 // pair, the fan and `overheat_mode`. A device that paused itself is resumed once to clear its
 // stop, which starts a short run, then paused again.
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { finalFailures, hashing, increases, limitMetrics, liveStop, mining, miningLog, SAMPLE_INTERVAL_MS, sampleFromInfo,
-  START_ALLOWANCE_MS, statusOnlySamples, wifiMetrics } from "./judge.mjs";
+import { finalFailures, hashingUnder, increases, LIMITS, limitMetrics, limitsOf, liveStop, mining, miningLog, restartCool,
+  SAMPLE_INTERVAL_MS, sampleFromInfo, START_ALLOWANCE_MS, statusOnlySamples, wifiMetrics } from "./judge.mjs";
 import { admitBaseline, pauseAndConfirm, sampleLoop } from "./run.mjs";
 
 /** A hashing chip at or above this means the lowered trip did not fire: stop at once. */
 export const TRIP_MISSED_C = 60;
-/** The recovery restarts only after this long at or below the restart temperature. */
+/** The recovery restarts only after this long cool (`restartCool`). */
 const COOLING_MS = 30_000;
-const RESTART_TEMP_C = 45;
 /**
  * The firmware's recovery has settled once the settings it writes have not changed for this long
- * (longer than the safe-stop's 120 s cooling proof) and the chip has read 45 C or less for the
- * last `SETTLED_COOL_MS`, so a pending restart would already have saved its pair.
+ * (longer than the safe-stop's 120 s cooling proof) and the device has read cool (`restartCool`) for
+ * the last `SETTLED_COOL_MS`, so a pending restart would already have saved its pair.
  */
 export const SETTLE_QUIET_MS = 150_000;
 const SETTLED_COOL_MS = 40_000;
@@ -33,14 +33,14 @@ const RESTORE_WATCH_SAMPLES = 20;
 
 /**
  * The live stops of this check: soak 002's, except that an overheat and the device's own
- * overheat pause are expected. A hashing chip at `TRIP_MISSED_C` stops it.
+ * overheat pause are expected. A hashing chip at `TRIP_MISSED_C` stops it. `limits` are the soak's.
  */
-export function overheatLiveStop(sample, baseline, maybePrevious) {
-  if (hashing(sample) && sample.chipTempC !== null && sample.fresh.chipTemp && sample.chipTempC >= TRIP_MISSED_C) {
+export function overheatLiveStop(sample, baseline, maybePrevious, limits = LIMITS) {
+  if (hashingUnder(limits)(sample) && sample.chipTempC !== null && sample.fresh.chipTemp && sample.chipTempC >= TRIP_MISSED_C) {
     return "overheat_trip_missed";
   }
   const expected = { ...sample, overheatMode: false, pauseReason: sample.pauseReason === "overheat" ? null : sample.pauseReason };
-  return liveStop(expected, baseline, maybePrevious);
+  return liveStop(expected, baseline, maybePrevious, limits);
 }
 
 /**
@@ -88,6 +88,8 @@ export function stopLogged(log) {
 
 /** The check's phases for `sampleLoop`: heat until the trip, cool until the restart, then mine at the lowered pair. */
 export function overheatPhases({ soak, samples, resumedAt, marks, note, readCause, readStop }) {
+  const limits = limitsOf(soak);
+  const hashing = hashingUnder(limits);
   let phase = "heat";
   const begin = async (next, event, sample, detail = {}) => {
     phase = next;
@@ -163,7 +165,7 @@ export function overheatPhases({ soak, samples, resumedAt, marks, note, readCaus
       if (marks.secondTripAtMs !== undefined) {
         return sample.atMs - marks.secondTripAtMs > soak.restartBoundMs ? "overheat_not_stopped" : undefined;
       }
-      const log = miningLog(samples.slice(marks.afterIndex));
+      const log = miningLog(samples.slice(marks.afterIndex), limits);
       if (log.maybeLastMiningAtMs !== null && sample.atMs - log.maybeLastMiningAtMs > soak.maybeMaximumOutageMs) {
         return "soak_outage_unrecovered";
       }
@@ -197,7 +199,9 @@ export async function runOverheat({ client, expected, settings, now, sleep, reco
   keepLogs = async () => {} }) {
   let journalFailed = false;
   const note = async (event) => { try { await record(event); } catch { journalFailed = true; } };
-  const baseline = await admitBaseline({ client, expected, settings, now, note });
+  const limits = limitsOf(soak);
+  // The cleanup's clearing resume runs at the restored baseline pair, so a soak may pin that pair.
+  const baseline = await admitBaseline({ client, expected, settings, now, note, soak, requireProfile: soak.baselineProfile ?? null });
   requireCondition(!baseline.overheatMode, "overheat_baseline_in_overheat");
   const original = settingsOf(baseline);
   const marks = {}, samples = [];
@@ -234,7 +238,7 @@ export async function runOverheat({ client, expected, settings, now, sleep, reco
     maybeStop ??= typeof error?.code === "string" ? error.code : "soak_run_error";
   }
   if (maybeStop !== null) await note({ event: "live_stop", code: maybeStop });
-  const cleanup = await restoreAndStop({ client, original, now, sleep, note });
+  const cleanup = await restoreAndStop({ client, original, now, sleep, note, limits });
   const verdict = judgeOverheat({ baseline, samples, marks, original, cleanup, soak,
     maybeStop: maybeStop ?? (journalFailed ? "soak_journal_failed" : null) });
   await note({ event: "verdict", result: verdict.result, failures: verdict.failures });
@@ -243,12 +247,13 @@ export async function runOverheat({ client, expected, settings, now, sleep, reco
 
 /**
  * Waits until the firmware's recovery has settled: its settings unchanged for `SETTLE_QUIET_MS`,
- * the chip at 45 C or less for the last `SETTLED_COOL_MS`, and the retained log showing the
- * recovery finished (`recoveryFinished`). Sampling every 2 s can miss a warm reading that restarts
- * the firmware's 30 s, and a failed save changes nothing visible, so the log has the last word.
- * Whether it settled within `SETTLE_BOUND_MS`. Never throws.
+ * cool under `limits` (`restartCool`) for the last `SETTLED_COOL_MS`, and the retained log showing
+ * the recovery finished (`recoveryFinished`). Sampling every 2 s can miss a warm reading that
+ * restarts the firmware's 30 s, and a failed save changes nothing visible, so the log has the last
+ * word. Whether it settled within `SETTLE_BOUND_MS`. Never throws.
  */
-export async function awaitRecoverySettled({ client, now, sleep, note }) {
+export async function awaitRecoverySettled({ client, now, sleep, note, limits = LIMITS }) {
+  const coolNow = restartCool(limits);
   const startedAt = now();
   let maybeKey = null, quietSince = startedAt, maybeCoolSince = null;
   while (now() - startedAt <= SETTLE_BOUND_MS) {
@@ -257,8 +262,7 @@ export async function awaitRecoverySettled({ client, now, sleep, note }) {
     if (maybeSample !== null) {
       const key = recoveryKey(maybeSample);
       if (key !== maybeKey) { maybeKey = key; quietSince = maybeSample.atMs; }
-      const cool = maybeSample.fresh.chipTemp && maybeSample.chipTempC !== null && maybeSample.chipTempC <= RESTART_TEMP_C;
-      maybeCoolSince = cool ? (maybeCoolSince ?? maybeSample.atMs) : null;
+      maybeCoolSince = coolNow(maybeSample) ? (maybeCoolSince ?? maybeSample.atMs) : null;
       const quietAndCool = maybeSample.atMs - quietSince >= SETTLE_QUIET_MS && maybeCoolSince !== null &&
         maybeSample.atMs - maybeCoolSince >= SETTLED_COOL_MS;
       // The raw log can hold the station address; it is only parsed here, never kept.
@@ -299,11 +303,11 @@ async function restoreHeld({ client, original, now, sleep }) {
  * Pauses, waits for the recovery to settle, restores the original settings, clears a device pause
  * by one resume and a second pause, and reads the result back. Returns whether the recovery settled
  * and the final powered-down sample, or undefined. Never throws. An unsettled recovery is left
- * paused and unrestored, for the operator.
+ * paused and unrestored, for the operator. `limits` are the soak's: its idle power and cool rule.
  */
-export async function restoreAndStop({ client, original, now, sleep, note }) {
-  let maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
-  const settled = await awaitRecoverySettled({ client, now, sleep, note });
+export async function restoreAndStop({ client, original, now, sleep, note, limits = LIMITS }) {
+  let maybeFinal = await pauseAndConfirm({ client, now, sleep, note, limits });
+  const settled = await awaitRecoverySettled({ client, now, sleep, note, limits });
   if (!settled) return { settled, maybeFinal, markerCleared: true };
   let resumeSent = false, markerCleared = true, restoreFailed = false;
   try {
@@ -317,7 +321,7 @@ export async function restoreAndStop({ client, original, now, sleep, note }) {
       while (now() - startedAt <= UNPAUSE_BOUND_MS && sampleFromInfo(await client.info(), now()).pauseReason === "overheat") {
         await sleep(SAMPLE_INTERVAL_MS);
       }
-      maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
+      maybeFinal = await pauseAndConfirm({ client, now, sleep, note, limits });
       // The resume saves the stop marker clear once and never retries it; a failure would leave
       // the next boot paused by itself.
       markerCleared = await markerClearSaved(client);
@@ -332,7 +336,7 @@ export async function restoreAndStop({ client, original, now, sleep, note }) {
     restoreFailed = true;
     await note({ event: "settings_restore_failed", atMs: now() });
     // A resume sent to clear a stop must never leave the device mining.
-    if (resumeSent) maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
+    if (resumeSent) maybeFinal = await pauseAndConfirm({ client, now, sleep, note, limits });
   }
   return { settled, maybeFinal, markerCleared, restoreFailed };
 }
@@ -344,10 +348,16 @@ async function markerClearSaved(client) {
 
 /** The check's verdict over its samples, marks, the cleanup and the final sample. */
 export function judgeOverheat({ baseline, samples, marks, original, cleanup, maybeStop, soak }) {
+  const limits = limitsOf(soak);
+  const hashing = hashingUnder(limits);
+  const cool = restartCool(limits);
   const failures = [];
   const fail = (code) => { if (!failures.includes(code)) failures.push(code); };
   if (maybeStop) fail(maybeStop);
-  samples.forEach((sample, index) => { const stop = overheatLiveStop(sample, baseline, samples[index - 1] ?? null); if (stop) fail(stop); });
+  samples.forEach((sample, index) => {
+    const stop = overheatLiveStop(sample, baseline, samples[index - 1] ?? null, limits);
+    if (stop) fail(stop);
+  });
   if (marks.trippedAtMs === undefined) fail("overheat_not_tripped");
   if (marks.trippedAtMs !== undefined && marks.tripCause !== "lowered_trip") {
     fail(marks.tripCause === undefined ? "overheat_cause_unconfirmed" : "overheat_wrong_cause");
@@ -356,17 +366,18 @@ export function judgeOverheat({ baseline, samples, marks, original, cleanup, may
     (marks.restartedAtMs === undefined || sample.atMs < marks.restartedAtMs));
   // The saved fan setting is manual 100% from the trip on, as upstream leaves it.
   if (cooling.some((sample) => sample.autoFanSpeed || sample.manualFanSpeed !== 100)) fail("overheat_fan_not_full");
-  const lowered = { frequencyMhz: soak.frequencyMhz - 100, coreVoltageMv: soak.coreVoltageMv - 100 };
+  const lowered = soak.restartProfile ?? { frequencyMhz: soak.frequencyMhz - 100, coreVoltageMv: soak.coreVoltageMv - 100 };
+  const maybeRestartActionAtMs = restartActionAtMs(samples, marks.trippedAtMs, marks.restartedAtMs, limits);
   if (marks.restartedAtMs !== undefined) {
     const restart = samples.find((sample) => sample.atMs === marks.restartedAtMs);
     if (restart.frequencyMhz !== lowered.frequencyMhz || restart.coreVoltageMv !== lowered.coreVoltageMv) fail("overheat_pair_not_lowered");
-    const cooled = cooledBeforeMs(samples, marks.trippedAtMs, marks.restartedAtMs);
+    const cooled = cooledBeforeMs(samples, marks.trippedAtMs, maybeRestartActionAtMs, cool);
     if (cooled === null) fail("overheat_cooling_inconclusive");
     else if (cooled < COOLING_MS) fail("overheat_restarted_before_cooling");
   } else if (marks.staysStoppedAtMs === undefined && soak.outcomes.some((outcome) => outcome.startsWith("restarted"))) {
     fail("overheat_not_restarted");
   } else if (marks.staysStoppedAtMs !== undefined) {
-    const cooled = cooledBeforeMs(samples, marks.trippedAtMs, marks.staysStoppedAtMs);
+    const cooled = cooledBeforeMs(samples, marks.trippedAtMs, marks.staysStoppedAtMs, cool);
     if (cooled === null) fail("overheat_cooling_inconclusive");
     else if (cooled < COOLING_MS) fail("overheat_stopped_before_cooling");
   }
@@ -375,16 +386,19 @@ export function judgeOverheat({ baseline, samples, marks, original, cleanup, may
   // A cleanup that broke off skipped the restore watch and the marker check.
   if (cleanup.restoreFailed) fail("overheat_settings_restore_failed");
   const after = marks.afterIndex === undefined ? [] : samples.slice(marks.afterIndex);
-  const afterLog = miningLog(after);
+  const afterLog = miningLog(after, limits);
   const staysStopped = marks.staysStoppedAtMs !== undefined;
   if (marks.restartedAtMs !== undefined && !staysStopped && afterLog.activeMs < soak.afterActiveMs) fail("soak_active_time_short");
+  // A soak may require the restart proven by a nonzero hashrate at the lowered pair, on either outcome.
+  const restartHashed = after.some((sample) => hashing(sample) && sample.hashRate !== null && sample.hashRate > 0);
+  if (soak.requireRestartHashrate === true && marks.restartedAtMs !== undefined && !restartHashed) fail("overheat_restart_no_hashrate");
   const active = samples.filter(hashing);
   if (!active.some((sample) => sample.hashRate !== null && sample.hashRate > 0)) fail("soak_no_hashrate");
   if (!cleanup.settled) fail("overheat_recovery_unsettled");
   const outcome = staysStopped ? (marks.restartedAtMs === undefined ? "stays_stopped" : "restarted_then_stays_stopped")
     : marks.restartedAtMs !== undefined ? "restarted" : "none";
   if (marks.trippedAtMs !== undefined && !soak.outcomes.includes(outcome)) fail("overheat_unexpected_outcome");
-  finalFailures(baseline, cleanup.maybeFinal).forEach(fail);
+  finalFailures(baseline, cleanup.maybeFinal, limits).forEach(fail);
   if (cleanup.maybeFinal && !restored(cleanup.maybeFinal, original)) fail("overheat_settings_not_restored");
   return {
     schema: "local-mining-soak-result-v1",
@@ -397,7 +411,7 @@ export function judgeOverheat({ baseline, samples, marks, original, cleanup, may
       trip_chip_c: marks.tripChipC ?? null,
       first_hashing_to_trip_ms: marks.trippedAtMs === undefined || active.length === 0 ? null : marks.trippedAtMs - active[0].atMs,
       trip_to_restart_ms: marks.restartedAtMs === undefined ? null : marks.restartedAtMs - marks.trippedAtMs,
-      cooled_ms: cooledBeforeMs(samples, marks.trippedAtMs, marks.restartedAtMs ?? marks.staysStoppedAtMs),
+      cooled_ms: cooledBeforeMs(samples, marks.trippedAtMs, maybeRestartActionAtMs ?? marks.staysStoppedAtMs, cool),
       minimum_cooling_chip_c: minimum(cooling.map((sample) => sample.chipTempC)),
       // A pair below the catalog is never applied, so it is reported only once a restart used it.
       lowered_frequency_mhz: marks.restartedAtMs === undefined ? null : lowered.frequencyMhz,
@@ -409,12 +423,32 @@ export function judgeOverheat({ baseline, samples, marks, original, cleanup, may
       recovery_settled: cleanup.settled,
       ...wifiMetrics(samples),
       active_samples: active.length,
-      status_only_samples: statusOnlySamples(samples),
+      status_only_samples: statusOnlySamples(samples, limits),
       samples: samples.length,
       shares_accepted: increases(samples, "sharesAccepted"),
       ...limitMetrics(samples.filter(mining)),
     },
   };
+}
+
+/**
+ * When the device began its restart, for `cooledBeforeMs`: the first hashing sample's time, except
+ * under the `vrUnpowered` cool rule (the Gamma 601). There the restart's preparation (chip
+ * detection, init, ramp) reads the chip `asic_not_initialized`, which is not cool, so the action
+ * begins at the first sample after the trip that leaves `asic_unpowered` once it was unpowered,
+ * never later than the hashing sample. Undefined without a trip or restart.
+ */
+export function restartActionAtMs(samples, maybeTrippedAtMs, maybeActionAtMs, limits = LIMITS) {
+  if (limits.restartCooling.kind !== "vrUnpowered" || maybeTrippedAtMs === undefined || maybeActionAtMs === undefined) {
+    return maybeActionAtMs;
+  }
+  let unpowered = false;
+  for (const sample of samples) {
+    if (sample.atMs < maybeTrippedAtMs || sample.atMs >= maybeActionAtMs) continue;
+    if (sample.chipTempUnavailableReason === "asic_unpowered") unpowered = true;
+    else if (unpowered) return sample.atMs;
+  }
+  return maybeActionAtMs;
 }
 
 /** The gap before the action sample beyond which the action's time is too uncertain to judge. */
@@ -428,14 +462,14 @@ const ACTION_GAP_LIMIT_MS = 2 * SAMPLE_INTERVAL_MS + 1_000;
  * came no later than the sample that showed it. The action sample's reading follows the action, so
  * only its time counts. A correct device always measures at least 30 s. A gap of more than
  * `ACTION_GAP_LIMIT_MS` just before the action, or just after the start sample, could hide an early
- * action, so either gives null.
+ * action, so either gives null. `cool` is the soak's restart cooling predicate (`restartCool`).
  */
-export function cooledBeforeMs(samples, maybeTrippedAtMs, maybeActionAtMs) {
+export function cooledBeforeMs(samples, maybeTrippedAtMs, maybeActionAtMs, cool = restartCool(LIMITS)) {
   if (maybeTrippedAtMs === undefined || maybeActionAtMs === undefined) return null;
   const before = samples.filter((sample) => sample.atMs < maybeActionAtMs);
   const maybeLastBefore = before.at(-1);
   if (maybeLastBefore === undefined || maybeActionAtMs - maybeLastBefore.atMs > ACTION_GAP_LIMIT_MS) return null;
-  const warm = (sample) => !(sample.fresh.chipTemp && sample.chipTempC !== null && sample.chipTempC <= RESTART_TEMP_C);
+  const warm = (sample) => !cool(sample);
   const startIndex = before.findLastIndex((sample) => sample.atMs < maybeTrippedAtMs || warm(sample));
   if (startIndex < 0) return null;
   const maybeNext = before[startIndex + 1] ?? null;
