@@ -665,7 +665,11 @@ action.
       confirmed off and the safe-boot thread running; the board's signed
       capability and model; a production 601 refuses Start before budget;
       the Gate pinned at `b775145`;
-    - [ ] 601 Worker hardware: the contract below;
+    - [x] 601 Worker hardware: passed on attempt 001, the Worker started
+      with the baseline confirmed and the board held safe
+      (`docs/parity/evidence/20261025-gamma601-worker-boot.md`);
+    - [ ] 205 regression at the 601 Worker commit (`2bf484b8`), at the next
+      session with the 205 attached;
     - [x] F3.2 open item from F3.1: after the BM1370 init the EMC2101
       external channel reads 37.5 to 40.0 C while hashing; the 127.75 C
       before is the uninitialized channel. The cooling proof's board rule
@@ -1202,9 +1206,8 @@ and production is reinstalled.
   failed pass rule, or off not confirmed: stop after the production
   reinstall and analyse before another attempt (progress-gated policy).
 
-Phase F3 601 Worker contract (attempt ordinals 001 onward):
-
-Gamma 601 Worker boot hardware: enabled.
+Phase F3 601 Worker contract (attempt ordinals 001 onward), closed:
+attempt 001 passed (`docs/parity/evidence/20261025-gamma601-worker-boot.md`).
 
 - **Objective:** the production 601 package at the clean, pushed HEAD
   boots with its Worker ready, its board still held safe.
