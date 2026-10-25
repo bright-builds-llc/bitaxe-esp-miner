@@ -63,6 +63,10 @@ const _: () = assert!(
 #[cfg(feature = "gamma601-mining")]
 const MINING_VARIANT_MARKER: &str = "firmware_variant=gamma601-mining";
 
+/// How long the boot waits for the safe-boot thread to confirm the output off before it
+/// confirms the baseline; its first sweeps run within this.
+const BASELINE_OFF_WAIT_MS: u64 = 3_000;
+const BASELINE_OFF_POLL_MS: u32 = 50;
 /// Upstream reads the controller identity up to six times, 3 ms apart.
 const IDENTIFY_ATTEMPTS: usize = 6;
 const IDENTIFY_BACKOFF_MS: u32 = 3;
@@ -91,6 +95,9 @@ const THREAD_STACK_BYTES: usize = 12 * 1024;
 const THREAD_STACK_BYTES: usize = 16 * 1024;
 
 static REPORT: Mutex<Option<SafeBootReport>> = Mutex::new(None);
+/// Set by the safe-boot thread once it runs; the boot's own startup reading is not enough for
+/// the Worker baseline.
+static SAFE_BOOT_RUNNING: AtomicBool = AtomicBool::new(false);
 static RESET_DRIVEN: AtomicBool = AtomicBool::new(false);
 #[cfg(any(
     feature = "gamma601-vout-check",
@@ -199,15 +206,42 @@ pub(crate) fn initialize_hardware(
         display_adapter::RuntimeDisplayMode::Unavailable,
         input_available,
     );
-    (
-        asic_adapter::retain_board_601_peripherals(
-            peripherals.uart1,
-            pins.gpio1,
-            pins.gpio17,
-            pins.gpio18,
-        ),
-        Some(peripherals.modem),
+    let baseline = asic_adapter::retain_board_601_peripherals(
+        peripherals.uart1,
+        pins.gpio1,
+        pins.gpio17,
+        pins.gpio18,
     )
+    .map(confirm_output_off);
+    (baseline, Some(peripherals.modem))
+}
+
+/// The 601's baseline also needs the TPS546 output confirmed off, by the startup reading or the
+/// first sweeps, with the safe-boot thread running to keep it so. Without both the baseline
+/// stays unconfirmed and no Worker starts (ADR-0041 item 10).
+fn confirm_output_off(
+    baseline: asic_adapter::BootMiningBaseline,
+) -> asic_adapter::BootMiningBaseline {
+    if baseline != asic_adapter::BootMiningBaseline::Confirmed {
+        return baseline;
+    }
+    let deadline_ms = crate::runtime_uptime::millis().saturating_add(BASELINE_OFF_WAIT_MS);
+    loop {
+        let off_confirmed = SAFE_BOOT_RUNNING.load(Ordering::Acquire)
+            && REPORT
+                .lock()
+                .ok()
+                .and_then(|slot| slot.as_ref().map(SafeBootReport::off_confirmed))
+                .unwrap_or(false);
+        if off_confirmed {
+            return baseline;
+        }
+        if crate::runtime_uptime::millis() >= deadline_ms {
+            log::warn!("gamma601_safe_boot=fault category=baseline_off_unconfirmed");
+            return asic_adapter::BootMiningBaseline::Unconfirmed;
+        }
+        FreeRtos::delay_ms(BASELINE_OFF_POLL_MS);
+    }
 }
 
 /// Starts the 601's runtime owners: the safety supervisor, the production mining owner and the
@@ -350,6 +384,7 @@ fn run(
     mut producer: observations::Producer,
     inbox: safety_adapter::SafetyActuationOwnerInbox,
 ) -> ! {
+    SAFE_BOOT_RUNNING.store(true, Ordering::Release);
     let mut sweeps: u32 = 0;
     let mut state = actuation::ActuationState::default();
     #[cfg(feature = "gamma601-vout-check")]

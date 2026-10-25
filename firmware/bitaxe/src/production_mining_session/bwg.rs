@@ -221,7 +221,7 @@ fn pool_set(grant: &WorkerLeaseGrant) -> Result<ProductionPoolSet, Error> {
                 LiveRuntimeConfig {
                     asic_family: crate::board_identity::ASIC_FAMILY,
                     maybe_suggested_difficulty: grant.maybe_suggested_difficulty(),
-                    model: "bitaxe-ultra".to_owned(),
+                    model: crate::board_identity::WORKER_MODEL.to_owned(),
                     version: crate::semantic_version().to_owned(),
                     credentials: LivePoolCredentials {
                         username: grant.stratum_username().to_owned(),

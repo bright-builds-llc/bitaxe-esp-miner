@@ -5,6 +5,7 @@ pub(crate) mod board_identity {
     pub(crate) const ASIC_FAMILY: bitaxe_asic::asic::AsicFamily =
         bitaxe_asic::asic::AsicFamily::Bm1366;
     pub(crate) const BOARD_VERSION: &str = "205";
+    pub(crate) const WORKER_MODEL: &str = "bitaxe-ultra";
 }
 
 pub(crate) fn semantic_version() -> &'static str {

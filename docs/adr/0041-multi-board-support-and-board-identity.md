@@ -101,9 +101,8 @@ not a guard anyone designed.
        owners never start. Only `gamma601-mining` admits dispatch (item
        7); a production 601 refuses every run before its fan or regulator
        moves, and keeps the safe boot's idle fan. An owner that fails to
-       start is logged and boot continues to HTTP. Its boot baseline stays
-       unconfirmed, so it still has no Worker channel until its own Worker
-       capability exists;
+       start is logged and boot continues to HTTP. Its Worker channel
+       follows item 10;
    - refuses an HTTP firmware update whose image carries another board's
      marker. Both builds do this.
 
@@ -261,6 +260,33 @@ not a guard anyone designed.
    It logs and replays a value-free `usb_gamma601_hash_check` record, needs
    `--allow-test-firmware gamma601-hash-check`, and is never released;
    dispatch stays refused and no pool is involved.
+10. **Every 601 build runs the Worker.** The owner signed the 601's Worker
+    capability (`firmware/bitaxe/bwg/gamma601-capability.json`, board
+    `bitaxe-gamma`/`601`) with the development update authority's rotated
+    key, which the compiled deployment trust already lists. The Gate admits
+    the pair from `b775145` (its ADR-0104).
+    - **The boot baseline:** the 601 confirms it once the executor's reset
+      owner holds the reset with the UART retained, the safe boot reports
+      the TPS546 output confirmed off within 3 s, and its thread runs.
+      Otherwise it stays unconfirmed and no Worker starts, as before.
+      Worker recovery after a reboot then runs on the 601 as on the 205:
+      NVS ledger bookkeeping only. A recovery failure leaves the Worker
+      unavailable and boot continues to HTTP, on both boards.
+    - **The mining variant:** with a confirmed baseline, `gamma601-mining`
+      can now be driven by a signed Worker lease to power and mine. Its
+      install stays under a phase F3 contract.
+    - **Board facts:** the capability, the model it names and the pool
+      subscription model (`bitaxe-gamma`) follow the built board, and the
+      local pool settings read the board's own upstream defaults.
+    - **Starts:** a board whose mining is not admitted refuses every Worker
+      Start before any budget is charged
+      (`worker_start=refused category=board reason=board_mining_unadmitted`;
+      the Gate sees `session_failed`). So a production 601 refuses, and
+      only `gamma601-mining` admits.
+    - **The firmware's copy** is checked against the Gate's exported
+      capability on every field but the board, and its signature against
+      the compiled trust. The Worker threads are the 205's, with the same
+      stacks.
 
 
 ## Consequences

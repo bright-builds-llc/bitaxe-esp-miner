@@ -246,6 +246,13 @@ impl WorkerSession for ProductionWorkerSession {
             admission_diagnostics::fail(Failure::Admission);
             WorkerSessionError::Rejected
         })?;
+        // A board whose mining is not admitted (a production 601, ADR-0041 item 10) refuses
+        // before any budget is charged.
+        if !crate::board_identity::MINING_DISPATCH_ADMITTED {
+            log::warn!("worker_start=refused category=board reason=board_mining_unadmitted");
+            admission_diagnostics::fail(Failure::Admission);
+            return Err(WorkerSessionError::Rejected);
+        }
         // ADR-0037: the device's saved settings choose the profile; an unusable
         // setting refuses the lease before any budget is charged.
         let profile = crate::settings_adapter::device_profile::device_mining_profile().map_err(

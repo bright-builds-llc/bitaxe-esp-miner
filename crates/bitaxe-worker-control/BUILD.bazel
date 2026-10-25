@@ -76,6 +76,7 @@ rust_test(
     srcs = ["tests/firmware_config.rs"],
     compile_data = [
         "//firmware/bitaxe:bwg/deployment-trust.json",
+        "//firmware/bitaxe:bwg/gamma601-capability.json",
         "//firmware/bitaxe:bwg/ultra205-capability.json",
     ],
     crate_name = "bitaxe_worker_firmware_config_tests",

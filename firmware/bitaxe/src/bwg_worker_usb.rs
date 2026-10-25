@@ -28,7 +28,6 @@ use zeroize::Zeroize;
 const OWNER_STACK_BYTES: usize = 16 * 1024;
 const EVENT_CAPACITY: usize = 4;
 const DEPLOYMENT_TRUST: &str = include_str!("../bwg/deployment-trust.json");
-const ULTRA205_CAPABILITY: &str = include_str!("../bwg/ultra205-capability.json");
 static EVENTS: OnceLock<SyncSender<ControlEvent>> = OnceLock::new();
 static OUTPUT: OnceLock<SyncSender<writer::Output>> = OnceLock::new();
 static CURRENT_SESSION: AtomicU32 = AtomicU32::new(0);
@@ -58,7 +57,19 @@ pub(crate) struct BwgWorkerRecovery {
     reboot_report_required: bool,
 }
 pub(crate) struct PreparedWorkerRuntime(crate::prepared_thread::Prepared);
-pub(crate) fn recover_interrupted_effect(
+/// Worker recovery after a confirmed baseline. A failure leaves the Worker unavailable, as an
+/// unconfirmed baseline does, and boot continues to HTTP so the owner can still reach the device.
+pub(crate) fn recover_or_disable(proof: BootMiningBaselineConfirmed) -> Option<BwgWorkerRecovery> {
+    match recover_interrupted_effect(proof) {
+        Ok(recovery) => Some(recovery),
+        Err(error) => {
+            log::warn!("bwg_worker_control=unavailable category=recovery_failed error={error:#}");
+            None
+        }
+    }
+}
+
+fn recover_interrupted_effect(
     proof: BootMiningBaselineConfirmed,
 ) -> anyhow::Result<BwgWorkerRecovery> {
     let mut nvs = BwgWorkerNvs::open()
@@ -85,16 +96,17 @@ pub(crate) fn prepare(recovery: BwgWorkerRecovery) -> anyhow::Result<PreparedWor
         .map_err(|error| anyhow::anyhow!("BWG deployment trust invalid: {}", error.category()))?;
     let verifier = WorkLeaseAuthorizationVerifier::new(trust, nvs);
     let manifest_sha256 = bitaxe_worker_control::serial::serial_manifest_sha256()?;
-    let capability: serde_json::Value = serde_json::from_str(ULTRA205_CAPABILITY)
-        .map_err(|_| anyhow::anyhow!("BWG Ultra 205 capability is invalid"))?;
+    let capability: serde_json::Value =
+        serde_json::from_str(crate::board_identity::WORKER_CAPABILITY)
+            .map_err(|_| anyhow::anyhow!("BWG board capability is invalid"))?;
     if capability
         .pointer("/board/model")
         .and_then(|value| value.as_str())
-        != Some("bitaxe-ultra")
+        != Some(crate::board_identity::WORKER_MODEL)
         || capability
             .pointer("/board/revision")
             .and_then(|value| value.as_str())
-            != Some("205")
+            != Some(crate::board_identity::BOARD_VERSION)
         || capability
             .pointer("/firmware/version")
             .and_then(|value| value.as_str())
@@ -105,7 +117,7 @@ pub(crate) fn prepare(recovery: BwgWorkerRecovery) -> anyhow::Result<PreparedWor
             != Some(manifest_sha256.as_str())
     {
         return Err(anyhow::anyhow!(
-            "BWG Ultra 205 capability does not match firmware"
+            "BWG board capability does not match firmware"
         ));
     }
     let firmware_source_commit =

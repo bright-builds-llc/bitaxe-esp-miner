@@ -44,6 +44,10 @@ mod runtime_uptime {
         1_000
     }
 }
+// The 205's facts: its mining is admitted, so a Start reaches the budgets under test.
+mod board_identity {
+    pub(crate) const MINING_DISPATCH_ADMITTED: bool = true;
+}
 // This fixture replaces USB ownership while exercising the real durable cleanup adapter.
 mod bwg_worker_usb {
     pub(crate) mod trace {

@@ -2,7 +2,7 @@
 
 use std::ffi::CString;
 
-use bitaxe_config::{ultra_205_defaults, NVS_NAMESPACE};
+use bitaxe_config::NVS_NAMESPACE;
 use bitaxe_stratum::v1::production_session::{
     LivePoolCredentials, LiveRuntimeConfig, MiningCampaignDuration, MiningCampaignLease,
     MiningCampaignLeaseId, MiningCampaignStopCondition, MiningHardwareProfilePreset,
@@ -195,9 +195,9 @@ pub(crate) fn read_production_pool_set(
         .map_err(|_| ProductionSettingsReadError::new("nvs_partition"))?;
     let nvs = EspNvs::new(partition, NVS_NAMESPACE, false)
         .map_err(|_| ProductionSettingsReadError::new("nvs_open"))?;
-    let defaults = ultra_205_defaults();
-    let model = defaults.device_model();
-    let version = defaults.board_version();
+    let model = crate::board_identity::device_model()
+        .ok_or_else(|| ProductionSettingsReadError::new("board_defaults"))?;
+    let version = crate::board_identity::BOARD_VERSION;
     let primary = read_pool_configuration(&nvs, "", model, version)?;
     let fallback = read_pool_configuration(&nvs, "fb", model, version)?;
     if primary.is_none() && fallback.is_none() {

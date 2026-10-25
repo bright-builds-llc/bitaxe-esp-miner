@@ -4,18 +4,45 @@ use ed25519_dalek::{Signature, VerifyingKey};
 use serde_json::Value;
 
 const TRUST: &str = include_str!("../../../firmware/bitaxe/bwg/deployment-trust.json");
-const CAPABILITY: &str = include_str!("../../../firmware/bitaxe/bwg/ultra205-capability.json");
+const ULTRA205_CAPABILITY: &str =
+    include_str!("../../../firmware/bitaxe/bwg/ultra205-capability.json");
+const GAMMA601_CAPABILITY: &str =
+    include_str!("../../../firmware/bitaxe/bwg/gamma601-capability.json");
 
 #[test]
 fn compiled_runtime_trust_capability_and_manifest_agree() {
     // Arrange: exercise the exact public files compiled into firmware, not conformance keys.
-    let trust: Value = serde_json::from_str(TRUST).expect("compiled deployment trust JSON");
-    let capability: Value = serde_json::from_str(CAPABILITY).expect("compiled capability JSON");
-    let claims = &capability["attestation"]["claims"];
+    let capability: Value =
+        serde_json::from_str(ULTRA205_CAPABILITY).expect("compiled capability JSON");
 
     // Act
     WorkLeaseAuthorityTrust::from_deployment_json(TRUST)
         .expect("compiled lease authority must admit Controller 0.4");
+
+    // Assert
+    assert_signed_capability_agrees_with_trust(&capability);
+}
+
+#[test]
+fn compiled_gamma601_capability_is_signed_by_the_compiled_trust() {
+    // Arrange: the 601 copy compiled into firmware, checked against the same trust.
+    let capability: Value =
+        serde_json::from_str(GAMMA601_CAPABILITY).expect("compiled 601 capability JSON");
+
+    // Act
+    assert_signed_capability_agrees_with_trust(&capability);
+
+    // Assert: the signature covers the 601 pair, not a copy of the 205's.
+    let claims = &capability["attestation"]["claims"];
+    assert_eq!(claims["board"]["model"], "bitaxe-gamma");
+    assert_eq!(claims["board"]["revision"], "601");
+}
+
+/// Verifies the capability's compact JWS against the compiled Update Authority
+/// keys and checks that its signed claims match the served fields.
+fn assert_signed_capability_agrees_with_trust(capability: &Value) {
+    let trust: Value = serde_json::from_str(TRUST).expect("compiled deployment trust JSON");
+    let claims = &capability["attestation"]["claims"];
     let compact = capability["attestation"]["compactJws"]
         .as_str()
         .expect("signed capability");
@@ -54,7 +81,7 @@ fn compiled_runtime_trust_capability_and_manifest_agree() {
     key.verify_strict(format!("{}.{}", parts[0], parts[1]).as_bytes(), &signature)
         .expect("compiled capability signature");
 
-    // Assert: signed and served claims describe the exact fixed transport.
+    // Signed and served claims describe the exact fixed transport.
     assert_eq!(header["alg"], "Ed25519");
     assert_eq!(header["typ"], "bwg-worker-capability+jws");
     assert_eq!(&signed, claims);

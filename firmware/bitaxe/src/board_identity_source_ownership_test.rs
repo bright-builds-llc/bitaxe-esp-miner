@@ -11,6 +11,7 @@ const BOARD_IDENTITY_SOURCE: &str = include_str!("board_identity.rs");
 const LIVE_HARDWARE_SOURCE: &str = include_str!("production_mining_session/live_hardware.rs");
 const DEVICE_PROFILE_SOURCE: &str = include_str!("settings_adapter/device_profile.rs");
 const CHIP_CHECK_SOURCE: &str = include_str!("gamma601/chip_check.rs");
+const WORKER_SESSION_SOURCE: &str = include_str!("bwg_worker_session.rs");
 const CHECK_POWER_SOURCE: &str = include_str!("gamma601/check_power.rs");
 
 fn body_of<'a>(source: &'a str, signature: &str) -> &'a str {
@@ -115,12 +116,26 @@ fn the_601_applies_fan_commands_by_the_shared_authority_and_regulator_commands_o
 }
 
 #[test]
-fn the_601_boot_gate_never_confirms_a_baseline_so_no_worker_starts() {
+fn the_601_boot_gate_confirms_only_with_the_peripherals_retained() {
     // Act
     let confirms = BOARD_601_BOOT_GATE_SOURCE.matches("BootMiningBaseline::Confirmed").count();
+    let retained = BOARD_601_BOOT_GATE_SOURCE
+        .find("production::store_board_601_peripherals(uart, reset);")
+        .zip(BOARD_601_BOOT_GATE_SOURCE.find("Ok(BootMiningBaseline::Confirmed)"));
     // Assert
-    assert_eq!(confirms, 0);
-    assert!(BOARD_601_BOOT_GATE_SOURCE.contains("production::store_board_601_peripherals(uart, reset)"));
+    assert_eq!(confirms, 1);
+    assert!(retained.is_some_and(|(store, confirm)| store < confirm));
+}
+
+#[test]
+fn the_601_worker_baseline_also_needs_the_output_confirmed_off() {
+    // Act
+    let gate = body_of(GAMMA601_SOURCE, "pub(crate) fn initialize_hardware(");
+    let confirm = body_of(GAMMA601_SOURCE, "fn confirm_output_off(");
+    // Assert
+    assert!(gate.contains(".map(confirm_output_off)"));
+    assert!(confirm.contains("SafeBootReport::off_confirmed"));
+    assert!(confirm.contains("BootMiningBaseline::Unconfirmed"));
 }
 
 #[test]
@@ -193,4 +208,33 @@ fn the_chip_check_runs_nothing_after_its_detection() {
     let body = body_of(CHIP_CHECK_SOURCE, "fn run_check(");
     // Assert
     assert!(body.contains("check_power::run_powered(owner, report, &SPEC, |_| Ok(()))"));
+}
+
+#[test]
+fn a_board_without_admitted_mining_refuses_a_worker_start_before_its_budget() {
+    // Arrange
+    let body = body_of(WORKER_SESSION_SOURCE, "    fn start(");
+    // Act
+    let maybe_refusal = body.find("if !crate::board_identity::MINING_DISPATCH_ADMITTED {");
+    let maybe_budget = body.find("crate::worker_acceptance_budget::admit(");
+    // Assert
+    assert!(maybe_refusal
+        .zip(maybe_budget)
+        .is_some_and(|(refusal, budget)| refusal < budget));
+}
+
+#[test]
+fn each_board_embeds_its_own_worker_capability() {
+    // Act
+    let ultra = BOARD_IDENTITY_SOURCE
+        .find("KnownBoard::Ultra205;")
+        .zip(BOARD_IDENTITY_SOURCE.find("../bwg/ultra205-capability.json"));
+    let gamma = BOARD_IDENTITY_SOURCE
+        .find("KnownBoard::Gamma601;")
+        .zip(BOARD_IDENTITY_SOURCE.find("../bwg/gamma601-capability.json"));
+    // Assert
+    // Each capability sits inside its board's `built` module, which follows its board fact.
+    assert!(ultra.is_some_and(|(board, capability)| board < capability));
+    assert!(gamma.is_some_and(|(board, capability)| board < capability));
+    assert!(ultra.zip(gamma).is_some_and(|((_, ultra_file), (gamma_board, _))| ultra_file < gamma_board));
 }

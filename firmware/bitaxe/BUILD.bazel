@@ -38,6 +38,7 @@ js_library(
 exports_files([
     "BUILD.bazel",
     "bwg/deployment-trust.json",
+    "bwg/gamma601-capability.json",
     "bwg/ultra205-capability.json",
     "partitions-ultra205.csv",
     "sdkconfig.defaults",
@@ -250,6 +251,12 @@ js_library(
 js_library(
     name = "bwg_ultra205_capability_js",
     srcs = ["bwg/ultra205-capability.json"],
+    visibility = ["//scripts:__pkg__"],
+)
+
+js_library(
+    name = "bwg_gamma601_capability_js",
+    srcs = ["bwg/gamma601-capability.json"],
     visibility = ["//scripts:__pkg__"],
 )
 
@@ -611,6 +618,7 @@ rust_test(
         "src/asic_adapter/board_601.rs",
         "src/board_identity.rs",
         "src/board_identity_source_ownership_test.rs",
+        "src/bwg_worker_session.rs",
         "src/gamma601.rs",
         "src/gamma601/check_power.rs",
         "src/gamma601/chip_check.rs",

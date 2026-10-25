@@ -1,6 +1,6 @@
 use std::fmt;
 
-use bitaxe_config::{ultra_205_defaults, NVS_NAMESPACE};
+use bitaxe_config::NVS_NAMESPACE;
 use bitaxe_stratum::v2::authority::parse_authority_public_key;
 use bitaxe_stratum::v2::messages::ChannelKind;
 use bitaxe_stratum::v2::session::SessionConfig;
@@ -56,8 +56,8 @@ pub(crate) fn read_stratum_v2_pool_set() -> Result<Option<V2PoolSet>, Production
         .map_err(|_| ProductionSettingsReadError::new("nvs_partition"))?;
     let nvs = EspNvs::new(partition, NVS_NAMESPACE, false)
         .map_err(|_| ProductionSettingsReadError::new("nvs_open"))?;
-    let defaults = ultra_205_defaults();
-    let hardware_version = defaults.device_model();
+    let hardware_version = crate::board_identity::device_model()
+        .ok_or_else(|| ProductionSettingsReadError::new("board_defaults"))?;
     let primary = read_pool(&nvs, "", hardware_version)?;
     let fallback = read_pool(&nvs, "fb", hardware_version)?;
     if primary.is_none() && fallback.is_none() {

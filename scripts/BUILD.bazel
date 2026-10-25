@@ -116,6 +116,7 @@ js_test(
         "$(rootpath @bwg_gate_contract//:ultra205_signed_capability_js)",
         "$(rootpath //firmware/bitaxe:bwg_deployment_trust_js)",
         "$(rootpath //firmware/bitaxe:bwg_ultra205_capability_js)",
+        "$(rootpath //firmware/bitaxe:bwg_gamma601_capability_js)",
     ],
     chdir = ".",
     data = [
@@ -128,6 +129,7 @@ js_test(
         "@bwg_gate_contract//:ultra205_signed_capability_js",
         "//firmware/bitaxe:bwg_deployment_trust_js",
         "//firmware/bitaxe:bwg_ultra205_capability_js",
+        "//firmware/bitaxe:bwg_gamma601_capability_js",
     ],
     entry_point = "verify-bwg-fixture-exports.mjs",
 )

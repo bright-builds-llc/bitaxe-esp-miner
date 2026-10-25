@@ -24,6 +24,8 @@ mod built {
     pub(super) const FAMILY: AsicFamily = AsicFamily::Bm1366;
     pub(super) const DISPATCH_ADMITTED: bool = true;
     pub(super) const LIVE_HARDWARE_CHANGES: bool = true;
+    pub(super) const WORKER_MODEL: &str = "bitaxe-ultra";
+    pub(super) const WORKER_CAPABILITY: &str = include_str!("../bwg/ultra205-capability.json");
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::ultra_205_catalog_entry()
     }
@@ -46,6 +48,9 @@ mod built {
     /// The live voltage and frequency path drives the DS4432U and BM1366 frames; the 601 keeps
     /// its prepared profile until a BM1370 live path lands.
     pub(super) const LIVE_HARDWARE_CHANGES: bool = false;
+    pub(super) const WORKER_MODEL: &str = "bitaxe-gamma";
+    /// Signed by the owner's development update authority for this board (ADR-0041 item 10).
+    pub(super) const WORKER_CAPABILITY: &str = include_str!("../bwg/gamma601-capability.json");
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::gamma_601_catalog_entry()
     }
@@ -68,11 +73,25 @@ pub(crate) const ASIC_FAMILY: AsicFamily = built::FAMILY;
 pub(crate) const MINING_DISPATCH_ADMITTED: bool = built::DISPATCH_ADMITTED;
 /// Whether a lease may change its voltage and frequency live (ADR-0037 decision 4).
 pub(crate) const LIVE_HARDWARE_CHANGES: bool = built::LIVE_HARDWARE_CHANGES;
+/// The board model the Worker capability and the pool subscription name, as the Gate's
+/// reference-firmware board pairs spell it.
+pub(crate) const WORKER_MODEL: &str = built::WORKER_MODEL;
+/// The built board's signed Worker capability.
+pub(crate) const WORKER_CAPABILITY: &str = built::WORKER_CAPABILITY;
 /// The ranges the built board's mining-safety facts must hold.
 pub(crate) const MINING_SAFETY_LIMITS: MiningSafetyLimits =
     MiningSafetyLimits::for_board(built::catalog());
 /// The built board's catalog version, such as "205".
 pub(crate) const BOARD_VERSION: &str = built::catalog().board_version();
+
+/// The built board's upstream `devicemodel` default, such as `ultra` or `gamma`, from its
+/// `config-<board>.cvs` defaults; `None` only if the defaults lack the built board.
+pub(crate) fn device_model() -> Option<&'static str> {
+    bitaxe_config::board_profile_defaults()
+        .iter()
+        .find(|defaults| defaults.board_version() == BOARD_VERSION)
+        .map(|defaults| defaults.device_model())
+}
 
 /// The built board's catalog entry, for the API and the screen.
 pub(crate) const fn catalog_entry() -> BoardCatalogEntry {

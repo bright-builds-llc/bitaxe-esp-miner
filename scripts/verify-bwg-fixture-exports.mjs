@@ -10,13 +10,14 @@ const [
   publishedCapabilityPath,
   firmwareTrustPath,
   firmwareCapabilityPath,
+  firmwareGamma601CapabilityPath,
 ] = process.argv.slice(2);
 if (
   !packagePath || !controllerPath || !usbPath || !possessionPath || !trustPath ||
   !publishedTrustPath || !publishedCapabilityPath || !firmwareTrustPath ||
-  !firmwareCapabilityPath
+  !firmwareCapabilityPath || !firmwareGamma601CapabilityPath
 ) {
-  throw new Error("expected package, four fixtures, and four deployment artifacts");
+  throw new Error("expected package, four fixtures, and five deployment artifacts");
 }
 
 const packageDocument = JSON.parse(await readFile(packagePath, "utf8"));
@@ -66,10 +67,12 @@ const deploymentArtifacts = await Promise.all(
     publishedCapabilityPath,
     firmwareTrustPath,
     firmwareCapabilityPath,
+    firmwareGamma601CapabilityPath,
   ].map(async (artifactPath) => JSON.parse(await readFile(artifactPath, "utf8"))),
 );
 const firmwareTrust = deploymentArtifacts[2];
 const firmwareCapability = deploymentArtifacts[3];
+const firmwareGamma601Capability = deploymentArtifacts[4];
 if (firmwareTrust.profile !== "bwg-worker-deployment-trust/0.2" ||
     firmwareTrust.workLeaseAuthority?.audience !== "bwg-worker-controller/0.4") {
   throw new Error("firmware deployment profile drift");
@@ -78,6 +81,19 @@ for (const field of ["protocolVersion", "board", "firmware", "compatibility", "t
   if (JSON.stringify(deploymentArtifacts[1][field]) !== JSON.stringify(firmwareCapability[field])) {
     throw new Error(`firmware capability contract drift: ${field}`);
   }
+}
+// The Gate exports only the 205's signed capability. The 601 copy shares every
+// contract field except its board, which must be the Gate's admitted 601 pair
+// (web/reference-firmware-board.ts) rather than a copy of the 205's.
+for (const field of ["protocolVersion", "firmware", "compatibility", "transportProfile"]) {
+  if (JSON.stringify(deploymentArtifacts[1][field]) !==
+      JSON.stringify(firmwareGamma601Capability[field])) {
+    throw new Error(`firmware 601 capability contract drift: ${field}`);
+  }
+}
+const gamma601Board = { model: "bitaxe-gamma", revision: "601", usbTransport: "web_serial" };
+if (JSON.stringify(firmwareGamma601Capability.board) !== JSON.stringify(gamma601Board)) {
+  throw new Error("firmware 601 capability board mismatch");
 }
 // Runtime deployment keys are deliberately separate from disposable conformance keys.
 // firmware_config_tests verifies the actual installed Update signature/manifest;

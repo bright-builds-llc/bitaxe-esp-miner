@@ -143,9 +143,9 @@ js_library(
     srcs = ["conformance/bwg-worker-serial-0.2/acceptance.html"],
 )
 """,
-    sha256 = "8e4de27de14d4ac22097f6177495712310d109ee4e110690626444802953d064",
-    strip_prefix = "bitaxe-turnstile-system-eacd8147ead746711be6a03341a32e3cfed41a3e",
+    sha256 = "d57252f77afe05e73582ab0cd7769df4f714bb303cd8eec894968e0de4e344cf",
+    strip_prefix = "bitaxe-turnstile-system-b7751451cf51c787d7523dbd44076d8e5c3ea882",
     urls = [
-        "https://github.com/bright-builds-llc/bitaxe-turnstile-system/archive/eacd8147ead746711be6a03341a32e3cfed41a3e.tar.gz",
+        "https://github.com/bright-builds-llc/bitaxe-turnstile-system/archive/b7751451cf51c787d7523dbd44076d8e5c3ea882.tar.gz",
     ],
 )

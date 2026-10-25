@@ -358,10 +358,10 @@ fn start_runtime_services(
     let maybe_bwg_recovery = match boot_mining_baseline {
         asic_adapter::BootMiningBaseline::Confirmed => {
             PROGRESS.enter(DiagnosticStage::WorkerRecovery);
-            let recovery =
-                crate::bwg_worker_usb::recover_interrupted_effect(BootMiningBaselineConfirmed(()))?;
+            let maybe_recovery =
+                crate::bwg_worker_usb::recover_or_disable(BootMiningBaselineConfirmed(()));
             PROGRESS.enter(DiagnosticStage::RuntimeServices);
-            Some(recovery)
+            maybe_recovery
         }
         asic_adapter::BootMiningBaseline::Unconfirmed => None,
     };

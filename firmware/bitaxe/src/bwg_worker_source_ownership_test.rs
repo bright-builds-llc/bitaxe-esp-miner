@@ -108,7 +108,7 @@ fn startup_installs_diagnostics_before_nvs_and_gates_worker_until_after_baseline
         .find("startup_diagnostics?;")
         .expect("boot-safe baseline should confirm");
     let recovery = STARTUP_SOURCE
-        .find("bwg_worker_usb::recover_interrupted_effect")
+        .find("bwg_worker_usb::recover_or_disable")
         .expect("interrupted BWG effect should recover");
     let production = STARTUP_SOURCE
         .find("production_mining_session::start()")
