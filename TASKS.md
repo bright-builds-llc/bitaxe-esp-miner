@@ -1267,14 +1267,21 @@ Gamma 601 first local mining hardware: enabled.
   5. `just local-mining-soak preflight --soak gamma601-first-001
      --private-root P/attempt-NNN --endpoint-root P/endpoint
      --package-manifest bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
-     --pool-credentials pool-credentials.json`, then `run` with the same
-     arguments under `caffeinate`;
+     --pool-credentials pool-credentials.json`; then `just
+     local-mining-soak pause --private-root P/attempt-NNN`, which turns the
+     saved start-on-boot preference off if it reads on (the factory default)
+     and confirms the device paused and stopped, the baseline `run`
+     requires; then `run --private-root P/attempt-NNN --pool-credentials
+     pool-credentials.json` under `caffeinate`;
   6. `just package --board 601`, `just flash --board 601 --port <port>`,
      state-preserving, then `just monitor --board 601 --port <port>
      --capture-timeout-seconds 360` to confirm production.
 - **Allowed effects:** the installs and their resets; the endpoint
-  handoff; the pool and the 400 MHz / 1150 mV profile saved over HTTP; 10
-  minutes of local mining with the owner's pool; the soak's pause and stop.
+  handoff; the start-on-boot preference saved off, the pool and the
+  400 MHz / 1150 mV profile saved over HTTP; 10 minutes of local mining
+  with the owner's pool; the soak's pause and stop. The mining build never
+  mines on boot (ADR-0041 item 11), so nothing mines before the soak's
+  resume.
 - **Prohibited effects:** any other frequency or voltage, a Worker Start
   or lease, a factory reset, network discovery beyond the handoff, direct
   UART or pins. Pool values never leave `P` or the local credential file.
