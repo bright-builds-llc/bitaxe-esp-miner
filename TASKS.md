@@ -650,17 +650,20 @@ action.
     - [x] F3.1 hardware: passed on attempt 002, exactly one BM1370
       (`docs/parity/evidence/20261024-gamma601-chip-check.md`);
       production reinstalled;
-    - [ ] F3.2 software: the test-only `gamma601-hash-check` variant
+    - [x] F3.2 software: the test-only `gamma601-hash-check` variant
       (ADR-0041 item 9), the shared powered-check runner
       (`gamma601/check_power.rs`), the hash stage (`gamma601/hash_check.rs`),
       its judges and record (`bitaxe_safety::gamma601_hash_check`), the
       genesis known answer (`bm1370::known_answer`) and the firmware result
       verifier (`bitaxe_stratum::v1::verify_asic_result`);
-    - [ ] F3.2 hardware: the hash check contract below;
-    - [ ] F3.2 open item from F3.1: the EMC2101 external channel read
-      127.75 C (raw `0x3FE`, not a rejected fault code) unpowered and after
-      detection; read it after the full BM1370 init before settling the
-      cooling proof's board rule;
+    - [x] F3.2 hardware: passed on attempt 001, 8 of 8 results verified and
+      the genesis nonce returned
+      (`docs/parity/evidence/20261024-gamma601-hash-check.md`); production
+      reinstalled;
+    - [x] F3.2 open item from F3.1: after the BM1370 init the EMC2101
+      external channel reads 37.5 to 40.0 C while hashing; the 127.75 C
+      before is the uninitialized channel. The cooling proof's board rule
+      can use the diode after the init;
   - [ ] F4: self-test, soaks and promotion.
 
 Each phase ends with the full gate, an independent review, commit and
@@ -1144,9 +1147,9 @@ and production is reinstalled.
   confirmed: stop after the production reinstall and analyse before another
   attempt (progress-gated policy).
 
-Phase F3.2 hash check contract (attempt ordinals 001 onward):
-
-Gamma 601 hash check hardware: enabled.
+Phase F3.2 hash check contract (attempt ordinals 001 onward), closed:
+attempt 001 passed (`docs/parity/evidence/20261024-gamma601-hash-check.md`)
+and production is reinstalled.
 
 - **Objective:** the BM1370's first hashing. The test-only
   `gamma601-hash-check` firmware (ADR-0041 item 9), installed
