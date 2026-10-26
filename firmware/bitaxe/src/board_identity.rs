@@ -2,6 +2,7 @@
 //!
 //! Read once after the settings snapshot loads. The comparison is reported over USB and the
 //! API; only a stored value naming another known board withholds hardware control.
+use bitaxe_api::acceptance_budget::SoakPrerequisite;
 use bitaxe_api::{AttestedBoard, MiningSafetyLimits, PlatformAsic, PlatformBoard};
 use bitaxe_asic::asic::AsicFamily;
 use bitaxe_config::{BoardCatalogEntry, StoredValueKind};
@@ -26,6 +27,8 @@ mod built {
     pub(super) const LIVE_HARDWARE_CHANGES: bool = true;
     pub(super) const WORKER_MODEL: &str = "bitaxe-ultra";
     pub(super) const WORKER_CAPABILITY: &str = include_str!("../bwg/ultra205-capability.json");
+    pub(super) const SOAK_PREREQUISITE: SoakPrerequisite =
+        SoakPrerequisite::OriginalCampaignComplete;
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::ultra_205_catalog_entry()
     }
@@ -51,6 +54,8 @@ mod built {
     pub(super) const WORKER_MODEL: &str = "bitaxe-gamma";
     /// Signed by the owner's development update authority for this board (ADR-0041 item 10).
     pub(super) const WORKER_CAPABILITY: &str = include_str!("../bwg/gamma601-capability.json");
+    /// The 601 never ran the 205's original acceptance campaign (ADR-0041 item 13).
+    pub(super) const SOAK_PREREQUISITE: SoakPrerequisite = SoakPrerequisite::NoUnfinishedCampaign;
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::gamma_601_catalog_entry()
     }
@@ -83,6 +88,8 @@ pub(crate) const MINES_ON_BOOT: bool = !cfg!(feature = "gamma601-mining");
 pub(crate) const WORKER_MODEL: &str = built::WORKER_MODEL;
 /// The built board's signed Worker capability.
 pub(crate) const WORKER_CAPABILITY: &str = built::WORKER_CAPABILITY;
+/// What a soak allowance requires of the board's original acceptance campaign.
+pub(crate) const SOAK_PREREQUISITE: SoakPrerequisite = built::SOAK_PREREQUISITE;
 /// The ranges the built board's mining-safety facts must hold.
 pub(crate) const MINING_SAFETY_LIMITS: MiningSafetyLimits =
     MiningSafetyLimits::for_board(built::catalog());

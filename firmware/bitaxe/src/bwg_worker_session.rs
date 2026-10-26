@@ -6,6 +6,33 @@ use bitaxe_worker_control::{
     WorkerSessionError,
 };
 
+/// Logs a value-free Start refusal and keeps it in the retained log, where a soak can read it:
+/// the Worker's console belongs to the page during a lease.
+fn start_refused(category: &str, reason: &str) {
+    let line = format!("worker_start=refused category={category} reason={reason}");
+    log::warn!("{line}");
+    crate::log_buffer::append_runtime_log_line(&line);
+}
+
+/// A refusal's bare `key=value` label as `key.value`, or `unlabelled`, so no other text is
+/// retained and the log line keeps one `=` per field.
+pub(crate) fn refusal_label(error: &anyhow::Error) -> String {
+    let text = error.to_string();
+    let labelled = text.split_once('=').is_some_and(|(key, value)| {
+        [key, value].iter().all(|part| {
+            !part.is_empty()
+                && part
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+        })
+    });
+    if labelled {
+        text.replace('=', ".")
+    } else {
+        "unlabelled".to_owned()
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct ProductionWorkerSession {
     maybe_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
@@ -243,13 +270,14 @@ impl WorkerSession for ProductionWorkerSession {
     ) -> Result<(), WorkerSessionError> {
         admission_diagnostics::begin();
         let generation = self.maybe_generation.ok_or_else(|| {
+            start_refused("admission", "no_generation");
             admission_diagnostics::fail(Failure::Admission);
             WorkerSessionError::Rejected
         })?;
         // A board whose mining is not admitted (a production 601, ADR-0041 item 10) refuses
         // before any budget is charged.
         if !crate::board_identity::MINING_DISPATCH_ADMITTED {
-            log::warn!("worker_start=refused category=board reason=board_mining_unadmitted");
+            start_refused("board", "board_mining_unadmitted");
             admission_diagnostics::fail(Failure::Admission);
             return Err(WorkerSessionError::Rejected);
         }
@@ -257,21 +285,21 @@ impl WorkerSession for ProductionWorkerSession {
         // setting refuses the lease before any budget is charged.
         let profile = crate::settings_adapter::device_profile::device_mining_profile().map_err(
             |refusal| {
-                log::warn!(
-                    "worker_start=refused category=device_profile reason={}",
-                    refusal.label()
-                );
+                start_refused("device_profile", refusal.label());
                 admission_diagnostics::fail(Failure::Admission);
                 WorkerSessionError::Rejected
             },
         )?;
-        crate::worker_acceptance_budget::admit(generation, grant).map_err(|_| {
+        crate::worker_acceptance_budget::admit(generation, grant).map_err(|error| {
+            start_refused("budget", &refusal_label(&error));
             admission_diagnostics::fail(Failure::Admission);
             WorkerSessionError::Rejected
         })?;
-        crate::v2_serial_runtime::seed_share(generation, grant)?;
+        crate::v2_serial_runtime::seed_share(generation, grant)
+            .inspect_err(|_| start_refused("share", "seed_failed"))?;
         crate::production_mining_session::bwg_start(grant, deadlines, generation, profile).map_err(
-            |_| {
+            |error| {
+                start_refused("owner", error.label());
                 admission_diagnostics::fail(Failure::Admission);
                 WorkerSessionError::Rejected
             },

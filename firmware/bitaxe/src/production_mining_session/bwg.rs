@@ -77,6 +77,17 @@ pub(crate) enum Error {
     TimedOut,
 }
 
+impl Error {
+    /// The value-free name a refused Start keeps in the retained log.
+    pub(crate) const fn label(self) -> &'static str {
+        match self {
+            Self::Rejected => "start_rejected",
+            Self::Unavailable => "start_unavailable",
+            Self::TimedOut => "start_timed_out",
+        }
+    }
+}
+
 pub(crate) fn start(
     grant: &WorkerLeaseGrant,
     deadlines: LeaseDeadlines,

@@ -41,10 +41,7 @@ pub(crate) fn admit(generation: WorkerGeneration, allowance: &SoakAllowance) -> 
         anyhow::bail!("soak_budget=revoked");
     }
     let mut store = BwgWorkerNvs::open().map_err(|_| anyhow::anyhow!("soak_budget=storage"))?;
-    if !store
-        .maybe_acceptance_budget()?
-        .is_some_and(|legacy| legacy.complete() && legacy.charged_milliseconds() == 240000)
-    {
+    if !crate::board_identity::SOAK_PREREQUISITE.met(store.maybe_acceptance_budget()?.as_ref()) {
         anyhow::bail!("soak_budget=original_incomplete");
     }
     if store.qualification_ledger()?.pending() {

@@ -44,9 +44,15 @@ mod runtime_uptime {
         1_000
     }
 }
+// The retained log ring is a device buffer; its lines are not under test here.
+mod log_buffer {
+    pub(crate) fn append_runtime_log_line(_line: &str) {}
+}
 // The 205's facts: its mining is admitted, so a Start reaches the budgets under test.
 mod board_identity {
     pub(crate) const MINING_DISPATCH_ADMITTED: bool = true;
+    pub(crate) const SOAK_PREREQUISITE: bitaxe_api::acceptance_budget::SoakPrerequisite =
+        bitaxe_api::acceptance_budget::SoakPrerequisite::OriginalCampaignComplete;
 }
 // This fixture replaces USB ownership while exercising the real durable cleanup adapter.
 mod bwg_worker_usb {
@@ -252,8 +258,14 @@ mod production_mining_session {
         _: bitaxe_worker_control::LeaseDeadlines,
         _: revocation::WorkerGeneration,
         _: bitaxe_stratum::v1::production_session::MiningHardwareProfile,
-    ) -> Result<(), ()> {
-        Err(())
+    ) -> Result<(), StartError> {
+        Err(StartError)
+    }
+    pub struct StartError;
+    impl StartError {
+        pub const fn label(&self) -> &'static str {
+            "start_rejected"
+        }
     }
     pub fn bwg_renew(
         _: &bitaxe_worker_control::WorkerLeaseRenewal,

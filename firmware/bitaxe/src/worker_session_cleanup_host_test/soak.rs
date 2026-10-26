@@ -130,3 +130,25 @@ fn a_failed_soak_recovery_blocks_only_soaks_and_not_boot_recovery() {
     assert!(soak_refused.is_err());
     worker_soak_budget::recover_after_boot(&startup::BootMiningBaselineConfirmed);
 }
+#[test]
+fn a_pending_soak_refuses_a_campaign_window() {
+    // Arrange: an earlier generation's soak still awaits finalization.
+    let scope = Scope::new();
+    let allowance = soak_grant(1).maybe_soak_allowance().expect("allowance").clone();
+    let pending = bitaxe_worker_control::SoakLedger::default().reserve(&allowance).expect("reserve");
+    *SOAK_LEDGER.lock().expect("ledger") = Some(pending);
+    // Act
+    let refused = worker_acceptance_budget::admit(scope.generation, &synthetic_grant());
+    // Assert
+    assert_eq!(refused.map_err(|error| error.to_string()), Err("acceptance_budget=soak_pending".to_owned()));
+}
+#[test]
+fn a_start_refusal_retains_only_a_bare_label() {
+    // Arrange
+    let labelled = anyhow::anyhow!("soak_budget=original_incomplete");
+    let other = anyhow::anyhow!("nvs read failed: ESP_ERR_NVS_NOT_FOUND");
+    // Act
+    let labels = [labelled, other].map(|error| bwg_worker_session::refusal_label(&error));
+    // Assert
+    assert_eq!(labels, ["soak_budget.original_incomplete", "unlabelled"]);
+}

@@ -1568,6 +1568,12 @@ Lease attempts:
   - **Outcome:** `stop_authority_boundary`: running a 601 acceptance
     campaign or changing the soak prerequisite needs the owner's decision.
     Captures are under `scratch/gamma-601-lease/attempt-003/`.
+  - **Owner decision (2026-10-25):** the 601 skips the original-campaign
+    prerequisite (ADR-0041 item 13). The fix makes it a per-board
+    `SoakPrerequisite` (pure, tested) and keeps every Start refusal's label
+    in the retained log. Attempt 004 continues as
+    `continue_after_verified_fix`; it also reads the retained log after the
+    Start, so a different refusal is named rather than guessed.
 - **Before each Gate session (amended after attempt 002):** in the
   dedicated tab, record `visibilitychange` events, make no browser call
   for 40 s, then read the record. Begin the Gate steps only if the tab

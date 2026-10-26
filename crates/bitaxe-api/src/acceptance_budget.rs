@@ -114,6 +114,29 @@ impl AcceptanceBudget {
     }
 }
 
+/// What a soak allowance requires of the device's original campaign (ADR-0033).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SoakPrerequisite {
+    /// The board ran the original campaign (the Ultra 205): a soak follows it, complete at its
+    /// full ceiling.
+    OriginalCampaignComplete,
+    /// The board never ran it (the Gamma 601, ADR-0041 item 13): none is needed, but an
+    /// unfinished one still refuses.
+    NoUnfinishedCampaign,
+}
+
+impl SoakPrerequisite {
+    /// Whether the stored original campaign, if any, admits a soak.
+    pub fn met(self, maybe_original: Option<&AcceptanceBudget>) -> bool {
+        match self {
+            Self::OriginalCampaignComplete => maybe_original.is_some_and(|budget| {
+                budget.complete() && budget.charged_milliseconds() == TOTAL_ACTIVE_MILLISECONDS
+            }),
+            Self::NoUnfinishedCampaign => maybe_original.is_none_or(AcceptanceBudget::complete),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -152,6 +175,96 @@ mod tests {
         assert_eq!(ledger.charged_milliseconds(), 240000);
         assert!(ledger.reserve(ID, 2, 30000).is_err());
     }
+
+    fn completed_campaign() -> AcceptanceBudget {
+        WINDOWS.iter().enumerate().fold(
+            AcceptanceBudget::new(ID).expect("id"),
+            |ledger, (window, duration)| {
+                ledger
+                    .reserve(ID, window as u8, u64::from(*duration))
+                    .and_then(|reserved| reserved.finish())
+                    .expect("window")
+            },
+        )
+    }
+
+    fn first_window_finished() -> AcceptanceBudget {
+        AcceptanceBudget::new(ID)
+            .expect("id")
+            .reserve(ID, 0, 180000)
+            .and_then(|ledger| ledger.finish())
+            .expect("first window")
+    }
+
+    #[test]
+    fn the_205_soak_follows_the_complete_original_campaign() {
+        // Arrange
+        let complete = completed_campaign();
+        // Act
+        let admitted = SoakPrerequisite::OriginalCampaignComplete.met(Some(&complete));
+        // Assert
+        assert!(admitted);
+    }
+
+    #[test]
+    fn the_205_soak_refuses_a_partly_run_original_campaign() {
+        // Arrange
+        let partial = first_window_finished();
+        // Act
+        let admitted = SoakPrerequisite::OriginalCampaignComplete.met(Some(&partial));
+        // Assert
+        assert!(!admitted);
+    }
+
+    #[test]
+    fn the_205_soak_refuses_without_an_original_campaign() {
+        // Act
+        let admitted = SoakPrerequisite::OriginalCampaignComplete.met(None);
+        // Assert
+        assert!(!admitted);
+    }
+
+    #[test]
+    fn the_601_soak_needs_no_original_campaign() {
+        // Act
+        let admitted = SoakPrerequisite::NoUnfinishedCampaign.met(None);
+        // Assert
+        assert!(admitted);
+    }
+
+    #[test]
+    fn the_601_soak_refuses_a_running_original_window() {
+        // Arrange
+        let running = AcceptanceBudget::new(ID)
+            .expect("id")
+            .reserve(ID, 0, 180000)
+            .expect("reserve");
+        // Act
+        let admitted = SoakPrerequisite::NoUnfinishedCampaign.met(Some(&running));
+        // Assert
+        assert!(!admitted);
+    }
+
+    #[test]
+    fn the_601_soak_refuses_a_partly_run_original_campaign() {
+        // Arrange
+        let partial = first_window_finished();
+        // Act
+        let admitted = SoakPrerequisite::NoUnfinishedCampaign.met(Some(&partial));
+        // Assert
+        assert!(!admitted);
+    }
+
+    #[test]
+    fn the_601_soak_accepts_a_complete_original_campaign() {
+        // Arrange
+        let complete = completed_campaign();
+        // Act
+        let admitted = SoakPrerequisite::NoUnfinishedCampaign.met(Some(&complete));
+        // Assert
+        assert!(admitted);
+    }
+
     #[test]
     fn concurrent_window_and_unrecognized_duration_fail_closed() {
         // Arrange

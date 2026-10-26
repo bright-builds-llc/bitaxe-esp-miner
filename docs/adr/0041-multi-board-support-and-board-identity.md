@@ -332,6 +332,27 @@ not a guard anyone designed.
     local-mining soak's overheat kind follows the board: the 601's 22 W stop
     and idle threshold, and its cooling rule (the chip unpowered, the
     regulator at or below 95 C) where the 205 waits for its chip at 45 C.
+13. **A 601 soak lease needs no original acceptance campaign** (owner
+    decision, 2026-10-25). ADR-0033's soak allowance follows the 205's
+    original 240-second campaign, complete at its full ceiling. The 601
+    never ran that campaign, so phase F3.4's soak Start was refused
+    (`soak_budget=original_incomplete`). Each board now states its
+    prerequisite (`SoakPrerequisite`):
+    - the 205 keeps the complete original campaign;
+    - the 601 needs none, but a stored campaign left unfinished still
+      refuses.
+    The soak's own ledger, its 600-second budget, heartbeat revocation, the
+    ordered shutdown and the board's power and thermal judges are unchanged.
+    The staged short-campaign proof is given up on the 601: its lease path
+    is board-independent code proven on the 205, and its power and thermal
+    risk is judged against the 601's own limits. Because a 601 soak no
+    longer implies a finished campaign, a campaign window now refuses while
+    a soak awaits finalization (`acceptance_budget=soak_pending`).
+    Qualification attempts keep the original-campaign requirement, so they
+    stay refused on the 601. A refused Start now keeps its value-free reason
+    in the retained log (`worker_start=refused category=... reason=...`),
+    which a soak reads, because the page owns the Worker's console during a
+    lease.
 
 
 ## Consequences

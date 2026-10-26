@@ -43,6 +43,11 @@ pub(crate) fn admit(generation: WorkerGeneration, grant: &WorkerLeaseGrant) -> a
         BwgWorkerNvs::open().map_err(|_| anyhow::anyhow!("acceptance_budget=storage"))?;
     let maybe_budget = store.maybe_acceptance_budget()?;
     let active_limit_ms = if let Some(campaign) = grant.maybe_acceptance_campaign() {
+        // A board whose soak needs no campaign (the 601, ADR-0041 item 13) could otherwise
+        // start one while a soak still awaits finalization.
+        if store.soak_ledger()?.pending() {
+            anyhow::bail!("acceptance_budget=soak_pending");
+        }
         let ledger = match maybe_budget.as_ref() {
             Some(value) => value.clone(),
             None => AcceptanceBudget::new(campaign.id())?,
