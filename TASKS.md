@@ -1574,6 +1574,45 @@ Lease attempts:
     in the retained log. Attempt 004 continues as
     `continue_after_verified_fix`; it also reads the retained log after the
     Start, so a different refusal is named rather than guessed.
+- **Attempt 004** (2026-10-25, `2d4158fa`): the lease ran; one judge
+  failed.
+  - **Passed:**
+    - the detached visibility test (530 s, never hidden);
+    - the install and boot, the handoff, `lease_ready`, the refused Connect
+      and its safe stop, the reload and Connect, the 15-second step, the
+      idle proof (75 s), the reviews and the Start;
+    - the lease: 600,000 active ms at 400/1150, 34 shares accepted and 0
+      rejected, 28 renewals, ended by its budget
+      (`lease_or_budget_expired`), safe stop complete at `fan_paused`,
+      restoration and baseline confirmed, soak ordinal 1 charged once;
+    - after it, local mining back 21 s after the lease result, its 5
+      minutes, and the pause.
+  - **Failed:** the Gate soak `unverified` (`window_websocket_gap_exceeded`),
+    so the local soak `failed` (`lease_check_lease_failed` only).
+    - About 11 s after the Start, at the end of the BM1370's preparation
+      (14.1 W, not yet mining), the device stalled. The largest WebSocket
+      gap was 6.36 s against the 5 s bound, and HTTP stalled for 8.2 s
+      with two failed polls.
+    - The local soak's own sampler saw an 8.1 s gap at the same moment.
+    - In the retained log, 29 owner snapshots in `effect_prepare_hardware`
+      are followed by only `session_evaluation` and `servicing_hashrate`
+      before the capture, so the owner stalled too.
+    - For the rest of the lease the largest gaps were 0.9 s (WebSocket)
+      and 2.2 s (HTTP).
+    - The local starts on the 601 showed no such stall (samples every
+      2.1 s through the power-up). Neither did the 205's lease (at most
+      2.4 s and 0.9 s).
+  - **Recovery:** the page released, `owner-finish`, the local pause,
+    production reinstalled and confirmed (56 safe-boot records,
+    `identity=match`, one boot). The production boot read
+    `boot_ordinal=1`: its RTC boot counter began a new epoch (a power
+    interruption or a discarded record). The run itself kept one boot
+    session throughout. Unexplained; recorded.
+  - **Outcome:** a newly discriminating boundary (a Worker-path stall
+    after the 601's preparation). It needs its own diagnosis and
+    regression-backed fix: timing evidence for the Worker Start's steps
+    after preparation. Captures are under
+    `scratch/gamma-601-lease/attempt-004/`.
 - **Before each Gate session (amended after attempt 002):** in the
   dedicated tab, record `visibilitychange` events, make no browser call
   for 40 s, then read the record. Begin the Gate steps only if the tab
