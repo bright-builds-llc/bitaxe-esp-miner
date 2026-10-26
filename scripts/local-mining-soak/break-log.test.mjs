@@ -118,3 +118,31 @@ test("a run that stops while mining reads no log", async () => {
   // Assert
   assert.equal(reads, 0);
 });
+
+test("a held break reads no log while mining", async () => {
+  // Arrange
+  let reads = 0;
+  const watcher = breakWatcher({ readLogs: async () => { reads += 1; return ""; }, keepLogs: async () => {}, note: async () => {} });
+  await watcher.observe({ atMs: 0, uptimeSeconds: 100 }, true);
+  await watcher.observe({ atMs: 2000, uptimeSeconds: 102 }, false);
+  // Act
+  await watcher.observe({ atMs: 4000, uptimeSeconds: 104 }, true, true);
+  // Assert
+  assert.equal(reads, 0);
+});
+
+test("a held break is read once mining continues without the hold, from its first idle sample", async () => {
+  // Arrange
+  const notes = [];
+  const log = "local_mining=handover generation=2 revoked=true uptime_ms=101000\nlocal_mining=run_began generation=5 uptime_ms=300000";
+  const watcher = breakWatcher({ readLogs: async () => log, keepLogs: async () => {}, note: async (event) => { notes.push(event); } });
+  await watcher.observe({ atMs: 0, uptimeSeconds: 100 }, true);
+  await watcher.observe({ atMs: 2000, uptimeSeconds: 102 }, false);
+  await watcher.observe({ atMs: 4000, uptimeSeconds: 104 }, true, true);
+  await watcher.observe({ atMs: 200_000, uptimeSeconds: 290 }, false);
+  // Act
+  await watcher.observe({ atMs: 210_000, uptimeSeconds: 300 }, true);
+  // Assert
+  assert.deepEqual(notes.map((event) => [event.event, event.markers]), [["break_log", [
+    "local_mining=handover generation=2 revoked=true uptime_ms=101000", "local_mining=run_began generation=5 uptime_ms=300000"]]]);
+});

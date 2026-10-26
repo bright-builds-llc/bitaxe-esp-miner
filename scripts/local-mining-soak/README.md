@@ -158,6 +158,15 @@ value-free `wifi_reconnect=`, `wifi_reconnect_probe=` and `local_mining=`
 lines from 60 s before the break to its end. A failed read is journaled as
 `break_log_failed` and never stops the soak.
 
+The lease check holds its break log from `lease_ready` until the Gate
+soak's result. The device serves the whole log on its single web server
+task, which stalls HTTP and WebSocket telemetry for seconds, and the Gate
+soak judges those gaps (`window_websocket_gap_exceeded`, Gamma 601 attempt
+004). The held break is read once local mining is back, so its window
+covers the handover and the lease; the journal keeps the newest 40 marker
+lines, so a busy lease can push out the handover's. A run that stops
+during the lease still reads the log before its pause.
+
 ## Lease interruption check
 
 `--soak lease-001 --lease-root R` pairs this soak with one

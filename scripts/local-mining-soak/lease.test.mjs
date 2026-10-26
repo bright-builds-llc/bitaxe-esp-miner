@@ -20,7 +20,7 @@ function fakeLease({ idle = (t) => (t >= 400_000 && t < 450_000) || (t >= 1_050_
     const active = !state.paused && state.resumedAt !== null && clock.now - state.resumedAt >= 4000 && !idle(clock.now);
     return {
       sourceCommit: EXPECTED.firmwareCommit, appElfSha256: EXPECTED.appElfSha256, bootOrdinal: EXPECTED.bootOrdinal,
-      bootSession: "s".repeat(32), miningPaused: state.paused, miningActivity: active ? "active" : state.paused ? "paused" : "safe_blocked",
+      bootSession: "s".repeat(32), uptimeSeconds: 600 + Math.floor(clock.now / 1000), miningPaused: state.paused, miningActivity: active ? "active" : state.paused ? "paused" : "safe_blocked",
       startMiningOnBoot: false, hashRate: active ? 500 : 0, sharesAccepted: Math.floor(clock.now / 60_000), sharesRejected: 0,
       temp: 55, vrTemp: 0, voltage: 5100, power: active && !stall(clock.now) ? 12 : 1, fanrpm: 4000, overheat_mode: 0,
       stratumURL: SETTINGS.stratumURL, stratumPort: SETTINGS.stratumPort, stratumUser: SETTINGS.stratumUser,
@@ -210,4 +210,19 @@ test("the 601 lease check saves its 400 MHz / 1150 mV profile before the resume"
   await runAs(device, GAMMA601_LEASE);
   // Assert
   assert.deepEqual(patches.at(-1), { frequency: 400, coreVoltage: 1150 });
+});
+
+test("the handover's log is read only after the Gate soak's result, never during the lease", async () => {
+  // Arrange: the default fake mines under the lease from 450 s and reports its result at 1,070 s.
+  const device = fakeLease();
+  const readsAtMs = [];
+  device.client.logs = async () => { readsAtMs.push(device.clock.now); return ""; };
+  const events = [];
+  // Act
+  await runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, now: () => device.clock.now,
+    sleep: async (ms) => { device.clock.now += ms; }, record: async (event) => { events.push(event); }, soak: LEASE,
+    leaseResult: device.leaseResult, keepLogs: async () => {} });
+  // Assert
+  const restoredAtMs = events.find((event) => event.event === "local_restored").atMs;
+  assert.deepEqual(readsAtMs, [restoredAtMs]);
 });

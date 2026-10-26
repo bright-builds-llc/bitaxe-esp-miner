@@ -1589,29 +1589,31 @@ Lease attempts:
       minutes, and the pause.
   - **Failed:** the Gate soak `unverified` (`window_websocket_gap_exceeded`),
     so the local soak `failed` (`lease_check_lease_failed` only).
-    - About 11 s after the Start, at the end of the BM1370's preparation
-      (14.1 W, not yet mining), the device stalled. The largest WebSocket
-      gap was 6.36 s against the 5 s bound, and HTTP stalled for 8.2 s
-      with two failed polls.
-    - The local soak's own sampler saw an 8.1 s gap at the same moment.
-    - In the retained log, 29 owner snapshots in `effect_prepare_hardware`
-      are followed by only `session_evaluation` and `servicing_hashrate`
-      before the capture, so the owner stalled too.
+    - About 11 s after the Start, as the lease's mining began, the Gate
+      observer saw a 6.36 s WebSocket gap against the 5 s bound, and HTTP
+      missed polls for 8.2 s (two failed).
+    - **Cause (corrected after analysis):** our own local soak, not the
+      device. Its break watcher (added `5e2ef1b7`, the day after the 205's
+      lease check) took the handover as a mining break and, on the first
+      lease-mining sample, read the whole 512 KiB retained log. The device
+      serves that read in 4 KiB chunks on its single web server task, so
+      HTTP and the queued WebSocket frames waited about 6 s. The capture
+      (`break_log` at 492,906 ms, 524 KB) and the next local sample 8.1 s
+      later bracket the gap. The owner did not stall: its watchdog feeds
+      and telemetry checkpoints kept their rates through the gap, and the
+      Gate observer received the queued frames within 225 ms after it.
     - For the rest of the lease the largest gaps were 0.9 s (WebSocket)
-      and 2.2 s (HTTP).
-    - The local starts on the 601 showed no such stall (samples every
-      2.1 s through the power-up). Neither did the 205's lease (at most
-      2.4 s and 0.9 s).
+      and 2.2 s (HTTP). The 205's lease check predates the break watcher.
   - **Recovery:** the page released, `owner-finish`, the local pause,
     production reinstalled and confirmed (56 safe-boot records,
     `identity=match`, one boot). The production boot read
     `boot_ordinal=1`: its RTC boot counter began a new epoch (a power
     interruption or a discarded record). The run itself kept one boot
     session throughout. Unexplained; recorded.
-  - **Outcome:** a newly discriminating boundary (a Worker-path stall
-    after the 601's preparation). It needs its own diagnosis and
-    regression-backed fix: timing evidence for the Worker Start's steps
-    after preparation. Captures are under
+  - **Outcome:** `continue_after_verified_fix`. The lease check now holds
+    the break log from the local stop until the Gate soak's result, and
+    reads it once local mining is back (a run-level regression asserts no
+    read during the lease). Captures are under
     `scratch/gamma-601-lease/attempt-004/`.
 - **Before each Gate session (amended after attempt 002):** in the
   dedicated tab, record `visibilitychange` events, make no browser call

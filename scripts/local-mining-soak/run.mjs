@@ -166,7 +166,7 @@ export async function sampleLoop({ client, baseline, samples, resumedAt, now, sl
     await note({ event: "sample", sample });
     const maybeStop = stopRule(sample, baseline, maybePrevious, limits);
     if (maybeStop !== null) return maybeStop;
-    await watcher?.observe(sample, hashingUnder(limits)(sample));
+    await watcher?.observe(sample, hashingUnder(limits)(sample), phases.holdsBreakLog?.() === true);
     // A log read can take seconds; it never counts against the unreachable bound.
     maybeLastReachedAt = Math.max(maybeLastReachedAt, now());
     const outcome = await phases.onSample(sample);

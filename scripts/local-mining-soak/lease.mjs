@@ -61,6 +61,10 @@ export function leasePhases({ soak, samples, resumedAt, marks, note, leaseResult
   return {
     outageSamples: () => (phase === "before" || phase === "after" ? samples.slice(phaseStart) : []),
     onSample: (sample) => steps[phase](sample),
+    // From `lease_ready` until the Gate soak's result, the device's web server is the Gate soak's to
+    // judge, so no retained-log read may stall it. Starting at `lease_ready`, not at the local stop,
+    // also holds a break the device was unreachable across.
+    holdsBreakLog: () => marks.leaseReadyAtMs !== undefined && marks.leaseEndedAtMs === undefined,
   };
 }
 

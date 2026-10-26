@@ -59,14 +59,19 @@ export function breakWatcher({ readLogs, keepLogs, note }) {
     }
   };
   return {
-    /** Called with each sample in order, after its own live checks. */
-    async observe(sample, isMining) {
+    /**
+     * Called with each sample in order, after its own live checks. With `hold`, mining does not end
+     * the break: reading the whole retained log blocks the device's web server for seconds, which a
+     * Gate soak judging the same window counts as a telemetry gap. The read waits for mining after
+     * the hold, and its window then covers the held break too.
+     */
+    async observe(sample, isMining, hold = false) {
       if (!isMining) {
         if (sawMining && maybeBreakFrom === null && sample.uptimeSeconds !== null) maybeBreakFrom = sample.uptimeSeconds * 1000;
         return;
       }
       sawMining = true;
-      if (maybeBreakFrom === null) return;
+      if (maybeBreakFrom === null || hold) return;
       const from = maybeBreakFrom;
       maybeBreakFrom = null;
       await capture(from, sample.uptimeSeconds === null ? null : sample.uptimeSeconds * 1000, sample.atMs);
