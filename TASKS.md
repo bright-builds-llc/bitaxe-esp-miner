@@ -1746,9 +1746,11 @@ Closed after attempt 001 passed (2026-10-26); no enable line remains.
 
 Phase F4.3 self-test contract (attempt ordinals 001 onward):
 
-Not enabled: the factory installs apply the Wi-Fi credentials, which needs
-the owner's request (the Wi-Fi rule above). The enable line is added once
-the owner asks.
+Gamma 601 self-test hardware: enabled.
+
+The owner asked on 2026-10-26 for `wifi-credentials.json` to be applied
+for this campaign's factory installs (the Wi-Fi rule above); the file is
+passed by path only and never read, printed or summarized.
 
 - **Objective:** SELF-001's lifecycle on the 601, per the immutable plan
   `docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md`: one
