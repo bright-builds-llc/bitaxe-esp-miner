@@ -2,20 +2,24 @@
 // owner: within 120 s of a reset-capable read, two HTTP samples in a row show the exact installed
 // firmware paused with the ASIC powered down and mining on boot off, a fresh detector names the
 // physical device, and nothing holds its serial node. It reads only; it never pauses or resumes.
-import { hardwareStopped, sampleFromInfo, SAMPLE_INTERVAL_MS } from "./judge.mjs";
+import { GAMMA601_LIMITS, hardwareStoppedUnder, LIMITS, sampleFromInfo, SAMPLE_INTERVAL_MS } from "./judge.mjs";
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
 
 export const STOPPED_PROOF_SCHEMA = "local-mining-stopped-proof-v1";
 /** The detector must be this fresh, like the Gate soak's preflight. */
 export const DETECTOR_FRESH_MS = 60_000;
+/** The limits whose idle power shows the installed package's board powered down. */
+export const limitsForBoard = (maybeBoard) => (maybeBoard === "601" ? GAMMA601_LIMITS : LIMITS);
 
 /**
  * Builds the proof from two samples `SAMPLE_INTERVAL_MS` apart. `installed` names the firmware the
  * device must run; `bootOrdinal` is the boot the same-session handoff saw over USB, which binds the
  * HTTP device to the detected one; `detector` is the parsed fresh detector; `requireReleased`
- * checks the serial node.
+ * checks the serial node. `limits` are the installed board's: a powered-down 601 reads about 5.0 W.
  */
-export async function stoppedProof({ client, installed, bootOrdinal, detector, sourceCommit, requireReleased, sleep, now }) {
+export async function stoppedProof({ client, installed, bootOrdinal, detector, sourceCommit, requireReleased, sleep, now,
+  limits = LIMITS }) {
+  const hardwareStopped = hardwareStoppedUnder(limits);
   const firstInfo = await client.info();
   const first = sampleFromInfo(firstInfo, now());
   await sleep(SAMPLE_INTERVAL_MS);

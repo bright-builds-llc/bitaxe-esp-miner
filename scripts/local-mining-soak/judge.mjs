@@ -77,6 +77,10 @@ export function restartCool(limits) {
  * - Gamma 601 first mining 001 is the 601's first local mining (ADR-0041 phase F3), on the test-only
  *   `gamma601-mining` firmware: 10 continuous minutes at 400 MHz / 1150 mV, saved and read back with
  *   the pool before the resume, under the 601's limits (`GAMMA601_LIMITS`).
+ * - Gamma 601 default check 001 is first mining 001 at upstream's default 525 MHz / 1150 mV (ADR-0041
+ *   phase F4.1): 10 continuous minutes, to measure power and temperatures before a long soak.
+ * - Gamma 601 soak 001 is soak 006's rule at the 601's default, under the 601's limits (phase F4.2):
+ *   4 hours of mining accumulated within 5, outages tolerated as in soak 002.
  * - Gamma 601 overheat check 001 is overheat check 001 on the 601 (ADR-0041 phase F3.4), on the
  *   test-only `gamma601-overheat-trip-test` firmware (55 C trip), under the 601's limits. The
  *   baseline must read 400 MHz / 1150 mV (`baselineProfile`, F3.3's measured pair), because the
@@ -145,6 +149,16 @@ export const SOAKS = Object.freeze({
     maybeDeadlineMs: null, requireStoredBoard: "601", limits: GAMMA601_LIMITS,
     profile: Object.freeze({ frequencyMhz: 400, coreVoltageMv: 1150 }),
     enableLine: "Gamma 601 first local mining hardware: enabled." }),
+  "gamma601-default-001": Object.freeze({ id: "gamma601-default-001", task: "task-gamma-601-bring-up",
+    firmwareVariant: "gamma601-mining", activeMs: 10 * 60_000, requireHashrate: true, maybeMaximumOutageMs: null,
+    maybeDeadlineMs: null, requireStoredBoard: "601", limits: GAMMA601_LIMITS,
+    profile: Object.freeze({ frequencyMhz: 525, coreVoltageMv: 1150 }),
+    enableLine: "Gamma 601 default profile check hardware: enabled." }),
+  "gamma601-soak-001": Object.freeze({ id: "gamma601-soak-001", task: "task-gamma-601-bring-up",
+    firmwareVariant: "gamma601-mining", activeMs: 240 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
+    maybeDeadlineMs: 300 * 60_000, requireStoredBoard: "601", limits: GAMMA601_LIMITS,
+    profile: Object.freeze({ frequencyMhz: 525, coreVoltageMv: 1150 }),
+    enableLine: "Gamma 601 4 h soak hardware: enabled." }),
   "gamma601-overheat-001": Object.freeze({ id: "gamma601-overheat-001", kind: "overheat", task: "task-gamma-601-bring-up",
     firmwareVariant: "gamma601-overheat-trip-test", requireStoredBoard: "601", limits: GAMMA601_LIMITS,
     frequencyMhz: 500, coreVoltageMv: 1150,

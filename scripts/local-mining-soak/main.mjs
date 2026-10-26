@@ -13,7 +13,7 @@ import { readPoolForSigning } from "../fixed-usb-qualification/authority.mjs";
 import { privateRoot, proof, writeNew } from "../str005-noise-serial/files.mjs";
 import { requireNoHolders } from "../str005-noise-serial/host-resources.mjs";
 import { parseDetector } from "../hardware-operator/detector.mjs";
-import { DETECTOR_FRESH_MS, stoppedProof } from "./stopped-proof.mjs";
+import { DETECTOR_FRESH_MS, limitsForBoard, stoppedProof } from "./stopped-proof.mjs";
 import { deviceClient } from "./device.mjs";
 import { poolSettings } from "./pool.mjs";
 import { runSoak } from "./run.mjs";
@@ -196,7 +196,8 @@ async function writeStoppedProof(firmwareRoot, root, options) {
   const value = await stoppedProof({ client: deviceClient(endpoint),
     installed: { firmwareCommit: manifest.source_commit, appElfSha256: manifest.app_elf_sha256 }, bootOrdinal: endpoint.bootOrdinal,
     detector: parseDetector(await readFile(detectorPath, "utf8")), sourceCommit: git(firmwareRoot, ["rev-parse", "HEAD"]).trim(),
-    requireReleased: requireNoHolders, sleep: (ms) => new Promise((done) => setTimeout(done, ms)), now: Date.now });
+    requireReleased: requireNoHolders, sleep: (ms) => new Promise((done) => setTimeout(done, ms)), now: Date.now,
+    limits: limitsForBoard(manifest.image_metadata?.board) });
   await mkdir(root, { mode: 0o700 });
   await writeNew(resolve(root, "stopped-proof.json"), value);
   return { stopped_proof: "written", device_effects: false };

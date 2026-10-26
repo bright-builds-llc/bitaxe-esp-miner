@@ -399,3 +399,23 @@ test("a 601 status that reads active at its idle offset is not hashing", () => {
   assert.ok(verdict.failures.includes("soak_active_time_short"));
   assert.equal(verdict.metrics.status_only_samples, samples.length);
 });
+
+test("the 601's default check mines 10 continuous minutes at 525/1150 under the 601's limits", () => {
+  // Arrange / Act
+  const soak = SOAKS["gamma601-default-001"];
+  // Assert
+  assert.deepEqual([soak.limits, soak.activeMs, soak.maybeMaximumOutageMs, soak.firmwareVariant, soak.requireStoredBoard],
+    [GAMMA601_LIMITS, 10 * 60_000, null, "gamma601-mining", "601"]);
+  assert.deepEqual(soak.profile, { frequencyMhz: 525, coreVoltageMv: 1150 });
+  assert.equal(soak.enableLine, "Gamma 601 default profile check hardware: enabled.");
+});
+
+test("the 601's 4 h soak keeps soak 006's rule at 525/1150 under the 601's limits", () => {
+  // Arrange / Act
+  const soak = SOAKS["gamma601-soak-001"];
+  // Assert
+  assert.deepEqual([soak.limits, soak.activeMs, soak.maybeMaximumOutageMs, soak.maybeDeadlineMs],
+    [GAMMA601_LIMITS, SOAKS["006"].activeMs, SOAKS["006"].maybeMaximumOutageMs, SOAKS["006"].maybeDeadlineMs]);
+  assert.deepEqual(soak.profile, { frequencyMhz: 525, coreVoltageMv: 1150 });
+  assert.equal(soak.enableLine, "Gamma 601 4 h soak hardware: enabled.");
+});

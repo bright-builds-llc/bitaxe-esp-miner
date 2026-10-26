@@ -702,7 +702,23 @@ action.
       production reinstalled. Its fixes: the Gate tab's detached
       visibility check, the 601's soak prerequisite (ADR-0041 item 13,
       `2d4158fa`) and the held break log (`9323ff2d`).
-  - [ ] F4: self-test, soaks and promotion.
+  - [ ] F4: default profile, soak, self-test and promotion (plan
+    `delightful-foraging-quill`, owner decisions 2026-10-26: port the 601
+    self-test before promotion, a 4 h soak at 525/1150, the panic residual
+    accepted as upstream, live changes deferred).
+    - [x] F4.1 software: soaks `gamma601-default-001` (10 min) and
+      `gamma601-soak-001` (4 h) at 525/1150; the stopped proof takes the
+      installed board's idle limit;
+    - [ ] F4.1 hardware: the default profile check;
+    - [ ] F4.2 hardware: the 4 h soak;
+    - [ ] F4.3: the 601 self-test, software then hardware on
+      `gamma601-mining`;
+    - [ ] F4.4: promotion (software): production 601 mines, mines on boot
+      by its saved preference, `gamma601-mining` retired;
+    - [ ] F4.5: promotion hardware: boot resume, the production self-test,
+      a production smoke soak;
+    - [ ] F4.6: parity proposals; the 205's regression and self-test at
+      the final commit.
 
 Each phase ends with the full gate, an independent review, commit and
 push. Each hardware step needs its own contract and enable line below.
@@ -1640,6 +1656,59 @@ Lease attempts:
   stayed `visible`. Otherwise hold, with the device paused, until the owner
   brings the window forward. Never keep the page visible through tool
   keep-alives.
+
+Phase F4.1 default profile contract (attempt ordinals 001 onward):
+
+Gamma 601 default profile check hardware: enabled.
+
+- **Objective:** the 601 at upstream's default. The test-only
+  `gamma601-mining` firmware at the clean, pushed HEAD mines 10 minutes at
+  525 MHz / 1150 mV with the owner's pool through the soak
+  `gamma601-default-001`, with at least one accepted share, then pauses and
+  proves stopped; production is then reinstalled. It measures power,
+  temperatures and hashrate at the default before the 4 h soak.
+- **Precondition:** only the 601 attached, registered as board 601; the
+  tree clean and pushed; the dedicated Gate tab passing the detached
+  visibility check (40 s with no browser call, never hidden).
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/gamma-601-default/` and `umask 077`:**
+  1. `just detect-ultra205`; `just package-gamma601-mining`; `just
+     flash-monitor --board 601 --port <port> --manifest
+     bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
+     --allow-test-firmware gamma601-mining --capture-timeout-seconds 360`,
+     state-preserving;
+  2. `just otawww-endpoint preflight|serve|finish --private-root
+     P/endpoint-NNN`, with Connect in the dedicated Gate tab;
+  3. `just local-mining-soak preflight --soak gamma601-default-001
+     --private-root P/local-NNN --endpoint-root P/endpoint-NNN
+     --package-manifest <manifest> --pool-credentials
+     pool-credentials.json`, then `just local-mining-soak pause
+     --private-root P/local-NNN`, then `just local-mining-soak run
+     --private-root P/local-NNN --pool-credentials pool-credentials.json`
+     under `caffeinate`;
+  4. `just package --board 601`, `just flash --board 601 --port <port>`,
+     state-preserving, then `just monitor --board 601 --port <port>
+     --capture-timeout-seconds 360` to confirm production.
+- **Allowed effects:** the installs and their resets; the endpoint
+  handoff; start-on-boot saved off, the pool and the 525/1150 profile
+  saved over HTTP; 10 minutes of local mining; the soak's pause and stop.
+  After a stop, as capture for its analysis (ADR-0030): `just
+  local-mining-soak stopped-proof`, then one core-dump read with `just
+  hardware-operator`'s recovery helper, before the production reinstall;
+  the analysis itself waits for the reinstall.
+- **Prohibited effects:** any other frequency or voltage, a Worker Start
+  or lease, a factory reset, network discovery beyond the handoff, direct
+  UART or pins. Pool values never leave `P` or the local credential file.
+- **Stops:** the soak's live stops (22 W, chip 75 C, regulator 90 C, input
+  outside 4.5 to 5.5 V, fan, stale readings, a reset, a fault) and the
+  firmware's own. Any stop: pause, reinstall production before analysing,
+  then analyse (progress-gated policy).
+- **Evidence and privacy:** captures and journals stay in `P` (mode 0600);
+  committed evidence is a redacted summary, checked independently, with
+  `just verify-redaction`; no pool values.
+- **Recovery:** `just local-mining-soak pause --private-root P/local-NNN`,
+  then the production reinstall. If the board does not stop, remove all
+  power (barrel and USB).
 
 ## Future
 
