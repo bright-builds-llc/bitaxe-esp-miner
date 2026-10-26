@@ -60,6 +60,9 @@ not a guard anyone designed.
      `config-<board>.cvs`. On the 601 it must seed, with the Wi-Fi
      credentials, and only the ordinary settings. The self-test, thermal and
      diagnostic seeds stay 205 only.
+     - *Amended 2026-10-26 (phase F4.3, item 14):* the self-test seed now
+       exists on the 601 too, with its own kind (`gamma601_full_v1`). The
+       thermal and diagnostic seeds stay 205 only.
 3. **The firmware checks its board at run time** against the stored
    `boardversion` and refuses hardware control on a mismatch.
    - It reads the value once at boot and reports it, as a closed label
@@ -103,6 +106,11 @@ not a guard anyone designed.
        moves, and keeps the safe boot's idle fan. An owner that fails to
        start is logged and boot continues to HTTP. Its Worker channel
        follows item 10;
+     - *Amended 2026-10-26 (phase F4.3, item 14):* an admitted self-test
+       tuple starts the self-test owner in place of the mining owner and
+       fan controller, and no Worker starts beside it. A build that cannot
+       power the BM1370 refuses the tuple. The diagnostic owners still
+       never start;
    - refuses an HTTP firmware update whose image carries another board's
      marker. Both builds do this.
 
@@ -353,6 +361,35 @@ not a guard anyone designed.
     in the retained log (`worker_start=refused category=... reason=...`),
     which a soak reads, because the page owns the Worker's console during a
     lease.
+
+14. **The self-test runs on the 601** (owner decision 2026-10-26: port it
+    before promotion). One pure contract
+    (`HardwareSelfTestContract::for_board`) derives each board's profile,
+    expected hashrate, core voltage window and power ceiling from its
+    catalog entry, as upstream's `self_test.c` derives them from
+    `DEVICE_CONFIG`. The 205's values equal its verified constants (a golden
+    test pins them). The 601 runs 525 MHz / 1150 mV, expects about
+    910 GH/s, admits 1035 to 1265 mV and at most 22 W.
+    - **The regulator:** a TPS546 power fault fails the run, as upstream's
+      `test_vreg_faults`. So does a regulator temperature above its 105 C
+      throttle, or none read.
+    - **Authority:** the TPS546 turns on only under a generation's permit
+      (item 10). On the 601 the self-test runs as a local generation with a
+      240 s budget armed at its start. The gate revokes it at the bound or
+      on an unsafe observation, and the regulator's owner turns the output
+      off within 100 ms, independent of the self-test thread. Its fan
+      commands go as that generation's controller commands. The 205's
+      self-test runs exactly as verified.
+    - **Deviation:** the 601 keeps the input-voltage check (4.5 to 5.5 V,
+      from the TPS546 VIN), which upstream skips without an INA260.
+    - **Tooling:** the flash tool and `just self-test-campaign` take the
+      board (`--board 601`), each with its own attempt roots, immutable plan
+      (`docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md`)
+      and evidence projection. The 205's attempt-005 constants are
+      unchanged.
+    - **Non-claims:** upstream's factory-seed and BOOT-held starts stay
+      unported on both boards. The 601 claims SELF-001 only after its
+      promoted production build repeats the lifecycle.
 
 
 ## Consequences

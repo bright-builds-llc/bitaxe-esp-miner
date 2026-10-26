@@ -29,6 +29,10 @@ mod built {
     pub(super) const WORKER_CAPABILITY: &str = include_str!("../bwg/ultra205-capability.json");
     pub(super) const SOAK_PREREQUISITE: SoakPrerequisite =
         SoakPrerequisite::OriginalCampaignComplete;
+    /// The kind SELF-001's evidence and admission tuple carry (`ultra205_full_v1`).
+    pub(super) const SELF_TEST_KIND: &str = "ultra205_full_v1";
+    /// The DS4432U reports no regulator temperature.
+    pub(super) const MAYBE_SELF_TEST_VR_MAX_C: Option<f32> = None;
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::ultra_205_catalog_entry()
     }
@@ -56,6 +60,11 @@ mod built {
     pub(super) const WORKER_CAPABILITY: &str = include_str!("../bwg/gamma601-capability.json");
     /// The 601 never ran the 205's original acceptance campaign (ADR-0041 item 13).
     pub(super) const SOAK_PREREQUISITE: SoakPrerequisite = SoakPrerequisite::NoUnfinishedCampaign;
+    /// The 601's self-test kind (ADR-0041 item 14).
+    pub(super) const SELF_TEST_KIND: &str = "gamma601_full_v1";
+    /// The TPS546's own throttle temperature, as the 601's safety verdict uses it.
+    pub(super) const MAYBE_SELF_TEST_VR_MAX_C: Option<f32> =
+        Some(bitaxe_safety::thermal::TPS546_VR_THROTTLE_TEMP_C as f32);
     pub(super) const fn catalog() -> BoardCatalogEntry {
         bitaxe_config::gamma_601_catalog_entry()
     }
@@ -90,6 +99,17 @@ pub(crate) const WORKER_MODEL: &str = built::WORKER_MODEL;
 pub(crate) const WORKER_CAPABILITY: &str = built::WORKER_CAPABILITY;
 /// What a soak allowance requires of the board's original acceptance campaign.
 pub(crate) const SOAK_PREREQUISITE: SoakPrerequisite = built::SOAK_PREREQUISITE;
+/// The kind a self-test admission tuple must name on this board.
+pub(crate) const SELF_TEST_KIND: &str = built::SELF_TEST_KIND;
+
+/// The built board's self-test contract, from its catalog entry (ADR-0041 item 14).
+pub(crate) fn self_test_contract() -> bitaxe_safety::self_test::HardwareSelfTestContract {
+    bitaxe_safety::self_test::HardwareSelfTestContract::for_board(
+        SELF_TEST_KIND,
+        catalog_entry(),
+        built::MAYBE_SELF_TEST_VR_MAX_C,
+    )
+}
 /// The ranges the built board's mining-safety facts must hold.
 pub(crate) const MINING_SAFETY_LIMITS: MiningSafetyLimits =
     MiningSafetyLimits::for_board(built::catalog());

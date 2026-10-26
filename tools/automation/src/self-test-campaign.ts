@@ -1,12 +1,5 @@
-import { createHash, randomBytes } from "node:crypto";
-import {
-  chmod,
-  mkdir,
-  readFile,
-  rename,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import { chmod, mkdir, readFile, rename } from "node:fs/promises";
 import path from "node:path";
 
 import { internalCommandSpec, monitorCommand } from "./contracts.generated.js";
@@ -14,26 +7,36 @@ import { portFromDetectorOutput } from "./detector.js";
 import { maybeOptionValue, optionValue, type ParsedInvocation } from "./invocation.js";
 import type { ProcessPort } from "./process.js";
 import {
+  type FlashTarget,
   ordinaryFlashMonitorSpec,
   selfTestFlashMonitorDryRunSpec,
   selfTestFlashMonitorSpec,
+  selfTestMonitorSpec,
 } from "./self-test-campaign-flash.js";
 import { createSelfTestEvidence } from "./self-test-campaign-evidence.js";
+import {
+  type SelfTestCampaignProfile,
+  selfTestCampaignProfile,
+  testFirmwareArgs,
+} from "./self-test-campaign-profile.js";
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
+import {
+  failure,
+  type JsonObject,
+  object,
+  privateJson,
+  replacePrivateJson,
+  requireAbsent,
+  requiredString,
+  requireMode,
+  SelfTestCampaignError,
+  sha256,
+} from "./self-test-campaign-support.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
-const expectedRoot = "scratch/self001-full-lifecycle/attempt-005";
-const expectedProjection =
-  "docs/parity/evidence/self001-full-lifecycle/self-test-projection.json";
-const expectedPlan =
-  "docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md";
-const expectedPlanSha256 =
-  "0c9a03ec490967fc95989d88b91848c7d4ed740a76825822a8107d94e8fd7f84";
 const expectedReference = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
-const activeTask = "task-parity-self001-full-lifecycle";
 const monitorSeconds = 360;
 
-type JsonObject = Record<string, unknown>;
 type CampaignState = {
   readonly schema_version: "bitaxe-self-test-campaign-state-v1";
   readonly lease_hex: string;
@@ -45,82 +48,6 @@ type CampaignState = {
   readonly pre_boot_session: string;
   readonly stage: "failure_prepared" | "cancel_ready";
 };
-
-class SelfTestCampaignError extends Error {
-  public constructor(
-    public readonly category: "evidence_invalid" | "hardware_blocked" | "process_failed" | "timeout",
-    message: string,
-    public readonly publicValue: Readonly<Record<string, unknown>>,
-  ) {
-    super(message);
-    this.name = "SelfTestCampaignError";
-  }
-}
-
-function failure(
-  category: SelfTestCampaignError["category"],
-  message: string,
-  stage: string,
-): SelfTestCampaignError {
-  return new SelfTestCampaignError(category, message, {
-    stage,
-    projection_published: false,
-    checkpoint: "unavailable",
-  });
-}
-
-function sha256(value: string | Buffer): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function object(value: unknown, context: string): JsonObject {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw failure("evidence_invalid", `${context} must be an object`, "contract");
-  }
-  return value as JsonObject;
-}
-
-function requiredString(value: JsonObject, field: string, context: string): string {
-  const candidate = value[field];
-  if (typeof candidate !== "string" || candidate.length === 0) {
-    throw failure("evidence_invalid", `${context} identity is invalid`, "contract");
-  }
-  return candidate;
-}
-
-async function requireAbsent(candidate: string, context: string): Promise<void> {
-  try {
-    await stat(candidate);
-    throw failure("evidence_invalid", `${context} must be absent`, "preflight");
-  } catch (error) {
-    if (error instanceof SelfTestCampaignError) throw error;
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
-}
-
-async function requireMode(candidate: string, mode: number, directory: boolean): Promise<void> {
-  const metadata = await stat(candidate);
-  if ((directory ? !metadata.isDirectory() : !metadata.isFile())
-    || (metadata.mode & 0o777) !== mode) {
-    throw failure("evidence_invalid", "protected evidence mode is invalid", "privacy");
-  }
-}
-
-async function privateJson(output: string, value: unknown): Promise<string> {
-  const document = `${JSON.stringify(value, null, 2)}\n`;
-  await writeFile(output, document, { encoding: "utf8", flag: "wx", mode: 0o600 });
-  await chmod(output, 0o600);
-  return document;
-}
-
-async function replacePrivateJson(output: string, value: unknown): Promise<string> {
-  const temporary = `${output}.tmp`;
-  await requireAbsent(temporary, "private replacement");
-  const document = await privateJson(temporary, value);
-  await rename(temporary, output);
-  await requireMode(output, 0o600, false);
-  return document;
-}
 
 async function childText(
   processPort: ProcessPort,
@@ -167,12 +94,11 @@ async function currentMonitor(
   processPort: ProcessPort,
   flashProgram: string,
   port: string,
+  target: FlashTarget,
 ): Promise<string> {
-  const outcome = await processPort.run(monitorCommand(flashProgram, {
-    board: 205,
-    port,
-    captureTimeoutSeconds: monitorSeconds,
-  }));
+  const outcome = await processPort.run(target.board === 205
+    ? monitorCommand(flashProgram, { board: 205, port, captureTimeoutSeconds: monitorSeconds })
+    : selfTestMonitorSpec(target, flashProgram, port));
   if (outcome.timedOut) throw failure("timeout", "passive monitor timed out", "monitor");
   if (outcome.exitCode !== 0) {
     throw failure("hardware_blocked", "passive monitor failed", "monitor");
@@ -181,18 +107,19 @@ async function currentMonitor(
 }
 
 function intent(
+  profile: SelfTestCampaignProfile,
   state: Pick<CampaignState, "lease_hex" | "source_commit" | "reference_commit" | "app_elf_sha256">,
   selfTestCase: "planned_failure" | "pass",
 ): JsonObject {
   return {
     schema_version: "bitaxe-self-test-intent-v1",
-    board: 205,
-    attempt_ordinal: 5,
+    board: profile.board,
+    attempt_ordinal: profile.attemptOrdinal,
     source_commit: state.source_commit,
     reference_commit: state.reference_commit,
     app_elf_sha256: state.app_elf_sha256,
-    plan_path: expectedPlan,
-    plan_sha256: expectedPlanSha256,
+    plan_path: profile.plan,
+    plan_sha256: profile.planSha256,
     case: selfTestCase,
     lease_hex: state.lease_hex,
   };
@@ -211,6 +138,7 @@ async function runFlashMonitor(
 }
 
 async function recoverOrdinaryRuntime(
+  target: FlashTarget,
   processPort: ProcessPort,
   flashProgram: string,
   port: string,
@@ -225,7 +153,7 @@ async function recoverOrdinaryRuntime(
   try {
     await runFlashMonitor(
       processPort,
-      ordinaryFlashMonitorSpec({
+      ordinaryFlashMonitorSpec(target, {
         flashProgram,
         port,
         manifest: manifestPath,
@@ -253,17 +181,17 @@ async function recoverOrdinaryRuntime(
   }
 }
 
-function validatePlanAndTask(plan: string, task: string): void {
-  if (sha256(plan) !== expectedPlanSha256
+function validatePlanAndTask(profile: SelfTestCampaignProfile, plan: string, task: string): void {
+  if (sha256(plan) !== profile.planSha256
     || !plan.includes("- Parity row: `SELF-001`")
-    || !plan.includes(`- Active task: \`${activeTask}\``)) {
+    || !plan.includes(`- Active task: \`${profile.activeTask}\``)) {
     throw failure("evidence_invalid", "immutable plan binding is invalid", "contract");
   }
-  const heading = `### ${activeTask} |`;
+  const heading = `### ${profile.activeTask} |`;
   const start = task.indexOf(heading);
   const end = task.indexOf("\n### ", start + heading.length);
   const block = task.slice(start, end === -1 ? task.length : end);
-  for (const required of [expectedPlan, "two-phase", "BOOT-button", "mode-0700"]) {
+  for (const required of profile.taskTerms) {
     if (start === -1 || !block.includes(required)) {
       throw failure("evidence_invalid", "active task contract is incomplete", "contract");
     }
@@ -310,9 +238,13 @@ async function startCampaign(
   const detector = optionValue(invocation, "--detector-output");
   const projection = assertWithinWorkspace(root, optionValue(invocation, "--projection"));
   const planPath = assertWithinWorkspace(root, optionValue(invocation, "--plan"));
-  if (path.relative(root, privateRoot) !== expectedRoot
-    || path.relative(root, projection) !== expectedProjection
-    || path.relative(root, planPath) !== expectedPlan) {
+  const profile = selfTestCampaignProfile(
+    maybeOptionValue(invocation, "--board"),
+    path.relative(root, privateRoot),
+  );
+  if (profile === null
+    || path.relative(root, projection) !== profile.projection
+    || path.relative(root, planPath) !== profile.plan) {
     throw failure("evidence_invalid", "SELF-001 path contract is invalid", "preflight");
   }
   await requireAbsent(privateRoot, "private root");
@@ -324,13 +256,18 @@ async function startCampaign(
   const manifest = object(JSON.parse(manifestDocument), "manifest");
   const plan = await readFile(planPath, "utf8");
   const task = await readFile(path.join(root, "TASKS.md"), "utf8");
-  validatePlanAndTask(plan, task);
+  validatePlanAndTask(profile, plan, task);
   await validateSource(root, processPort, manifest);
   await requireMode(wifiCredentials, 0o600, false);
   await requireMode(poolCredentials, 0o600, false);
   const port = await portFromDetectorOutput(root, detector);
+  const maybeTestFirmwareArgs = testFirmwareArgs(profile.board, manifest);
+  if (maybeTestFirmwareArgs === null) {
+    throw failure("evidence_invalid", "the package's firmware variant is not admitted", "preflight");
+  }
+  const target: FlashTarget = { board: profile.board, testFirmwareArgs: maybeTestFirmwareArgs };
 
-  const preMonitor = await currentMonitor(processPort, flashProgram, port);
+  const preMonitor = await currentMonitor(processPort, flashProgram, port, target);
   const preOrigin = singleOrigin(preMonitor);
   const settings = await fetchJson(preOrigin, "/api/system/info");
   const theme = await fetchJson(preOrigin, "/api/theme");
@@ -373,12 +310,13 @@ async function startCampaign(
   const statePath = path.join(privateRoot, "campaign-state.private.json");
   const backup = object(JSON.parse(backupDocument), "settings backup");
   const failureIntentPath = path.join(privateRoot, "failure-intent.private.json");
-  await privateJson(failureIntentPath, intent(preparedState, "planned_failure"));
+  await privateJson(failureIntentPath, intent(profile, preparedState, "planned_failure"));
   await privateJson(statePath, preparedState);
   const relativeFailureIntent = path.relative(root, failureIntentPath);
   await runFlashMonitor(
     processPort,
     selfTestFlashMonitorDryRunSpec(
+      target,
       flashProgram,
       port,
       manifestPath,
@@ -392,6 +330,7 @@ async function startCampaign(
     await runFlashMonitor(
       processPort,
       selfTestFlashMonitorSpec(
+        target,
         flashProgram,
         port,
         manifestPath,
@@ -413,6 +352,7 @@ async function startCampaign(
     }
   } catch (error) {
     await recoverOrdinaryRuntime(
+      target,
       processPort,
       flashProgram,
       port,
@@ -468,9 +408,13 @@ async function resumeCampaign(
     root,
     maybeOptionValue(invocation, "--pool-credentials") ?? "pool-credentials.json",
   );
-  if (path.relative(root, privateRoot) !== expectedRoot
-    || path.relative(root, projection) !== expectedProjection
-    || path.relative(root, planPath) !== expectedPlan) {
+  const profile = selfTestCampaignProfile(
+    maybeOptionValue(invocation, "--board"),
+    path.relative(root, privateRoot),
+  );
+  if (profile === null
+    || path.relative(root, projection) !== profile.projection
+    || path.relative(root, planPath) !== profile.plan) {
     throw failure("evidence_invalid", "SELF-001 resume path contract is invalid", "resume");
   }
   await requireMode(privateRoot, 0o700, true);
@@ -487,10 +431,20 @@ async function resumeCampaign(
   }
   const backup = object(JSON.parse(backupDocument), "settings backup");
   const port = await portFromDetectorOutput(root, detector);
-  const cancellationLog = await currentMonitor(processPort, flashProgram, port);
+  const manifestDocument = await readFile(manifestPath, "utf8");
+  const maybeTestFirmwareArgs = testFirmwareArgs(
+    profile.board,
+    object(JSON.parse(manifestDocument), "manifest"),
+  );
+  if (maybeTestFirmwareArgs === null) {
+    throw failure("evidence_invalid", "the package's firmware variant is not admitted", "resume");
+  }
+  const target: FlashTarget = { board: profile.board, testFirmwareArgs: maybeTestFirmwareArgs };
+  const cancellationLog = await currentMonitor(processPort, flashProgram, port, target);
   const cancelMarker = `self_test_receipt outcome=cancelled lease=${state.lease_hex}`;
   if (!cancellationLog.includes(cancelMarker)) {
     await recoverOrdinaryRuntime(
+      target,
       processPort,
       flashProgram,
       port,
@@ -502,12 +456,13 @@ async function resumeCampaign(
     );
     throw failure("hardware_blocked", "physical cancellation receipt was not observed", "cancel");
   }
-  await privateJson(path.join(privateRoot, "pass-intent.private.json"), intent(state, "pass"));
+  await privateJson(path.join(privateRoot, "pass-intent.private.json"), intent(profile, state, "pass"));
   const relativePassIntent = path.relative(root, path.join(privateRoot, "pass-intent.private.json"));
   try {
     await runFlashMonitor(
       processPort,
       selfTestFlashMonitorDryRunSpec(
+        target,
         flashProgram,
         port,
         manifestPath,
@@ -539,6 +494,7 @@ async function resumeCampaign(
     await runFlashMonitor(
       processPort,
       selfTestFlashMonitorSpec(
+        target,
         flashProgram,
         port,
         manifestPath,
@@ -558,6 +514,7 @@ async function resumeCampaign(
     }
   } catch (error) {
     await recoverOrdinaryRuntime(
+      target,
       processPort,
       flashProgram,
       port,
@@ -574,6 +531,7 @@ async function resumeCampaign(
     await restoreSettings(origin, backup, wifiPath, poolPath);
   } catch (error) {
     await recoverOrdinaryRuntime(
+      target,
       processPort,
       flashProgram,
       port,
@@ -586,11 +544,10 @@ async function resumeCampaign(
     throw error;
   }
 
-  const manifestDocument = await readFile(manifestPath, "utf8");
   const evidence = createSelfTestEvidence(
+    profile,
     state,
     manifestDocument,
-    expectedPlanSha256,
     passLog,
   );
   const candidate = `${projection}.candidate`;

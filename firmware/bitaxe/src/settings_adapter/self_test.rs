@@ -16,7 +16,8 @@ const CASE_KEY: &str = "selftestcase";
 const FLAG_KEY: &str = "selftest";
 const RECEIPT_KEY: &str = "selftestrcpt";
 const RECEIPT_LEASE_KEY: &str = "selftestrcid";
-const KIND: &str = "ultra205_full_v1";
+/// The built board's kind: a tuple naming another board's kind is refused and its flag cleared.
+const KIND: &str = crate::board_identity::SELF_TEST_KIND;
 const ADMISSION_KEYS: [&str; 3] = [KIND_KEY, LEASE_KEY, CASE_KEY];
 const MAX_STRING_BYTES: usize = 64;
 
@@ -168,6 +169,17 @@ pub(crate) fn clear_self_test_flag_and_record_receipt(
         return Err(SelfTestAdmissionError::new("receipt_reconcile"));
     }
     Ok(())
+}
+
+/// Clears the flag of a tuple the built firmware refuses (a 601 that cannot power the BM1370),
+/// with no receipt: no self-test ran, so nothing reads as an owner's cancel.
+pub(crate) fn clear_refused_self_test_flag() -> Result<(), SelfTestAdmissionError> {
+    let _guard = SETTINGS_TRANSACTION_LOCK
+        .lock()
+        .map_err(|_| SelfTestAdmissionError::new("transaction_lock"))?;
+    let partition =
+        super::default_nvs_partition().map_err(|_| SelfTestAdmissionError::new("nvs_partition"))?;
+    clear_flag(&partition)
 }
 
 pub(crate) fn maybe_self_test_receipt(

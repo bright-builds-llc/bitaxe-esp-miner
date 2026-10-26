@@ -45,8 +45,8 @@ pub(crate) use protocol_gate::{
     ConfiguredProtocolPlan, ConfiguredStratumProtocol, ProductionProtocolGateDecision,
 };
 pub(crate) use self_test::{
-    clear_self_test_flag_and_record_receipt, load_self_test_admission, maybe_self_test_receipt,
-    SelfTestAdmission, SelfTestReceipt,
+    clear_refused_self_test_flag, clear_self_test_flag_and_record_receipt,
+    load_self_test_admission, maybe_self_test_receipt, SelfTestAdmission, SelfTestReceipt,
 };
 pub(crate) use stratum_v2::{read_stratum_v2_pool_set, V2PoolSettings};
 pub(crate) use tcp_payload_diagnostic::{

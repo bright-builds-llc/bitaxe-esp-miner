@@ -2,6 +2,10 @@ const MAIN_SOURCE: &str = include_str!("main.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 const RUNTIME_SOURCE: &str = include_str!("self_test_runtime.rs");
 const DOMAIN_SOURCE: &str = include_str!("self_test_runtime/domain_measurement.rs");
+const BOARD_SOURCE: &str = include_str!("self_test_runtime/board.rs");
+const MEASUREMENT_SOURCE: &str = include_str!("self_test_runtime/measurement.rs");
+const GAMMA601_SOURCE: &str = include_str!("gamma601.rs");
+const BOARD_IDENTITY_SOURCE: &str = include_str!("board_identity.rs");
 const SETTINGS_SOURCE: &str = include_str!("settings_adapter/self_test.rs");
 const INPUT_SOURCE: &str = include_str!("input_adapter.rs");
 const HTTP_SOURCE: &str = include_str!("http_api.rs");
@@ -68,15 +72,17 @@ fn marker_receipt_and_button_boundaries_are_closed_and_private() {
     assert!(replay.contains("log::info!(\"{marker}\")"));
     assert!(!replay.contains("log_buffer"));
     assert!(!HTTP_SOURCE.contains("/api/system/self-test"));
-    assert!(!RUNTIME_SOURCE.contains("connect_pool"));
-    assert!(!RUNTIME_SOURCE.contains("mining.submit"));
+    for source in [RUNTIME_SOURCE, MEASUREMENT_SOURCE] {
+        assert!(!source.contains("connect_pool"));
+        assert!(!source.contains("mining.submit"));
+    }
 }
 
 #[test]
 fn self_test_uses_existing_safe_actuation_and_terminal_shutdown() {
     // Arrange
     let required = [
-        "MiningHardwareProfilePreset::UpstreamDefault.profile()",
+        "profile_for_board(crate::board_identity::catalog_entry())",
         "set_self_test_fan_duty",
         "execute_self_test_command",
         "try_read_self_test_result",
@@ -93,12 +99,63 @@ fn self_test_uses_existing_safe_actuation_and_terminal_shutdown() {
     // Act
     let all_present = required
         .iter()
-        .all(|token| RUNTIME_SOURCE.contains(token) || DOMAIN_SOURCE.contains(token));
+        .all(|token| [RUNTIME_SOURCE, DOMAIN_SOURCE, BOARD_SOURCE, MEASUREMENT_SOURCE].iter().any(|source| source.contains(token)));
 
     // Assert
     assert!(all_present);
     assert!(RUNTIME_SOURCE.contains("PlannedEvaluationFailure"));
     assert!(RUNTIME_SOURCE.contains("safe_stop_complete"));
     assert!(!RUNTIME_SOURCE.contains("small_core_id) % HARDWARE_SELF_TEST_DOMAIN_COUNT"));
+    assert!(!MEASUREMENT_SOURCE.contains("small_core_id"));
     assert!(!DOMAIN_SOURCE.contains("small_core_id"));
+}
+
+#[test]
+fn the_601_runs_its_self_test_only_where_mining_is_admitted_and_never_beside_a_worker() {
+    // Arrange
+    let (_, admission) = GAMMA601_SOURCE
+        .split_once("fn maybe_self_test_admission()")
+        .expect("the 601's admission exists");
+    let (_, owners) = GAMMA601_SOURCE
+        .split_once("fn start_owners()")
+        .expect("the 601's owners exist");
+    let position = |body: &str, token: &str| body.find(token).expect(token);
+    // Act
+    let refused_before_start = position(admission, "MINING_DISPATCH_ADMITTED")
+        < position(admission, "return Some(admission)");
+    let self_test_first = position(owners, "crate::self_test_runtime::start(admission)")
+        < position(owners, "crate::production_mining_session::start()");
+    // Assert
+    assert!(refused_before_start);
+    assert!(admission.contains("settings_adapter::clear_refused_self_test_flag()"));
+    assert!(!admission.contains("SelfTestReceipt::Cancelled"));
+    assert!(self_test_first);
+    assert!(owners.contains("return Ok(true);"));
+}
+
+#[test]
+fn the_601_self_test_powers_its_regulator_only_under_a_bounded_local_generation() {
+    // Arrange
+    let (_, gamma) = BOARD_SOURCE
+        .split_once("#[cfg(feature = \"board-gamma-601\")]")
+        .expect("the 601's board part exists");
+    // Act
+    let bounded = gamma.contains("revocation::begin_local()")
+        && gamma.contains("revocation::admit_budget(generation, OUTPUT_ON_BOUND_MS)")
+        && gamma.contains("revocation::begin_dispatch(revocation::stamp(Some(generation)), now_ms)");
+    // Assert
+    assert!(bounded);
+    assert!(gamma.contains("const OUTPUT_ON_BOUND_MS: u64 = 240_000;"));
+    assert!(gamma.contains("FanControllerOwner::Local(self.generation)"));
+    assert!(gamma.contains("revocation::finish_shutdown(self.generation)"));
+    assert!(RUNTIME_SOURCE.contains("authority.end();"));
+}
+
+#[test]
+fn each_board_names_its_own_self_test_kind() {
+    // Act
+    let kinds = ["\"ultra205_full_v1\"", "\"gamma601_full_v1\""].map(|kind| BOARD_IDENTITY_SOURCE.contains(kind));
+    // Assert
+    assert_eq!(kinds, [true, true]);
+    assert!(SETTINGS_SOURCE.contains("const KIND: &str = crate::board_identity::SELF_TEST_KIND;"));
 }

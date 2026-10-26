@@ -109,6 +109,7 @@ const rules: Record<AutomationCommand, CommandRule> = {
   },
   "self-test-campaign": {
     "--action": value({ required: true, values: ["start", "resume"] }),
+    "--board": value({ values: ["205", "601"] }),
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),
     "--wifi-credentials": value(),

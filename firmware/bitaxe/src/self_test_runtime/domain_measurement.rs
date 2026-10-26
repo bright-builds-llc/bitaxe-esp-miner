@@ -1,13 +1,14 @@
 use bitaxe_asic::bm1366::{registers::Bm1366Register, result::Bm1366RegisterRead};
 use bitaxe_core::hashrate::{HashrateMonitor, HashrateObservationOutcome, HashrateRegister};
 use bitaxe_safety::self_test::{
-    expected_hardware_self_test_domain_hashrate_ghs, HardwareSelfTestFailure,
-    HARDWARE_SELF_TEST_DOMAIN_COUNT,
+    expected_hardware_self_test_domain_hashrate_ghs, HardwareSelfTestContract,
+    HardwareSelfTestFailure, HARDWARE_SELF_TEST_DOMAIN_COUNT,
 };
 
 const DOMAIN_MAX_PLAUSIBLE_MULTIPLIER: f64 = 3.0;
 
 pub(super) struct DomainMeasurement {
+    contract: HardwareSelfTestContract,
     monitor: HashrateMonitor,
     hashrate_sums: [f64; HARDWARE_SELF_TEST_DOMAIN_COUNT],
     sample_counts: [u32; HARDWARE_SELF_TEST_DOMAIN_COUNT],
@@ -15,8 +16,9 @@ pub(super) struct DomainMeasurement {
 }
 
 impl DomainMeasurement {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(contract: HardwareSelfTestContract) -> Self {
         Self {
+            contract,
             monitor: HashrateMonitor::new(1, HARDWARE_SELF_TEST_DOMAIN_COUNT),
             hashrate_sums: [0.0; HARDWARE_SELF_TEST_DOMAIN_COUNT],
             sample_counts: [0; HARDWARE_SELF_TEST_DOMAIN_COUNT],
@@ -63,8 +65,9 @@ impl DomainMeasurement {
             .and_then(|asic| asic.domain_ghs.get(domain))
             .copied()
             .ok_or(HardwareSelfTestFailure::MeasurementIncomplete)?;
-        let maximum = f64::from(expected_hardware_self_test_domain_hashrate_ghs())
-            * DOMAIN_MAX_PLAUSIBLE_MULTIPLIER;
+        let maximum = f64::from(expected_hardware_self_test_domain_hashrate_ghs(
+            &self.contract,
+        )) * DOMAIN_MAX_PLAUSIBLE_MULTIPLIER;
         if !hashrate.is_finite() || hashrate > maximum {
             self.rejected_counts[domain] = self.rejected_counts[domain].saturating_add(1);
         } else {

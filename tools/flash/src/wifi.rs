@@ -17,6 +17,8 @@ pub(crate) struct ThermalFaultNvsSeed {
 pub(crate) struct SelfTestNvsSeed {
     pub(crate) lease: u64,
     pub(crate) case: &'static str,
+    /// The board's self-test kind (`ultra205_full_v1`, `gamma601_full_v1`).
+    pub(crate) kind: &'static str,
 }
 
 #[derive(Debug, Clone)]
@@ -230,7 +232,7 @@ pub(crate) fn wifi_nvs_csv_for_board(
         }
         WifiNvsSeedMode::SelfTest(seed) => {
             rows.extend([
-                private_nvs_csv_row(&StoredValue::string("selftestkind", "ultra205_full_v1")),
+                private_nvs_csv_row(&StoredValue::string("selftestkind", seed.kind)),
                 private_nvs_csv_row(&StoredValue::u64("selftestlease", seed.lease)),
                 private_nvs_csv_row(&StoredValue::string("selftestcase", seed.case)),
                 private_nvs_csv_row(&StoredValue::u16("selftest", 1)),

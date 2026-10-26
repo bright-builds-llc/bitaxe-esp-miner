@@ -8,21 +8,16 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
-use bitaxe_asic::bm1366::{
-    command::Bm1366Command,
-    mining_ready::difficulty_mask_value,
-    result::{Bm1366RegisterRead, Bm1366ValidJobIds},
-    work::{Bm1366JobId, Bm1366WorkFields, Bm1366WorkPayload},
-};
+use bitaxe_asic::bm1366::{command::Bm1366Command, mining_ready::difficulty_mask_value};
 use bitaxe_core::runtime_health::{
     PassiveSelfTestState, TaskWatchdogObservation, TaskWatchdogOwnerPhase,
     TaskWatchdogOwnerSubphase,
 };
+use bitaxe_safety::self_test::HardwareSelfTestContract;
 use bitaxe_safety::{
     self_test::{
         evaluate_hardware_self_test_metrics, HardwareSelfTestCase, HardwareSelfTestFailure,
-        HardwareSelfTestMetrics, HardwareSelfTestSchedule, HardwareSelfTestStage,
-        HARDWARE_SELF_TEST_DIFFICULTY, HARDWARE_SELF_TEST_DOMAIN_COUNT,
+        HardwareSelfTestSchedule, HardwareSelfTestStage, HARDWARE_SELF_TEST_DIFFICULTY,
         HARDWARE_SELF_TEST_FAN_MIN_PERCENT, HARDWARE_SELF_TEST_MAX_C,
         HARDWARE_SELF_TEST_MEASUREMENT_MS, HARDWARE_SELF_TEST_PLANNED_FAILURE_LOAD_MS,
         HARDWARE_SELF_TEST_RESTART_DELAY_MS, HARDWARE_SELF_TEST_TARGET_C,
@@ -35,7 +30,6 @@ use bitaxe_stratum::v1::production_session::{
 };
 use esp_idf_svc::sys;
 
-use crate::asic_adapter::production::ProductionReadOutcome;
 use crate::settings_adapter::{SelfTestAdmission, SelfTestReceipt};
 
 const OWNER_THREAD_NAME: &str = "self-test";
@@ -45,8 +39,13 @@ const WORK_DISPATCH_MS: u64 = 2_000;
 const REGISTER_POLL_MS: u64 = 1_000;
 const SAFETY_PREFLIGHT_TIMEOUT_MS: u64 = 10_000;
 
+mod board;
 mod domain_measurement;
-use domain_measurement::DomainMeasurement;
+mod measurement;
+use board::BoardAuthority;
+use measurement::{
+    log_regulator_metrics, log_self_test_metrics, service_diagnostic_work, DiagnosticMeasurement,
+};
 
 static ACTIVE: AtomicBool = AtomicBool::new(false);
 static CANCEL_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -141,9 +140,29 @@ fn run(admission: SelfTestAdmission) {
     let mut watchdog = SelfTestTaskWatchdog::subscribe();
     let mut schedule = HardwareSelfTestSchedule::admitted(crate::runtime_uptime::millis());
     let mut actuation = crate::mining_actuation_adapter::Ultra205MiningActuationAdapter::new();
-    let outcome = run_inner(admission, &mut schedule, &mut actuation, &mut watchdog);
+    let contract = crate::board_identity::self_test_contract();
+    // The preflight runs before the 601's authority, so its wait never spends the bounded budget.
+    let (outcome, maybe_authority) = match preflight(admission, &mut schedule, &mut watchdog)
+        .and_then(|()| BoardAuthority::begin(&mut actuation))
+    {
+        Ok(authority) => (
+            run_inner(
+                admission,
+                &contract,
+                &authority,
+                &mut schedule,
+                &mut actuation,
+                &mut watchdog,
+            ),
+            Some(authority),
+        ),
+        Err(failure) => (Err(failure), None),
+    };
     let maybe_failure = outcome.err();
     let safe_stop = safe_stop(&mut actuation, &mut watchdog).is_ok();
+    if let Some(authority) = maybe_authority {
+        authority.end();
+    }
     if admission.case() == HardwareSelfTestCase::PlannedFailure || maybe_failure.is_some() {
         await_cancel(admission, maybe_failure, safe_stop, &mut watchdog);
     }
@@ -177,47 +196,48 @@ fn run(admission: SelfTestAdmission) {
 
 fn run_inner(
     admission: SelfTestAdmission,
+    contract: &HardwareSelfTestContract,
+    authority: &BoardAuthority,
     schedule: &mut HardwareSelfTestSchedule,
     actuation: &mut crate::mining_actuation_adapter::Ultra205MiningActuationAdapter,
     watchdog: &mut SelfTestTaskWatchdog,
 ) -> Result<(), HardwareSelfTestFailure> {
-    enter(admission, schedule, HardwareSelfTestStage::Preflight, None)?;
-    if unsafe { sys::heap_caps_get_total_size(sys::MALLOC_CAP_SPIRAM) } == 0 {
-        return Err(HardwareSelfTestFailure::PsramMissing);
-    }
-    wait_for_safety_preflight(watchdog)?;
     enter(admission, schedule, HardwareSelfTestStage::Preparing, None)?;
     watchdog.feed(TaskWatchdogOwnerSubphase::EffectPrepareHardware);
+    // The built board's catalog default: the 205's `UpstreamDefault.profile()`, the 601's
+    // 525 MHz / 1150 mV.
+    let profile = MiningHardwareProfilePreset::UpstreamDefault
+        .profile_for_board(crate::board_identity::catalog_entry())
+        .ok_or(HardwareSelfTestFailure::PreparationFailed)?;
     actuation
-        .prepare(
-            MiningHardwareProfilePreset::UpstreamDefault.profile(),
-            &mut |_| {
-                watchdog.feed(TaskWatchdogOwnerSubphase::EffectPrepareHardware);
-            },
-        )
+        .prepare(profile, &mut |_| {
+            watchdog.feed(TaskWatchdogOwnerSubphase::EffectPrepareHardware);
+        })
         .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
     crate::asic_adapter::production::execute_self_test_command(Bm1366Command::SetDifficultyMask(
         difficulty_mask_value(f64::from(HARDWARE_SELF_TEST_DIFFICULTY)),
     ))
     .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
 
-    let mut measurement = DiagnosticMeasurement::new();
+    let mut measurement = DiagnosticMeasurement::new(*contract);
+    // Upstream's `test_vreg_faults` checks the regulator before any work.
+    measurement.observe_regulator(contract)?;
     enter(
         admission,
         schedule,
         HardwareSelfTestStage::Warming,
         Some(HARDWARE_SELF_TEST_WARMUP_TIMEOUT_MS),
     )?;
-    crate::mining_actuation_adapter::Ultra205MiningActuationAdapter::set_self_test_fan_duty(
-        HARDWARE_SELF_TEST_FAN_MIN_PERCENT,
-    )
-    .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
+    authority
+        .set_fan_duty(HARDWARE_SELF_TEST_FAN_MIN_PERCENT)
+        .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
     while current_temperature().ok_or(HardwareSelfTestFailure::SafetyUnavailable)?
         < HARDWARE_SELF_TEST_WARMUP_C
     {
         if schedule.deadline_expired(crate::runtime_uptime::millis())? {
             return Err(HardwareSelfTestFailure::WarmupTimedOut);
         }
+        measurement.observe_regulator(contract)?;
         service_diagnostic_work(&mut measurement, watchdog)?;
     }
 
@@ -240,6 +260,7 @@ fn run_inner(
             return Err(HardwareSelfTestFailure::TemperatureExceeded);
         }
         measurement.maximum_temperature_c = measurement.maximum_temperature_c.max(temperature);
+        measurement.observe_regulator(contract)?;
         let step = pid.step(
             f64::from(HARDWARE_SELF_TEST_TARGET_C),
             f64::from(temperature),
@@ -247,10 +268,9 @@ fn run_inner(
         );
         pid = PidController::new(step.next_state);
         let duty = step.output_percent.round().clamp(10.0, 100.0) as u8;
-        crate::mining_actuation_adapter::Ultra205MiningActuationAdapter::set_self_test_fan_duty(
-            duty,
-        )
-        .map_err(|_| HardwareSelfTestFailure::SafetyUnavailable)?;
+        authority
+            .set_fan_duty(duty)
+            .map_err(|_| HardwareSelfTestFailure::SafetyUnavailable)?;
         service_diagnostic_work(&mut measurement, watchdog)?;
         thread::sleep(Duration::from_millis(u64::from(PID_SAMPLE_TIME_MS)));
     }
@@ -261,8 +281,21 @@ fn run_inner(
     enter(admission, schedule, HardwareSelfTestStage::Evaluating, None)?;
     let metrics = measurement.finish(started_at_ms)?;
     log_self_test_metrics(&metrics);
-    evaluate_hardware_self_test_metrics(metrics)?;
+    log_regulator_metrics(contract, &metrics);
+    evaluate_hardware_self_test_metrics(contract, metrics)?;
     Ok(())
+}
+
+fn preflight(
+    admission: SelfTestAdmission,
+    schedule: &mut HardwareSelfTestSchedule,
+    watchdog: &mut SelfTestTaskWatchdog,
+) -> Result<(), HardwareSelfTestFailure> {
+    enter(admission, schedule, HardwareSelfTestStage::Preflight, None)?;
+    if unsafe { sys::heap_caps_get_total_size(sys::MALLOC_CAP_SPIRAM) } == 0 {
+        return Err(HardwareSelfTestFailure::PsramMissing);
+    }
+    wait_for_safety_preflight(watchdog)
 }
 
 fn enter(
@@ -389,169 +422,6 @@ fn wait_for_safety_preflight(
         watchdog.feed(TaskWatchdogOwnerSubphase::SessionEvaluation);
         thread::sleep(Duration::from_millis(100));
     }
-}
-
-fn service_diagnostic_work(
-    measurement: &mut DiagnosticMeasurement,
-    watchdog: &mut SelfTestTaskWatchdog,
-) -> Result<(), HardwareSelfTestFailure> {
-    let now_ms = crate::runtime_uptime::millis();
-    if now_ms >= measurement.next_dispatch_ms {
-        let payload = Bm1366WorkPayload::new(measurement.job_id, deterministic_work_fields());
-        crate::asic_adapter::production::execute_self_test_command(
-            Bm1366Command::SendDiagnosticWork(payload),
-        )
-        .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
-        measurement.next_dispatch_ms = now_ms.saturating_add(WORK_DISPATCH_MS);
-    }
-    if now_ms >= measurement.next_register_poll_ms {
-        if !crate::asic_adapter::production::request_hashrate_monitor_register_reads_tx() {
-            return Err(HardwareSelfTestFailure::MeasurementIncomplete);
-        }
-        measurement.next_register_poll_ms = now_ms.saturating_add(REGISTER_POLL_MS);
-    }
-    watchdog.feed(TaskWatchdogOwnerSubphase::EffectPollChip);
-    match crate::asic_adapter::production::try_read_self_test_result(
-        &measurement.valid_jobs,
-        RESULT_POLL_MS,
-    )
-    .map_err(|_| HardwareSelfTestFailure::MeasurementIncomplete)?
-    {
-        ProductionReadOutcome::JobNonce(_) => measurement.record_nonce(),
-        ProductionReadOutcome::RegisterReadProof(read) => {
-            measurement.record_register(read, now_ms)?;
-        }
-        ProductionReadOutcome::Pending | ProductionReadOutcome::Discarded(_) => {}
-    }
-    Ok(())
-}
-
-fn deterministic_work_fields() -> Bm1366WorkFields {
-    Bm1366WorkFields {
-        starting_nonce: [0; 4],
-        nbits: [0xff; 4],
-        ntime: [0x64, 0x70, 0x25, 0xb5],
-        merkle_root: [0x5a; 32],
-        prev_block_hash: [0xa5; 32],
-        version: [0x20, 0, 0, 4],
-    }
-}
-
-struct DiagnosticMeasurement {
-    job_id: Bm1366JobId,
-    valid_jobs: Bm1366ValidJobIds,
-    next_dispatch_ms: u64,
-    next_register_poll_ms: u64,
-    nonce_count: u64,
-    domains: DomainMeasurement,
-    maximum_temperature_c: f32,
-}
-
-impl DiagnosticMeasurement {
-    fn new() -> Self {
-        let job_id = Bm1366JobId::new(0);
-        Self {
-            job_id,
-            valid_jobs: Bm1366ValidJobIds::single(job_id),
-            next_dispatch_ms: 0,
-            next_register_poll_ms: 0,
-            nonce_count: 0,
-            domains: DomainMeasurement::new(),
-            maximum_temperature_c: f32::MIN,
-        }
-    }
-
-    fn record_nonce(&mut self) {
-        self.nonce_count = self.nonce_count.saturating_add(1);
-    }
-
-    fn record_register(
-        &mut self,
-        read: Bm1366RegisterRead,
-        now_ms: u64,
-    ) -> Result<(), HardwareSelfTestFailure> {
-        self.domains.record(read, now_ms)
-    }
-
-    fn finish(
-        self,
-        started_at_ms: u64,
-    ) -> Result<HardwareSelfTestMetrics, HardwareSelfTestFailure> {
-        let measured_ms = crate::runtime_uptime::millis().saturating_sub(started_at_ms);
-        if measured_ms == 0 {
-            return Err(HardwareSelfTestFailure::MeasurementIncomplete);
-        }
-        let hash_unit = f64::from(HARDWARE_SELF_TEST_DIFFICULTY) * 4_294_967_296.0;
-        let seconds = measured_ms as f64 / 1_000.0;
-        let total_hashrate_ghs = (self.nonce_count as f64 * hash_unit / seconds / 1e9) as f32;
-        let (domain_hashrate_ghs, domain_sample_counts, domain_rejected_counts) =
-            self.domains.finish();
-        let observations = crate::safety_adapter::observation_snapshot();
-        Ok(HardwareSelfTestMetrics {
-            measured_ms,
-            total_hashrate_ghs,
-            domain_hashrate_ghs,
-            domain_sample_counts,
-            domain_rejected_counts,
-            input_voltage_volts: observation_f64(&observations.bus_voltage_volts)? as f32,
-            core_voltage_mv: observation_f64(&observations.core_voltage_actual_mv)?
-                .round()
-                .clamp(0.0, f64::from(u16::MAX)) as u16,
-            power_watts: observation_f64(&observations.power_watts)? as f32,
-            fan_rpm: observation_u16(&observations.fan_rpm)?,
-            maximum_temperature_c: self.maximum_temperature_c,
-        })
-    }
-}
-
-fn log_self_test_metrics(metrics: &HardwareSelfTestMetrics) {
-    log::info!(
-        "self_test_metrics={{\"schema\":\"self-test-metrics-v1\",\"measured_ms\":{},\"total_ghs\":{:.3},\"domain_ghs\":[{:.3},{:.3},{:.3},{:.3}],\"domain_samples\":[{},{},{},{}],\"domain_rejected\":[{},{},{},{}],\"input_volts\":{:.3},\"core_mv\":{},\"power_watts\":{:.3},\"fan_rpm\":{},\"maximum_temperature_c\":{:.2}}}",
-        metrics.measured_ms,
-        metrics.total_hashrate_ghs,
-        metrics.domain_hashrate_ghs[0],
-        metrics.domain_hashrate_ghs[1],
-        metrics.domain_hashrate_ghs[2],
-        metrics.domain_hashrate_ghs[3],
-        metrics.domain_sample_counts[0],
-        metrics.domain_sample_counts[1],
-        metrics.domain_sample_counts[2],
-        metrics.domain_sample_counts[3],
-        metrics.domain_rejected_counts[0],
-        metrics.domain_rejected_counts[1],
-        metrics.domain_rejected_counts[2],
-        metrics.domain_rejected_counts[3],
-        metrics.input_voltage_volts,
-        metrics.core_voltage_mv,
-        metrics.power_watts,
-        metrics.fan_rpm,
-        metrics.maximum_temperature_c,
-    );
-}
-
-fn observation_f64(
-    observation: &bitaxe_safety::observation::Observation<f64>,
-) -> Result<f64, HardwareSelfTestFailure> {
-    if !observation.is_fresh() {
-        return Err(HardwareSelfTestFailure::SafetyUnavailable);
-    }
-    observation
-        .maybe_last_good()
-        .map(|sample| *sample.value())
-        .filter(|value| value.is_finite())
-        .ok_or(HardwareSelfTestFailure::SafetyUnavailable)
-}
-
-fn observation_u16(
-    observation: &bitaxe_safety::observation::Observation<u16>,
-) -> Result<u16, HardwareSelfTestFailure> {
-    if !observation.is_fresh() {
-        return Err(HardwareSelfTestFailure::SafetyUnavailable);
-    }
-    observation
-        .maybe_last_good()
-        .map(|sample| *sample.value())
-        .ok_or(HardwareSelfTestFailure::SafetyUnavailable)
 }
 
 fn bounded_wait(duration_ms: u64, watchdog: &mut SelfTestTaskWatchdog) {

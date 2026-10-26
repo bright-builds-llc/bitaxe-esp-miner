@@ -4,6 +4,11 @@ use serde::{Deserialize, Serialize};
 use crate::{AutomationCommand, WorkflowIdentity};
 
 pub const SELF_TEST_EVIDENCE_SCHEMA: &str = "bitaxe-self-test-evidence-v1";
+/// The immutable plans each board's evidence binds.
+const ULTRA205_SELF_TEST_PLAN_SHA256: &str =
+    "0c9a03ec490967fc95989d88b91848c7d4ed740a76825822a8107d94e8fd7f84";
+const GAMMA601_SELF_TEST_PLAN_SHA256: &str =
+    "584b784b96b06867d7854b485cd0d4c5f829ce3711345f23d132fd90a307e098";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -73,10 +78,29 @@ pub struct SelfTestEvidence {
 }
 
 impl SelfTestEvidence {
+    /// The board's attempt and catalog default: the 205's attempt 005 at 485 MHz / 1200 mV, or a
+    /// 601 attempt at 525 MHz / 1150 mV (ADR-0041 item 14).
+    fn board_profile_valid(&self) -> bool {
+        match self.board {
+            205 => {
+                self.attempt_ordinal == 5
+                    && self.pass.frequency_mhz == 485
+                    && self.pass.core_voltage_mv == 1_200
+                    && self.plan_sha256 == ULTRA205_SELF_TEST_PLAN_SHA256
+            }
+            601 => {
+                (1..=999).contains(&self.attempt_ordinal)
+                    && self.pass.frequency_mhz == 525
+                    && self.pass.core_voltage_mv == 1_150
+                    && self.plan_sha256 == GAMMA601_SELF_TEST_PLAN_SHA256
+            }
+            _ => false,
+        }
+    }
+
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != SELF_TEST_EVIDENCE_SCHEMA
-            || self.board != 205
-            || self.attempt_ordinal != 5
+            || !self.board_profile_valid()
             || self.workflow.schema_version != "bitaxe-workflow-identity-v1"
             || self.workflow.command != AutomationCommand::SelfTestCampaign
             || !self.detector_admitted
@@ -89,8 +113,6 @@ impl SelfTestEvidence {
             || !self.failure.physical_long_press_observed
             || !self.failure.cancellation_receipt_observed
             || !self.failure.cancellation_restart_observed
-            || self.pass.frequency_mhz != 485
-            || self.pass.core_voltage_mv != 1_200
             || self.pass.difficulty != 16
             || self.pass.warmup_celsius != 55
             || self.pass.target_celsius != 65
@@ -150,7 +172,7 @@ mod tests {
             reference_commit: "b".repeat(40),
             app_elf_sha256: "c".repeat(64),
             package_manifest_sha256: "d".repeat(64),
-            plan_sha256: "e".repeat(64),
+            plan_sha256: ULTRA205_SELF_TEST_PLAN_SHA256.to_owned(),
             workflow: WorkflowIdentity {
                 schema_version: "bitaxe-workflow-identity-v1".to_owned(),
                 command: AutomationCommand::SelfTestCampaign,
@@ -213,5 +235,36 @@ mod tests {
         assert_eq!(complete.validate(), Ok(()));
         assert!(missing_cancel.validate().is_err());
         assert!(missing_restoration.validate().is_err());
+    }
+
+    #[test]
+    fn a_601_attempt_at_its_default_passes() {
+        // Arrange
+        let mut gamma = evidence();
+        gamma.board = 601;
+        gamma.attempt_ordinal = 1;
+        gamma.pass.frequency_mhz = 525;
+        gamma.pass.core_voltage_mv = 1_150;
+        gamma.plan_sha256 = GAMMA601_SELF_TEST_PLAN_SHA256.to_owned();
+        // Act
+        let validated = gamma.validate();
+        // Assert
+        assert_eq!(validated, Ok(()));
+    }
+
+    #[test]
+    fn a_board_with_another_boards_profile_fails() {
+        // Arrange
+        let mut gamma_at_205 = evidence();
+        gamma_at_205.board = 601;
+        gamma_at_205.attempt_ordinal = 1;
+        gamma_at_205.plan_sha256 = GAMMA601_SELF_TEST_PLAN_SHA256.to_owned();
+        let mut ultra_at_601 = evidence();
+        ultra_at_601.pass.frequency_mhz = 525;
+        ultra_at_601.pass.core_voltage_mv = 1_150;
+        // Act
+        let validations = [gamma_at_205.validate(), ultra_at_601.validate()];
+        // Assert
+        assert!(validations.iter().all(Result::is_err));
     }
 }

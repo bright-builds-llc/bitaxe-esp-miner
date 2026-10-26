@@ -28,9 +28,13 @@ pub(crate) fn prepare_flash_with_wifi_mode(
     environment: &impl FlashEnvironment,
 ) -> Result<PreparedFlash> {
     // A factory install seeds the board's own upstream defaults (ADR-0041). The 601's seeds the
-    // ordinary settings only, and always: an unseeded install would leave its records blank.
+    // ordinary settings, or the self-test's tuple beside them (item 14), and always: an unseeded
+    // install would leave its records blank. Its thermal and diagnostic seeds stay 205 only.
     if command.factory_reset && command.common.board == BoardId::Gamma601 {
-        if !matches!(wifi_mode, WifiNvsSeedMode::Ordinary) {
+        if !matches!(
+            wifi_mode,
+            WifiNvsSeedMode::Ordinary | WifiNvsSeedMode::SelfTest(_)
+        ) {
             bail!("identity_admission=blocked reason=factory_install_601_seeds_ordinary_only");
         }
         if command.wifi_credentials.is_none() {

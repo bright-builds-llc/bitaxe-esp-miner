@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import type { SelfTestCampaignProfile } from "./self-test-campaign-profile.js";
+
 type EvidenceIdentity = {
   readonly source_commit: string;
   readonly reference_commit: string;
@@ -12,15 +14,16 @@ function sha256(value: string): string {
 }
 
 export function createSelfTestEvidence(
+  profile: SelfTestCampaignProfile,
   identity: EvidenceIdentity,
   manifestDocument: string,
-  planSha256: string,
   passLog: string,
 ): Record<string, unknown> {
+  const planSha256 = profile.planSha256;
   return {
     schema_version: "bitaxe-self-test-evidence-v1",
-    board: 205,
-    attempt_ordinal: 5,
+    board: profile.board,
+    attempt_ordinal: profile.attemptOrdinal,
     source_commit: identity.source_commit,
     reference_commit: identity.reference_commit,
     app_elf_sha256: identity.app_elf_sha256,
@@ -30,7 +33,7 @@ export function createSelfTestEvidence(
       schema_version: "bitaxe-workflow-identity-v1",
       command: "self-test-campaign",
       request_sha256: sha256(JSON.stringify({
-        manifest: sha256(manifestDocument), plan: planSha256, attempt: 5,
+        manifest: sha256(manifestDocument), plan: planSha256, attempt: profile.attemptOrdinal,
       })),
     },
     detector_admitted: true,
@@ -46,8 +49,8 @@ export function createSelfTestEvidence(
       cancellation_restart_observed: true,
     },
     pass: {
-      frequency_mhz: 485,
-      core_voltage_mv: 1_200,
+      frequency_mhz: profile.frequencyMhz,
+      core_voltage_mv: profile.coreVoltageMv,
       difficulty: 16,
       warmup_celsius: 55,
       target_celsius: 65,

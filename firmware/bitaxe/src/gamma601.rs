@@ -257,22 +257,59 @@ fn confirm_output_off(
     }
 }
 
-/// Starts the 601's runtime owners: the safety supervisor, the production mining owner and the
-/// fan controller (ADR-0041 item 5, amended). Its sensors and actuation stay the safe-boot
-/// thread's, so it starts no sensor owner; the 205-only self-test and diagnostic owners never
-/// start. Only the mining variant admits dispatch (`MINING_DISPATCH_ADMITTED`); a production 601
-/// refuses every run, and keeps its safe boot's fan, before its fan or regulator moves. Never a
-/// diagnostic Serial/JTAG owner. A failure is logged and boot continues to HTTP, so the owner can
-/// still repair the settings that caused it; the safe-boot thread keeps the board safe meanwhile.
+/// Starts the 601's runtime owners: the safety supervisor, then either the self-test owner for an
+/// admitted self-test tuple (ADR-0041 item 14), or the production mining owner and the fan
+/// controller (item 5, amended). Its sensors and actuation stay the safe-boot thread's, so it
+/// starts no sensor owner; the diagnostic owners never start. Only a build that admits dispatch
+/// (`MINING_DISPATCH_ADMITTED`) runs a self-test or a run; a production 601 refuses either, and
+/// keeps its safe boot's fan, before its fan or regulator moves. True only while the self-test
+/// holds Serial/JTAG, so no Worker starts beside it. A failure is logged and boot continues to
+/// HTTP, so the owner can still repair the settings that caused it; the safe-boot thread keeps the
+/// board safe meanwhile.
 pub(crate) fn start_runtime_owners() -> anyhow::Result<bool> {
-    if let Err(error) = start_owners() {
-        log::error!("mining_owner=unavailable board=601 error={error:#}");
+    match start_owners() {
+        Ok(self_test_started) => Ok(self_test_started),
+        Err(error) => {
+            log::error!("mining_owner=unavailable board=601 error={error:#}");
+            Ok(false)
+        }
     }
-    Ok(false)
 }
 
-fn start_owners() -> anyhow::Result<()> {
+/// The admitted self-test tuple, consumed whether or not it runs: a build that cannot power the
+/// BM1370 refuses it and clears its flag, with no receipt, so it never replays.
+fn maybe_self_test_admission() -> Option<settings_adapter::SelfTestAdmission> {
+    let admission = match settings_adapter::load_self_test_admission() {
+        Ok(maybe_admission) => maybe_admission?,
+        Err(error) => {
+            log::warn!("self_test_admission=rejected category={}", error.category());
+            return None;
+        }
+    };
+    if crate::board_identity::MINING_DISPATCH_ADMITTED {
+        return Some(admission);
+    }
+    log::warn!("self_test_admission=refused category=board_mining_unadmitted");
+    if let Err(error) = settings_adapter::clear_refused_self_test_flag() {
+        log::warn!(
+            "self_test_admission=unreconciled category={}",
+            error.category()
+        );
+    }
+    None
+}
+
+/// True when the self-test owner started in place of the mining owners.
+fn start_owners() -> anyhow::Result<bool> {
     crate::safety_adapter::start_safety_supervisor()?;
+    if let Some(admission) = maybe_self_test_admission() {
+        crate::self_test_runtime::start(admission)?;
+        log::info!(
+            "self_test_owner=started board=601 kind={}",
+            crate::board_identity::SELF_TEST_KIND
+        );
+        return Ok(true);
+    }
     if let Err(decision) = settings_adapter::configured_protocol_plan() {
         return Err(anyhow::anyhow!(
             "production_protocol_owner_unavailable:{}",
@@ -289,7 +326,7 @@ fn start_owners() -> anyhow::Result<()> {
             "deferred"
         }
     );
-    Ok(())
+    Ok(false)
 }
 
 /// Shows the startup screen once; the safe boot has no runtime screen flow.

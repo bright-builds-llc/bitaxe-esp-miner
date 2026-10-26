@@ -88,6 +88,53 @@ fn a_601_factory_install_seeds_the_ordinary_settings_only() {
 }
 
 #[test]
+fn a_601_factory_install_admits_the_self_test_seed() {
+    // Arrange
+    let mut command = gamma_flash(None, true);
+    command.factory_reset = true;
+    command.wifi_credentials = Some(Utf8PathBuf::from("wifi-credentials.json"));
+    let environment = FakeFlashEnvironment::default();
+    let seed = SelfTestNvsSeed {
+        lease: 7,
+        case: "pass",
+        kind: "gamma601_full_v1",
+    };
+    // Act
+    let outcome = run_flash_with_wifi_mode(&command, WifiNvsSeedMode::SelfTest(seed), &environment);
+    // Assert
+    assert!(outcome.map_or_else(
+        |error| !error
+            .to_string()
+            .contains("factory_install_601_seeds_ordinary_only"),
+        |_| true,
+    ));
+}
+
+#[test]
+fn the_601_self_test_seed_carries_its_kind_and_tuple() {
+    // Arrange
+    let credentials = WifiCredentials {
+        ssid: "Lab".to_owned(),
+        wifi_pass: "secret".to_owned(),
+    };
+    let seed = SelfTestNvsSeed {
+        lease: 7,
+        case: "pass",
+        kind: "gamma601_full_v1",
+    };
+    // Act
+    let csv = wifi_nvs_csv_for_board(
+        &credentials,
+        WifiNvsSeedMode::SelfTest(seed),
+        BoardId::Gamma601,
+    );
+    // Assert
+    assert!(csv.contains("selftestkind,data,string,gamma601_full_v1"));
+    assert!(csv.contains("selftestcase,data,string,pass"));
+    assert!(!csv.contains("ultra205_full_v1"));
+}
+
+#[test]
 fn the_601_seed_names_the_601_and_its_asic() {
     // Arrange
     let credentials = WifiCredentials {

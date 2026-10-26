@@ -1,6 +1,13 @@
 import { internalCommandSpec } from "./contracts.generated.js";
+import type { SelfTestCampaignBoard } from "./self-test-campaign-profile.js";
 
 const monitorSeconds = 360;
+
+/** The board a command names, and the test-firmware admission its package needs. */
+export type FlashTarget = {
+  readonly board: SelfTestCampaignBoard;
+  readonly testFirmwareArgs: readonly string[];
+};
 
 type FlashInputs = {
   readonly flashProgram: string;
@@ -10,6 +17,7 @@ type FlashInputs = {
 };
 
 export function selfTestFlashMonitorSpec(
+  target: FlashTarget,
   flashProgram: string,
   port: string,
   manifest: string,
@@ -19,9 +27,12 @@ export function selfTestFlashMonitorSpec(
 ) {
   return internalCommandSpec(flashProgram, [
     "flash-monitor",
-    "--board", "205",
+    "--board", String(target.board),
     "--port", port,
     "--manifest", manifest,
+    ...target.testFirmwareArgs,
+    // Seeding NVS is a factory install; the flash tool refuses Wi-Fi without it.
+    "--factory-reset",
     "--wifi-credentials", wifiCredentials,
     "--self-test-intent", intentPath,
     "--capture-timeout-seconds", String(monitorSeconds),
@@ -31,6 +42,7 @@ export function selfTestFlashMonitorSpec(
 }
 
 export function selfTestFlashMonitorDryRunSpec(
+  target: FlashTarget,
   flashProgram: string,
   port: string,
   manifest: string,
@@ -39,10 +51,13 @@ export function selfTestFlashMonitorDryRunSpec(
 ) {
   return internalCommandSpec(flashProgram, [
     "flash-monitor",
-    "--board", "205",
+    "--board", String(target.board),
     "--port", port,
     "--dry-run",
     "--manifest", manifest,
+    ...target.testFirmwareArgs,
+    // Seeding NVS is a factory install; the flash tool refuses Wi-Fi without it.
+    "--factory-reset",
     "--wifi-credentials", wifiCredentials,
     "--self-test-intent", intentPath,
     "--capture-timeout-seconds", String(monitorSeconds),
@@ -50,16 +65,30 @@ export function selfTestFlashMonitorDryRunSpec(
 }
 
 export function ordinaryFlashMonitorSpec(
+  target: FlashTarget,
   inputs: FlashInputs & { readonly evidenceDir: string },
 ) {
   return internalCommandSpec(inputs.flashProgram, [
     "flash-monitor",
-    "--board", "205",
+    "--board", String(target.board),
     "--port", inputs.port,
     "--manifest", inputs.manifest,
+    ...target.testFirmwareArgs,
+    // Seeding NVS is a factory install; the flash tool refuses Wi-Fi without it.
+    "--factory-reset",
     "--wifi-credentials", inputs.wifiCredentials,
     "--capture-timeout-seconds", String(monitorSeconds),
     "--evidence-mode", "dual",
     "--evidence-dir", inputs.evidenceDir,
+  ], value => value);
+}
+
+/** The passive monitor on the campaign's board. */
+export function selfTestMonitorSpec(target: FlashTarget, flashProgram: string, port: string) {
+  return internalCommandSpec(flashProgram, [
+    "monitor",
+    "--board", String(target.board),
+    "--port", port,
+    "--capture-timeout-seconds", String(monitorSeconds),
   ], value => value);
 }
