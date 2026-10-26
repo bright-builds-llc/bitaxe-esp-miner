@@ -683,7 +683,7 @@ action.
       external channel reads 37.5 to 40.0 C while hashing; the 127.75 C
       before is the uninitialized channel. The cooling proof's board rule
       can use the diode after the init;
-  - [ ] F3.4 (owner decisions 2026-10-25): the overheat and lease-interrupt
+  - [x] F3.4 (owner decisions 2026-10-25): the overheat and lease-interrupt
     stops on the 601; heartbeat loss, fault and outage injection are out of
     scope.
     - [x] Overheat software: the `gamma601-overheat-trip-test` variant
@@ -697,8 +697,11 @@ action.
       its 400/1150 default never restored to 485/1200, its chip temperature
       required only while the work gate is open and active), soak
       `gamma601-lease-001` at 400 MHz;
-    - [ ] Lease-interrupt hardware: its own contract, after the overheat
-      check passes.
+    - [x] Lease-interrupt hardware: passed on attempt 005, both soaks
+      `passed` (`docs/parity/evidence/20261026-gamma601-lease-interruption-check.md`);
+      production reinstalled. Its fixes: the Gate tab's detached
+      visibility check, the 601's soak prerequisite (ADR-0041 item 13,
+      `2d4158fa`) and the held break log (`9323ff2d`).
   - [ ] F4: self-test, soaks and promotion.
 
 Each phase ends with the full gate, an independent review, commit and
@@ -1412,7 +1415,7 @@ and production is reinstalled.
 
 Phase F3.4 lease interrupt contract (attempt ordinals 001 onward):
 
-Gamma 601 lease interrupt check hardware: enabled.
+Closed after attempt 005 passed (2026-10-26); no enable line remains.
 
 - **Objective:** a Gate Worker lease takes over from local mining on the
   601 and hands back. The local soak `gamma601-lease-001` (400 MHz /
@@ -1549,7 +1552,7 @@ Lease attempts:
     owner selected it, the test read `visible` for 50 s.
   - **Passed:** the install and boot, the handoff, `lease_ready`, the
     refused first Connect and its safe stop, the reload and Connect, the
-    15-second step, the idle proof (76 s, 39 HTTP samples, no broken
+    15-second step, the idle proof (85.9 s, 43 HTTP samples, no broken
     events, no mining), the cooling and budget reviews (soak ledger
     `next_ordinal 1`, nothing charged), `prepareStartAuthorization()` and
     `loadSignedWindow()`.
@@ -1580,7 +1583,7 @@ Lease attempts:
     - the detached visibility test (530 s, never hidden);
     - the install and boot, the handoff, `lease_ready`, the refused Connect
       and its safe stop, the reload and Connect, the 15-second step, the
-      idle proof (75 s), the reviews and the Start;
+      idle proof (84.2 s), the reviews and the Start;
     - the lease: 600,000 active ms at 400/1150, 34 shares accepted and 0
       rejected, 28 renewals, ended by its budget
       (`lease_or_budget_expired`), safe stop complete at `fan_paused`,
@@ -1615,6 +1618,22 @@ Lease attempts:
     reads it once local mining is back (a run-level regression asserts no
     read during the lease). Captures are under
     `scratch/gamma-601-lease/attempt-004/`.
+- **Attempt 005** (2026-10-26, `9323ff2d`): passed.
+  - The detached visibility test read visible for 530 s.
+  - The local soak `passed`: 300 s before, the refused Connect 25 s after
+    `lease_ready`, local mining back 20.8 s after it read the Gate soak's
+    result,
+    300 s after, no outage, at most 16.09 W, chip 60.75 C, regulator
+    61.5 C.
+  - The Gate soak `passed`: idle proof 83.9 s (42 HTTP samples), a 600-s
+    lease at 400/1150
+    with 41 shares accepted and 0 rejected, 28 renewals, 20 of 20 windows
+    credited, gaps at most 772 ms (WebSocket) and 2,187 ms (HTTP), soak
+    ordinal 2 (attempt 004's lease was ordinal 1), cleanup confirmed.
+  - The held break log was read once, after the restore.
+  - Production reinstalled and confirmed (57 safe-boot records,
+    `identity=match`, one boot, the Worker baseline confirmed).
+  - Evidence: `docs/parity/evidence/20261026-gamma601-lease-interruption-check.md`.
 - **Before each Gate session (amended after attempt 002):** in the
   dedicated tab, record `visibilitychange` events, make no browser call
   for 40 s, then read the record. Begin the Gate steps only if the tab
