@@ -38,6 +38,7 @@ js_library(
     srcs = [
         "src/usb_diagnostics.rs",
         "src/usb_diagnostics/internal_heap.rs",
+        "src/usb_diagnostics/self_test.rs",
         "src/usb_diagnostics/storage_http.rs",
     ],
     visibility = ["//scripts:__pkg__"],
@@ -89,6 +90,7 @@ rust_library(
         "src/wifi_rssi.rs",
         "src/usb_diagnostics.rs",
         "src/usb_diagnostics/internal_heap.rs",
+        "src/usb_diagnostics/self_test.rs",
         "src/usb_diagnostics/storage_http.rs",
     ],
     compile_data = glob(["fixtures/**"]),

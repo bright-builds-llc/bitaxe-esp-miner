@@ -38,6 +38,8 @@ const RESULT_POLL_MS: u32 = 100;
 const WORK_DISPATCH_MS: u64 = 2_000;
 const REGISTER_POLL_MS: u64 = 1_000;
 const SAFETY_PREFLIGHT_TIMEOUT_MS: u64 = 10_000;
+/// How often `cancel_ready` is logged again while it waits for the BOOT cancel.
+const CHECKPOINT_REPLAY_MS: u64 = 10_000;
 
 mod board;
 mod domain_measurement;
@@ -359,13 +361,21 @@ fn await_cancel(
         maybe_failure,
         safe_stop_complete,
     );
-    log::info!(
+    let checkpoint = format!(
         "self_test_checkpoint={{\"schema\":\"self-test-runtime-v1\",\"checkpoint\":\"cancel_ready\",\"safe_state\":{},\"response_required\":false,\"failure\":\"{}\"}}",
         safe_stop_complete,
         maybe_failure.map_or("unavailable", HardwareSelfTestFailure::token)
     );
+    // Replayed while waiting, so an observer that missed it (a full USB queue, a late monitor)
+    // still sees the checkpoint.
+    let mut next_checkpoint_ms = 0;
     loop {
         watchdog.feed(TaskWatchdogOwnerSubphase::SessionEvaluation);
+        let now_ms = crate::runtime_uptime::millis();
+        if now_ms >= next_checkpoint_ms {
+            log::info!("{checkpoint}");
+            next_checkpoint_ms = now_ms.saturating_add(CHECKPOINT_REPLAY_MS);
+        }
         if CANCEL_REQUESTED.load(Ordering::Acquire)
             && crate::settings_adapter::clear_self_test_flag_and_record_receipt(
                 admission.lease(),

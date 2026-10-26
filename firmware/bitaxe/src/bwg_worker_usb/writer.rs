@@ -78,6 +78,11 @@ pub(super) fn diagnostic(line: &str) {
     if line.len() > DIAGNOSTIC_BYTES {
         return;
     }
+    // The connected origin is for a passive observer (the SELF-001 campaign); a Worker session
+    // keeps its stream unchanged, as the heap sample does.
+    if line.starts_with("runtime_origin ") && CURRENT_SESSION.load(Ordering::Acquire) != 0 {
+        return;
+    }
     let maybe_line = if bitaxe_core::usb_diagnostics::is_worker_diagnostic_retained_line(line)
         || matches!(
             line,

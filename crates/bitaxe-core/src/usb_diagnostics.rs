@@ -1,5 +1,6 @@
 //! Closed boot diagnostic allowlist for the single Serial/JTAG writer.
 mod internal_heap;
+mod self_test;
 mod storage_http;
 pub use internal_heap::{
     internal_heap_sample_marker, InternalHeapSample, INTERNAL_HEAP_SAMPLE_INTERVAL_MS,
@@ -50,7 +51,8 @@ pub fn is_worker_diagnostic_retained_line(line: &str) -> bool {
                 && fields.next() == Some("redacted=true")
                 && fields.next().is_none()
         }
-        _ => false,
+        // SELF-001's records and the connected origin its campaign reads (ADR-0041 item 14).
+        _ => self_test::is_self_test_line(line),
     }
 }
 

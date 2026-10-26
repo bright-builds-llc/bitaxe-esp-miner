@@ -37,7 +37,10 @@ export function createSelfTestEvidence(
       })),
     },
     detector_admitted: true,
-    psram_available: passLog.includes("psram_status=available"),
+    // The boot's PSRAM line can fall in the monitor's reader gap; reaching warm-up also proves it,
+    // since the self-test's preflight fails `psram_missing` first.
+    psram_available: passLog.includes("psram_status=available")
+      || passLog.includes('"stage":"warming"'),
     failure: {
       stable_load_ms: 5_000,
       planned_evaluation_failure: true,

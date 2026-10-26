@@ -387,6 +387,17 @@ not a guard anyone designed.
       (`docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md`)
       and evidence projection. The 205's attempt-005 constants are
       unchanged.
+    - **USB records** (owner decision 2026-10-26, amending ADR-0021's closed
+      allow-list): since ADR-0021 the single Serial/JTAG writer forwards no
+      ordinary log line, so SELF-001's campaign, which reads the self-test's
+      stages, checkpoint, metrics, terminal and receipt and the connected
+      origin from the console, could not run on either board. The writer now
+      forwards those records, each in its exact closed shape
+      (`usb_diagnostics/self_test.rs`): JSON records of lowercase tokens,
+      digits and punctuation only, a receipt with a closed outcome and a hex
+      lease, and the origin as a dotted IPv4 `http` URL. The origin is the
+      private USB-observer marker it was built as; committed evidence still
+      redacts it.
     - **Non-claims:** upstream's factory-seed and BOOT-held starts stay
       unported on both boards. The 601 claims SELF-001 only after its
       promoted production build repeats the lifecycle.
