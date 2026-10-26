@@ -686,10 +686,12 @@ action.
   - [ ] F3.4 (owner decisions 2026-10-25): the overheat and lease-interrupt
     stops on the 601; heartbeat loss, fault and outage injection are out of
     scope.
-    - [ ] Overheat software: the `gamma601-overheat-trip-test` variant
+    - [x] Overheat software: the `gamma601-overheat-trip-test` variant
       (ADR-0041 item 12) and the overheat soak made board-aware, soak
       `gamma601-overheat-001` at 500 MHz / 1150 mV;
-    - [ ] Overheat hardware: the contract below;
+    - [x] Overheat hardware: passed on attempt 001, outcome `restarted`
+      (`docs/parity/evidence/20261025-gamma601-overheat-check.md`);
+      production reinstalled;
     - [ ] Lease-interrupt software: the lease soak and the Gate soak made
       board-aware, soak `gamma601-lease-001` at 400 MHz;
     - [ ] Lease-interrupt hardware: its own contract, after the overheat
@@ -1338,9 +1340,9 @@ production is reinstalled.
     restart backoff, stopping the same way, before the soak was
     interrupted and the device paused.
 
-Phase F3.4 overheat contract (attempt ordinals 001 onward):
-
-Gamma 601 local mining overheat check hardware: enabled.
+Phase F3.4 overheat contract (attempt ordinals 001 onward), closed:
+attempt 001 passed (`docs/parity/evidence/20261025-gamma601-overheat-check.md`)
+and production is reinstalled.
 
 - **Objective:** the 601's overheat stop and recovery on hardware. The
   test-only `gamma601-overheat-trip-test` firmware (55 C local trip) at the
