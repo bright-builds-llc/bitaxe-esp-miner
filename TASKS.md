@@ -713,9 +713,19 @@ action.
       29 shares, power 20.4 W, chip 69.5 C, regulator 76 C, the fan at its
       top (`docs/parity/evidence/20261026-gamma601-default-profile-check.md`);
       production reinstalled;
-    - [ ] F4.2 hardware: the 4 h soak;
-    - [ ] F4.3: the 601 self-test, software then hardware on
-      `gamma601-mining`;
+    - [x] F4.2 hardware: passed on attempt 001, 4 h at 525/1150, 440
+      shares, peaks 20.9 W, chip 71.5 C, regulator 80 C, one 55.7 s Wi-Fi
+      outage recovered on its own
+      (`docs/parity/evidence/20261026-gamma601-4h-soak.md`); production
+      reinstalled;
+    - [x] F4.3 software: the self-test made board-aware (ADR-0041 item 14):
+      the pure `HardwareSelfTestContract` from the catalog (the 205's values
+      pinned to its verified constants), the 601's regulator fault and
+      temperature checks, its bounded local-generation authority and fan
+      path, the 601 start path, and per-board flash intents, campaign,
+      evidence and validator, with the 601's plan
+      (`docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md`);
+    - [ ] F4.3 hardware: the 601's two-phase lifecycle on `gamma601-mining`;
     - [ ] F4.4: promotion (software): production 601 mines, mines on boot
       by its saved preference, `gamma601-mining` retired;
     - [ ] F4.5: promotion hardware: boot resume, the production self-test,
@@ -1715,7 +1725,7 @@ Closed after attempt 001 passed (2026-10-26); no enable line remains.
 
 Phase F4.2 4 h soak contract (attempt ordinals 001 onward):
 
-Gamma 601 4 h soak hardware: enabled.
+Closed after attempt 001 passed (2026-10-26); no enable line remains.
 
 - **Objective:** 4 hours at the 601's default. The test-only
   `gamma601-mining` firmware at the clean, pushed HEAD accumulates 240
@@ -1733,6 +1743,53 @@ Gamma 601 4 h soak hardware: enabled.
   tasks end at 2 h; its journal and exit are watched.
 - **Allowed effects, prohibited effects, stops, evidence, recovery:**
   F4.1's, with 240 minutes of local mining at 525/1150 in place of 10.
+
+Phase F4.3 self-test contract (attempt ordinals 001 onward):
+
+Not enabled: the factory installs apply the Wi-Fi credentials, which needs
+the owner's request (the Wi-Fi rule above). The enable line is added once
+the owner asks.
+
+- **Objective:** SELF-001's lifecycle on the 601, per the immutable plan
+  `docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md`: one
+  exact-package two-phase BOOT-button campaign under a mode-0700 root. The
+  planned failure reaches `cancel_ready` with `safe_state:true`; the owner's
+  BOOT press cancels it; the pass phase passes, restarts automatically, and
+  the settings are restored.
+- **Precondition:** only the 601 attached, registered as board 601; the
+  tree clean and pushed; the owner's request to apply the Wi-Fi
+  credentials; the owner available at the board for one BOOT press.
+- **Commands, with `R` = `scratch/self001-gamma601/attempt-NNN` (absent
+  before the start) and `umask 077`:**
+  1. `just detect-ultra205`; `just package-gamma601-mining`;
+  2. `just self-test-campaign start --board 601 --private-root R
+     --package-manifest <manifest> --wifi-credentials wifi-credentials.json
+     --pool-credentials pool-credentials.json --detector-output <detector>
+     --plan <plan> --projection
+     docs/parity/evidence/self001-gamma601/attempt-NNN/self-test-projection.json`;
+  3. at `cancel_ready`, the owner holds BOOT for two seconds;
+  4. `just self-test-campaign resume` with the same options;
+  5. `just package --board 601`, `just flash --board 601 --port <port>`,
+     state-preserving, and `just monitor --board 601 --port <port>
+     --capture-timeout-seconds 360` to confirm production.
+- **Allowed effects:** the factory installs with the owner's Wi-Fi
+  credentials and the tuple; the settings backup and restore over HTTP;
+  the regulator on at 1150 mV for at most 240 s per phase under the local
+  generation; 525 MHz; fan 10 to 100 %; diagnostic work only; the
+  campaign's recovery install; the production reinstall.
+- **Prohibited effects:** pool work, a Worker Start or lease, any other
+  profile or test build, direct UART or pins, a retry without a recorded,
+  verified change.
+- **Stops:** the plan's (any unplanned failure; the output not confirmed off
+  within 4 s; chip 70 C, regulator 105 C, 22 W; the 240 s bound; a reset or
+  panic in a phase window; a missing checkpoint or receipt). Any stop:
+  production reinstalled before analysing.
+- **Evidence and privacy:** captures stay in `R` (mode 0600 under 0700); the
+  validated projection holds digests, constants and booleans only;
+  committed evidence is checked independently, with `just
+  verify-redaction`.
+- **Recovery:** the campaign's own recovery install and settings restore,
+  then the production reinstall.
 
 ## Future
 
