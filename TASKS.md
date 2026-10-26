@@ -1446,7 +1446,8 @@ Gamma 601 lease interrupt check hardware: enabled.
      key the firmware trusts> --detector P/detector.log
      --interrupt-local-mining`; `serve` detached with `--pool-credentials
      pool-credentials.json`; the page's steps in the dedicated tab (the
-     refused Connect, `startObserver()`, the reload and Connect, the idle
+     refused Connect, the reload and Connect, then `startObserver()`, the
+     reload and Connect as the 15-second step below, the idle
      proof, the reviews, `prepareStartAuthorization()`,
      `loadSignedWindow()`, `startWindow()`, `submitSoakCompletion()`), the
      tab to `about:blank`; then `owner-finish` or `finish`;
@@ -1476,6 +1477,38 @@ Gamma 601 lease interrupt check hardware: enabled.
 - **Recovery:** `just local-mining-soak pause --private-root P/local-NNN`
   (a pause during the lease holds and confirms once the lease ends); stop
   the Gate server and seal with `finish`; then the production reinstall.
+- **The 15-second step (amended after attempt 001):** the README's rule is
+  reload and Connect within 15 s of `startObserver()`. Take a screenshot of
+  the connected page first for the Connect button's position. Then run
+  `startObserver()` (awaited), the reload and the Connect click at that
+  position as one browser batch, with no other tool call between them.
+  Read the page state only afterwards. The Gate journal's times show the
+  gap.
+
+Lease attempts:
+- **Attempt 001** (2026-10-25, `f8ef921e`): an operator timing failure.
+  - **Passed:** the `gamma601-mining` install and boot, the endpoint
+    handoff, the local soak to `lease_ready` (5 minutes mining), the Gate
+    preflight. The first Connect was refused at `hello` and local mining
+    went through its ordered safe stop to `safe_blocked` at 5.0 W. The
+    reload and Connect then reached `ready`.
+  - **Failed:** the Gate journal puts the reload 21.5 s after
+    `startObserver()` and the next Connect 67 s after the reload, 88 s
+    against the 15-s rule. The delay was tool round trips on the
+    operator's side. Local mining resumed after the quiet link, as the
+    README says, so the second Hello was refused after the observer
+    started. No grant was signed and the ledger was not charged.
+  - **Verdicts:** the Gate soak `unverified` (`completion_missing`); the
+    local soak `failed` (`lease_check_not_restored`,
+    `lease_check_lease_failed`, `lease_check_after_short`). No live stop,
+    reset or fault. The device ended paused, with start-on-boot off.
+  - **Recovery:** the page released to `about:blank`, `owner-finish`
+    sealed the Gate soak, the local pause confirmed, and production was
+    reinstalled and confirmed (57 safe-boot records, `identity=match`,
+    `reset_held=true`, `off=confirmed`, one boot) before the analysis.
+  - **Outcome:** `continue_after_manual_remediation`: the 15-second step
+    above. Attempt 002 shows the boundary changed only if its gap is under
+    15 s. Captures are under `scratch/gamma-601-lease/`.
 
 ## Future
 
