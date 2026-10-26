@@ -1542,6 +1542,32 @@ Lease attempts:
     window forward. The proof that the boundary changed is the same
     listener test reading `visible` throughout, run before attempt 003's
     Gate steps. Captures are under `scratch/gamma-601-lease/attempt-002/`.
+- **Attempt 003** (2026-10-25, `47921e18`): the link held; the device
+  refused the Start.
+  - **The tab:** the 40-s detached test first read `hidden` again. The
+    Gate tab was a background tab in the extension's own window. Once the
+    owner selected it, the test read `visible` for 50 s.
+  - **Passed:** the install and boot, the handoff, `lease_ready`, the
+    refused first Connect and its safe stop, the reload and Connect, the
+    15-second step, the idle proof (76 s, 39 HTTP samples, no broken
+    events, no mining), the cooling and budget reviews (soak ledger
+    `next_ordinal 1`, nothing charged), `prepareStartAuthorization()` and
+    `loadSignedWindow()`.
+  - **Failed:** `startWindow()` was rejected in 227 ms (`command_rejected`,
+    `control_failure: session_failed`), and the page closed the link. No
+    mining under the lease. Verdicts as before: the Gate soak `unverified`,
+    the local soak `failed`.
+  - **Recovery:** as attempt 001; production reinstalled and confirmed (56
+    safe-boot records, `identity=match`, one boot) before the analysis.
+  - **Likely cause (code reading; the refusal reason goes only to the USB
+    console, which the page held):** `worker_soak_budget::admit` refuses
+    unless the original acceptance campaign is complete at 240,000 ms
+    (`soak_budget=original_incomplete`). The 205 completed it in
+    September. The 601's Worker has never run it, so its soak ledger is
+    fresh. The F3.4 plan missed this prerequisite.
+  - **Outcome:** `stop_authority_boundary`: running a 601 acceptance
+    campaign or changing the soak prerequisite needs the owner's decision.
+    Captures are under `scratch/gamma-601-lease/attempt-003/`.
 - **Before each Gate session (amended after attempt 002):** in the
   dedicated tab, record `visibilitychange` events, make no browser call
   for 40 s, then read the record. Begin the Gate steps only if the tab
