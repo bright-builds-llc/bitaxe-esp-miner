@@ -709,7 +709,10 @@ action.
     - [x] F4.1 software: soaks `gamma601-default-001` (10 min) and
       `gamma601-soak-001` (4 h) at 525/1150; the stopped proof takes the
       installed board's idle limit;
-    - [ ] F4.1 hardware: the default profile check;
+    - [x] F4.1 hardware: passed on attempt 001, 10 minutes at 525/1150,
+      29 shares, power 20.4 W, chip 69.5 C, regulator 76 C, the fan at its
+      top (`docs/parity/evidence/20261026-gamma601-default-profile-check.md`);
+      production reinstalled;
     - [ ] F4.2 hardware: the 4 h soak;
     - [ ] F4.3: the 601 self-test, software then hardware on
       `gamma601-mining`;
@@ -1659,7 +1662,7 @@ Lease attempts:
 
 Phase F4.1 default profile contract (attempt ordinals 001 onward):
 
-Gamma 601 default profile check hardware: enabled.
+Closed after attempt 001 passed (2026-10-26); no enable line remains.
 
 - **Objective:** the 601 at upstream's default. The test-only
   `gamma601-mining` firmware at the clean, pushed HEAD mines 10 minutes at
@@ -1709,6 +1712,27 @@ Gamma 601 default profile check hardware: enabled.
 - **Recovery:** `just local-mining-soak pause --private-root P/local-NNN`,
   then the production reinstall. If the board does not stop, remove all
   power (barrel and USB).
+
+Phase F4.2 4 h soak contract (attempt ordinals 001 onward):
+
+Gamma 601 4 h soak hardware: enabled.
+
+- **Objective:** 4 hours at the 601's default. The test-only
+  `gamma601-mining` firmware at the clean, pushed HEAD accumulates 240
+  minutes of mining at 525 MHz / 1150 mV within 300 minutes, with the
+  owner's pool, through the soak `gamma601-soak-001` (soak 006's rule:
+  outages the device recovers from within 60 s are tolerated), then pauses
+  and proves stopped; production is then reinstalled.
+- **Precondition:** as F4.1; it runs unattended.
+- **Known margin (F4.1):** at steady state 20.3 W and chip 69 C with the
+  fan at its top. A warmer room can reach the 75 C stop; that ends the
+  attempt as a stop, not a pass.
+- **Commands:** F4.1's, with `P` a new mode-0700 parent under
+  `scratch/gamma-601-soak/` and the soak `gamma601-soak-001`. `run` goes
+  detached under `nohup caffeinate -is`, because the agent's background
+  tasks end at 2 h; its journal and exit are watched.
+- **Allowed effects, prohibited effects, stops, evidence, recovery:**
+  F4.1's, with 240 minutes of local mining at 525/1150 in place of 10.
 
 ## Future
 
