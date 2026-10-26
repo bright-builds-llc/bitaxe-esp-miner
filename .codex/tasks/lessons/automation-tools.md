@@ -64,3 +64,10 @@ Scope: host automation and evidence tools (`tools/`, `scripts/`), parity tooling
 2. What went wrong: On this macOS host the first exec of a freshly written script or binary stalled 5–93 s at `_dyld_start` with 0% CPU while `syspolicyd` was busy; repeats were instant. Tests that exec freshly written fakes under 10 s bounds failed, and in BWG-007 a 309 s Bazel launch hold let the agent's tool timeout kill `owner-finish` and left a rerun's detector stale.
 3. Preventive rule: For time-bounded steps such as detector freshness windows and seals, run already-built binaries directly instead of a path that first builds or writes a new executable. In tests, spawn an existing interpreter on a script (for example `node script.mjs`) rather than exec a freshly written executable, or size the bound for the first-exec hold.
 4. Trigger signal: A test writes a fake executable and execs it under a bound of seconds, a freshness-windowed step runs through `just` or Bazel right after a rebuild, or a process sits at `_dyld_start` with 0% CPU.
+
+## lesson-extension-visibility-is-not-the-owner-view | 2026-10-25
+
+1. Date: 2026-10-25
+2. What went wrong: Two 601 lease attempts lost the Gate link (`operation_failed`) about 20 s after the last browser tool call. Claude in Chrome keeps a tab visible only while attached; 20 s after the last call the covered window's real state, `hidden`, returned, and the page took it as foreground loss. Pre-click checks read `visible` because they ran attached.
+3. Preventive rule: Before a Gate session, prove the tab stays visible while detached: record `visibilitychange` in it, make no tool call for 40 s, then read the record. If it went hidden, ask the owner to bring the window forward. Never keep a page visible through tool keep-alives.
+4. Trigger signal: A Gate link fails about 20 s after the last browser call, or a visibility check runs only while the extension is attached.

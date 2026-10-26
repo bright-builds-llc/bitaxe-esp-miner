@@ -1509,6 +1509,45 @@ Lease attempts:
   - **Outcome:** `continue_after_manual_remediation`: the 15-second step
     above. Attempt 002 shows the boundary changed only if its gap is under
     15 s. Captures are under `scratch/gamma-601-lease/`.
+  - **Corrected by attempt 002:** the page's `disconnected` 21.5 s after
+    `startObserver()` was not the reload. It carried
+    `serialFailureCategory: operation_failed`, the same signature as
+    attempt 002 below. The late reload was not the cause.
+- **Attempt 002** (2026-10-25, `6e810a56`): the same link loss; the cause
+  found.
+  - **Passed:** the install and boot, the handoff, `lease_ready`, the
+    refused first Connect and its safe stop, the reload and Connect, and
+    the 15-second step: the reload and Connect reached `ready` 2.7 s after
+    `startObserver()`.
+  - **Failed:** 20.4 s after `ready`, with no page call in flight, the page
+    went `disconnected` (`operation_failed`). Local mining resumed 17 s
+    later, so the idle proof read `mining_observed` and could not pass.
+    Verdicts as attempt 001: the Gate soak `unverified`
+    (`completion_missing`), the local soak `failed`. No live stop, reset
+    or fault. No grant was signed and the ledger was not charged.
+  - **Recovery:** as attempt 001. Production was reinstalled and confirmed
+    (56 safe-boot records with `reset_held=true off=confirmed`,
+    `identity=match`, one boot) before the analysis.
+  - **Cause:** in the Gate, `foreground()` is `document.visibilityState ===
+    "visible"`, and a foreground loss surfaces as `operation_failed`. Claude
+    in Chrome keeps a tab visible only while it is attached. A listener in
+    the dedicated tab, with no tool call for 45 s, recorded `hidden` 20.0 s
+    after the last call and `visible` again only when the next call
+    attached. Both failures came about 20 s after the last browser call.
+    The Chrome window holding the tab is covered, so the page lost the
+    foreground each time the extension detached. The pre-click checks read
+    `visible` because they ran while attached
+    (`lesson-extension-visibility-is-not-the-owner-view`).
+  - **Outcome:** `continue_after_manual_remediation`: the owner brings the
+    window forward. The proof that the boundary changed is the same
+    listener test reading `visible` throughout, run before attempt 003's
+    Gate steps. Captures are under `scratch/gamma-601-lease/attempt-002/`.
+- **Before each Gate session (amended after attempt 002):** in the
+  dedicated tab, record `visibilitychange` events, make no browser call
+  for 40 s, then read the record. Begin the Gate steps only if the tab
+  stayed `visible`. Otherwise hold, with the device paused, until the owner
+  brings the window forward. Never keep the page visible through tool
+  keep-alives.
 
 ## Future
 
