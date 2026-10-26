@@ -34,10 +34,14 @@ struct Handoff<'a> {
     observed_unix_ms: u64,
     expires_unix_ms: u64,
     binding_verified: bool,
+    /// Present only off the Ultra 205, so the 205's handoff is unchanged.
+    #[serde(default)]
+    board: sample::SoakBoard,
 }
 
-/// A fresh, possession-bound private IPv4 endpoint from the Gate handoff (AGENTS.md: no discovery).
-fn origin(bytes: &[u8], now: u64) -> Result<Zeroizing<String>, &'static str> {
+/// A fresh, possession-bound private IPv4 endpoint from the Gate handoff (AGENTS.md: no discovery),
+/// and the board whose limits the observer judges.
+fn origin(bytes: &[u8], now: u64) -> Result<(Zeroizing<String>, sample::SoakBoard), &'static str> {
     let handoff: Handoff<'_> = serde_json::from_slice(bytes).map_err(|_| "invalid_input")?;
     let ip: std::net::Ipv4Addr = handoff.ipv4.parse().map_err(|_| "invalid_input")?;
     if handoff.schema != INPUT_SCHEMA
@@ -54,7 +58,10 @@ fn origin(bytes: &[u8], now: u64) -> Result<Zeroizing<String>, &'static str> {
     {
         return Err("invalid_input");
     }
-    Ok(Zeroizing::new(format!("http://{}:{}", ip, handoff.port)))
+    Ok((
+        Zeroizing::new(format!("http://{}:{}", ip, handoff.port)),
+        handoff.board,
+    ))
 }
 
 /// Runs the stdin-controlled observer. Stdin carries one handoff line, then `{"op":"stop"}` or EOF.
@@ -68,10 +75,14 @@ pub fn run_observer() -> i32 {
         }
         let mut input = crate::cadence::input::PrivateInput::new(0);
         let handoff = input.initial_line(Instant::now() + Duration::from_secs(5))?;
-        let endpoint = Arc::new(origin(&handoff, observer::now_unix_ms())?);
-        observer::run_threads(endpoint, &mut output, OBSERVATION_LIMIT, || {
-            input.stop_requested()
-        })
+        let (endpoint, board) = origin(&handoff, observer::now_unix_ms())?;
+        observer::run_threads_on(
+            board,
+            Arc::new(endpoint),
+            &mut output,
+            OBSERVATION_LIMIT,
+            || input.stop_requested(),
+        )
     })();
     let (event, reason, exit) = match result {
         Ok(reason) => ("stopped", reason, 0),

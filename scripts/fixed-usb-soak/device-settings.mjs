@@ -16,15 +16,39 @@ export const SOAK_PROFILES = Object.freeze({
   "catalog-maximum-frequency": Object.freeze({ frequency: 575, coreVoltage: 1200, autofanspeed: 1 }),
   // A BAP soak changes the manual fan speed; storing it first keeps the settings fingerprint stable.
   "upstream-default-bap": Object.freeze({ frequency: 485, coreVoltage: 1200, autofanspeed: 1, manualFanSpeed: 100 }),
+  // The Gamma 601's measured first-mining pair (ADR-0041 phase F3.3), with the automatic fan.
+  "gamma601-first": Object.freeze({ frequency: 400, coreVoltage: 1150, autofanspeed: 1 }),
 });
 export const DEFAULT_SOAK_PROFILE = "upstream-default";
+/**
+ * Each board's default profile, which a soak restores after another profile. The Gamma 601 has only
+ * its own: the 205's 485 MHz / 1200 mV is never written to it.
+ */
+export const BOARD_DEFAULT_PROFILES = Object.freeze({ "205": DEFAULT_SOAK_PROFILE, "601": "gamma601-first" });
 
-/** The profile a preflight freezes: the named one, or the one a live plan needs, which must agree. */
-export function preflightProfile(maybeProfile, maybeRequiredProfile) {
-  const profile = maybeProfile ?? maybeRequiredProfile ?? DEFAULT_SOAK_PROFILE;
+/** The default profile of `board`; an unknown board refuses the soak. */
+export function boardDefaultProfile(board) {
+  requireCondition(Object.hasOwn(BOARD_DEFAULT_PROFILES, board), "soak_board");
+  return BOARD_DEFAULT_PROFILES[board];
+}
+
+/**
+ * The profile a preflight freezes: the named one, or the one a live plan needs, which must agree.
+ * Off the Ultra 205 only the board's default is admitted, and the 205 never takes another board's.
+ */
+export function preflightProfile(maybeProfile, maybeRequiredProfile, board = "205") {
+  const profile = maybeProfile ?? maybeRequiredProfile ?? boardDefaultProfile(board);
   profileSettings(profile);
   requireCondition(maybeRequiredProfile === undefined || profile === maybeRequiredProfile, "soak_live_changes_profile");
+  requireBoardProfile(profile, board);
   return profile;
+}
+
+/** Off the Ultra 205 only the board's default profile runs; the 205 never runs another board's default. */
+export function requireBoardProfile(profile, board) {
+  const defaultProfile = boardDefaultProfile(board);
+  const otherDefaults = Object.entries(BOARD_DEFAULT_PROFILES).filter(([other]) => other !== board).map(([, name]) => name);
+  requireCondition(board === "205" ? !otherDefaults.includes(profile) : profile === defaultProfile, "soak_board_profile");
 }
 
 /** The settings a context's profile names; anything else refuses the soak. */

@@ -15,7 +15,7 @@ import { validateState } from "../fixed-usb-qualification/judge.mjs";
 import { signSoak } from "./authority.mjs";
 import { requireIdleSoakLedger, requireQualificationIdle, soakAllowance, SOAK_WORK_GATE_MS } from "./contract.mjs";
 import { clockObservations, judgeSoak } from "./judge.mjs";
-import { applyDeviceSettings, DEFAULT_SOAK_PROFILE, profileSettings } from "./device-settings.mjs";
+import { applyDeviceSettings, boardDefaultProfile, profileSettings, requireBoardProfile } from "./device-settings.mjs";
 import { gateAllowsOperation, runBapChange } from "./bap-changes.mjs";
 import { dueLiveChange, frozenPlan, judgeLiveChanges, LIVE_PLANS } from "./live-changes.mjs";
 import { createSoakObserver, journalLines } from "./observer.mjs";
@@ -41,9 +41,14 @@ export async function createSoakSupervisor(options, operations = {}) {
   const recordsPath = resolve(root, "soak.samples.jsonl");
   let scope, challenge, review, pending, cooling, lastState, settingsBaselineId, records = [], queue = Promise.resolve();
   const apply = operations.applyDeviceSettings ?? applyDeviceSettings;
+  // The frozen package's board, recorded only off the Ultra 205 (`boardPackageSnapshot`).
+  const board = context.board ?? "205";
+  requireCondition(board === "205" || context.local_mining_interrupt === true, "soak_board");
+  const defaultProfile = boardDefaultProfile(board);
   // Contexts before profiles carry the upstream default; no settings come from the context unchecked.
-  const profile = context.device_profile ?? DEFAULT_SOAK_PROFILE;
+  const profile = context.device_profile ?? defaultProfile;
   requireCondition(typeof profile === "string", "soak_profile_unknown");
+  requireBoardProfile(profile, board);
   const profileTarget = profileSettings(profile);
   requireCondition(isDeepStrictEqual(context.device_settings, profileTarget), "soak_profile_contract");
   const plannedLive = context.live_changes ?? [];
@@ -178,13 +183,14 @@ export async function createSoakSupervisor(options, operations = {}) {
    * Restore settings once, while the device is idle after restoration (its final state is already taken):
    * - a soak that sent a change but not the whole plan may have left the conservative pair saved, so it
    *   restores its own profile and stays unverified;
-   * - a soak on another profile restores the upstream default, so later leases never inherit it.
+   * - a soak on another profile restores its board's default, so later leases never inherit it. The
+   *   Gamma 601 runs only its default, so nothing is restored there and 485 MHz / 1200 mV never is.
    */
   async function restoreSettings(maybeLiveChanges) {
     const incompleteLive = liveSent > 0 && !(liveSent === plannedLive.length && liveRecords.every((record) => record && !record.failure));
     // Every operation can pass while a setting still did not take; the judge's failures say so.
     const unconfirmedLive = (maybeLiveChanges?.failures.length ?? 0) > 0 && liveSent > 0;
-    const defaults = profileSettings(DEFAULT_SOAK_PROFILE);
+    const defaults = profileSettings(defaultProfile);
     const leavesOtherSettings = Object.entries(defaults).some(([key, value]) => profileTarget[key] !== value);
     const maybeReason = incompleteLive ? "incomplete_live_changes" : unconfirmedLive ? "unconfirmed_live_changes" :
       leavesOtherSettings ? "profile_completed" : undefined;

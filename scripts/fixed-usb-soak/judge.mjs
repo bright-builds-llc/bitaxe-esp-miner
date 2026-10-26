@@ -4,11 +4,32 @@ import { isDeepStrictEqual } from "node:util";
 import { requireReleasedState } from "../fixed-usb-qualification/iterative-preflight.mjs";
 import { SOAK_MAXIMUM_ACTIVE_MS, SOAK_RENEWALS, SOAK_WORK_GATE_MS } from "./contract.mjs";
 
-/** The soak's live stop limits on every running sample: fresh readings inside the firmware's revocation bounds. */
-export function unsafeSample(q) {
-  return !(q.voltage_fresh && q.power_fresh && q.temperature_fresh && q.fan_fresh) ||
-    !(q.voltage_volts >= 4.5 && q.voltage_volts <= 5.5) || !(q.power_watts >= 0 && q.power_watts <= 15) ||
-    !(q.chip_temp_celsius < 75) || !(q.fan_rpm > 0) || !q.watchdog_alive;
+/** Whether the Gate observation shows the soak's work gate still open. */
+const workGateOpen = (q) => q.revocation_reason === "none" && Number.isSafeInteger(q.work_gate_remaining_ms) && q.work_gate_remaining_ms > 0;
+
+/**
+ * The soak's live stop limits on every running sample: fresh readings inside the firmware's revocation
+ * bounds. `board` is the package's (ADR-0041):
+ * - the Ultra 205: at most 15 W, and a fresh chip temperature on every running sample;
+ * - the Gamma 601: at most 22 W, the firmware's own stop (19 W target plus the 3 W margin), and a fresh
+ *   chip temperature only while the work gate is open and the chip is active (its active time counts
+ *   and no safe-stop has begun). Its chip diode reads nothing while the ASIC is unpowered, during
+ *   preparation and the safe-stop (ADR-0041 item 11). A chip temperature it does report is judged.
+ * Any other `board` value, such as an array index from `Array.prototype.some`, judges the 205.
+ */
+export function unsafeSample(q, board = "205") {
+  const gamma601 = board === "601";
+  // The 601's chip reads only once initialized (ADR-0041 item 11): its temperature is excused only
+  // outside an open, active, not-stopping work gate. The gate reads null until the first dispatch
+  // (the preparation); a null gate once work has run is unknown, and requires a temperature.
+  const gateKnown = Number.isSafeInteger(q.work_gate_remaining_ms);
+  const beforeDispatch = q.active_ms === 0 && q.work_dispatched === 0;
+  const temperatureRequired = !gamma601 || (!gateKnown && !beforeDispatch) ||
+    (workGateOpen(q) && q.active_ms > 0 && q.safe_stop_stage === "not_started");
+  const chipSafe = typeof q.chip_temp_celsius === "number" ? q.chip_temp_celsius < 75 : !temperatureRequired;
+  return !(q.voltage_fresh && q.power_fresh && (q.temperature_fresh || !temperatureRequired) && q.fan_fresh) ||
+    !(q.voltage_volts >= 4.5 && q.voltage_volts <= 5.5) || !(q.power_watts >= 0 && q.power_watts <= (gamma601 ? 22 : 15)) ||
+    !chipSafe || !(q.fan_rpm > 0) || !q.watchdog_alive;
 }
 
 /**
@@ -20,7 +41,7 @@ export function clockObservations(records) {
   return records
     .filter((record) => {
       const q = record.state.qualification;
-      return record.state.running && q?.soak && q.active_ms > 0 && q.revocation_reason === "none" && Number.isSafeInteger(q.work_gate_remaining_ms) && q.work_gate_remaining_ms > 0;
+      return record.state.running && q?.soak && q.active_ms > 0 && workGateOpen(q);
     })
     .map((record) => ({ observedUnixMs: record.receivedAtUnixMs, activeMs: record.state.qualification.active_ms }));
 }
@@ -34,7 +55,7 @@ export function refusedConnect(record, maybeObserverStartSequence) {
     record.state.failure === "connect_failed" && record.state.admissionFailureStage === "hello";
 }
 
-function terminalFailures(records, ordinal, maybeObserverStartSequence) {
+function terminalFailures(records, ordinal, maybeObserverStartSequence, board) {
   const soakSamples = records.map((record) => record.state.qualification).filter((q) => q?.soak?.ordinal === ordinal);
   const last = soakSamples.at(-1);
   if (!last) return ["soak_never_observed"];
@@ -52,7 +73,7 @@ function terminalFailures(records, ordinal, maybeObserverStartSequence) {
   check(last.mine_on_boot === true, "mine_on_boot_enabled");
   check(typeof last.mine_on_boot !== "boolean", "mine_on_boot_unobserved");
   check(soakSamples.some((q) => q.revocation_reason !== "none" && q.revocation_reason !== "lease_or_budget_expired"), "soak_revoked");
-  check(records.some((record) => record.state.running && record.state.qualification && unsafeSample(record.state.qualification)), "unsafe_sample");
+  check(records.some((record) => record.state.running && record.state.qualification && unsafeSample(record.state.qualification, board)), "unsafe_sample");
   check(records.some((record) => record.state.renewalsConfirmed > SOAK_RENEWALS), "renewal_bound");
   check(records.some((record) => record.state.failure !== undefined && !refusedConnect(record, maybeObserverStartSequence)), "browser_failure");
   return failures;
@@ -83,7 +104,8 @@ export function judgeSoak({ context, records, issuance, ledgerAfter, finalState,
   const interrupts = context.local_mining_interrupt === true;
   const refused = interrupts ? records.filter((record) => refusedConnect(record, maybeObserverStartSequence)).length : 0;
   check(interrupts && refused === 0, "interrupt_refusal_unobserved");
-  failures.push(...terminalFailures(records, issuance.ordinal, interrupts ? maybeObserverStartSequence : undefined));
+  // The board comes from the frozen package (`boardPackageSnapshot`), recorded only off the Ultra 205.
+  failures.push(...terminalFailures(records, issuance.ordinal, interrupts ? maybeObserverStartSequence : undefined, context.board ?? "205"));
   check(windowJudgement === null, "window_judge_unavailable");
   check(!observerClean, "observer_unclean");
   if (windowJudgement && !windowJudgement.passed) failures.push(...windowJudgement.failures.map((failure) => `window_${failure}`));

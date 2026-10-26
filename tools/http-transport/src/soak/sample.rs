@@ -12,6 +12,29 @@ pub enum SoakTransport {
     Websocket,
 }
 
+/// The board a soak observes (ADR-0041), from the frozen package's manifest. It sets the live stop's
+/// power limit; a handoff without one observes the Ultra 205.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+pub enum SoakBoard {
+    #[default]
+    #[serde(rename = "205")]
+    Ultra205,
+    #[serde(rename = "601")]
+    Gamma601,
+}
+
+impl SoakBoard {
+    /// The firmware's own power stop: 15 W on the Ultra 205; 22 W on the Gamma 601, its 19 W target
+    /// plus the 3 W margin (`crates/bitaxe-api/src/observation/limits.rs`).
+    #[must_use]
+    pub const fn maximum_power_watts(self) -> f64 {
+        match self {
+            Self::Ultra205 => 15.0,
+            Self::Gamma601 => 22.0,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SoakSample {
@@ -83,8 +106,19 @@ pub struct SoakSample {
 }
 
 impl SoakSample {
+    /// A sample of the Ultra 205 (`from_wire_on`).
     #[must_use]
     pub fn from_wire(wire: &SystemInfoWire, maybe_pool_matches_initial: Option<bool>) -> Self {
+        Self::from_wire_on(wire, maybe_pool_matches_initial, SoakBoard::Ultra205)
+    }
+
+    /// A sample whose live stop judges `board`'s limits.
+    #[must_use]
+    pub fn from_wire_on(
+        wire: &SystemInfoWire,
+        maybe_pool_matches_initial: Option<bool>,
+        board: SoakBoard,
+    ) -> Self {
         let sends = wire.runtime_health.http_server_sends;
         Self {
             boot_session: wire.boot_session.to_string(),
@@ -96,7 +130,7 @@ impl SoakSample {
             mining_paused: wire.mining_paused,
             mining_stopping: wire.mining_activity == "stopping",
             start_mining_on_boot: wire.start_mining_on_boot,
-            safety_valid: safety_valid(wire),
+            safety_valid: safety_valid(wire, board),
             maybe_watchdog_feed_sequence: wire.runtime_health.maybe_task_watchdog_feed_sequence,
             maybe_checkpoint_sequence: wire.runtime_health.maybe_checkpoint_sequence,
             shares_accepted: wire.shares_accepted,
@@ -139,10 +173,11 @@ impl SoakSample {
     }
 }
 
-/// The soak's live stop limits: fresh readings, 4.5–5.5 V input, at most 15 W, ASIC below 75 C,
-/// nonzero fan. The same bounds the legacy campaign judged.
+/// The soak's live stop limits: fresh readings, 4.5–5.5 V input, at most the board's power stop
+/// (`SoakBoard::maximum_power_watts`), ASIC below 75 C, nonzero fan. On the Ultra 205, the same
+/// bounds the legacy campaign judged.
 #[must_use]
-pub fn safety_valid(sample: &SystemInfoWire) -> bool {
+pub fn safety_valid(sample: &SystemInfoWire, board: SoakBoard) -> bool {
     [
         sample.power_status.state,
         sample.voltage_status.state,
@@ -153,7 +188,7 @@ pub fn safety_valid(sample: &SystemInfoWire) -> bool {
     .into_iter()
     .all(|state| state == ObservationStateWire::Fresh)
         && sample.power.is_finite()
-        && (0.0..=15.0).contains(&sample.power)
+        && (0.0..=board.maximum_power_watts()).contains(&sample.power)
         && sample.voltage_millivolts.is_finite()
         && (4_500.0..=5_500.0).contains(&sample.voltage_millivolts)
         && sample.current_milliamps.is_finite()

@@ -55,8 +55,10 @@ export function createSoakObserver(root, context, operations = {}) {
     } finally { await stdout.close(); await stderr.close(); }
     child.once("close", (code, signal) => { exit = { code, signal, closedAtUnixMs: now() }; });
     child.once("error", () => { exit ??= { code: null, signal: null, closedAtUnixMs: now(), spawnFailed: true }; });
+    // Off the Ultra 205 the frozen package's board sets the observer's live stop limits (`safety_valid`).
     const handoff = Buffer.from(JSON.stringify({ schema: "soak-observer-input-v1", ipv4: endpoint.ipv4, port: endpoint.httpPort,
-      observedUnixMs: startedAtUnixMs, expiresUnixMs: startedAtUnixMs + 5000, bindingVerified: true }) + "\n");
+      observedUnixMs: startedAtUnixMs, expiresUnixMs: startedAtUnixMs + 5000, bindingVerified: true,
+      ...(context.board === undefined ? {} : { board: context.board }) }) + "\n");
     child.stdin.on("error", () => undefined);
     child.stdin.write(handoff, () => handoff.fill(0));
     return { observer_started: true };

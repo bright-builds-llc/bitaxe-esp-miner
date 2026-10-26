@@ -96,7 +96,7 @@ test("the 601 soak runs only on the gamma601-mining firmware", () => {
 
 test("every 205 soak refuses the gamma601-mining firmware", () => {
   // Arrange
-  const others = Object.values(SOAKS).filter((soak) => soak.id !== "gamma601-first-001");
+  const others = Object.values(SOAKS).filter((soak) => soak.requireStoredBoard !== "601");
   // Act / Assert
   for (const soak of others) {
     assert.throws(() => requireFirmwareVariant({ firmware_variant: "gamma601-mining" }, soak), { code: "soak_firmware_variant" }, soak.id);
@@ -141,4 +141,24 @@ test("the 601 overheat check has its own enable line in the 601 bring-up task", 
   assert.equal(soakTaskLine("gamma601-overheat-001"), line);
   assert.doesNotThrow(() => requireSoakTask(block, "gamma601-overheat-001"));
   assert.throws(() => requireSoakTask(block.replace(line, soakTaskLine("overheat-001")), "gamma601-overheat-001"), { code: "soak_task_disabled" });
+});
+
+test("the 601 lease check is enabled by the same line as the Gate's 601 interruption check", async () => {
+  // Arrange
+  const { INTERRUPT_TASKS } = await import("../fixed-usb-soak/contract.mjs");
+  const [task, line] = INTERRUPT_TASKS["601"];
+  const block = `## Active\n\n### ${task} | x\n\n${line}\n\n## Other\n`;
+  // Act / Assert
+  assert.equal(soakTaskLine("gamma601-lease-001"), "Gamma 601 lease interrupt check hardware: enabled.");
+  assert.deepEqual([soakTask("gamma601-lease-001"), soakTaskLine("gamma601-lease-001")], [task, line]);
+  assert.doesNotThrow(() => requireSoakTask(block, "gamma601-lease-001"));
+  assert.throws(() => requireSoakTask(block.replace(line, soakTaskLine("lease-001")), "gamma601-lease-001"), { code: "soak_task_disabled" });
+});
+
+test("the 601 lease check runs only on the gamma601-mining firmware", () => {
+  // Arrange
+  const soak = SOAKS["gamma601-lease-001"];
+  // Act / Assert
+  assert.doesNotThrow(() => requireFirmwareVariant({ firmware_variant: "gamma601-mining" }, soak));
+  assert.throws(() => requireFirmwareVariant({ firmware_variant: "production" }, soak), { code: "soak_firmware_variant" });
 });

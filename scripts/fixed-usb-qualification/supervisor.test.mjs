@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { admitTrust, BUNDLE, digest, packageSnapshot, PAGE, WINDOW_MS, writeNew } from "./contract.mjs";
+import { admitTrust, BOARD_MANIFESTS, boardPackageSnapshot, BUNDLE, digest, packageSnapshot, PAGE, WINDOW_MS, writeNew } from "./contract.mjs";
 import { preflight, loadContext, verifyFrozen } from "./preflight.mjs";
 import { amendPolicy, checkQualificationSource, loadAmendment } from "./amendment.mjs";
 import { requireCompleteCycles } from "./store.mjs";
@@ -453,4 +453,63 @@ test("current amendment creation rejects issued windows without rewriting contex
   await writeNew(resolve(f.options.privateRoot, "window-2.issued.json"), { window: 2 });
   await assert.rejects(amendPolicy(f.options.privateRoot, f.context, f.amendmentOptions, f.amendmentOperations), /after_window/u);
   assert.deepEqual(await readFile(f.contextPath), before);
+});
+
+/**
+ * The fixture's package copied to `board`'s manifest path, its metadata naming `metadataBoard`. A 601
+ * package is the mining build unless `variant` names another.
+ */
+async function boardPackage(f, board, metadataBoard, variant = board === "601" ? "gamma601-mining" : undefined) {
+  const manifest = resolve(f.options.firmwareRoot, BOARD_MANIFESTS[board]);
+  await mkdir(dirname(manifest), { recursive: true });
+  for (const artifact of f.manifestValue.artifacts.filter((entry) => entry.kind !== "partition_table")) {
+    await writeFile(resolve(dirname(manifest), artifact.path), `fixture-${artifact.kind}`);
+  }
+  const maybeVariant = variant === undefined ? {} : { firmware_variant: variant };
+  await writeFile(manifest, JSON.stringify({ ...f.manifestValue, ...maybeVariant, image_metadata: { board: metadataBoard } }));
+  return manifest;
+}
+test("a board package snapshot records the 601 from its manifest path and metadata", async (t) => {
+  // Arrange
+  const f = await fixture(t);
+  const manifest = await boardPackage(f, "601", "601");
+  // Act
+  const packaged = await boardPackageSnapshot(f.options.firmwareRoot, manifest, SOURCE);
+  // Assert
+  assert.equal(packaged.board, "601");
+  assert.equal(packaged.artifacts.length, 8);
+});
+test("a board package snapshot of the 205 records no board, as packageSnapshot", async (t) => {
+  // Arrange
+  const f = await fixture(t);
+  const manifest = await boardPackage(f, "205", "205");
+  // Act
+  const packaged = await boardPackageSnapshot(f.options.firmwareRoot, manifest, SOURCE);
+  // Assert
+  assert.deepEqual(packaged, await packageSnapshot(f.options.firmwareRoot, manifest, SOURCE));
+});
+test("a board package snapshot refuses a manifest whose metadata names the other board", async (t) => {
+  // Arrange
+  const f = await fixture(t);
+  const on601 = await boardPackage(f, "601", "205");
+  // Act / Assert
+  await assert.rejects(boardPackageSnapshot(f.options.firmwareRoot, on601, SOURCE), { code: "manifest_board" });
+  const on205 = await boardPackage(f, "205", "601");
+  await assert.rejects(boardPackageSnapshot(f.options.firmwareRoot, on205, SOURCE), { code: "manifest_board" });
+});
+test("a board package snapshot refuses a manifest outside both boards' paths", async (t) => {
+  // Arrange
+  const f = await fixture(t);
+  const elsewhere = resolve(f.options.firmwareRoot, "bazel-bin/firmware/bitaxe/other-package.json");
+  await writeFile(elsewhere, JSON.stringify({ ...f.manifestValue, image_metadata: { board: "205" } }));
+  // Act / Assert
+  await assert.rejects(boardPackageSnapshot(f.options.firmwareRoot, elsewhere, SOURCE), { code: "manifest_path" });
+});
+
+test("a board package snapshot refuses a 601 package that is not the mining build", async (t) => {
+  // Arrange
+  const f = await fixture(t);
+  const production = await boardPackage(f, "601", "601", "production");
+  // Act / Assert
+  await assert.rejects(boardPackageSnapshot(f.options.firmwareRoot, production, SOURCE), { code: "manifest_variant" });
 });

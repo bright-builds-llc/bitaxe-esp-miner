@@ -202,3 +202,75 @@ fn a_sample_records_the_fan_settings_and_reading() {
         (0, 80, 5_900)
     );
 }
+
+/// A running sample with every reading fresh and inside the limits, drawing `power` watts.
+fn fresh_running(power: f64) -> bitaxe_api::SystemInfoWire {
+    use bitaxe_api::ObservationStateWire::Fresh;
+    let mut wire = wire();
+    for status in [
+        &mut wire.power_status,
+        &mut wire.voltage_status,
+        &mut wire.current_status,
+        &mut wire.chip_temp_status,
+        &mut wire.fan_rpm_status,
+    ] {
+        status.state = Fresh;
+    }
+    wire.power = power;
+    wire.voltage_millivolts = 5_100.0;
+    wire.current_milliamps = 3_000.0;
+    wire.temp = 60.0;
+    wire.fan_rpm = 4_000;
+    wire
+}
+
+#[test]
+fn sixteen_watts_is_unsafe_on_the_ultra_205() {
+    // Arrange
+    let wire = fresh_running(16.0);
+    // Act
+    let valid = sample::safety_valid(&wire, sample::SoakBoard::Ultra205);
+    // Assert
+    assert!(!valid);
+}
+
+#[test]
+fn sixteen_watts_is_safe_on_the_gamma_601() {
+    // Arrange
+    let wire = fresh_running(16.0);
+    // Act
+    let valid = sample::safety_valid(&wire, sample::SoakBoard::Gamma601);
+    // Assert
+    assert!(valid);
+}
+
+#[test]
+fn twenty_three_watts_is_unsafe_on_either_board() {
+    // Arrange
+    let wire = fresh_running(23.0);
+    // Act
+    let valid = [sample::SoakBoard::Ultra205, sample::SoakBoard::Gamma601]
+        .map(|board| sample::safety_valid(&wire, board));
+    // Assert
+    assert_eq!(valid, [false, false]);
+}
+
+#[test]
+fn a_sample_without_a_board_judges_the_ultra_205() {
+    // Arrange
+    let wire = fresh_running(16.0);
+    // Act
+    let sample = SoakSample::from_wire(&wire, None);
+    // Assert
+    assert!(!sample.safety_valid);
+}
+
+#[test]
+fn a_sample_on_the_gamma_601_judges_its_power_stop() {
+    // Arrange
+    let wire = fresh_running(16.0);
+    // Act
+    let sample = SoakSample::from_wire_on(&wire, None, sample::SoakBoard::Gamma601);
+    // Assert
+    assert!(sample.safety_valid);
+}

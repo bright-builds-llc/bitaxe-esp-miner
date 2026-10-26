@@ -289,6 +289,34 @@ fn the_handoff_requires_a_fresh_verified_private_endpoint_and_its_own_schema() {
     assert!(origin(valid.as_bytes(), 15_000).is_err());
 }
 
+#[test]
+fn the_handoff_names_the_board_only_off_the_ultra_205() {
+    // Arrange
+    let plain = handoff(80);
+    let gamma = plain.replace(
+        r#""bindingVerified":true"#,
+        r#""bindingVerified":true,"board":"601""#,
+    );
+    let unknown = plain.replace(
+        r#""bindingVerified":true"#,
+        r#""bindingVerified":true,"board":"999""#,
+    );
+    // Act
+    let boards = [plain, gamma].map(|text| origin(text.as_bytes(), 11_000).map(|(_, board)| board));
+    // Assert
+    assert_eq!(
+        boards,
+        [
+            Ok(sample::SoakBoard::Ultra205),
+            Ok(sample::SoakBoard::Gamma601)
+        ]
+    );
+    assert_eq!(
+        origin(unknown.as_bytes(), 11_000).err(),
+        Some("invalid_input")
+    );
+}
+
 fn wire(sequence: u64) -> SystemInfoWire {
     let mut wire = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
     wire.operator_snapshot_revision = OperatorSnapshotRevision::new(sequence).expect("revision");

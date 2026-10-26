@@ -84,6 +84,9 @@ export function restartCool(limits) {
  *   by the 601's rule and restart at 400 MHz / 1050 mV (`restartProfile`), which must show a nonzero
  *   hashrate (`requireRestartHashrate`); then it mines 5 minutes there, or trips again and pauses
  *   itself, because the next step would leave the catalog.
+ * - Gamma 601 lease check 001 is lease check 001 on the 601 (ADR-0041 phase F3.4), on the test-only
+ *   `gamma601-mining` firmware at 400 MHz / 1150 mV, under the 601's limits. Its enable line also
+ *   enables the Gate soak that interrupts it (`fixed-usb-soak/contract.mjs`).
  */
 export const SOAKS = Object.freeze({
   "001": Object.freeze({ id: "001", activeMs: 30 * 60_000, requireHashrate: false, maybeMaximumOutageMs: null,
@@ -151,6 +154,11 @@ export const SOAKS = Object.freeze({
     maybeMaximumOutageMs: 180_000, unreachableStopMs: 60_000, maybeDeadlineMs: 45 * 60_000,
     enableLine: "Gamma 601 local mining overheat check hardware: enabled.",
     outcomes: ["restarted", "restarted_then_stays_stopped"] }),
+  "gamma601-lease-001": Object.freeze({ id: "gamma601-lease-001", kind: "lease", task: "task-gamma-601-bring-up",
+    firmwareVariant: "gamma601-mining", requireStoredBoard: "601", limits: GAMMA601_LIMITS,
+    profile: Object.freeze({ frequencyMhz: 400, coreVoltageMv: 1150 }), activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000,
+    requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 90 * 60_000, restoreBoundMs: 180_000,
+    enableLine: "Gamma 601 lease interrupt check hardware: enabled." }),
 });
 export const SAMPLE_INTERVAL_MS = 2000;
 /** A longer gap between successive samples breaks continuity. */

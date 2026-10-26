@@ -10,7 +10,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use bitaxe_api::SystemInfoWire;
 use serde_json::json;
 
-use super::sample::{PoolSettings, SoakSample, SoakTransport};
+use super::sample::{PoolSettings, SoakBoard, SoakSample, SoakTransport};
 use crate::continuity::{apply_live_frame, ReconnectBackoff};
 use crate::{PlainWebSocket, StrictHttpClient, WebSocketRead};
 
@@ -56,6 +56,7 @@ fn poll_http(
     client: &StrictHttpClient,
     events: &Sender<Stamped>,
     maybe_initial_pool: &mut Option<PoolSettings>,
+    board: SoakBoard,
 ) {
     let maybe_wire = client
         .get_system_info(Instant::now() + HTTP_DEADLINE)
@@ -75,14 +76,19 @@ fn poll_http(
             let matches = *initial == pool;
             Event::Sample(
                 SoakTransport::Http,
-                Box::new(SoakSample::from_wire(&wire, Some(matches))),
+                Box::new(SoakSample::from_wire_on(&wire, Some(matches), board)),
             )
         }
     };
     send(events, event);
 }
 
-pub(super) fn http_thread(origin: &str, stop: &AtomicBool, events: &Sender<Stamped>) {
+pub(super) fn http_thread(
+    board: SoakBoard,
+    origin: &str,
+    stop: &AtomicBool,
+    events: &Sender<Stamped>,
+) {
     let Ok(client) = StrictHttpClient::new(origin) else {
         send(events, Event::Failed("http_origin"));
         return;
@@ -92,13 +98,18 @@ pub(super) fn http_thread(origin: &str, stop: &AtomicBool, events: &Sender<Stamp
     while !stop.load(Ordering::Acquire) {
         if Instant::now() >= next {
             next += HTTP_POLL_INTERVAL;
-            poll_http(&client, events, &mut maybe_initial_pool);
+            poll_http(&client, events, &mut maybe_initial_pool, board);
         }
         thread::sleep(IDLE);
     }
 }
 
-pub(super) fn websocket_thread(origin: &str, stop: &AtomicBool, events: &Sender<Stamped>) {
+pub(super) fn websocket_thread(
+    board: SoakBoard,
+    origin: &str,
+    stop: &AtomicBool,
+    events: &Sender<Stamped>,
+) {
     let mut maybe_socket: Option<PlainWebSocket> = None;
     let mut projection = None;
     let mut connected_once = false;
@@ -140,7 +151,7 @@ pub(super) fn websocket_thread(origin: &str, stop: &AtomicBool, events: &Sender<
             Ok(WebSocketRead::Text(bytes)) => match apply_live_frame(&bytes, &mut projection) {
                 Some(wire) => Event::Sample(
                     SoakTransport::Websocket,
-                    Box::new(SoakSample::from_wire(&wire, None)),
+                    Box::new(SoakSample::from_wire_on(&wire, None, board)),
                 ),
                 None => Event::ProjectionInvalid(SoakTransport::Websocket),
             },
@@ -178,8 +189,21 @@ fn journal_line(stamped: &Stamped) -> serde_json::Value {
         "event": event, "sample": maybe_sample, "detail": maybe_detail})
 }
 
-/// Writes every event until `should_stop` or the lifetime bound, then stops both threads.
+/// `run_threads_on` the Ultra 205.
+#[cfg(test)]
 pub(super) fn run_threads(
+    origin: Arc<zeroize::Zeroizing<String>>,
+    output: &mut impl Write,
+    lifetime: Duration,
+    should_stop: impl FnMut() -> Result<bool, &'static str>,
+) -> Result<&'static str, &'static str> {
+    run_threads_on(SoakBoard::Ultra205, origin, output, lifetime, should_stop)
+}
+
+/// Writes every event until `should_stop` or the lifetime bound, then stops both threads. Samples
+/// judge `board`'s live stop limits.
+pub(super) fn run_threads_on(
+    board: SoakBoard,
     origin: Arc<zeroize::Zeroizing<String>>,
     output: &mut impl Write,
     lifetime: Duration,
@@ -188,12 +212,12 @@ pub(super) fn run_threads(
     let stop = Arc::new(AtomicBool::new(false));
     let (sender, receiver): (Sender<Stamped>, Receiver<Stamped>) = mpsc::channel();
     let handles = [
-        http_thread as fn(&str, &AtomicBool, &Sender<Stamped>),
+        http_thread as fn(SoakBoard, &str, &AtomicBool, &Sender<Stamped>),
         websocket_thread,
     ]
     .map(|body| {
         let (stop, sender, origin) = (Arc::clone(&stop), sender.clone(), Arc::clone(&origin));
-        thread::spawn(move || body(&origin, &stop, &sender))
+        thread::spawn(move || body(board, &origin, &stop, &sender))
     });
     drop(sender);
     let started = Instant::now();

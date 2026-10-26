@@ -4,8 +4,8 @@ import { lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { authorityCall } from "../fixed-usb-qualification/authority.mjs";
-import { admitTrust, BUNDLE, canonicalDirectory, cleanPushed, digest, fileDigest, ignored, missing, packageSnapshot, PAGE,
-  protectedPath, readJson, requireCondition, writeNew } from "../fixed-usb-qualification/contract.mjs";
+import { admitTrust, boardPackageSnapshot, BUNDLE, canonicalDirectory, cleanPushed, digest, fileDigest, ignored, missing, packageSnapshot,
+  PAGE, protectedPath, readJson, requireCondition, writeNew } from "../fixed-usb-qualification/contract.mjs";
 import { parseDetector } from "../hardware-operator/detector.mjs";
 import { requireSoakTask, SOAK_CONTEXT_SCHEMA, SOAK_RENEWALS, SOAK_SUGGESTED_DIFFICULTY } from "./contract.mjs";
 import { preflightProfile, profileSettings } from "./device-settings.mjs";
@@ -21,13 +21,18 @@ async function canonicalBinary(firmwareRoot, target) {
   return { path, sha256: await fileDigest(path) };
 }
 
-/** Everything a running soak must still match; re-inspected before signing. */
+/**
+ * Everything a running soak must still match; re-inspected before signing. Only an interrupting soak
+ * admits either board's package (`boardPackageSnapshot`), whose `board`, recorded off the Ultra 205,
+ * selects its task, profile and limits; every other soak stays pinned to the 205's package.
+ */
 export async function inspectSoakSources(options, operations = {}) {
   const checkRepo = operations.cleanPushed ?? cleanPushed;
   checkRepo(options.firmwareRoot, options.firmwareCommit);
   checkRepo(options.gateRoot, options.gateCommit);
-  await requireSoakTask(options.firmwareRoot, options.interruptLocalMining === true);
-  const packaged = await packageSnapshot(options.firmwareRoot, options.manifest, options.firmwareCommit);
+  const interrupts = options.interruptLocalMining === true;
+  const packaged = await (interrupts ? boardPackageSnapshot : packageSnapshot)(options.firmwareRoot, options.manifest, options.firmwareCommit);
+  await requireSoakTask(options.firmwareRoot, interrupts, packaged.board ?? "205");
   const trustPath = resolve(options.firmwareRoot, "firmware/bitaxe/bwg/deployment-trust.json");
   await protectedPath(options.authorityDirectory, true);
   const call = operations.authorityCall ?? authorityCall;
@@ -44,7 +49,7 @@ export async function inspectSoakSources(options, operations = {}) {
     bap_client: await (operations.canonicalBinary ?? canonicalBinary)(options.firmwareRoot, "bap-client/bap_client") };
 }
 
-/** The interruption check judges the handover only: no live changes and the upstream default profile. */
+/** The interruption check judges the handover only: no live changes and its board's default profile. */
 export function requireInterruptPlan(options, maybePlan) {
   requireCondition(!options.interruptLocalMining || (maybePlan === undefined && options.profile === undefined), "soak_interrupt_plan");
 }
@@ -64,9 +69,10 @@ export async function preflight(options, operations = {}) {
   const { maybePlan, refused } = selectedPlan(options);
   requireCondition(!refused, "soak_live_plan_ambiguous");
   requireInterruptPlan(options, maybePlan);
-  const profile = preflightProfile(options.profile, maybePlan && LIVE_PLANS[maybePlan].profile);
   const detector = await freshDetector(resolve(options.detector), (operations.now ?? Date.now)());
   const snapshot = await inspectSoakSources(options, operations);
+  // The package's board admits only its own default profile off the Ultra 205.
+  const profile = preflightProfile(options.profile, maybePlan && LIVE_PLANS[maybePlan].profile, snapshot.board ?? "205");
   const context = { schema: SOAK_CONTEXT_SCHEMA, ...snapshot, physical_identity_sha256: detector.physical,
     suggested_difficulty: SOAK_SUGGESTED_DIFFICULTY, renewals: SOAK_RENEWALS, hardware_profile: "device-settings", device_profile: profile, device_settings: profileSettings(profile),
     live_plan: maybePlan ?? null, live_changes: maybePlan ? frozenPlan(maybePlan) : [],
@@ -90,6 +96,8 @@ export async function verifyFrozenSoak(context, authorityDirectory, bun, operati
   const observed = await inspectSoakSources({ firmwareRoot: context.firmware_root, gateRoot: context.gate_root,
     firmwareCommit: context.firmware_commit, gateCommit: context.gate_commit, manifest: context.manifest, authorityDirectory, bun,
     interruptLocalMining: context.local_mining_interrupt === true }, operations);
+  // `board` is recorded only off the Ultra 205, so a context naming one the package lacks is drift too.
+  requireCondition(context.board === observed.board, "frozen_source_drift");
   for (const [key, value] of Object.entries(observed)) {
     requireCondition(JSON.stringify(context[key]) === JSON.stringify(value), "frozen_source_drift");
   }

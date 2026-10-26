@@ -14,6 +14,14 @@ export const SOAK_TASK_LINE = "Ultra 205 upstream-default soak hardware: enabled
  */
 export const INTERRUPT_TASK = "task-handover-panic-diagnosis";
 export const INTERRUPT_TASK_LINE = "Ultra 205 lease interruption check hardware: enabled.";
+/**
+ * Each board's interruption task and line. The Gate soak shares them with the local lease check it
+ * interrupts (`local-mining-soak` `lease-001`, `gamma601-lease-001`), so one line enables the pair.
+ */
+export const INTERRUPT_TASKS = Object.freeze({
+  "205": Object.freeze([INTERRUPT_TASK, INTERRUPT_TASK_LINE]),
+  "601": Object.freeze(["task-gamma-601-bring-up", "Gamma 601 lease interrupt check hardware: enabled."]),
+});
 export const SOAK_WORK_GATE_MS = 600000;
 /** 36 renewals at 20 s, the Gate's soak bound, cover up to 120 s of preparation plus the 600 s gate. */
 export const SOAK_RENEWALS = 36;
@@ -24,9 +32,13 @@ export const SOAK_PORT = 48765;
 export const IDLE_PROOF_MS = 60000;
 export const IDLE_MINIMUM_HTTP_SAMPLES = 20;
 
-/** The soak task must be active exactly once and carry the exact enable line in its own block. */
-export async function requireSoakTask(firmwareRoot, interruptsLocalMining = false) {
-  const [task, enableLine] = interruptsLocalMining ? [INTERRUPT_TASK, INTERRUPT_TASK_LINE] : [SOAK_TASK, SOAK_TASK_LINE];
+/**
+ * The soak task must be active exactly once and carry the exact enable line in its own block. An
+ * interrupting soak uses its board's task and line; only the Ultra 205 runs the standard soak.
+ */
+export async function requireSoakTask(firmwareRoot, interruptsLocalMining = false, board = "205") {
+  requireCondition(Object.hasOwn(INTERRUPT_TASKS, board) && (interruptsLocalMining || board === "205"), "soak_board");
+  const [task, enableLine] = interruptsLocalMining ? INTERRUPT_TASKS[board] : [SOAK_TASK, SOAK_TASK_LINE];
   const lines = (await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8")).split(/\r?\n/u);
   let section = "", inBlock = false, count = 0, enabled = false;
   for (const line of lines) {

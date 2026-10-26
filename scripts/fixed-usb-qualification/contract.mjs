@@ -86,6 +86,29 @@ export async function packageSnapshot(firmwareRoot, manifestPath, expectedSource
     (kind) => kind === "partition_table" ? firmwareRoot : dirname(manifestPath));
 }
 
+/** Each board's package manifest under the repository root (ADR-0041). */
+export const BOARD_MANIFESTS = Object.freeze({
+  "205": "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
+  "601": "bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json",
+});
+
+/**
+ * `packageSnapshot` for either board: the manifest path names the board, and the manifest's own
+ * `image_metadata.board` must agree. The snapshot records `board` only off the Ultra 205, so the
+ * 205's frozen contexts are unchanged.
+ */
+export async function boardPackageSnapshot(firmwareRoot, manifestPath, expectedSource) {
+  const maybeBoard = Object.keys(BOARD_MANIFESTS).find((board) => resolve(manifestPath) === resolve(firmwareRoot, BOARD_MANIFESTS[board]));
+  requireCondition(maybeBoard !== undefined, "manifest_path");
+  const manifest = await readJson(manifestPath);
+  requireCondition(manifest.image_metadata?.board === maybeBoard, "manifest_board");
+  // Only the 601's mining build admits a Worker Start (ADR-0041 item 10).
+  requireCondition(maybeBoard !== "601" || manifest.firmware_variant === "gamma601-mining", "manifest_variant");
+  const packaged = await inspectPackage(manifestPath, expectedSource,
+    (kind) => kind === "partition_table" ? firmwareRoot : dirname(manifestPath));
+  return maybeBoard === "205" ? packaged : { ...packaged, board: maybeBoard };
+}
+
 export async function inspectPackage(manifestPath, expectedSource, artifactRoot) {
   const manifest = await readJson(manifestPath);
   requireCondition(manifest.schema_version === 4 && manifest.build_identity?.source_dirty === false && manifest.source_commit === expectedSource && hex(manifest.app_elf_sha256, 64) &&

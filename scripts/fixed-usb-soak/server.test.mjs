@@ -446,3 +446,33 @@ test("an interrupting soak excuses a Connect refused before the observer and jud
   assert.equal(result.refused_connect_records, 1);
   assert.ok(!result.failures.includes("browser_failure") && !result.failures.includes("interrupt_refusal_unobserved"), JSON.stringify(result.failures));
 });
+
+const gamma601Soak = { profile: "gamma601-first", settings: { frequency: 400, coreVoltage: 1150, autofanspeed: 1 },
+  extraContext: { board: "601", local_mining_interrupt: true } };
+
+test("a 601 soak writes its own profile and never restores 485 MHz at 1200 mV", async (t) => {
+  // Arrange
+  const { root, server, call, patches, clock } = await supervisor(gamma601Soak);
+  t.after(() => server.close());
+  await reviewed(call);
+  await call("/authorization-context", { controlSessionBindingSha256: binding });
+  await call("/window-artifacts");
+  const { value: completion } = await call("/completion-context", {});
+  clock.fastForward = true;
+  // Act
+  await call("/completion-review", { nonce: completion.nonce, ledger_after: soakLedger, final_state: afterSettings });
+  // Assert
+  assert.deepEqual(patches.map((patch) => patch.settings), [gamma601Soak.settings]);
+  const { result } = JSON.parse(await readFile(resolve(root, "result.json"), "utf8"));
+  assert.equal(result.settings_restore, undefined);
+});
+
+test("a 601 context carrying the 205's profile is refused", async () => {
+  // Arrange / Act / Assert
+  await assert.rejects(supervisor({ extraContext: { board: "601", local_mining_interrupt: true } }), /soak_board_profile/u);
+});
+
+test("a context naming an unknown board is refused", async () => {
+  // Arrange / Act / Assert
+  await assert.rejects(supervisor({ ...gamma601Soak, extraContext: { board: "999" } }), /soak_board/u);
+});

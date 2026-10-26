@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyDeviceSettings, preflightProfile, profileSettings, SOAK_DEVICE_SETTINGS } from "./device-settings.mjs";
+import { applyDeviceSettings, boardDefaultProfile, preflightProfile, profileSettings, SOAK_DEVICE_SETTINGS } from "./device-settings.mjs";
 
 function fakeDevice(info, ok = true) {
   const calls = [];
@@ -76,4 +76,27 @@ test("preflight refuses an unknown profile", () => {
 test("a live plan supplies its own profile when none is named", () => {
   // Arrange / Act / Assert
   assert.equal(preflightProfile(undefined, "upstream-default-bap"), "upstream-default-bap");
+});
+
+test("the 601's default profile is 400 MHz at 1150 mV with the automatic fan", () => {
+  // Arrange / Act / Assert
+  assert.equal(boardDefaultProfile("601"), "gamma601-first");
+  assert.deepEqual(profileSettings("gamma601-first"), { frequency: 400, coreVoltage: 1150, autofanspeed: 1 });
+});
+
+test("a 601 preflight defaults to its own profile and admits no other", () => {
+  // Arrange / Act / Assert
+  assert.equal(preflightProfile(undefined, undefined, "601"), "gamma601-first");
+  assert.throws(() => preflightProfile("upstream-default", undefined, "601"), /soak_board_profile/u);
+  assert.throws(() => preflightProfile(undefined, "upstream-default-bap", "601"), /soak_board_profile/u);
+});
+
+test("a 205 preflight refuses the 601's profile", () => {
+  // Arrange / Act / Assert
+  assert.throws(() => preflightProfile("gamma601-first", undefined), /soak_board_profile/u);
+});
+
+test("an unknown board refuses the soak", () => {
+  // Arrange / Act / Assert
+  assert.throws(() => preflightProfile(undefined, undefined, "999"), /soak_board/u);
 });

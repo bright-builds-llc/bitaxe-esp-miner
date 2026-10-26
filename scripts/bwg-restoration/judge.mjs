@@ -9,7 +9,7 @@ const SESSION_LOSS_SCENARIOS = new Set(["disconnect", "reboot", "authorization_n
 
 /** Live limits on any sample a future page exposes: 4.5–5.5 V, ≤15 W, <75 C, fresh nonzero fan, watchdog. */
 export function liveSafetyFailures(samples) {
-  return samples.some(unsafeSample) ? ["unsafe_sample"] : [];
+  return samples.some((sample) => unsafeSample(sample)) ? ["unsafe_sample"] : [];
 }
 
 /** The scenario's journal entries after its segment start, and whether the bounded journal lost any. */

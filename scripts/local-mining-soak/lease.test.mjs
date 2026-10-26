@@ -143,3 +143,71 @@ test("a status-only stall before the interrupt marks local mining stopped at its
   const stopped = events.find((event) => event.event === "local_stopped");
   assert.ok(stopped.atMs >= 384_000 && stopped.atMs < 400_000);
 });
+
+const GAMMA601_LEASE = SOAKS["gamma601-lease-001"];
+
+/**
+ * `fakeLease` as a Gamma 601: it reports its stored board and the soak's saved pair, hashes at
+ * 16 W, and reads 5.8 W stopped, its regulator's fixed offset (ADR-0041).
+ */
+function fake601Lease() {
+  const device = fakeLease();
+  const info = device.client.info;
+  device.client.info = async () => {
+    const value = await info();
+    return { ...value, storedBoard: "601", boardIdentity: "match", frequency: 400, coreVoltage: 1150, vrTemp: 60,
+      power: value.power === 12 ? 16 : 5.8 };
+  };
+  return device;
+}
+
+async function runAs(device, soak) {
+  return runSoak({ client: device.client, expected: EXPECTED, settings: SETTINGS, now: () => device.clock.now,
+    sleep: async (ms) => { device.clock.now += ms; }, record: async () => {}, soak, leaseResult: device.leaseResult });
+}
+
+test("a 601 lease judged at 16 W passes under the 601's limits", async () => {
+  // Arrange
+  const device = fake601Lease();
+  // Act
+  const verdict = await runAs(device, GAMMA601_LEASE);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.metrics.maximum_power_w, 16);
+  assert.equal(verdict.metrics.status_only_samples, 0);
+  assert.equal(device.state.paused, true);
+});
+
+test("a lease hashing at 16 W fails the 205's lease check", async () => {
+  // Arrange: the 205's own idle reading, so only the hashing power differs.
+  const device = fakeLease();
+  const info = device.client.info;
+  device.client.info = async () => { const value = await info(); return { ...value, power: value.power === 12 ? 16 : value.power }; };
+  // Act
+  const verdict = await runAs(device, LEASE);
+  // Assert
+  assert.ok(verdict.failures.includes("soak_power"), JSON.stringify(verdict.failures));
+});
+
+test("a stopped 601 at 5.8 W counts as stopped only under the 601's limits", async () => {
+  // Arrange
+  const { judgeLease } = await import("./lease.mjs");
+  const { sampleFromInfo } = await import("./judge.mjs");
+  const stopped = sampleFromInfo({ bootSession: "s", miningPaused: true, miningActivity: "paused", power: 5.8, powerStatus: { state: "fresh" } }, 0);
+  const judged = (soak) => judgeLease({ baseline: stopped, samples: [], maybeFinal: stopped, maybeStop: null, soak, marks: {} }).failures;
+  // Act / Assert
+  assert.ok(!judged(GAMMA601_LEASE).includes("soak_not_stopped_after"));
+  assert.ok(judged(LEASE).includes("soak_not_stopped_after"));
+});
+
+test("the 601 lease check saves its 400 MHz / 1150 mV profile before the resume", async () => {
+  // Arrange
+  const device = fake601Lease();
+  const patches = [];
+  const patch = device.client.patch;
+  device.client.patch = async (body) => { patches.push(body); return patch(body); };
+  // Act
+  await runAs(device, GAMMA601_LEASE);
+  // Assert
+  assert.deepEqual(patches.at(-1), { frequency: 400, coreVoltage: 1150 });
+});

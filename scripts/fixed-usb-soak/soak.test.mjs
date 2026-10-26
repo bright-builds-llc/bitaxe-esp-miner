@@ -240,3 +240,25 @@ test("restoring the upstream default after another profile does not fail the soa
   assert.ok(!result.failures.some((failure) => failure.includes("restore")));
   assert.deepEqual(result.settings_restore, { reason: "profile_completed", outcome: "restored" });
 });
+
+/** The handoff line a started observer writes for `context`, captured from a stand-in child. */
+async function handoffFor(context) {
+  const { EventEmitter } = await import("node:events");
+  const root = await privateDirectory();
+  const binary = resolve(root, "soak_observer");
+  await writeFile(binary, "#!/bin/sh\n", { mode: 0o700 });
+  let written;
+  const spawnFake = () => Object.assign(new EventEmitter(), {
+    stdin: { on: () => undefined, write: (bytes, done) => { written = JSON.parse(bytes.toString()); done(); } } });
+  const observer = createSoakObserver(root, { ...context, soak_observer: { path: binary, sha256: digest(await readFile(binary)) } }, { spawn: spawnFake });
+  await observer.start({ ipv4: "192.168.1.20", httpPort: 80 });
+  return written;
+}
+
+test("the observer's handoff names the board only off the 205", async () => {
+  // Arrange / Act
+  const [ultra205, gamma601] = [await handoffFor({}), await handoffFor({ board: "601" })];
+  // Assert
+  assert.equal(Object.hasOwn(ultra205, "board"), false);
+  assert.equal(gamma601.board, "601");
+});
