@@ -692,8 +692,11 @@ action.
     - [x] Overheat hardware: passed on attempt 001, outcome `restarted`
       (`docs/parity/evidence/20261025-gamma601-overheat-check.md`);
       production reinstalled;
-    - [ ] Lease-interrupt software: the lease soak and the Gate soak made
-      board-aware, soak `gamma601-lease-001` at 400 MHz;
+    - [x] Lease-interrupt software: the lease soak and the Gate soak made
+      board-aware (the board from the package manifest; the 601's 22 W,
+      its 400/1150 default never restored to 485/1200, its chip temperature
+      required only while the work gate is open and active), soak
+      `gamma601-lease-001` at 400 MHz;
     - [ ] Lease-interrupt hardware: its own contract, after the overheat
       check passes.
   - [ ] F4: self-test, soaks and promotion.
@@ -1406,6 +1409,73 @@ and production is reinstalled.
   and the device pauses itself with `overheat_mode` set, so the restore
   reads unconfirmed. The 55 C and 75 C trips still protect the chip;
   accepted, with `pause` as the recovery.
+
+Phase F3.4 lease interrupt contract (attempt ordinals 001 onward):
+
+Gamma 601 lease interrupt check hardware: enabled.
+
+- **Objective:** a Gate Worker lease takes over from local mining on the
+  601 and hands back. The local soak `gamma601-lease-001` (400 MHz /
+  1150 mV) mines 5 minutes; the Gate soak's first Connect is refused and
+  stops local mining; after the reload, a signed soak lease mines 600
+  active seconds; local mining is back within 3 minutes of the lease's end
+  and mines 5 more minutes; the device ends paused. Passing means the
+  local soak's `passed` and the Gate soak's `passed`.
+- **Precondition:** only the 601 attached, registered as board 601; the
+  tree clean and pushed; the dedicated Gate tab in the Chrome profile that
+  holds the 601's Web Serial grant; the device's saved pair 400/1150.
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/gamma-601-lease/` and `umask 077`:**
+  1. `just detect-ultra205`; `just package-gamma601-mining`; `just
+     flash-monitor --board 601 --port <port> --manifest
+     bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json
+     --allow-test-firmware gamma601-mining --capture-timeout-seconds 360`;
+  2. the endpoint handoff (`just otawww-endpoint preflight|serve|finish`);
+  3. `just local-mining-soak preflight --soak gamma601-lease-001
+     --private-root P/local-NNN --endpoint-root P/endpoint-NNN
+     --package-manifest <manifest> --pool-credentials pool-credentials.json
+     --lease-root P/gate-NNN`, then `pause`, then `run` detached;
+  4. once the local soak reports `lease_ready`: the Gate's browser bundle
+     built at the pinned commit (`bun run build:browser` in the Gate repo
+     at `b7751451`, if not already current); `just detect-ultra205 >
+     P/detector.log`; within 60 s of it, `just ultra205-soak preflight
+     --private-root P/gate-NNN --firmware-root <repo> --gate-root <gate
+     repo> --firmware-commit <HEAD> --gate-commit
+     b7751451cf51c787d7523dbd44076d8e5c3ea882 --manifest <manifest>
+     --authority-directory <the acceptance authority directory whose lease
+     key the firmware trusts> --detector P/detector.log
+     --interrupt-local-mining`; `serve` detached with `--pool-credentials
+     pool-credentials.json`; the page's steps in the dedicated tab (the
+     refused Connect, `startObserver()`, the reload and Connect, the idle
+     proof, the reviews, `prepareStartAuthorization()`,
+     `loadSignedWindow()`, `startWindow()`, `submitSoakCompletion()`), the
+     tab to `about:blank`; then `owner-finish` or `finish`;
+  5. after the local soak's verdict, `just package --board 601`, `just
+     flash --board 601 --port <port>`, state-preserving, and `just monitor
+     --board 601 --port <port> --capture-timeout-seconds 360`.
+- **Allowed effects:** the installs; the handoff; start-on-boot saved off;
+  the pool and the 400/1150 profile saved; local mining before and after;
+  one refused Connect and its ordered safe-stop; one signed soak lease
+  (600 active seconds at the saved 400/1150) signed through the repo's
+  authority tooling from the protected directory; the soak ledger charged
+  once; the Gate soak's start-of-soak settings write, the 601's default
+  400/1150 with the automatic fan (no other profile is admitted, so nothing
+  else is restored).
+- **Prohibited effects:** live changes, any other profile, a second lease,
+  a factory reset, network discovery beyond the handoff and the Gate soak's
+  own station read, direct UART or pins. Pool values and lease secrets
+  never leave `P`; no key file is read except by the repo's signing
+  tooling.
+- **Stops:** the local soak's live stops (the 601's 22 W, chip 75 C,
+  regulator 90 C, input voltage, fan, stale readings in the local phases, a
+  reset, a fault) and the Gate soak's judges. Any stop: pause, reinstall
+  production before analysing, then analyse (progress-gated policy).
+- **Evidence and privacy:** captures, journals and Gate results stay in
+  `P` (mode 0600); committed evidence is a redacted summary, checked
+  independently, with `just verify-redaction`.
+- **Recovery:** `just local-mining-soak pause --private-root P/local-NNN`
+  (a pause during the lease holds and confirms once the lease ends); stop
+  the Gate server and seal with `finish`; then the production reinstall.
 
 ## Future
 
