@@ -1822,6 +1822,27 @@ F4.3 attempts:
   diagnostic-owner boot, judged up to a passing self-test's announced
   restart; every other capture is judged as before. Outcome:
   `continue_after_verified_fix`.
+- **Attempt 004** (`807ad692`): the planned failure reached `cancel_ready`,
+  the owner's BOOT press cancelled it, and the capture was judged trusted.
+  The pass phase ran to the evaluation and failed `hashrate_low`: 784 GH/s
+  against the 910 floor (525 MHz × 2040 small cores × 0.85), domain counters
+  of about 152 to 202 GH/s with 14 to 19 samples each of about 30, 18.9 W,
+  1145 mV, chip at most 66.25 C, regulator 56 C, no regulator fault; the
+  safe stop held (`safe_state:true`). Mining on this board measures about
+  1060 GH/s (F4.1, F4.2). The campaign's recovery restored the settings;
+  production was then reinstalled and confirmed (56 safe-boot records,
+  `identity=match`, the Worker baseline confirmed, no panic) before the
+  analysis. Causes found: the self-test read one result frame per 100 ms
+  pass, slower than a BM1370's results and register replies, so frames
+  backed up and could be lost; it resent its job every 2 s, the BM1366's
+  interval, where upstream feeds the BM1370 every 500 ms; and the warm-up's
+  nonces and domain samples were counted into the 30 s window (both
+  boards; upstream counts from its measuring loop). Fix (`cd9aee8e`):
+  every received frame drained each pass (at most 32), the job resent at
+  the family's interval (the 205 unchanged at 2 s), and counting from the
+  measuring stage. The 205's verified numbers are no longer directly
+  comparable; its F4.6 self-test rerun covers that. Outcome:
+  `continue_after_verified_fix`.
 
 ## Future
 
