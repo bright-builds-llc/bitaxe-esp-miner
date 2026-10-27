@@ -725,7 +725,11 @@ action.
       path, the 601 start path, and per-board flash intents, campaign,
       evidence and validator, with the 601's plan
       (`docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md`);
-    - [ ] F4.3 hardware: the 601's two-phase lifecycle on `gamma601-mining`;
+    - [x] F4.3 hardware: passed on attempt 006, the planned failure
+      cancelled by BOOT, then 1032.8 GH/s, domains 259 to 272 GH/s, 18.9 W,
+      chip 65.5 C, regulator 55.5 C, receipt and restart, settings restored
+      (`docs/parity/evidence/20261027-gamma601-self-test.md`); production
+      reinstalled;
     - [ ] F4.4: promotion (software): production 601 mines, mines on boot
       by its saved preference, `gamma601-mining` retired;
     - [ ] F4.5: promotion hardware: boot resume, the production self-test,
@@ -1746,7 +1750,7 @@ Closed after attempt 001 passed (2026-10-26); no enable line remains.
 
 Phase F4.3 self-test contract (attempt ordinals 001 onward):
 
-Gamma 601 self-test hardware: enabled.
+Closed after attempt 006 passed (2026-10-27); no enable line remains.
 
 The owner asked on 2026-10-26 for `wifi-credentials.json` to be applied
 for this campaign's factory installs (the Wi-Fi rule above); the file is
@@ -1859,6 +1863,17 @@ F4.3 attempts:
   merkle root (extranonce2). Fix: each dispatch writes its count into the
   merkle root, so every job is new work, on both boards. Outcome:
   `continue_after_verified_fix`.
+- **Attempt 006** (`22ee4801`): passed; outcome `complete`. The planned
+  failure reached `cancel_ready` and the owner's BOOT press cancelled it;
+  the pass measured 1032.8 GH/s, domains 261.9, 272.4, 272.0 and 258.7 GH/s
+  (28, 28, 28 and 18 samples, none rejected), 18.9 W, 1145 mV, chip at most
+  65.5 C, regulator 55.5 C, no fault; the pass receipt, the automatic
+  restart and the settings restore followed, and the validated projection
+  was published (`docs/parity/evidence/self001-gamma601/attempt-006/`).
+  Production was then reinstalled and confirmed (56 safe-boot records,
+  `identity=match`, the Worker baseline confirmed at `22ee4801`, no panic).
+  Evidence: `docs/parity/evidence/20261027-gamma601-self-test.md`, checked
+  independently against the private captures.
 
 ## Future
 

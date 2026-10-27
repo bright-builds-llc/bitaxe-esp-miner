@@ -1,0 +1,56 @@
+{
+  "schema_version": "bitaxe-self-test-evidence-v1",
+  "board": 601,
+  "attempt_ordinal": 6,
+  "source_commit": "22ee4801eec3f219aae7b31bdfd1a3776cdc893f",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "app_elf_sha256": "253d192976caac7382cf59b44e99455009d3a9a6f5ada9e0248d8011fcf9b02b",
+  "package_manifest_sha256": "fb6e84b5792914773b5d08e2f8ab77fec850689826795ebcccb6b7c5de0cc8f7",
+  "plan_sha256": "584b784b96b06867d7854b485cd0d4c5f829ce3711345f23d132fd90a307e098",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "self-test-campaign",
+    "request_sha256": "e16d886eb41b40e2feb674e661eddb9f24dc2cf53402c4a0864f7a401be930a1"
+  },
+  "detector_admitted": true,
+  "psram_available": true,
+  "failure": {
+    "stable_load_ms": 5000,
+    "planned_evaluation_failure": true,
+    "safe_stop_complete": true,
+    "failed_state_observed": true,
+    "cancel_checkpoint_safe": true,
+    "physical_long_press_observed": true,
+    "cancellation_receipt_observed": true,
+    "cancellation_restart_observed": true
+  },
+  "pass": {
+    "frequency_mhz": 525,
+    "core_voltage_mv": 1150,
+    "difficulty": 16,
+    "warmup_celsius": 55,
+    "target_celsius": 65,
+    "maximum_celsius": 70,
+    "measurement_ms": 30000,
+    "total_hashrate_passed": true,
+    "domain_count": 4,
+    "domain_evaluation_passed": true,
+    "electrical_checks_passed": true,
+    "fan_check_passed": true,
+    "watchdog_advanced": true,
+    "safe_stop_complete": true,
+    "pass_receipt_observed": true,
+    "automatic_restart_observed": true
+  },
+  "restoration": {
+    "settings_snapshot_captured_before_write": true,
+    "local_credentials_used_in_memory": true,
+    "settings_restored": true,
+    "mine_on_boot_disabled": true,
+    "production_mining_never_started": true,
+    "pool_traffic_absent": true
+  },
+  "cleanup_complete": true,
+  "private_modes_valid": true,
+  "redaction_status": "passed"
+}
