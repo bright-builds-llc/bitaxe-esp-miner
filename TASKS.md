@@ -1843,6 +1843,22 @@ F4.3 attempts:
   measuring stage. The 205's verified numbers are no longer directly
   comparable; its F4.6 self-test rerun covers that. Outcome:
   `continue_after_verified_fix`.
+- **Attempt 005** (`62d5531f`): the planned failure reached `cancel_ready`
+  and the owner's BOOT press cancelled it. The pass phase ran to the
+  evaluation and failed `domain_failed`: 1418 GH/s total, domains 243, 319,
+  264 and 368 GH/s (bound about 152 to 303) with 25 to 28 samples each,
+  18.9 W, 1145 mV, chip at most 65.88 C, regulator 56 C, no regulator
+  fault; the safe stop held. The campaign's recovery restored the settings;
+  production was then reinstalled and confirmed (56 safe-boot records,
+  `identity=match`, the Worker baseline confirmed, no panic) before the
+  analysis. Cause: the self-test resent one identical job, so the chip
+  rescanned the same nonces each interval and the 30 s count repeated one
+  500 ms sample (about 7.8 nonces and 31 counts per domain expected; the
+  readings are within about 2σ of one such sample, and about 7σ to 15σ from
+  a true 30 s average). Upstream's job pipeline gives every job a new
+  merkle root (extranonce2). Fix: each dispatch writes its count into the
+  merkle root, so every job is new work, on both boards. Outcome:
+  `continue_after_verified_fix`.
 
 ## Future
 

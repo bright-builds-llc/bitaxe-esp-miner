@@ -179,6 +179,21 @@ fn the_self_test_feeds_work_at_the_family_interval_and_drains_every_frame() {
 }
 
 #[test]
+fn each_dispatch_sends_new_work() {
+    // Arrange
+    let (_, fields) = MEASUREMENT_SOURCE
+        .split_once("fn diagnostic_work_fields(dispatch: u32)")
+        .expect("the work fields exist");
+    // Act
+    let varies = fields.contains("merkle_root[..4].copy_from_slice(&dispatch.to_le_bytes());")
+        && MEASUREMENT_SOURCE.contains("diagnostic_work_fields(measurement.dispatch_count)")
+        && MEASUREMENT_SOURCE.contains("measurement.dispatch_count.wrapping_add(1)");
+    // Assert
+    assert!(varies);
+    assert!(!MEASUREMENT_SOURCE.contains("deterministic_work_fields"));
+}
+
+#[test]
 fn the_measured_window_counts_nothing_from_the_warm_up() {
     // Arrange
     let (_, measuring) = RUNTIME_SOURCE

@@ -23,11 +23,15 @@ pub(super) fn service_diagnostic_work(
 ) -> Result<(), HardwareSelfTestFailure> {
     let now_ms = crate::runtime_uptime::millis();
     if now_ms >= measurement.next_dispatch_ms {
-        let payload = Bm1366WorkPayload::new(measurement.job_id, deterministic_work_fields());
+        let payload = Bm1366WorkPayload::new(
+            measurement.job_id,
+            diagnostic_work_fields(measurement.dispatch_count),
+        );
         crate::asic_adapter::production::execute_self_test_command(
             Bm1366Command::SendDiagnosticWork(payload),
         )
         .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
+        measurement.dispatch_count = measurement.dispatch_count.wrapping_add(1);
         measurement.next_dispatch_ms = now_ms.saturating_add(work_dispatch_ms());
     }
     if now_ms >= measurement.next_register_poll_ms {
@@ -75,12 +79,17 @@ const DRAIN_POLL_MS: u32 = 10;
 /// The most frames one pass reads, so a flooding chip cannot starve the temperature checks.
 const MAXIMUM_READS_PER_PASS: usize = 32;
 
-fn deterministic_work_fields() -> Bm1366WorkFields {
+/// Each dispatch is new work: upstream's job pipeline rolls extranonce2 into every job's merkle
+/// root. One job resent unchanged makes the chip rescan the same nonces, so the count repeats one
+/// interval's sample: F4.3 attempt 005 counted 1418 GH/s at 525 MHz, domains up to 62 % high.
+fn diagnostic_work_fields(dispatch: u32) -> Bm1366WorkFields {
+    let mut merkle_root = [0x5a; 32];
+    merkle_root[..4].copy_from_slice(&dispatch.to_le_bytes());
     Bm1366WorkFields {
         starting_nonce: [0; 4],
         nbits: [0xff; 4],
         ntime: [0x64, 0x70, 0x25, 0xb5],
-        merkle_root: [0x5a; 32],
+        merkle_root,
         prev_block_hash: [0xa5; 32],
         version: [0x20, 0, 0, 4],
     }
@@ -90,6 +99,7 @@ pub(super) struct DiagnosticMeasurement {
     job_id: Bm1366JobId,
     valid_jobs: Bm1366ValidJobIds,
     next_dispatch_ms: u64,
+    dispatch_count: u32,
     next_register_poll_ms: u64,
     nonce_count: u64,
     domains: DomainMeasurement,
@@ -105,6 +115,7 @@ impl DiagnosticMeasurement {
             job_id,
             valid_jobs: Bm1366ValidJobIds::single(job_id),
             next_dispatch_ms: 0,
+            dispatch_count: 0,
             next_register_poll_ms: 0,
             nonce_count: 0,
             domains: DomainMeasurement::new(contract),
