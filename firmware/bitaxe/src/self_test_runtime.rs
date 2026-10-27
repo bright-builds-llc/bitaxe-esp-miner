@@ -35,7 +35,6 @@ use crate::settings_adapter::{SelfTestAdmission, SelfTestReceipt};
 const OWNER_THREAD_NAME: &str = "self-test";
 const OWNER_STACK_BYTES: usize = 24 * 1_024;
 const RESULT_POLL_MS: u32 = 100;
-const WORK_DISPATCH_MS: u64 = 2_000;
 const REGISTER_POLL_MS: u64 = 1_000;
 const SAFETY_PREFLIGHT_TIMEOUT_MS: u64 = 10_000;
 /// How often `cancel_ready` is logged again while it waits for the BOOT cancel.
@@ -253,6 +252,7 @@ fn run_inner(
         HardwareSelfTestStage::Measuring,
         Some(duration_ms),
     )?;
+    measurement.begin_window();
     let started_at_ms = crate::runtime_uptime::millis();
     let mut pid = PidController::new(PidState::default());
     while crate::runtime_uptime::millis().saturating_sub(started_at_ms) < duration_ms {

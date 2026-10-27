@@ -159,3 +159,36 @@ fn each_board_names_its_own_self_test_kind() {
     assert_eq!(kinds, [true, true]);
     assert!(SETTINGS_SOURCE.contains("const KIND: &str = crate::board_identity::SELF_TEST_KIND;"));
 }
+
+#[test]
+fn the_self_test_feeds_work_at_the_family_interval_and_drains_every_frame() {
+    // Arrange
+    let (_, service) = MEASUREMENT_SOURCE
+        .split_once("fn service_diagnostic_work(")
+        .expect("the diagnostic work service exists");
+    // Act
+    let family_cadence = MEASUREMENT_SOURCE
+        .contains("crate::board_identity::ASIC_FAMILY.job_interval_ms(asic_count)")
+        && service.contains("now_ms.saturating_add(work_dispatch_ms())");
+    let drains = service.contains("for _ in 0..MAXIMUM_READS_PER_PASS")
+        && service.contains("ProductionReadOutcome::Pending | ProductionReadOutcome::Discarded(_) => break");
+    // Assert
+    assert!(family_cadence);
+    assert!(drains);
+    assert!(!RUNTIME_SOURCE.contains("WORK_DISPATCH_MS"));
+}
+
+#[test]
+fn the_measured_window_counts_nothing_from_the_warm_up() {
+    // Arrange
+    let (_, measuring) = RUNTIME_SOURCE
+        .split_once("HardwareSelfTestStage::Measuring,")
+        .expect("the measuring stage exists");
+    let position = |token: &str| measuring.find(token).expect(token);
+    // Act
+    let reset_first = position("measurement.begin_window();") < position("let started_at_ms");
+    // Assert
+    assert!(reset_first);
+    assert!(MEASUREMENT_SOURCE.contains("self.nonce_count = 0;"));
+    assert!(DOMAIN_SOURCE.contains("self.sample_counts = [0; HARDWARE_SELF_TEST_DOMAIN_COUNT];"));
+}

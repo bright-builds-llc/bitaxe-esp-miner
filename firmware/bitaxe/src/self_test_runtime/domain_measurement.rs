@@ -26,6 +26,13 @@ impl DomainMeasurement {
         }
     }
 
+    /// Drops the warm-up's samples; the monitor keeps each counter's last reading.
+    pub(super) fn begin_window(&mut self) {
+        self.hashrate_sums = [0.0; HARDWARE_SELF_TEST_DOMAIN_COUNT];
+        self.sample_counts = [0; HARDWARE_SELF_TEST_DOMAIN_COUNT];
+        self.rejected_counts = [0; HARDWARE_SELF_TEST_DOMAIN_COUNT];
+    }
+
     pub(super) fn record(
         &mut self,
         read: Bm1366RegisterRead,

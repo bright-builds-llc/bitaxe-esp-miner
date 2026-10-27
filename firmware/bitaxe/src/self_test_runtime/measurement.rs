@@ -15,7 +15,7 @@ use bitaxe_safety::self_test::{
 use crate::asic_adapter::production::ProductionReadOutcome;
 
 use super::domain_measurement::DomainMeasurement;
-use super::{board, SelfTestTaskWatchdog, REGISTER_POLL_MS, RESULT_POLL_MS, WORK_DISPATCH_MS};
+use super::{board, SelfTestTaskWatchdog, REGISTER_POLL_MS, RESULT_POLL_MS};
 
 pub(super) fn service_diagnostic_work(
     measurement: &mut DiagnosticMeasurement,
@@ -28,7 +28,7 @@ pub(super) fn service_diagnostic_work(
             Bm1366Command::SendDiagnosticWork(payload),
         )
         .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
-        measurement.next_dispatch_ms = now_ms.saturating_add(WORK_DISPATCH_MS);
+        measurement.next_dispatch_ms = now_ms.saturating_add(work_dispatch_ms());
     }
     if now_ms >= measurement.next_register_poll_ms {
         if !crate::asic_adapter::production::request_hashrate_monitor_register_reads_tx() {
@@ -37,20 +37,43 @@ pub(super) fn service_diagnostic_work(
         measurement.next_register_poll_ms = now_ms.saturating_add(REGISTER_POLL_MS);
     }
     watchdog.feed(TaskWatchdogOwnerSubphase::EffectPollChip);
-    match crate::asic_adapter::production::try_read_self_test_result(
-        &measurement.valid_jobs,
-        RESULT_POLL_MS,
-    )
-    .map_err(|_| HardwareSelfTestFailure::MeasurementIncomplete)?
-    {
-        ProductionReadOutcome::JobNonce(_) => measurement.record_nonce(),
-        ProductionReadOutcome::RegisterReadProof(read) => {
-            measurement.record_register(read, now_ms)?;
+    // Every frame already received is read on each pass. One read per pass is slower than a
+    // BM1370's results and register replies at 525 MHz; the backlog that builds can lose frames
+    // and delays each register reply's timestamp. F4.3 attempt 004 counted 784 of about 1070 GH/s
+    // with about half the domain samples missing, which this and the job cadence may explain.
+    let mut poll_ms = RESULT_POLL_MS;
+    for _ in 0..MAXIMUM_READS_PER_PASS {
+        let outcome = crate::asic_adapter::production::try_read_self_test_result(
+            &measurement.valid_jobs,
+            poll_ms,
+        )
+        .map_err(|_| HardwareSelfTestFailure::MeasurementIncomplete)?;
+        match outcome {
+            ProductionReadOutcome::JobNonce(_) => measurement.record_nonce(),
+            ProductionReadOutcome::RegisterReadProof(read) => {
+                measurement.record_register(read, crate::runtime_uptime::millis())?;
+            }
+            ProductionReadOutcome::Pending | ProductionReadOutcome::Discarded(_) => break,
         }
-        ProductionReadOutcome::Pending | ProductionReadOutcome::Discarded(_) => {}
+        poll_ms = DRAIN_POLL_MS;
     }
     Ok(())
 }
+
+/// How often the diagnostic job is resent: the family's job interval, as upstream feeds its
+/// self-test work (`ASIC_get_asic_job_frequency_ms`). That is 2 s on the 205's BM1366, as its
+/// verified self-test ran, and 500 ms on the BM1370, whose mining measures about 1060 GH/s at
+/// that cadence; a BM1370 left on one job for 2 s may run out of work.
+fn work_dispatch_ms() -> u64 {
+    let asic_count = u32::from(crate::board_identity::catalog_entry().asic_count());
+    u64::from(crate::board_identity::ASIC_FAMILY.job_interval_ms(asic_count))
+}
+
+/// After a pass's first frame, later reads wait only this long: an 11-byte frame arrives in
+/// about 0.1 ms, so a quiet line ends the drain at once.
+const DRAIN_POLL_MS: u32 = 10;
+/// The most frames one pass reads, so a flooding chip cannot starve the temperature checks.
+const MAXIMUM_READS_PER_PASS: usize = 32;
 
 fn deterministic_work_fields() -> Bm1366WorkFields {
     Bm1366WorkFields {
@@ -117,6 +140,13 @@ impl DiagnosticMeasurement {
             return Err(HardwareSelfTestFailure::RegulatorFault);
         }
         Ok(())
+    }
+
+    /// Starts the measured window. Upstream counts nonces and domain samples from its measuring
+    /// loop on (`self_test.c`), so the warm-up's are dropped; the counters' baselines stay.
+    pub(super) fn begin_window(&mut self) {
+        self.nonce_count = 0;
+        self.domains.begin_window();
     }
 
     fn record_nonce(&mut self) {
