@@ -2007,6 +2007,24 @@ read, printed or summarized.
   all power (barrel and USB).
 
 F4.5 attempts:
+- **Attempt 001** (`c3ec7ad4`, root `scratch/gamma-601-promotion/run-001`):
+  production installed state-preserving and confirmed (56 safe-boot
+  records, `identity=match`, the Worker baseline confirmed, no panic). The
+  boot-resume check's endpoint handoff then failed twice, at the Gate's
+  `baseline` step with `command_rejected` (Hello, discovery and possession
+  had passed; the tab stayed visible and focused). The page was released to
+  `about:blank` and the server stopped with three attempts unused. Cause,
+  diagnosed from the code path (the Gate records no rejection message at
+  `baseline`): F4.3's settings restore saved `display`, which the schema
+  stores as text, and the Worker's public-settings fingerprint accepted text
+  only for `asicfrequency_f` and the two theme keys, so every command that
+  carries status evidence (`status`, start, renew, restore) fails as
+  `session_failed`. The code affects both boards once `display` is saved,
+  as upstream's web UI also does; it was observed on the 601 only. The device could not be paused over HTTP without the
+  endpoint this bug blocks; it stays on production under the firmware's own
+  protections. Fix: the fingerprint's text keys include `display`, with a
+  regression tying them to the schema's text types. Outcome:
+  `continue_after_verified_fix`.
 
 ## Future
 

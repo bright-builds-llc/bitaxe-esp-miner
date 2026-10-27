@@ -24,6 +24,9 @@ const KEYS: &[&str] = &[
     "themecolors",
     "themescheme",
 ];
+/// The allowlisted keys stored as text (`Str` or `FloatString` in the settings schema); a test
+/// keeps this in step with the schema, since any other key stored as text refuses the fingerprint.
+const TEXT_KEYS: &[&str] = &["asicfrequency_f", "display", "themecolors", "themescheme"];
 
 /// Fingerprints the public allowlist; the pool-configuration boolean is computed separately and
 /// only carried through, so no pool key is ever read here.
@@ -52,7 +55,7 @@ pub(super) fn fingerprint(
         match maybe_value {
             None => hash.update([0]),
             Some(StoredValueKind::String(mut value)) => {
-                if !matches!(*key, "asicfrequency_f" | "themecolors" | "themescheme") {
+                if !TEXT_KEYS.contains(key) {
                     value.zeroize();
                     return Err(SettingsAdapterFailure::failed(
                         "public setting storage type invalid",
@@ -106,6 +109,65 @@ mod tests {
         // Arrange / Act / Assert
         assert_ne!(digest(0), digest(180));
         assert_eq!(digest(180), digest(180));
+    }
+    #[test]
+    fn every_allowlisted_text_setting_is_fingerprinted() {
+        // Arrange
+        let schema: Vec<_> = bitaxe_config::nvs::all_settings_schema()
+            .into_iter()
+            .chain(bitaxe_config::nvs::project_settings_schema())
+            .collect();
+        let text_in_schema: Vec<&str> = KEYS
+            .iter()
+            .copied()
+            .filter(|key| {
+                schema.iter().any(|row| {
+                    row.key.as_str() == *key
+                        && matches!(
+                            row.stored_type,
+                            bitaxe_config::nvs::StoredType::Str
+                                | bitaxe_config::nvs::StoredType::FloatString
+                        )
+                })
+            })
+            .collect();
+        // Act
+        let fingerprinted = fingerprint(
+            |key| {
+                Ok(match key {
+                    "mineonboot" => Some(StoredValueKind::U16(0)),
+                    key if text_in_schema.contains(&key) => {
+                        Some(StoredValueKind::String("value".to_owned()))
+                    }
+                    _ => None,
+                })
+            },
+            true,
+        );
+        // Assert
+        for key in KEYS {
+            assert!(
+                schema.iter().any(|row| row.key.as_str() == *key),
+                "{key} has a schema row"
+            );
+        }
+        assert_eq!(text_in_schema, TEXT_KEYS);
+        assert!(fingerprinted.is_ok());
+    }
+    #[test]
+    fn a_stored_display_setting_is_fingerprinted() {
+        // Arrange: the upstream web UI and the self-test campaign's restore save `display` as text.
+        let read = |key: &str| {
+            Ok(match key {
+                "display" => Some(StoredValueKind::String("SSD1306 (128x32)".to_owned())),
+                "mineonboot" => Some(StoredValueKind::U16(0)),
+                _ => None,
+            })
+        };
+        // Act
+        let result = fingerprint(read, true);
+        // Assert
+        assert!(result.is_ok());
     }
     #[test]
     fn private_network_and_owner_values_are_never_read_or_hashed() {
