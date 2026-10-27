@@ -70,8 +70,18 @@ impl FixedSerialAssessment {
     }
 }
 
+/// The USB boot profile a capture must show: the Worker's confirmed baseline, or, for a boot
+/// that carries a self-test tuple, the self-test's diagnostic owner (ADR-0041 item 14).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum ExpectedUsbBaseline {
+    #[default]
+    WorkerStarted,
+    DiagnosticOwner,
+}
+
 #[derive(Default)]
 struct Samples {
+    expected_baseline: ExpectedUsbBaseline,
     assessment: FixedSerialAssessment,
     maybe_identity: Option<UsbRuntimeIdentity>,
     maybe_profile: Option<UsbBootProfileMarker>,
@@ -85,11 +95,25 @@ struct Samples {
     complete_advances: usize,
 }
 
+/// `assess_with_baseline` for the Worker's baseline; the production callers name theirs.
+#[cfg(test)]
 pub(crate) fn assess(
     log: &str,
     maybe_expected: Option<&ExpectedRuntimeAttestationIdentity>,
 ) -> FixedSerialAssessment {
-    let mut samples = Samples::default();
+    assess_with_baseline(log, maybe_expected, ExpectedUsbBaseline::WorkerStarted)
+}
+
+/// `assess`, with the boot profile the capture must show.
+pub(crate) fn assess_with_baseline(
+    log: &str,
+    maybe_expected: Option<&ExpectedRuntimeAttestationIdentity>,
+    expected_baseline: ExpectedUsbBaseline,
+) -> FixedSerialAssessment {
+    let mut samples = Samples {
+        expected_baseline,
+        ..Samples::default()
+    };
     let Some(expected) = maybe_expected else {
         samples
             .assessment
@@ -102,6 +126,14 @@ pub(crate) fn assess(
             continue;
         }
         let line = record.trim_end_matches(['\r', '\n']);
+        // A passing self-test announces its own restart: the boot after it is another boot, which
+        // its campaign reads by its receipt, so the self-test's capture is judged up to here.
+        if expected_baseline == ExpectedUsbBaseline::DiagnosticOwner
+            && line.starts_with("self_test_terminal=")
+            && line.contains(r#""outcome":"passed""#)
+        {
+            break;
+        }
         samples.observe(line, expected);
     }
     samples.finish()
@@ -231,10 +263,14 @@ impl Samples {
                 .issue(FixedSerialIssue::UnsupportedTransport);
         }
         let wire = serde_json::to_value(&profile).expect("typed profile serializes");
+        let (baseline, reason) = match self.expected_baseline {
+            ExpectedUsbBaseline::WorkerStarted => ("confirmed", "worker_started"),
+            ExpectedUsbBaseline::DiagnosticOwner => ("diagnostic", "diagnostic_owner"),
+        };
         let safe = exact
             && profile.transport() == UsbBootTransport::SerialJtagRuntime
-            && wire["baseline"] == "confirmed"
-            && wire["reason"] == "worker_started";
+            && wire["baseline"] == baseline
+            && wire["reason"] == reason;
         self.assessment.safe_baseline_confirmed |= safe;
         if !safe {
             self.assessment.issue(FixedSerialIssue::BaselineUnconfirmed);

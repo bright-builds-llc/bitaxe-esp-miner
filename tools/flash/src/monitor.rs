@@ -1,6 +1,6 @@
 use crate::*;
 mod fixed_serial;
-pub(crate) use fixed_serial::FixedSerialAssessment;
+pub(crate) use fixed_serial::{ExpectedUsbBaseline, FixedSerialAssessment};
 
 pub(crate) fn resolve_port(
     maybe_port: Option<&str>,
@@ -68,7 +68,25 @@ pub(crate) fn monitor_capture_outcome(
     capture_timeout_seconds: u64,
     maybe_runtime_identity: Option<&ExpectedRuntimeAttestationIdentity>,
 ) -> MonitorCaptureOutcome {
-    let assessment = fixed_serial::assess(monitor_log, maybe_runtime_identity);
+    monitor_capture_outcome_with_baseline(
+        process_status,
+        monitor_log,
+        capture_timeout_seconds,
+        maybe_runtime_identity,
+        ExpectedUsbBaseline::WorkerStarted,
+    )
+}
+
+/// `monitor_capture_outcome`, with the boot profile the capture must show.
+pub(crate) fn monitor_capture_outcome_with_baseline(
+    process_status: &CaptureProcessStatus,
+    monitor_log: &str,
+    capture_timeout_seconds: u64,
+    maybe_runtime_identity: Option<&ExpectedRuntimeAttestationIdentity>,
+    expected_baseline: ExpectedUsbBaseline,
+) -> MonitorCaptureOutcome {
+    let assessment =
+        fixed_serial::assess_with_baseline(monitor_log, maybe_runtime_identity, expected_baseline);
     let state = match process_status {
         CaptureProcessStatus::ExitedSuccess | CaptureProcessStatus::TimedOut
             if assessment.qualified() =>

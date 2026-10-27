@@ -261,11 +261,18 @@ fn run_evidence_flash_monitor(
                 }
                 error.context(format!("failed to read monitor log {capture_log_path}"))
             })?;
-        monitor_capture_outcome(
+        // A seeded self-test boots as the self-test's diagnostic owner, not the Worker.
+        let expected_baseline = if command.self_test_intent.is_some() {
+            ExpectedUsbBaseline::DiagnosticOwner
+        } else {
+            ExpectedUsbBaseline::WorkerStarted
+        };
+        monitor_capture_outcome_with_baseline(
             &capture_result.status,
             &monitor_log,
             command.capture_timeout_seconds,
             flash_outcome.runtime_identity.as_ref(),
+            expected_baseline,
         )
     };
     if let Some(assessment) = &capture_outcome.fixed_serial_assessment {

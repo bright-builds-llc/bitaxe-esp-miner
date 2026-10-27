@@ -161,3 +161,115 @@ fn explicit_storage_or_http_failure_cannot_hide_behind_complete_startup() {
         assert!(!assessment.qualified());
     }
 }
+
+fn diagnostic_owner() -> String {
+    healthy()
+        .replace(
+            r#""reason":"worker_started""#,
+            r#""reason":"diagnostic_owner""#,
+        )
+        .replace(r#""baseline":"confirmed""#, r#""baseline":"diagnostic""#)
+}
+
+#[test]
+fn a_self_test_boot_qualifies_as_the_diagnostic_owner() {
+    // Act
+    let assessment = assess_with_baseline(
+        &diagnostic_owner(),
+        Some(&identity()),
+        ExpectedUsbBaseline::DiagnosticOwner,
+    );
+    // Assert
+    assert!(assessment.qualified(), "{assessment:?}");
+}
+
+#[test]
+fn a_diagnostic_owner_boot_never_passes_as_the_worker_baseline() {
+    // Act
+    let assessment = assess(&diagnostic_owner(), Some(&identity()));
+    // Assert
+    assert!(assessment
+        .issues
+        .contains(&FixedSerialIssue::BaselineUnconfirmed));
+}
+
+#[test]
+fn a_worker_boot_never_passes_as_a_self_test_boot() {
+    // Act
+    let assessment = assess_with_baseline(
+        &healthy(),
+        Some(&identity()),
+        ExpectedUsbBaseline::DiagnosticOwner,
+    );
+    // Assert
+    assert!(!assessment.qualified());
+}
+
+#[test]
+fn a_passing_self_test_is_judged_up_to_its_announced_restart() {
+    // Arrange: the self-test boot, its passed terminal, then the next boot as the Worker.
+    let log = format!(
+        "{}self_test_terminal={{\"schema\":\"self-test-runtime-v1\",\"outcome\":\"passed\",\"safe_stop\":true,\"restart_delay_ms\":10000}}\n{}",
+        diagnostic_owner(),
+        sample(8, 1000, "none") + &sample(8, 3000, "none")
+    );
+    // Act
+    let assessment = assess_with_baseline(
+        &log,
+        Some(&identity()),
+        ExpectedUsbBaseline::DiagnosticOwner,
+    );
+    // Assert
+    assert!(assessment.qualified(), "{assessment:?}");
+}
+
+#[test]
+fn a_worker_capture_still_judges_every_boot() {
+    // Arrange: the same restart, judged as a Worker capture.
+    let log = format!(
+        "{}self_test_terminal={{\"schema\":\"self-test-runtime-v1\",\"outcome\":\"passed\",\"safe_stop\":true,\"restart_delay_ms\":10000}}\n{}",
+        healthy(),
+        sample(8, 1000, "none") + &sample(8, 3000, "none")
+    );
+    // Act
+    let assessment = assess(&log, Some(&identity()));
+    // Assert
+    assert!(assessment
+        .issues
+        .contains(&FixedSerialIssue::RebootObserved));
+}
+
+#[test]
+fn a_passed_terminal_before_the_self_test_boot_leaves_nothing_to_trust() {
+    // Arrange
+    let log = format!(
+        "self_test_terminal={{\"schema\":\"self-test-runtime-v1\",\"outcome\":\"passed\",\"safe_stop\":true,\"restart_delay_ms\":10000}}\n{}",
+        diagnostic_owner()
+    );
+    // Act
+    let assessment = assess_with_baseline(
+        &log,
+        Some(&identity()),
+        ExpectedUsbBaseline::DiagnosticOwner,
+    );
+    // Assert
+    assert!(!assessment.qualified());
+}
+
+#[test]
+fn a_cancelled_terminal_does_not_end_the_judged_capture() {
+    // Arrange: a cancel, then a reboot the self-test boot's capture must still judge.
+    let log = format!(
+        "{}self_test_terminal={{\"schema\":\"self-test-runtime-v1\",\"outcome\":\"cancelled\",\"safe_stop\":true}}\n{}",
+        diagnostic_owner(),
+        sample(8, 1000, "none")
+    );
+    // Act
+    let assessment = assess_with_baseline(
+        &log,
+        Some(&identity()),
+        ExpectedUsbBaseline::DiagnosticOwner,
+    );
+    // Assert
+    assert!(!assessment.qualified());
+}

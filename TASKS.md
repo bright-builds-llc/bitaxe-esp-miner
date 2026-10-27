@@ -1796,6 +1796,33 @@ passed by path only and never read, printed or summarized.
 - **Recovery:** the campaign's own recovery install and settings restore,
   then the production reinstall.
 
+F4.3 attempts:
+- **Attempt 001** (2026-10-26, `de95ee50`): blocked at the settings backup,
+  before any write. The passive monitor showed no device origin: since
+  ADR-0021 (2026-09-04) the single Serial/JTAG writer forwards only a closed
+  allow-list, so the origin, the self-test's records and its receipt never
+  reach USB, on either board. The campaign last passed (the 205's
+  attempt-005, 2026-08-21) before that change. Owner decision: forward
+  those records in their closed shapes (`52b3dbf7`, ADR-0041 item 14).
+- **Attempt 002** (`52b3dbf7`, after production at that commit was
+  installed so the origin is forwarded): refused at the settings backup,
+  before any write: the 601's factory-seeded upstream fallback pool cannot
+  be restored from the inputs. Owner decision: the fallback cleared over
+  HTTP (`29bccea0` amends the contract; one PATCH, verified).
+- **Attempt 003** (`29bccea0`): the self-test's planned-failure phase ran
+  correctly on the 601 (preflight, preparing, warming, measuring, the safe
+  stop, `cancel_ready` with `safe_state:true` and
+  `planned_evaluation_failure`, replayed 30 times), but the flash tool
+  judged the capture untrusted (`baseline_unconfirmed`): its classifier
+  required the Worker's baseline, and a self-test boot is the diagnostic
+  owner. The campaign's recovery reinstalled the package and restored the
+  settings; production was then reinstalled and confirmed (56 safe-boot
+  records, `identity=match`, the Worker baseline confirmed) before the
+  analysis. Fix: a flash carrying a self-test intent expects the
+  diagnostic-owner boot, judged up to a passing self-test's announced
+  restart; every other capture is judged as before. Outcome:
+  `continue_after_verified_fix`.
+
 ## Future
 
 ### task-stop-paths-hardware-evidence | 2026-10-21 | Hardware evidence for stops other than a pause
