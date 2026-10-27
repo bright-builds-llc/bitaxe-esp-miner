@@ -74,9 +74,10 @@ export function restartCool(limits) {
  *   come back with no resume command and accumulate 5 minutes within 15 of first seeing the boot,
  *   outages tolerated as in soak 002. It then turns mining on boot off, pauses and restarts: the
  *   device must stay paused for 2 minutes.
- * - Gamma 601 first mining 001 is the 601's first local mining (ADR-0041 phase F3), on the test-only
- *   `gamma601-mining` firmware: 10 continuous minutes at 400 MHz / 1150 mV, saved and read back with
- *   the pool before the resume, under the 601's limits (`GAMMA601_LIMITS`).
+ * - Gamma 601 first mining 001 is the 601's first local mining (ADR-0041 phase F3): 10 continuous
+ *   minutes at 400 MHz / 1150 mV, saved and read back with the pool before the resume, under the
+ *   601's limits (`GAMMA601_LIMITS`). The 601's soaks ran on the test-only `gamma601-mining`
+ *   firmware until its promotion retired that build (item 15); they now take production.
  * - Gamma 601 default check 001 is first mining 001 at upstream's default 525 MHz / 1150 mV (ADR-0041
  *   phase F4.1): 10 continuous minutes, to measure power and temperatures before a long soak.
  * - Gamma 601 soak 001 is soak 006's rule at the 601's default, under the 601's limits (phase F4.2):
@@ -88,8 +89,8 @@ export function restartCool(limits) {
  *   by the 601's rule and restart at 400 MHz / 1050 mV (`restartProfile`), which must show a nonzero
  *   hashrate (`requireRestartHashrate`); then it mines 5 minutes there, or trips again and pauses
  *   itself, because the next step would leave the catalog.
- * - Gamma 601 lease check 001 is lease check 001 on the 601 (ADR-0041 phase F3.4), on the test-only
- *   `gamma601-mining` firmware at 400 MHz / 1150 mV, under the 601's limits. Its enable line also
+ * - Gamma 601 lease check 001 is lease check 001 on the 601 (ADR-0041 phase F3.4) at 400 MHz /
+ *   1150 mV, under the 601's limits. Its enable line also
  *   enables the Gate soak that interrupts it (`fixed-usb-soak/contract.mjs`).
  */
 export const SOAKS = Object.freeze({
@@ -145,17 +146,17 @@ export const SOAKS = Object.freeze({
     activeMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
     enableLine: "Ultra 205 local mining boot resume check hardware: enabled." }),
   "gamma601-first-001": Object.freeze({ id: "gamma601-first-001", task: "task-gamma-601-bring-up",
-    firmwareVariant: "gamma601-mining", activeMs: 10 * 60_000, requireHashrate: true, maybeMaximumOutageMs: null,
+    activeMs: 10 * 60_000, requireHashrate: true, maybeMaximumOutageMs: null,
     maybeDeadlineMs: null, requireStoredBoard: "601", limits: GAMMA601_LIMITS,
     profile: Object.freeze({ frequencyMhz: 400, coreVoltageMv: 1150 }),
     enableLine: "Gamma 601 first local mining hardware: enabled." }),
   "gamma601-default-001": Object.freeze({ id: "gamma601-default-001", task: "task-gamma-601-bring-up",
-    firmwareVariant: "gamma601-mining", activeMs: 10 * 60_000, requireHashrate: true, maybeMaximumOutageMs: null,
+    activeMs: 10 * 60_000, requireHashrate: true, maybeMaximumOutageMs: null,
     maybeDeadlineMs: null, requireStoredBoard: "601", limits: GAMMA601_LIMITS,
     profile: Object.freeze({ frequencyMhz: 525, coreVoltageMv: 1150 }),
     enableLine: "Gamma 601 default profile check hardware: enabled." }),
   "gamma601-soak-001": Object.freeze({ id: "gamma601-soak-001", task: "task-gamma-601-bring-up",
-    firmwareVariant: "gamma601-mining", activeMs: 240 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
+    activeMs: 240 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000,
     maybeDeadlineMs: 300 * 60_000, requireStoredBoard: "601", limits: GAMMA601_LIMITS,
     profile: Object.freeze({ frequencyMhz: 525, coreVoltageMv: 1150 }),
     enableLine: "Gamma 601 4 h soak hardware: enabled." }),
@@ -169,7 +170,7 @@ export const SOAKS = Object.freeze({
     enableLine: "Gamma 601 local mining overheat check hardware: enabled.",
     outcomes: ["restarted", "restarted_then_stays_stopped"] }),
   "gamma601-lease-001": Object.freeze({ id: "gamma601-lease-001", kind: "lease", task: "task-gamma-601-bring-up",
-    firmwareVariant: "gamma601-mining", requireStoredBoard: "601", limits: GAMMA601_LIMITS,
+    requireStoredBoard: "601", limits: GAMMA601_LIMITS,
     profile: Object.freeze({ frequencyMhz: 400, coreVoltageMv: 1150 }), activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000,
     requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 90 * 60_000, restoreBoundMs: 180_000,
     enableLine: "Gamma 601 lease interrupt check hardware: enabled." }),

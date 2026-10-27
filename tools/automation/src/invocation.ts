@@ -31,7 +31,7 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--build-provenance-stamp": value({ required: true }),
     "--identity-sdkconfig-defaults": value({ required: true }),
     "--build-timestamp-utc": value({ required: true }),
-    "--build-mode": value({ required: true, values: ["normal", "rollback-probe", "overheat-trip-test", "board-gamma-601", "board-gamma-601-vout-check", "board-gamma-601-mining", "board-gamma-601-chip-check", "board-gamma-601-hash-check", "board-gamma-601-overheat-trip-test"] }),
+    "--build-mode": value({ required: true, values: ["normal", "rollback-probe", "overheat-trip-test", "board-gamma-601", "board-gamma-601-vout-check", "board-gamma-601-chip-check", "board-gamma-601-hash-check", "board-gamma-601-overheat-trip-test"] }),
   },
   "package-rollback-probe": {
     "--firmware-elf": value({ required: true }),

@@ -77,17 +77,15 @@ config_setting(
 # Firmware variant compiled into the firmware ELF (ADR-0040, ADR-0041):
 #   bazel build //firmware/bitaxe:firmware_image --//firmware/bitaxe:firmware_variant=overheat-trip-test
 #   bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-vout-check
-#   bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-mining
 #   bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-chip-check
 #   bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-hash-check
 #   bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-overheat-trip-test
 # `production` stays the default. Each test variant is for hardware checks on
 # one board only: `overheat-trip-test` lowers the Ultra 205's local overheat
 # trip, `gamma601-vout-check` runs one bounded core-voltage check on the
-# Gamma 601, `gamma601-mining` lets the 601 power its BM1370 and mine for the
-# phase F3 contracts, `gamma601-chip-check` runs one bounded chip detection,
+# Gamma 601, `gamma601-chip-check` runs one bounded chip detection,
 # `gamma601-hash-check` runs one bounded hash check, and `gamma601-overheat-trip-test`
-# is the 601 mining build with the lowered overheat trip. None is ever released; the manifest records
+# is the production 601 build with the lowered overheat trip. None is ever released; the manifest records
 # `firmware_variant`, the other board's targets refuse it, and the flash tool
 # refuses it without `--allow-test-firmware <variant>`.
 string_flag(
@@ -97,7 +95,6 @@ string_flag(
         "production",
         "overheat-trip-test",
         "gamma601-vout-check",
-        "gamma601-mining",
         "gamma601-chip-check",
         "gamma601-hash-check",
         "gamma601-overheat-trip-test",
@@ -117,11 +114,6 @@ config_setting(
 config_setting(
     name = "firmware_variant_gamma601_vout_check",
     flag_values = {":firmware_variant": "gamma601-vout-check"},
-)
-
-config_setting(
-    name = "firmware_variant_gamma601_mining",
-    flag_values = {":firmware_variant": "gamma601-mining"},
 )
 
 config_setting(
@@ -639,6 +631,7 @@ rust_test(
         "src/self_test_runtime.rs",
         "src/startup.rs",
     ],
+    compile_data = ["build.rs"],
     crate_name = "board_identity_source_ownership_tests",
     crate_root = "src/board_identity_source_ownership_test.rs",
     edition = "2021",
@@ -1590,7 +1583,7 @@ js_run_binary(
 # Gamma 601 safe-boot build and package (ADR-0041). The firmware is built with the
 # `board-gamma-601` Cargo feature in its own target directory, and the package is written
 # under `gamma601/`, so neither shares outputs with the Ultra 205. The test-only
-# `gamma601-vout-check`, `gamma601-mining`, `gamma601-chip-check`, `gamma601-hash-check` and
+# `gamma601-vout-check`, `gamma601-chip-check`, `gamma601-hash-check` and
 # `gamma601-overheat-trip-test` variants each build in a target directory of their own.
 js_run_binary(
     name = "firmware_build_gamma601",
@@ -1646,7 +1639,6 @@ js_run_binary(
     ] + select({
         ":firmware_variant_production": ["board-gamma-601"],
         ":firmware_variant_gamma601_vout_check": ["board-gamma-601-vout-check"],
-        ":firmware_variant_gamma601_mining": ["board-gamma-601-mining"],
         ":firmware_variant_gamma601_chip_check": ["board-gamma-601-chip-check"],
         ":firmware_variant_gamma601_hash_check": ["board-gamma-601-hash-check"],
         ":firmware_variant_gamma601_overheat_trip_test": ["board-gamma-601-overheat-trip-test"],
@@ -1719,7 +1711,6 @@ js_run_binary(
     ] + select({
         ":firmware_variant_production": ["production"],
         ":firmware_variant_gamma601_vout_check": ["gamma601-vout-check"],
-        ":firmware_variant_gamma601_mining": ["gamma601-mining"],
         ":firmware_variant_gamma601_chip_check": ["gamma601-chip-check"],
         ":firmware_variant_gamma601_hash_check": ["gamma601-hash-check"],
         ":firmware_variant_gamma601_overheat_trip_test": ["gamma601-overheat-trip-test"],

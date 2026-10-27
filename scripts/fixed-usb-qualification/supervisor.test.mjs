@@ -457,9 +457,9 @@ test("current amendment creation rejects issued windows without rewriting contex
 
 /**
  * The fixture's package copied to `board`'s manifest path, its metadata naming `metadataBoard`. A 601
- * package is the mining build unless `variant` names another.
+ * package is the production build unless `variant` names another.
  */
-async function boardPackage(f, board, metadataBoard, variant = board === "601" ? "gamma601-mining" : undefined) {
+async function boardPackage(f, board, metadataBoard, variant = board === "601" ? "production" : undefined) {
   const manifest = resolve(f.options.firmwareRoot, BOARD_MANIFESTS[board]);
   await mkdir(dirname(manifest), { recursive: true });
   for (const artifact of f.manifestValue.artifacts.filter((entry) => entry.kind !== "partition_table")) {
@@ -506,10 +506,10 @@ test("a board package snapshot refuses a manifest outside both boards' paths", a
   await assert.rejects(boardPackageSnapshot(f.options.firmwareRoot, elsewhere, SOURCE), { code: "manifest_path" });
 });
 
-test("a board package snapshot refuses a 601 package that is not the mining build", async (t) => {
+test("a board package snapshot refuses a 601 package that is not the production build", async (t) => {
   // Arrange
   const f = await fixture(t);
-  const production = await boardPackage(f, "601", "601", "production");
+  const check = await boardPackage(f, "601", "601", "gamma601-hash-check");
   // Act / Assert
-  await assert.rejects(boardPackageSnapshot(f.options.firmwareRoot, production, SOURCE), { code: "manifest_variant" });
+  await assert.rejects(boardPackageSnapshot(f.options.firmwareRoot, check, SOURCE), { code: "manifest_variant" });
 });

@@ -65,20 +65,12 @@ export function selfTestCampaignProfile(
 }
 
 /**
- * The flash tool's admission for the campaign's package on `board`: a production package needs
- * none; the 601's `gamma601-mining` build, the only one that may power its BM1370 before
- * promotion, names itself. A package without a variant reads as production (older packages, such
- * as the 205's attempt-005 one). Any other test build is refused: an overheat-trip build would trip
- * at the warm-up target.
+ * Whether the campaign admits the package: production only, on either board, since the 601's
+ * promotion (ADR-0041 item 15). A package without a variant reads as production (older packages,
+ * such as the 205's attempt-005 one). Every test build is refused: an overheat-trip build would
+ * trip at the warm-up target, and the 601's checks never run the self-test.
  */
-export function testFirmwareArgs(
-  board: SelfTestCampaignBoard,
-  manifest: Readonly<Record<string, unknown>>,
-): readonly string[] | null {
+export function admitsCampaignPackage(manifest: Readonly<Record<string, unknown>>): boolean {
   const maybeVariant = manifest["firmware_variant"];
-  if (maybeVariant === undefined || maybeVariant === "production") return [];
-  if (board === 601 && maybeVariant === "gamma601-mining") {
-    return ["--allow-test-firmware", "gamma601-mining"];
-  }
-  return null;
+  return maybeVariant === undefined || maybeVariant === "production";
 }

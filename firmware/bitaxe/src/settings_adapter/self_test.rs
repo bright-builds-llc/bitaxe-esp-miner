@@ -171,7 +171,7 @@ pub(crate) fn clear_self_test_flag_and_record_receipt(
     Ok(())
 }
 
-/// Clears the flag of a tuple the built firmware refuses (a 601 that cannot power the BM1370),
+/// Clears the flag of a tuple the built firmware refuses (a 601 check variant, which never mines),
 /// with no receipt: no self-test ran, so nothing reads as an owner's cancel.
 pub(crate) fn clear_refused_self_test_flag() -> Result<(), SelfTestAdmissionError> {
     let _guard = SETTINGS_TRANSACTION_LOCK

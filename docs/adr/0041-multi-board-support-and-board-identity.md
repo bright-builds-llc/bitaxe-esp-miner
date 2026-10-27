@@ -103,7 +103,9 @@ not a guard anyone designed.
        starts no sensor owner, and the 205-only self-test and diagnostic
        owners never start. Only `gamma601-mining` admits dispatch (item
        7); a production 601 refuses every run before its fan or regulator
-       moves, and keeps the safe boot's idle fan. An owner that fails to
+       moves, and keeps the safe boot's idle fan. *Amended 2026-10-27
+       (item 15):* every 601 build but the bounded checks now admits
+       dispatch; the checks refuse as described. An owner that fails to
        start is logged and boot continues to HTTP. Its Worker channel
        follows item 10;
      - *Amended 2026-10-26 (phase F4.3, item 14):* an admitted self-test
@@ -189,13 +191,15 @@ not a guard anyone designed.
    - Only it and `gamma601-vout-check` compile the TPS546 configuration
      writes, `CLEAR_FAULTS` and `OPERATION` on. A production 601 build
      cannot turn the output on, and the variant-isolation gate refuses a
-     production ELF that carries the enable.
+     production ELF that carries the enable (superseded by item 15).
    - It is tied to board 601 like the check, needs
      `--allow-test-firmware gamma601-mining`, and is never released.
    - Production 601 dispatch is promoted only on F3's hardware evidence
      (phase F4).
    - Until its power path and preparation land (phase F2), it boots the
      safe boot with its own marker.
+   - *Superseded 2026-10-27 by item 15:* the production 601 build now
+     carries this power path, and `gamma601-mining` is retired.
    - Residual risk, a panic while mining: the panic handler's latch write
      drives the ASIC reset low at once (GPIO1 is an output once the
      executor owns it; its GPIO10 write drives nothing on the 601). The
@@ -282,7 +286,8 @@ not a guard anyone designed.
       unavailable and boot continues to HTTP, on both boards.
     - **The mining variant:** with a confirmed baseline, `gamma601-mining`
       can now be driven by a signed Worker lease to power and mine. Its
-      install stays under a phase F3 contract.
+      install stays under a phase F3 contract. *Amended 2026-10-27
+      (item 15):* the production 601 build now does.
     - **Board facts:** the capability, the model it names and the pool
       subscription model (`bitaxe-gamma`) follow the built board, and the
       local pool settings read the board's own upstream defaults.
@@ -290,7 +295,8 @@ not a guard anyone designed.
       Start before any budget is charged
       (`worker_start=refused category=board reason=board_mining_unadmitted`;
       the Gate sees `session_failed`). So a production 601 refuses, and
-      only `gamma601-mining` admits.
+      only `gamma601-mining` admits. *Amended 2026-10-27 (item 15):* the
+      production 601 admits; only its bounded checks refuse.
     - **The firmware's copy** is checked against the Gate's exported
       capability on every field but the board, and its signature against
       the compiled trust. The Worker threads are the 205's, with the same
@@ -323,7 +329,11 @@ not a guard anyone designed.
     - **No mining at boot:** `gamma601-mining` ignores the saved
       start-on-boot preference (which defaults to true, with the factory
       install's default pool saved), so a run starts only from the soak's
-      explicit resume after its pool and profile are saved.
+      explicit resume after its pool and profile are saved. *Amended
+      2026-10-27 (item 15):* the production 601 follows the saved
+      preference, as upstream does; only `gamma601-overheat-trip-test`
+      ignores it. The firmware's default is on only when the key is absent:
+      the repo's factory install saves it off on both boards.
     - **The reduced overheat profile** keeps upstream's rule: 100 MHz and
       100 mV off the pair, checked against the built board's catalog range
       (ADR-0038), not the phase F plan's "nearest lower catalog pair". From
@@ -334,8 +344,8 @@ not a guard anyone designed.
       follows the built board's catalog (it used the 205's).
 12. **The 601's overheat is first checked with a lowered trip.**
     `gamma601-overheat-trip-test` (`just
-    package-gamma601-overheat-trip-test`) is `gamma601-mining` with
-    ADR-0040's 55 C local overheat trip, for phase F3.4's check on the 601
+    package-gamma601-overheat-trip-test`) is `gamma601-mining` (since item
+    15, the production 601 build) with ADR-0040's 55 C local overheat trip, for phase F3.4's check on the 601
     only; it carries one boot marker of its own and is never released. The
     local-mining soak's overheat kind follows the board: the 601's 22 W stop
     and idle threshold, and its cooling rule (the chip unpowered, the
@@ -401,6 +411,37 @@ not a guard anyone designed.
     - **Non-claims:** upstream's factory-seed and BOOT-held starts stay
       unported on both boards. The 601 claims SELF-001 only after its
       promoted production build repeats the lifecycle.
+
+15. **The production 601 mines** (phase F4.4, on F3's and F4.1 to F4.3's
+    hardware evidence: chip detection, the known-answer hash, local mining
+    at 400 and 525 MHz, the 4 h soak at upstream's 525 MHz / 1150 mV, the
+    overheat trip, the lease interruption and the self-test). The test-only
+    `gamma601-mining` build is retired: production carries its power path.
+    - **One build fact:** `build.rs` sets `gamma601_dispatch` on every 601
+      build but the bounded vout, chip and hash checks. It gates the
+      regulator commands, the actuation owner's permits and the adapter's
+      power steps, and sets `DISPATCH_ADMITTED`. The checks own the
+      regulator on the safe-boot thread, so their mining owner still
+      refuses every run. Every 601 build compiles the TPS546 writes.
+    - **Mining on boot** follows the saved preference, as upstream does
+      (`MINES_ON_BOOT`), on both boards. Only
+      `gamma601-overheat-trip-test`, now production plus the 55 C trip,
+      ignores it.
+    - **Unchanged:** the 1.20 V cap, the Worker-permit rule for the
+      regulator, the 20 s init window and the verify deadline. Live voltage
+      and frequency changes stay off on the 601 (`LIVE_HARDWARE_CHANGES`,
+      owner decision 2026-10-26): a promoted 601 applies new settings at
+      its next mining start.
+    - **Accepted residual** (owner decision 2026-10-26): item 7's panic
+      window, which upstream has too, now applies to production.
+    - **Isolation:** the TPS546 enable is a board fact. The board gate
+      requires it in the 601's production ELF and refuses it in the 205's;
+      the variant gate keeps every test marker, the retired one included,
+      out of both.
+    - **Release:** the release gate stays 205-only
+      (`docs/release/gamma-601.md`); a 601 release is a later decision.
+    - **Hardware:** phase F4.5 repeats boot resume, the self-test and a
+      smoke soak on the production build before any parity claim.
 
 
 ## Consequences

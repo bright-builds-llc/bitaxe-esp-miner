@@ -1,12 +1,12 @@
 //! Gamma 601 safe boot (ADR-0041, `task-gamma-601-bring-up`).
 //!
-//! The 601 build boots with the ASIC held in reset and the TPS546 output off, and it never
-//! mines. Nothing in this build releases the reset or turns the output on; only the test-only
-//! variants add bounded checks: one enable with the reset held (`gamma601-vout-check`, ADR-0041
-//! item 6), the chip detection (`gamma601-chip-check`, item 8) and the hash check
-//! (`gamma601-hash-check`, item 9). A thread keeps the controller off, the fan running (full until the
-//! output is confirmed off) and the readings current. Wi-Fi, HTTP and the display's startup
-//! screen run as on the Ultra 205; the 205's safety, sensor, fan and mining owners are not
+//! The 601 build boots with the ASIC held in reset and the TPS546 output off. The safe-boot thread
+//! keeps the controller off, the fan running (full until the output is confirmed off) and the
+//! readings current, and applies the actuation owner's commands. The production build then mines
+//! through the mining owner (ADR-0041 item 15); the test-only checks instead run one bounded
+//! check each: one enable with the reset held (`gamma601-vout-check`, item 6), the chip detection
+//! (`gamma601-chip-check`, item 8) and the hash check (`gamma601-hash-check`, item 9). Wi-Fi,
+//! HTTP and the display's startup screen run as on the Ultra 205; the 205's sensor owner is not
 //! started. The records reach a receive-only USB console through the USB replay's board slot
 //! (`board_identity::maybe_board_runtime_marker`); their log lines feed the general log only.
 //!
@@ -38,20 +38,13 @@ mod chip_check;
 #[cfg(feature = "gamma601-hash-check")]
 mod hash_check;
 mod observations;
-#[cfg(any(
-    feature = "gamma601-vout-check",
-    feature = "gamma601-mining",
-    feature = "gamma601-chip-check",
-    feature = "gamma601-hash-check"
-))]
 mod regulator;
 #[cfg(feature = "gamma601-vout-check")]
 mod vout_check;
 
-/// The Gamma 601 test variants are separate builds. `gamma601-overheat-trip-test` is not counted:
-/// it is the mining build, so it counts as `gamma601-mining`.
+/// The Gamma 601 check variants are separate builds. `gamma601-overheat-trip-test` is not counted:
+/// it is the production build with a lowered trip.
 const TEST_VARIANTS_BUILT: usize = cfg!(feature = "gamma601-vout-check") as usize
-    + cfg!(feature = "gamma601-mining") as usize
     + cfg!(feature = "gamma601-chip-check") as usize
     + cfg!(feature = "gamma601-hash-check") as usize;
 const _: () = assert!(
@@ -59,22 +52,12 @@ const _: () = assert!(
     "the Gamma 601 test variants are separate builds"
 );
 
-/// The 205's lowered overheat trip reaches the 601 only as the mining build's overheat variant
-/// (ADR-0040; ADR-0041 item 12), which boots with its own marker in place of the mining one.
+/// The 205's lowered overheat trip reaches the 601 only as its own overheat variant (ADR-0040;
+/// ADR-0041 items 12 and 15), the production build with the trip lowered and its own marker.
 const _: () = assert!(
     !cfg!(feature = "overheat-trip-test") || cfg!(feature = "gamma601-overheat-trip-test"),
     "the Gamma 601 lowers its overheat trip only through gamma601-overheat-trip-test"
 );
-
-/// The boot line only the test-only mining variant compiles (ADR-0041); the packager and the
-/// flash tool check it against the recorded variant. The overheat variant, a mining build too,
-/// carries its own marker instead (`board_identity::overheat_trip_boot_line`), so its ELF holds
-/// exactly one.
-#[cfg(all(
-    feature = "gamma601-mining",
-    not(feature = "gamma601-overheat-trip-test")
-))]
-const MINING_VARIANT_MARKER: &str = "firmware_variant=gamma601-mining";
 
 /// How long the boot waits for the safe-boot thread to confirm the output off before it
 /// confirms the baseline; its first sweeps run within this.
@@ -261,7 +244,7 @@ fn confirm_output_off(
 /// admitted self-test tuple (ADR-0041 item 14), or the production mining owner and the fan
 /// controller (item 5, amended). Its sensors and actuation stay the safe-boot thread's, so it
 /// starts no sensor owner; the diagnostic owners never start. Only a build that admits dispatch
-/// (`MINING_DISPATCH_ADMITTED`) runs a self-test or a run; a production 601 refuses either, and
+/// (`MINING_DISPATCH_ADMITTED`) runs a self-test or a run; the bounded checks refuse either, and
 /// keeps its safe boot's fan, before its fan or regulator moves. True only while the self-test
 /// holds Serial/JTAG, so no Worker starts beside it. A failure is logged and boot continues to
 /// HTTP, so the owner can still repair the settings that caused it; the safe-boot thread keeps the
@@ -396,11 +379,6 @@ fn turn_off_at_startup(bus: &mut safety_adapter::BitaxeI2cBus<'static>) -> Start
 fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: StartupController) {
     #[cfg(feature = "gamma601-vout-check")]
     log::info!("{}", vout_check::VARIANT_MARKER);
-    #[cfg(all(
-        feature = "gamma601-mining",
-        not(feature = "gamma601-overheat-trip-test")
-    ))]
-    log::info!("{MINING_VARIANT_MARKER}");
     // The overheat build's one marker is startup's retained line, which the soak reads.
     #[cfg(feature = "gamma601-chip-check")]
     log::info!("{}", chip_check::VARIANT_MARKER);

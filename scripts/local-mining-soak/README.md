@@ -71,8 +71,9 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   check](#boot-resume-check).
 - `gamma601-first-001` is the Gamma 601's first local mining, owned by
   `task-gamma-601-bring-up`. Its enable line is `Gamma 601 first local
-  mining hardware: enabled.` It runs only on the test-only
-  `gamma601-mining` firmware. See [Gamma 601 first
+  mining hardware: enabled.` It runs on the 601's production firmware;
+  until the promotion (ADR-0041 item 15) it ran on the retired test-only
+  `gamma601-mining` build. See [Gamma 601 first
   mining](#gamma-601-first-mining).
 - `gamma601-overheat-001` is the overheat check on the Gamma 601, owned by
   `task-gamma-601-bring-up`. Its enable line is `Gamma 601 local mining
@@ -234,9 +235,9 @@ read off (retried for up to 180 s), then confirms the ASIC powered down.
 local overheat trip is 55 C instead of 75 C, so the recovery fires at
 normal mining temperatures, about 60 C. Preflight refuses a package whose
 `firmware_variant` does not match the soak: this check runs only on the
-test variant, `gamma601-first-001` only on `gamma601-mining`,
-`gamma601-overheat-001` only on `gamma601-overheat-trip-test`, and every
-other soak only on production.
+test variant, `gamma601-overheat-001` only on
+`gamma601-overheat-trip-test`, and every other soak, the 601's included, only
+on production.
 
 1. It admits the paused baseline and saves the pool, as every soak does,
    and saves 500 MHz / 1200 mV. From the default 485 MHz the lowered pair
@@ -278,8 +279,7 @@ pause within 10 minutes of the trip. The run deadline is 45 minutes.
 `--soak gamma601-first-001` is the 601's first local mining (ADR-0041
 phase F3). Preflight takes the 601's package manifest,
 `bazel-bin/firmware/bitaxe/gamma601/bitaxe-gamma601-package.json` from
-`just package-gamma601-mining`, and refuses any other `firmware_variant`;
-every Ultra 205 soak refuses `gamma601-mining`.
+`just package --board 601`, and refuses any other `firmware_variant`.
 
 1. Before any write, the baseline must report `storedBoard` `601` with
    `boardIdentity` `match` (`soak_board_identity`).

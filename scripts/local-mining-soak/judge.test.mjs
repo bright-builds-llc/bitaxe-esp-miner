@@ -405,7 +405,7 @@ test("the 601's default check mines 10 continuous minutes at 525/1150 under the 
   const soak = SOAKS["gamma601-default-001"];
   // Assert
   assert.deepEqual([soak.limits, soak.activeMs, soak.maybeMaximumOutageMs, soak.firmwareVariant, soak.requireStoredBoard],
-    [GAMMA601_LIMITS, 10 * 60_000, null, "gamma601-mining", "601"]);
+    [GAMMA601_LIMITS, 10 * 60_000, null, undefined, "601"]);
   assert.deepEqual(soak.profile, { frequencyMhz: 525, coreVoltageMv: 1150 });
   assert.equal(soak.enableLine, "Gamma 601 default profile check hardware: enabled.");
 });

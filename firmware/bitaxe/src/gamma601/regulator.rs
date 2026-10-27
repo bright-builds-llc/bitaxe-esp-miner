@@ -1,7 +1,7 @@
-//! The TPS546 steps the test variants share (ADR-0041): reading the controller, writing and
-//! reading back the Gamma configuration, and turning the output off with confirmation. The
-//! `gamma601-mining` variant adds the production core voltage: configured and turned on for
-//! mining, and changed live.
+//! The TPS546 steps every 601 build shares (ADR-0041): reading the controller, writing and
+//! reading back the Gamma configuration, and turning the output off with confirmation. Every build
+//! but the core-voltage check adds the production core voltage: configured and turned on for
+//! mining and the chip and hash checks, and changed live.
 //!
 //! Reference: `reference/esp-miner/main/power/TPS546.c` (`TPS546_init`, `TPS546_set_vout`).
 
@@ -98,19 +98,12 @@ pub(super) fn turn_off_and_confirm(
     maybe_state
 }
 
-#[cfg(any(
-    feature = "gamma601-mining",
-    feature = "gamma601-chip-check",
-    feature = "gamma601-hash-check"
-))]
+#[cfg(not(feature = "gamma601-vout-check"))]
 pub(crate) use production::{power_on, set_vout, verify_on};
 
-/// The production core voltage, only in the mining variant and the chip and hash checks.
-#[cfg(any(
-    feature = "gamma601-mining",
-    feature = "gamma601-chip-check",
-    feature = "gamma601-hash-check"
-))]
+/// The production core voltage, in every build but the core-voltage check, which drives its own
+/// bounded check.
+#[cfg(not(feature = "gamma601-vout-check"))]
 mod production {
     use super::*;
     use bitaxe_safety::tps546::enable::{self, EnableRefusal, SettleFailure};

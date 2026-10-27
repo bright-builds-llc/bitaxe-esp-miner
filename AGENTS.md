@@ -312,12 +312,6 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   Gamma 601 safe boot plus one bounded core-voltage check with the ASIC in
   reset. Build it only with `just package-gamma601-vout-check`, install it
   only on the 601 under an active task contract, and never release it.
-- `gamma601-mining` (ADR-0041 item 7) is test-only too. It is the only 601
-  build that may power the BM1370 and mine, for the phase F3 contracts; for
-  now it boots the safe boot.
-  Build it only with `just package-gamma601-mining`, install it only on the
-  601 under an active task contract, and never release it. Production 601
-  builds cannot turn the TPS546 output on.
 - `gamma601-chip-check` (ADR-0041 item 8) is test-only too. It is the 601
   safe boot plus one bounded chip detection: the BM1370 powered at 1.15 V
   and released from reset only for the chip count. Build it only with
@@ -328,10 +322,10 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   detected, initialized and ramped to 300 MHz, then one known job for at
   most 20 s. Build it only with `just package-gamma601-hash-check`, install
   it only on the 601 under an active task contract, and never release it.
-- `gamma601-overheat-trip-test` (ADR-0041 item 12, ADR-0040) is test-only
-  too. It is the `gamma601-mining` build with the local overheat trip lowered
-  to 55 C, for the 601 overheat check, and boots with its own marker in place
-  of the mining one. Build it only with
+- `gamma601-overheat-trip-test` (ADR-0041 items 12 and 15, ADR-0040) is
+  test-only too. It is the production 601 build with the local overheat trip
+  lowered to 55 C and mining on boot off, for the 601 overheat check, and
+  boots with its own marker. Build it only with
   `just package-gamma601-overheat-trip-test`, install it only on the 601
   under an active task contract, and never release it.
 - Each test variant targets one board, and the other board's build,
@@ -419,8 +413,10 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - **USB-C hosts.** Some Bitaxe boards do not enumerate on a USB-C host port
   and need a USB-A port or adapter (upstream readme, bitaxeGamma#37).
 - **601 builds.** `just build --board 601` and `just package --board 601`
-  build the safe boot (ADR-0041 item 5). `just flash` and `just flash-monitor`
-  with `--board 601` build and admit only that package. They install it
+  build the production 601: the safe boot, then mining like the 205, on boot
+  by the saved preference (ADR-0041 items 5 and 15). `just flash` and
+  `just flash-monitor` with `--board 601` build and admit only that package.
+  They install it
   state-preserving, or as a factory install that seeds the 601's upstream
   defaults and the Wi-Fi credentials (`--factory-reset --wifi-credentials`).
 

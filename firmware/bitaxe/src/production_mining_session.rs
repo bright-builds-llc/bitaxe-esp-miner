@@ -259,7 +259,7 @@ impl OrdinaryEspProductionSessionAdapter {
                     // cooled to the baseline, so upstream's idle duties may lower the
                     // fan (ADR-0038). A Start that never prepared leaves the cooling
                     // review's 100% until this holds. A build that cannot mine (a
-                    // production 601) keeps its safe boot's fan instead.
+                    // 601 check variant) keeps its safe boot's fan instead.
                     set_fan_controller_owner(Some(revocation::FanControllerOwner::Idle(
                         revocation::grant_idle_fan(),
                     )));

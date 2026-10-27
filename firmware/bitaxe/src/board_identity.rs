@@ -49,9 +49,9 @@ mod built {
     pub(super) const PLATFORM_BOARD: PlatformBoard = PlatformBoard::Gamma601;
     pub(super) const PLATFORM_ASIC: PlatformAsic = PlatformAsic::Bm1370;
     pub(super) const FAMILY: AsicFamily = AsicFamily::Bm1370;
-    /// Only the test-only mining variant admits BM1370 dispatch until phase F4 promotes it on
-    /// hardware evidence (ADR-0041 item 7).
-    pub(super) const DISPATCH_ADMITTED: bool = cfg!(feature = "gamma601-mining");
+    /// Every 601 build admits BM1370 dispatch since the promotion (ADR-0041 item 15) but the
+    /// bounded vout, chip and hash checks (`build.rs`, `gamma601_dispatch`).
+    pub(super) const DISPATCH_ADMITTED: bool = cfg!(gamma601_dispatch);
     /// The live voltage and frequency path drives the DS4432U and BM1366 frames; the 601 keeps
     /// its prepared profile until a BM1370 live path lands.
     pub(super) const LIVE_HARDWARE_CHANGES: bool = false;
@@ -87,11 +87,10 @@ pub(crate) const ASIC_FAMILY: AsicFamily = built::FAMILY;
 pub(crate) const MINING_DISPATCH_ADMITTED: bool = built::DISPATCH_ADMITTED;
 /// Whether a lease may change its voltage and frequency live (ADR-0037 decision 4).
 pub(crate) const LIVE_HARDWARE_CHANGES: bool = built::LIVE_HARDWARE_CHANGES;
-/// Whether this build may start mining at boot from the saved preference. The test-only
-/// `gamma601-mining` build never does: a run starts only from an explicit resume, once its
-/// contract's pool and profile are saved, never from a saved default pool at boot (ADR-0041
-/// item 11).
-pub(crate) const MINES_ON_BOOT: bool = !cfg!(feature = "gamma601-mining");
+/// Whether this build may start mining at boot from the saved preference. The 601's overheat test
+/// build never does: a run starts only from an explicit resume, once its contract's pool and
+/// profile are saved, never from a saved default pool at boot (ADR-0041 items 11 and 15).
+pub(crate) const MINES_ON_BOOT: bool = !cfg!(feature = "gamma601-overheat-trip-test");
 /// The board model the Worker capability and the pool subscription name, as the Gate's
 /// reference-firmware board pairs spell it.
 pub(crate) const WORKER_MODEL: &str = built::WORKER_MODEL;

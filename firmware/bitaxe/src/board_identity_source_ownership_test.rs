@@ -14,6 +14,7 @@ const CHIP_CHECK_SOURCE: &str = include_str!("gamma601/chip_check.rs");
 const WORKER_SESSION_SOURCE: &str = include_str!("bwg_worker_session.rs");
 const BOOT_GUARD_SOURCE: &str = include_str!("boot_guard.rs");
 const CHECK_POWER_SOURCE: &str = include_str!("gamma601/check_power.rs");
+const BUILD_SCRIPT_SOURCE: &str = include_str!("../build.rs");
 
 fn body_of<'a>(source: &'a str, signature: &str) -> &'a str {
     let start = source.find(signature).expect("signature present");
@@ -68,24 +69,34 @@ fn the_board_is_read_after_the_settings_and_before_the_hardware() {
 }
 
 #[test]
-fn the_regulator_enable_carries_the_isolation_gate_s_literal_in_test_builds_only() {
-    // Arrange
-    let gate = TPS546_BUS_SOURCE
-        .find(
-            r#"#[cfg(any(
-    feature = "gamma601-vout-check",
-    feature = "gamma601-mining",
-    feature = "gamma601-chip-check",
-    feature = "gamma601-hash-check"
-))]
-impl Tps546Bus"#,
-        )
-        .expect("the enabling writes are gated to the test variants");
+fn the_regulator_enable_carries_the_board_gate_s_literal() {
     // Act
-    let body = body_of(&TPS546_BUS_SOURCE[gate..], "pub(crate) fn operation_on(");
+    let body = body_of(TPS546_BUS_SOURCE, "pub(crate) fn operation_on(");
     // Assert
-    // `scripts/verify-firmware-variant-isolation.mjs` refuses this literal in production ELFs.
+    // `scripts/verify-firmware-board-isolation.mjs` requires this literal in the 601's ELF and
+    // refuses it in the 205's.
     assert!(body.contains(r#".context("tps546_operation_on_enable")"#));
+}
+
+#[test]
+fn only_the_601_builds_but_the_bounded_checks_may_mine() {
+    // Arrange
+    let (_, emit) = BUILD_SCRIPT_SOURCE
+        .split_once("fn emit_gamma601_dispatch_cfg()")
+        .expect("the dispatch cfg is emitted");
+    // Act
+    let checks_excluded = [
+        "CARGO_FEATURE_GAMMA601_VOUT_CHECK",
+        "CARGO_FEATURE_GAMMA601_CHIP_CHECK",
+        "CARGO_FEATURE_GAMMA601_HASH_CHECK",
+    ]
+    .iter()
+    .all(|feature| emit.contains(feature));
+    // Assert
+    assert!(checks_excluded);
+    assert!(emit.contains(
+        r#"if env::var_os("CARGO_FEATURE_BOARD_GAMMA_601").is_some() && !check_variant {"#
+    ));
 }
 
 #[test]
@@ -109,11 +120,11 @@ fn the_601_safe_boot_thread_is_its_board_s_only_actuation_consumer() {
 #[test]
 fn the_601_applies_fan_commands_by_the_shared_authority_and_regulator_commands_only_when_mining() {
     // Arrange
-    let production_arm = body_of(GAMMA601_ACTUATION_SOURCE, "#[cfg(not(feature = \"gamma601-mining\"))]\nfn apply_regulator(");
+    let check_arm = body_of(GAMMA601_ACTUATION_SOURCE, "#[cfg(not(gamma601_dispatch))]\nfn apply_regulator(");
     // Act / Assert
     assert!(GAMMA601_ACTUATION_SOURCE.contains("safety_adapter::decide_fan_duty(command)"));
-    assert!(production_arm.contains("SafetyActuationReply::Refused"));
-    assert!(!production_arm.contains("regulator::"));
+    assert!(check_arm.contains("SafetyActuationReply::Refused"));
+    assert!(!check_arm.contains("regulator::"));
 }
 
 #[test]
@@ -162,14 +173,14 @@ fn the_asic_production_handle_requires_this_build_to_admit_dispatch() {
 }
 
 #[test]
-fn the_601_builds_refuse_live_changes_and_admit_dispatch_only_when_mining() {
+fn the_601_builds_refuse_live_changes_and_admit_dispatch_unless_a_bounded_check() {
     // Arrange
     let gamma = &BOARD_IDENTITY_SOURCE[BOARD_IDENTITY_SOURCE
         .find(r#"#[cfg(feature = "board-gamma-601")]
 mod built"#)
         .expect("the 601 build's facts")..];
     // Act / Assert
-    assert!(gamma.contains(r#"DISPATCH_ADMITTED: bool = cfg!(feature = "gamma601-mining");"#));
+    assert!(gamma.contains("DISPATCH_ADMITTED: bool = cfg!(gamma601_dispatch);"));
     assert!(gamma.contains("LIVE_HARDWARE_CHANGES: bool = false;"));
 }
 
@@ -241,10 +252,10 @@ fn each_board_embeds_its_own_worker_capability() {
 }
 
 #[test]
-fn the_601_mining_build_never_mines_on_boot() {
+fn the_601_overheat_build_never_mines_on_boot() {
     // Act
     let fact = BOARD_IDENTITY_SOURCE.contains(
-        r#"pub(crate) const MINES_ON_BOOT: bool = !cfg!(feature = "gamma601-mining");"#,
+        r#"pub(crate) const MINES_ON_BOOT: bool = !cfg!(feature = "gamma601-overheat-trip-test");"#,
     );
     let applied = BOOT_GUARD_SOURCE
         .contains("return start_mining_on_boot && crate::board_identity::MINES_ON_BOOT;");

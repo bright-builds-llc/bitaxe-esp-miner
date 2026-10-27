@@ -112,23 +112,23 @@ pub(crate) enum SafetyActuationCommand {
         permit: crate::production_mining_session::revocation::WorkPermit,
     },
     /// The Gamma 601's TPS546 configured and turned on at `millivolts`, with the ASIC reset
-    /// held (ADR-0041 item 7; the mining variant only).
-    #[cfg(feature = "gamma601-mining")]
+    /// held (ADR-0041 items 7 and 15; the builds that mine only).
+    #[cfg(gamma601_dispatch)]
     PowerOnRegulator {
         millivolts: u16,
         permit: crate::production_mining_session::revocation::WorkPermit,
     },
     /// The 601's settled output judged against the last `PowerOnRegulator`; off unless it holds.
-    #[cfg(feature = "gamma601-mining")]
+    #[cfg(gamma601_dispatch)]
     VerifyRegulator,
     /// The 601's TPS546 output changed to `millivolts` while it is on.
-    #[cfg(feature = "gamma601-mining")]
+    #[cfg(gamma601_dispatch)]
     SetRegulatorVoltage {
         millivolts: u16,
         permit: crate::production_mining_session::revocation::WorkPermit,
     },
     /// The 601's TPS546 output turned off and confirmed off.
-    #[cfg(feature = "gamma601-mining")]
+    #[cfg(gamma601_dispatch)]
     TurnRegulatorOff,
 }
 
@@ -457,7 +457,7 @@ fn apply_safety_actuation(
             ds4432u::write_core_voltage(&mut bus, voltage)
         }
         // The 601's regulator commands: this owner drives no regulator.
-        #[cfg(feature = "gamma601-mining")]
+        #[cfg(gamma601_dispatch)]
         SafetyActuationCommand::PowerOnRegulator { .. }
         | SafetyActuationCommand::VerifyRegulator
         | SafetyActuationCommand::SetRegulatorVoltage { .. }

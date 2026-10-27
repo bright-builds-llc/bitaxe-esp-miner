@@ -17,7 +17,7 @@ import { createSelfTestEvidence } from "./self-test-campaign-evidence.js";
 import {
   type SelfTestCampaignProfile,
   selfTestCampaignProfile,
-  testFirmwareArgs,
+  admitsCampaignPackage,
 } from "./self-test-campaign-profile.js";
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import {
@@ -261,11 +261,10 @@ async function startCampaign(
   await requireMode(wifiCredentials, 0o600, false);
   await requireMode(poolCredentials, 0o600, false);
   const port = await portFromDetectorOutput(root, detector);
-  const maybeTestFirmwareArgs = testFirmwareArgs(profile.board, manifest);
-  if (maybeTestFirmwareArgs === null) {
+  if (!admitsCampaignPackage(manifest)) {
     throw failure("evidence_invalid", "the package's firmware variant is not admitted", "preflight");
   }
-  const target: FlashTarget = { board: profile.board, testFirmwareArgs: maybeTestFirmwareArgs };
+  const target: FlashTarget = { board: profile.board };
 
   const preMonitor = await currentMonitor(processPort, flashProgram, port, target);
   const preOrigin = singleOrigin(preMonitor);
@@ -432,14 +431,10 @@ async function resumeCampaign(
   const backup = object(JSON.parse(backupDocument), "settings backup");
   const port = await portFromDetectorOutput(root, detector);
   const manifestDocument = await readFile(manifestPath, "utf8");
-  const maybeTestFirmwareArgs = testFirmwareArgs(
-    profile.board,
-    object(JSON.parse(manifestDocument), "manifest"),
-  );
-  if (maybeTestFirmwareArgs === null) {
+  if (!admitsCampaignPackage(object(JSON.parse(manifestDocument), "manifest"))) {
     throw failure("evidence_invalid", "the package's firmware variant is not admitted", "resume");
   }
-  const target: FlashTarget = { board: profile.board, testFirmwareArgs: maybeTestFirmwareArgs };
+  const target: FlashTarget = { board: profile.board };
   const cancellationLog = await currentMonitor(processPort, flashProgram, port, target);
   const cancelMarker = `self_test_receipt outcome=cancelled lease=${state.lease_hex}`;
   if (!cancellationLog.includes(cancelMarker)) {

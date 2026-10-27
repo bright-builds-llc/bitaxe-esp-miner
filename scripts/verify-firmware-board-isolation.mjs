@@ -9,12 +9,16 @@ import { fileURLToPath } from 'node:url';
 // Each forbidden literal was chosen as present in the other board's ELF, so none is vacuous.
 // Both boards run the fan controller and the mining owner (ADR-0041 item 5, amended); the 601
 // still links shared API and settings code that names the 205's parts, but never the 205's
-// sensor owner, whose thread name and start lines are below.
+// sensor owner, whose thread name and start lines are below. The 601 powers its BM1370 through
+// the TPS546 enable since its promotion (item 15); the 205 has no TPS546 and never links it.
+// `Tps546Bus::operation_on`'s error context (firmware/bitaxe/src/safety_adapter/i2c_bus/tps546.rs).
+export const ENABLE_LITERAL = 'tps546_operation_on_enable';
+
 export const BOARD_LITERALS = {
   '205': {
     required: ['firmware_board=205', 'operator-sensors', 'fan-controller'],
     // The record's literal, not the module name: debug info may name unlinked helpers.
-    forbidden: ['firmware_board=601', 'usb_gamma601_safe_boot'],
+    forbidden: ['firmware_board=601', 'usb_gamma601_safe_boot', ENABLE_LITERAL],
   },
   '601': {
     required: [
@@ -22,6 +26,7 @@ export const BOARD_LITERALS = {
       'usb_gamma601_safe_boot',
       'mining_owner=started board=601',
       'fan-controller',
+      ENABLE_LITERAL,
     ],
     forbidden: [
       'firmware_board=205',

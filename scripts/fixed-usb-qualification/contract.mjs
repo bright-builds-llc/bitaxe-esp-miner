@@ -102,8 +102,9 @@ export async function boardPackageSnapshot(firmwareRoot, manifestPath, expectedS
   requireCondition(maybeBoard !== undefined, "manifest_path");
   const manifest = await readJson(manifestPath);
   requireCondition(manifest.image_metadata?.board === maybeBoard, "manifest_board");
-  // Only the 601's mining build admits a Worker Start (ADR-0041 item 10).
-  requireCondition(maybeBoard !== "601" || manifest.firmware_variant === "gamma601-mining", "manifest_variant");
+  // Only the 601's production build admits a Worker Start (ADR-0041 items 10 and 15); its checks
+  // refuse one, and its overheat build is for its own soak only.
+  requireCondition(maybeBoard !== "601" || (manifest.firmware_variant ?? "production") === "production", "manifest_variant");
   const packaged = await inspectPackage(manifestPath, expectedSource,
     (kind) => kind === "partition_table" ? firmwareRoot : dirname(manifestPath));
   return maybeBoard === "205" ? packaged : { ...packaged, board: maybeBoard };

@@ -7,7 +7,6 @@ target/
 /.bazel-firmware-overheat-trip-test-target/
 /.bazel-firmware-gamma601-target/
 /.bazel-firmware-gamma601-vout-check-target/
-/.bazel-firmware-gamma601-mining-target/
 /.bazel-firmware-gamma601-chip-check-target/
 /.bazel-firmware-gamma601-hash-check-target/
 /.bazel-firmware-gamma601-overheat-trip-test-target/

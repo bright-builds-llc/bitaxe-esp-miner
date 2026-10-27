@@ -730,8 +730,33 @@ action.
       chip 65.5 C, regulator 55.5 C, receipt and restart, settings restored
       (`docs/parity/evidence/20261027-gamma601-self-test.md`); production
       reinstalled;
-    - [ ] F4.4: promotion (software): production 601 mines, mines on boot
-      by its saved preference, `gamma601-mining` retired;
+    - [x] F4.4: promotion (software): production 601 mines, mines on boot
+      by its saved preference, `gamma601-mining` retired:
+      - [x] one build cfg, `gamma601_dispatch` (every 601 build but the
+        vout, chip and hash checks), gates the regulator commands, the
+        actuation permits and the adapter's power steps, and
+        `DISPATCH_ADMITTED`; `MINES_ON_BOOT` is off only in
+        `gamma601-overheat-trip-test`, now production 601 plus the 55 C
+        trip; `LIVE_HARDWARE_CHANGES` stays false;
+      - [x] the variant's plumbing removed: Cargo, `build.rs`, Bazel, the
+        Justfile, ignores, `tools/flash`, `tools/xtask`, `tools/automation`;
+        the 601's host tooling (the soak contracts, the qualification
+        contract, the self-test campaign) admits production;
+      - [x] isolation: the TPS546 enable literal leaves the any-variant list
+        for the board gate (the 205 must not carry it, the 601 must); the
+        source-ownership pins follow;
+      - [x] AGENTS.md "Firmware Variants", ADR-0041 item 15 (the promotion,
+        the accepted panic residual, the deferred live path),
+        `docs/release/gamma-601.md`;
+      - [x] verification: the full gate (both boards' builds, packages and
+        audits), the isolation tests on both production ELFs (the 601's
+        carries the enable, the 205's does not), an independent review; its
+        follow-ups: the local-mining soak refuses another board's package
+        (`soak_package_board`), the release note's start-on-boot claim
+        corrected (the factory install saves it off), stale prose. One
+        unrelated `//tools/device-session:tests` failure under the gate's
+        load passed 3 of 3 runs alone. The 601's production self-test needs
+        its own immutable plan in F4.5 (the campaign still pins F4.3's);
     - [ ] F4.5: promotion hardware: boot resume, the production self-test,
       a production smoke soak;
     - [ ] F4.6: parity proposals; the 205's regression and self-test at

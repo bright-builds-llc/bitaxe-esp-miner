@@ -52,6 +52,14 @@ export function requireFirmwareVariant(manifest, soak) {
   requireCondition((manifest.firmware_variant ?? "production") === (soak.firmwareVariant ?? "production"), "soak_firmware_variant");
 }
 
+/**
+ * A soak runs only on the board it was made for, by the package's own board: both boards' production
+ * packages mine since the 601's promotion (ADR-0041 item 15), and each soak judges its own board's limits.
+ */
+export function requireSoakBoard(manifest, soak) {
+  requireCondition(manifest.image_metadata?.board === (soak.requireStoredBoard ?? "205"), "soak_package_board");
+}
+
 /** The soak task must be active exactly once and carry the exact enable line in its own block. */
 export function requireSoakTask(tasksText, soakId) {
   const enableLine = soakTaskLine(soakId), task = soakTask(soakId);
@@ -90,6 +98,7 @@ async function preflight(firmwareRoot, root, options) {
     manifest.build_identity?.source_dirty === false, "soak_package");
   requireCondition(git(firmwareRoot, ["rev-parse", "HEAD"]).trim() === manifest.source_commit, "soak_package_not_head");
   requireFirmwareVariant(manifest, SOAKS[soakId]);
+  requireSoakBoard(manifest, SOAKS[soakId]);
   await readPoolForSigning(firmwareRoot, resolve(firmwareRoot, options["--pool-credentials"]));
   await mkdir(root, { mode: 0o700 });
   await writeNew(resolve(root, "context.json"), { schema: CONTEXT_SCHEMA, soak: soakId, firmware_commit: manifest.source_commit,

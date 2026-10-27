@@ -32,14 +32,14 @@ const REPLY_POLL_MS: u64 = 50;
 
 impl Ultra205MiningActuationAdapter {
     /// The regulator configured and turned on at the profile's voltage, with the ASIC reset
-    /// held (upstream `VCORE_set_voltage`). The voltage is judged settled at `EnableAsic`. Only
-    /// the mining variant can power the ASIC; a production 601 refuses.
+    /// held (upstream `VCORE_set_voltage`). The voltage is judged settled at `EnableAsic`. The
+    /// builds that mine power the ASIC (ADR-0041 item 15); the bounded checks refuse.
     pub(super) fn gamma601_power_on(
         &self,
         voltage: CoreVoltageMv,
         progress: &mut dyn FnMut(),
     ) -> Result<(), MiningActuationAdapterError> {
-        #[cfg(feature = "gamma601-mining")]
+        #[cfg(gamma601_dispatch)]
         return self.gamma601_request(
             SafetyActuationCommand::PowerOnRegulator {
                 millivolts: voltage.millivolts(),
@@ -50,7 +50,7 @@ impl Ultra205MiningActuationAdapter {
             POWER_ON_REPLY_MS,
             progress,
         );
-        #[cfg(not(feature = "gamma601-mining"))]
+        #[cfg(not(gamma601_dispatch))]
         {
             let _ = (voltage, progress);
             Err(MiningActuationAdapterError::UnsupportedProfile)
@@ -63,13 +63,13 @@ impl Ultra205MiningActuationAdapter {
         &self,
         progress: &mut dyn FnMut(),
     ) -> Result<(), MiningActuationAdapterError> {
-        #[cfg(feature = "gamma601-mining")]
+        #[cfg(gamma601_dispatch)]
         return self.gamma601_request(
             SafetyActuationCommand::VerifyRegulator,
             VERIFY_REPLY_MS,
             progress,
         );
-        #[cfg(not(feature = "gamma601-mining"))]
+        #[cfg(not(gamma601_dispatch))]
         {
             let _ = progress;
             Err(MiningActuationAdapterError::UnsupportedProfile)
@@ -141,9 +141,9 @@ impl Ultra205MiningActuationAdapter {
     }
 
     /// The regulator off and confirmed off. A stop runs whatever the session's admission says,
-    /// so this waits for the owner's reply without it. A production 601 never turns the output
-    /// on, and its safe boot keeps it off.
-    #[cfg(not(feature = "gamma601-mining"))]
+    /// so this waits for the owner's reply without it. A bounded check's mining owner never turns
+    /// the output on; its check turns it off itself.
+    #[cfg(not(gamma601_dispatch))]
     #[allow(clippy::unused_self)]
     pub(super) fn gamma601_power_off(&self) -> Result<(), MiningActuationAdapterError> {
         Ok(())
@@ -151,7 +151,7 @@ impl Ultra205MiningActuationAdapter {
 
     /// The regulator off and confirmed off. A stop runs whatever the session's admission says,
     /// so this waits for the owner's reply without it.
-    #[cfg(feature = "gamma601-mining")]
+    #[cfg(gamma601_dispatch)]
     pub(super) fn gamma601_power_off(&self) -> Result<(), MiningActuationAdapterError> {
         let pending = queue(SafetyActuationCommand::TurnRegulatorOff)?;
         let deadline = crate::runtime_uptime::millis().saturating_add(POWER_OFF_REPLY_MS);
@@ -168,7 +168,7 @@ impl Ultra205MiningActuationAdapter {
         }
     }
 
-    #[cfg(feature = "gamma601-mining")]
+    #[cfg(gamma601_dispatch)]
     fn gamma601_request(
         &self,
         command: SafetyActuationCommand,

@@ -4,7 +4,7 @@ import test from "node:test";
 import { selfTestFlashMonitorSpec } from "./self-test-campaign-flash.js";
 import {
   selfTestCampaignProfile,
-  testFirmwareArgs,
+  admitsCampaignPackage,
   ULTRA205_SELF_TEST_PROFILE,
 } from "./self-test-campaign-profile.js";
 
@@ -43,29 +43,28 @@ test("a root outside the board's contract is refused", () => {
   assert.deepEqual(profiles, [null, null, null, null]);
 });
 
-test("only the 601's mining build is admitted as test firmware", () => {
+test("only production packages are admitted", () => {
   // Act
-  const args = [
-    testFirmwareArgs(601, { firmware_variant: "gamma601-mining" }),
-    testFirmwareArgs(601, { firmware_variant: "production" }),
-    testFirmwareArgs(205, {}),
-    testFirmwareArgs(601, { firmware_variant: "gamma601-overheat-trip-test" }),
-    testFirmwareArgs(205, { firmware_variant: "overheat-trip-test" }),
-    testFirmwareArgs(205, { firmware_variant: "gamma601-mining" }),
+  const admitted = [
+    admitsCampaignPackage({ firmware_variant: "production" }),
+    admitsCampaignPackage({}),
+    admitsCampaignPackage({ firmware_variant: "gamma601-mining" }),
+    admitsCampaignPackage({ firmware_variant: "gamma601-overheat-trip-test" }),
+    admitsCampaignPackage({ firmware_variant: "overheat-trip-test" }),
   ];
   // Assert
-  assert.deepEqual(args, [["--allow-test-firmware", "gamma601-mining"], [], [], null, null, null]);
+  assert.deepEqual(admitted, [true, true, false, false, false]);
 });
 
-test("the 601's self-test install names its board and its test variant", () => {
+test("the 601's self-test install names its board and no test variant", () => {
   // Act
   const spec = selfTestFlashMonitorSpec(
-    { board: 601, testFirmwareArgs: ["--allow-test-firmware", "gamma601-mining"] },
+    { board: 601 },
     "flash", "/dev/private", "package.json", "wifi.json", "intent.json", "evidence",
   );
   // Assert
-  assert.deepEqual(spec.args.slice(0, 10), [
+  assert.deepEqual(spec.args.slice(0, 8), [
     "flash-monitor", "--board", "601", "--port", "/dev/private", "--manifest", "package.json",
-    "--allow-test-firmware", "gamma601-mining", "--factory-reset",
+    "--factory-reset",
   ]);
 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { baselineOfJournal, readLeaseResult, requireFirmwareVariant, requireSoakTask, SOAK_TASK, soakTask, soakTaskLine } from "./main.mjs";
+import { baselineOfJournal, readLeaseResult, requireFirmwareVariant, requireSoakBoard, requireSoakTask, SOAK_TASK, soakTask, soakTaskLine } from "./main.mjs";
 import { SOAKS } from "./judge.mjs";
 
 const tasks = (section, line = soakTaskLine("001")) => `## ${section}\n\n### ${SOAK_TASK} | 2026-10-16 | Soak\n\n${line}\n\n## Other\n`;
@@ -85,21 +85,26 @@ test("a journal without a baseline yields none", () => {
   assert.equal(baselineOfJournal(`${JSON.stringify({ event: "pool_saved" })}\n`), null);
 });
 
-test("the 601 soak runs only on the gamma601-mining firmware", () => {
+test("the 601 soaks run on the production firmware since the promotion", () => {
   // Arrange
-  const soak = SOAKS["gamma601-first-001"];
+  const soaks = ["gamma601-first-001", "gamma601-default-001", "gamma601-soak-001", "gamma601-lease-001"].map((id) => SOAKS[id]);
   // Act / Assert
-  assert.doesNotThrow(() => requireFirmwareVariant({ firmware_variant: "gamma601-mining" }, soak));
-  assert.throws(() => requireFirmwareVariant({ firmware_variant: "production" }, soak), { code: "soak_firmware_variant" });
-  assert.throws(() => requireFirmwareVariant({}, soak), { code: "soak_firmware_variant" });
+  for (const soak of soaks) {
+    assert.doesNotThrow(() => requireFirmwareVariant({ firmware_variant: "production" }, soak), soak.id);
+    assert.doesNotThrow(() => requireFirmwareVariant({}, soak), soak.id);
+    assert.throws(() => requireFirmwareVariant({ firmware_variant: "gamma601-mining" }, soak), { code: "soak_firmware_variant" }, soak.id);
+  }
 });
 
-test("every 205 soak refuses the gamma601-mining firmware", () => {
+test("each soak admits only its own board's package", () => {
   // Arrange
-  const others = Object.values(SOAKS).filter((soak) => soak.requireStoredBoard !== "601");
+  const packages = { "205": { image_metadata: { board: "205" } }, "601": { image_metadata: { board: "601" } } };
   // Act / Assert
-  for (const soak of others) {
-    assert.throws(() => requireFirmwareVariant({ firmware_variant: "gamma601-mining" }, soak), { code: "soak_firmware_variant" }, soak.id);
+  for (const soak of Object.values(SOAKS)) {
+    const own = soak.requireStoredBoard ?? "205", other = own === "205" ? "601" : "205";
+    assert.doesNotThrow(() => requireSoakBoard(packages[own], soak), soak.id);
+    assert.throws(() => requireSoakBoard(packages[other], soak), { code: "soak_package_board" }, soak.id);
+    assert.throws(() => requireSoakBoard({}, soak), { code: "soak_package_board" }, soak.id);
   }
 });
 
@@ -114,7 +119,7 @@ test("the 601 soak has its own enable line in the 601 bring-up task", () => {
 
 test("each firmware variant admits only its own soaks", () => {
   // Arrange
-  const variants = ["production", "overheat-trip-test", "gamma601-mining", "gamma601-overheat-trip-test"];
+  const variants = ["production", "overheat-trip-test", "gamma601-overheat-trip-test"];
   // Act / Assert
   for (const variant of variants) {
     for (const soak of Object.values(SOAKS)) {
@@ -153,12 +158,4 @@ test("the 601 lease check is enabled by the same line as the Gate's 601 interrup
   assert.deepEqual([soakTask("gamma601-lease-001"), soakTaskLine("gamma601-lease-001")], [task, line]);
   assert.doesNotThrow(() => requireSoakTask(block, "gamma601-lease-001"));
   assert.throws(() => requireSoakTask(block.replace(line, soakTaskLine("lease-001")), "gamma601-lease-001"), { code: "soak_task_disabled" });
-});
-
-test("the 601 lease check runs only on the gamma601-mining firmware", () => {
-  // Arrange
-  const soak = SOAKS["gamma601-lease-001"];
-  // Act / Assert
-  assert.doesNotThrow(() => requireFirmwareVariant({ firmware_variant: "gamma601-mining" }, soak));
-  assert.throws(() => requireFirmwareVariant({ firmware_variant: "production" }, soak), { code: "soak_firmware_variant" });
 });

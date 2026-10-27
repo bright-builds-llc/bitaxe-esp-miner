@@ -146,10 +146,6 @@ package-overheat-trip-test:
 package-gamma601-vout-check:
     bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-vout-check
 
-# Test-only Gamma 601 mining firmware for the phase F3 contracts (ADR-0041), never released; flash needs `--allow-test-firmware gamma601-mining`; reinstall production afterwards.
-package-gamma601-mining:
-    bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-mining
-
 # Test-only Gamma 601 chip check for the phase F3.1 contract (ADR-0041), never released; flash needs `--allow-test-firmware gamma601-chip-check`; reinstall production afterwards.
 package-gamma601-chip-check:
     bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-chip-check
@@ -158,7 +154,7 @@ package-gamma601-chip-check:
 package-gamma601-hash-check:
     bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-hash-check
 
-# Test-only Gamma 601 mining build with the local overheat trip lowered to 55 C, for the 601 overheat check (ADR-0041 item 12, ADR-0040), never released; flash needs `--allow-test-firmware gamma601-overheat-trip-test`; reinstall production afterwards.
+# Test-only production Gamma 601 build with the local overheat trip lowered to 55 C, for the 601 overheat check (ADR-0041 items 12 and 15, ADR-0040), never released; flash needs `--allow-test-firmware gamma601-overheat-trip-test`; reinstall production afterwards.
 package-gamma601-overheat-trip-test:
     bazel build //firmware/bitaxe:firmware_image_gamma601 --//firmware/bitaxe:firmware_variant=gamma601-overheat-trip-test
 

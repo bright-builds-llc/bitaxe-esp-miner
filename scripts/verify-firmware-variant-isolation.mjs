@@ -7,11 +7,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// The boot markers, the core-voltage check's record, and the TPS546 enable's context literal,
-// which only the test variants compile. The source check below keeps that literal in the enable.
-// `Tps546Bus::operation_on`'s error context (firmware/bitaxe/src/safety_adapter/i2c_bus/tps546.rs).
-export const ENABLE_LITERAL = 'tps546_operation_on_enable';
-
+// The boot markers and the checks' records, which only the test variants compile. The TPS546
+// enable is a board fact since the 601's promotion (ADR-0041 item 15), so the board gate
+// (`verify-firmware-board-isolation.mjs`) owns it. The retired `gamma601-mining` marker stays
+// listed so no production build brings it back.
 export const TEST_VARIANT_MARKERS = [
   'firmware_variant=overheat-trip-test',
   'firmware_variant=gamma601-vout-check',
@@ -22,7 +21,6 @@ export const TEST_VARIANT_MARKERS = [
   'usb_gamma601_hash_check',
   'firmware_variant=gamma601-overheat-trip-test',
   'usb_gamma601_vout_check',
-  ENABLE_LITERAL,
 ];
 
 export function main(elves) {

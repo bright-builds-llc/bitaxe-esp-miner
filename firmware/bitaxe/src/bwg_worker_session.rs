@@ -274,8 +274,8 @@ impl WorkerSession for ProductionWorkerSession {
             admission_diagnostics::fail(Failure::Admission);
             WorkerSessionError::Rejected
         })?;
-        // A board whose mining is not admitted (a production 601, ADR-0041 item 10) refuses
-        // before any budget is charged.
+        // A build whose mining is not admitted (a 601 check variant, ADR-0041 items 10 and 15)
+        // refuses before any budget is charged.
         if !crate::board_identity::MINING_DISPATCH_ADMITTED {
             start_refused("board", "board_mining_unadmitted");
             admission_diagnostics::fail(Failure::Admission);

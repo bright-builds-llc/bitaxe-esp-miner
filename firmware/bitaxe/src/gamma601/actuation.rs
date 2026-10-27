@@ -1,6 +1,6 @@
 //! The 601's safety actuation owner (ADR-0041). The safe-boot thread owns the bus, so it applies
 //! the queued commands between its sweeps: fan commands by the authority the 205's owner uses,
-//! and, in the mining variant only, the TPS546 regulator's.
+//! and, in the builds that mine (`gamma601_dispatch`, ADR-0041 item 15), the TPS546 regulator's.
 
 use crate::safety_adapter::{
     self, gamma601 as hardware, FanDecision, RuntimeI2cOwner, SafetyActuationCommand,
@@ -17,15 +17,15 @@ pub(super) struct ActuationState {
     /// at full for it.
     pub(super) regulator_on: bool,
     /// The permit the output was turned on under; the output goes off once it no longer holds.
-    #[cfg(feature = "gamma601-mining")]
+    #[cfg(gamma601_dispatch)]
     maybe_permit: Option<crate::production_mining_session::revocation::WorkPermit>,
     /// The enable awaiting `VerifyRegulator`: its target, its baseline and when it was made.
-    #[cfg(feature = "gamma601-mining")]
+    #[cfg(gamma601_dispatch)]
     maybe_pending_verify: Option<PendingVerify>,
 }
 
 /// An enable not yet judged settled.
-#[cfg(feature = "gamma601-mining")]
+#[cfg(gamma601_dispatch)]
 #[derive(Debug, Clone, Copy)]
 struct PendingVerify {
     millivolts: u16,
@@ -38,7 +38,7 @@ struct PendingVerify {
 pub(super) const ON_AUTHORITY_CHECK_MS: u64 = 100;
 
 /// An enable not verified within this long is turned off: its owner has gone.
-#[cfg(feature = "gamma601-mining")]
+#[cfg(gamma601_dispatch)]
 const VERIFY_DEADLINE_MS: u64 = 5_000;
 
 impl ActuationState {
@@ -50,21 +50,21 @@ impl ActuationState {
     /// The generation the output is on for, in `WorkerGeneration::raw` form; `None` while it is
     /// off or in builds that never turn it on for a run.
     pub(super) fn powered_generation(&self) -> Option<u32> {
-        #[cfg(feature = "gamma601-mining")]
+        #[cfg(gamma601_dispatch)]
         return self
             .maybe_permit
             .filter(|_| self.regulator_on)
             .and_then(|permit| permit.maybe_generation())
             .map(|generation| generation.raw());
-        #[cfg(not(feature = "gamma601-mining"))]
+        #[cfg(not(gamma601_dispatch))]
         None
     }
 
     /// Whether the output is on and judged settled, so its `OFF` bit is a fault.
     pub(super) fn output_verified_on(&self) -> bool {
-        #[cfg(feature = "gamma601-mining")]
+        #[cfg(gamma601_dispatch)]
         return self.regulator_on && self.maybe_pending_verify.is_none();
-        #[cfg(not(feature = "gamma601-mining"))]
+        #[cfg(not(gamma601_dispatch))]
         false
     }
 }
@@ -78,7 +78,7 @@ pub(super) fn enforce_authority(
     state: &mut ActuationState,
     report: SafeBootReport,
 ) {
-    #[cfg(feature = "gamma601-mining")]
+    #[cfg(gamma601_dispatch)]
     {
         use crate::production_mining_session::revocation;
         if !state.regulator_on {
@@ -102,7 +102,7 @@ pub(super) fn enforce_authority(
             let _ = turn_off(owner, state, report);
         }
     }
-    #[cfg(not(feature = "gamma601-mining"))]
+    #[cfg(not(gamma601_dispatch))]
     let _ = (owner, state, report);
 }
 
@@ -135,18 +135,19 @@ pub(super) fn apply(
     }
 }
 
-#[cfg(not(feature = "gamma601-mining"))]
+#[cfg(not(gamma601_dispatch))]
 fn apply_regulator(
     _owner: &mut RuntimeI2cOwner<'_>,
     _state: &mut ActuationState,
     _report: SafeBootReport,
     _command: SafetyActuationCommand,
 ) -> SafetyActuationReply {
-    // A production 601 drives no regulator, and the 601 has no DS4432U.
+    // The vout, chip and hash checks own the regulator on the safe-boot thread, so their actuation
+    // owner drives none; the 601 has no DS4432U.
     SafetyActuationReply::Refused
 }
 
-#[cfg(feature = "gamma601-mining")]
+#[cfg(gamma601_dispatch)]
 fn apply_regulator(
     owner: &mut RuntimeI2cOwner<'_>,
     state: &mut ActuationState,
@@ -209,7 +210,7 @@ fn apply_regulator(
 
 /// A command whose permit no longer holds: nothing it asked for is done, and an output still on
 /// under a lapsed authority goes off.
-#[cfg(feature = "gamma601-mining")]
+#[cfg(gamma601_dispatch)]
 fn refuse(
     owner: &mut RuntimeI2cOwner<'_>,
     state: &mut ActuationState,
@@ -222,7 +223,7 @@ fn refuse(
 }
 
 /// Turns the output off; the safe boot re-asserts off from now on, confirmed or not.
-#[cfg(feature = "gamma601-mining")]
+#[cfg(gamma601_dispatch)]
 fn turn_off(
     owner: &mut RuntimeI2cOwner<'_>,
     state: &mut ActuationState,

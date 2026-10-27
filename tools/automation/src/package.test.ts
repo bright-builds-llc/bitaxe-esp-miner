@@ -10,7 +10,6 @@ import {
   FirmwareVariantMarkerError,
   GAMMA601_CHIP_CHECK_MARKER,
   GAMMA601_HASH_CHECK_MARKER,
-  GAMMA601_MINING_MARKER,
   GAMMA601_OVERHEAT_TRIP_TEST_MARKER,
   GAMMA601_VOUT_CHECK_MARKER,
   OVERHEAT_TRIP_TEST_MARKER,
@@ -25,7 +24,6 @@ const productionElf = Buffer.from("\x7fELF production firmware");
 const testElf = Buffer.from(`\x7fELF ${OVERHEAT_TRIP_TEST_MARKER} local_overheat_trip_c=55`);
 const gammaElf = Buffer.from("\x7fELF firmware_board=601 safe boot");
 const gammaCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_VOUT_CHECK_MARKER}`);
-const gammaMiningElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_MINING_MARKER}`);
 const gammaChipCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_CHIP_CHECK_MARKER}`);
 const gammaHashCheckElf = Buffer.from(`\x7fELF firmware_board=601 ${GAMMA601_HASH_CHECK_MARKER}`);
 const gammaOverheatElf = Buffer.from(
@@ -242,20 +240,20 @@ test("a 601 core-voltage check package records its variant", async () => {
   }
 });
 
-test("a 601 mining package records its variant", async () => {
+test("a 601 hash check package records its variant", async () => {
   // Arrange
-  const root = await packageWorkspace(gammaMiningElf);
+  const root = await packageWorkspace(gammaHashCheckElf);
   const runs: CommandSpec<unknown>[] = [];
 
   try {
     // Act
-    const error = await packageWith(root, "gamma601-mining", runs, "601");
+    const error = await packageWith(root, "gamma601-hash-check", runs, "601");
 
     // Assert
     assert.equal(error, undefined);
     const manifestGenerator = runs.find((spec) => spec.args[0] === "package-firmware");
     assert.ok(manifestGenerator !== undefined);
-    assert.equal(argAfter(manifestGenerator, "--firmware-variant"), "gamma601-mining");
+    assert.equal(argAfter(manifestGenerator, "--firmware-variant"), "gamma601-hash-check");
   } finally {
     await rm(root, { recursive: true });
   }
@@ -287,24 +285,6 @@ test("the hash check variant is refused for the Ultra 205 before any tool runs",
   try {
     // Act
     const error = await packageWith(root, "gamma601-hash-check", runs, "205");
-
-    // Assert
-    assert.ok(error instanceof FirmwareVariantMarkerError);
-    assert.deepEqual(maybeTypedFailurePublicValue(error), { failure: "firmware_variant_board_mismatch" });
-    assert.equal(runs.length, 0);
-  } finally {
-    await rm(root, { recursive: true });
-  }
-});
-
-test("the mining variant is refused for the Ultra 205 before any tool runs", async () => {
-  // Arrange
-  const root = await packageWorkspace(gammaMiningElf);
-  const runs: CommandSpec<unknown>[] = [];
-
-  try {
-    // Act
-    const error = await packageWith(root, "gamma601-mining", runs, "205");
 
     // Assert
     assert.ok(error instanceof FirmwareVariantMarkerError);
@@ -406,9 +386,9 @@ test("the 601 overheat variant is refused for the Ultra 205 before any tool runs
   }
 });
 
-test("a 601 overheat package whose ELF also carries the mining marker fails before any tool runs", async () => {
+test("a 601 overheat package whose ELF also carries another marker fails before any tool runs", async () => {
   // Arrange
-  const root = await packageWorkspace(Buffer.concat([gammaOverheatElf, Buffer.from(` ${GAMMA601_MINING_MARKER}`)]));
+  const root = await packageWorkspace(Buffer.concat([gammaOverheatElf, Buffer.from(` ${GAMMA601_HASH_CHECK_MARKER}`)]));
   const runs: CommandSpec<unknown>[] = [];
 
   try {
@@ -424,14 +404,14 @@ test("a 601 overheat package whose ELF also carries the mining marker fails befo
   }
 });
 
-test("a 601 mining package whose ELF carries the 601 overheat marker instead fails before any tool runs", async () => {
+test("a 601 hash check package whose ELF carries the 601 overheat marker instead fails before any tool runs", async () => {
   // Arrange
   const root = await packageWorkspace(gammaOverheatElf);
   const runs: CommandSpec<unknown>[] = [];
 
   try {
     // Act
-    const error = await packageWith(root, "gamma601-mining", runs, "601");
+    const error = await packageWith(root, "gamma601-hash-check", runs, "601");
 
     // Assert
     assert.ok(error instanceof FirmwareVariantMarkerError);

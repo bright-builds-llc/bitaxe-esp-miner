@@ -19,13 +19,12 @@ pub(crate) enum FirmwareVariant {
     OverheatTripTest,
     /// Test-only Gamma 601 firmware that runs one bounded core-voltage check.
     Gamma601VoutCheck,
-    /// Test-only Gamma 601 firmware that may power its BM1370 and mine, for phase F3.
-    Gamma601Mining,
     /// Test-only Gamma 601 firmware that runs one bounded chip detection, for phase F3.1.
     Gamma601ChipCheck,
     /// Test-only Gamma 601 firmware that runs one bounded hash check, for phase F3.2.
     Gamma601HashCheck,
-    /// Test-only Gamma 601 mining firmware with a lowered local overheat trip (ADR-0041 item 12).
+    /// Test-only production Gamma 601 firmware with a lowered local overheat trip (ADR-0041 items
+    /// 12 and 15).
     Gamma601OverheatTripTest,
 }
 
@@ -36,7 +35,6 @@ impl FirmwareVariant {
             Self::Production => None,
             Self::OverheatTripTest => Some(BoardId::Ultra205),
             Self::Gamma601VoutCheck
-            | Self::Gamma601Mining
             | Self::Gamma601ChipCheck
             | Self::Gamma601HashCheck
             | Self::Gamma601OverheatTripTest => Some(BoardId::Gamma601),
@@ -80,7 +78,6 @@ mod tests {
             FirmwareVariant::Production,
             FirmwareVariant::OverheatTripTest,
             FirmwareVariant::Gamma601VoutCheck,
-            FirmwareVariant::Gamma601Mining,
             FirmwareVariant::Gamma601ChipCheck,
             FirmwareVariant::Gamma601HashCheck,
             FirmwareVariant::Gamma601OverheatTripTest,
@@ -99,7 +96,6 @@ mod tests {
                 "\"production\"",
                 "\"overheat-trip-test\"",
                 "\"gamma601-vout-check\"",
-                "\"gamma601-mining\"",
                 "\"gamma601-chip-check\"",
                 "\"gamma601-hash-check\"",
                 "\"gamma601-overheat-trip-test\""
@@ -142,8 +138,6 @@ mod tests {
             (Some(FirmwareVariant::Gamma601VoutCheck), BoardId::Ultra205),
             (Some(FirmwareVariant::OverheatTripTest), BoardId::Ultra205),
             (Some(FirmwareVariant::OverheatTripTest), BoardId::Gamma601),
-            (Some(FirmwareVariant::Gamma601Mining), BoardId::Gamma601),
-            (Some(FirmwareVariant::Gamma601Mining), BoardId::Ultra205),
             (Some(FirmwareVariant::Gamma601ChipCheck), BoardId::Gamma601),
             (Some(FirmwareVariant::Gamma601ChipCheck), BoardId::Ultra205),
             (Some(FirmwareVariant::Gamma601HashCheck), BoardId::Gamma601),
@@ -169,10 +163,7 @@ mod tests {
         // Assert
         assert_eq!(
             admitted,
-            [
-                true, false, true, false, true, false, true, false, true, false, true, false, true,
-                true
-            ]
+            [true, false, true, false, true, false, true, false, true, false, true, true]
         );
     }
 }

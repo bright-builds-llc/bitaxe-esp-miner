@@ -283,51 +283,26 @@ fn flash_cli_parses_the_core_voltage_check_allowance() {
     );
 }
 
-const GAMMA_MINING_ELF: &[u8] =
-    b"synthetic elf firmware_board=601 firmware_variant=gamma601-mining";
-
 #[test]
-fn the_mining_variant_installs_only_on_the_gamma_601() {
+fn the_retired_601_mining_variant_is_an_unknown_manifest_variant() {
     // Act
-    let gamma = require_firmware_variant_board(FirmwareVariant::Gamma601Mining, BoardId::Gamma601);
-    let ultra = require_firmware_variant_board(FirmwareVariant::Gamma601Mining, BoardId::Ultra205)
-        .expect_err("the 205 must refuse the 601 mining variant");
+    let error = manifest_firmware_variant(Some("gamma601-mining"))
+        .expect_err("the retired variant must be refused");
 
     // Assert
-    assert!(gamma.is_ok(), "{gamma:?}");
-    assert!(ultra
+    assert!(error
         .to_string()
-        .contains("reason=test_firmware_board_mismatch"));
+        .contains("reason=manifest_firmware_variant_unknown"));
 }
 
 #[test]
-fn the_mining_variant_bytes_admit_only_their_own_variant() {
+fn installing_a_601_test_variant_requires_naming_it() {
     // Act
-    let own = require_firmware_variant_bytes(FirmwareVariant::Gamma601Mining, GAMMA_MINING_ELF);
-    let check =
-        require_firmware_variant_bytes(FirmwareVariant::Gamma601VoutCheck, GAMMA_MINING_ELF)
-            .expect_err("the core-voltage check must refuse the mining marker");
-    let production = require_firmware_variant_bytes(FirmwareVariant::Production, GAMMA_MINING_ELF)
-        .expect_err("production must refuse the mining marker");
-
-    // Assert
-    assert!(own.is_ok(), "{own:?}");
-    assert!(check
-        .to_string()
-        .contains("reason=test_firmware_marker_missing"));
-    assert!(production
-        .to_string()
-        .contains("reason=test_firmware_bytes_in_production_package"));
-}
-
-#[test]
-fn installing_the_mining_variant_requires_naming_it() {
-    // Act
-    let without = admit_firmware_variant(FirmwareVariant::Gamma601Mining, None)
-        .expect_err("the mining variant needs its allowance");
+    let without = admit_firmware_variant(FirmwareVariant::Gamma601HashCheck, None)
+        .expect_err("the hash check needs its allowance");
     let named = admit_firmware_variant(
-        FirmwareVariant::Gamma601Mining,
-        Some(FirmwareVariant::Gamma601Mining),
+        FirmwareVariant::Gamma601HashCheck,
+        Some(FirmwareVariant::Gamma601HashCheck),
     );
 
     // Assert
@@ -366,13 +341,13 @@ fn the_chip_check_bytes_admit_only_their_own_variant() {
     // Act
     let own =
         require_firmware_variant_bytes(FirmwareVariant::Gamma601ChipCheck, GAMMA_CHIP_CHECK_ELF);
-    let mining =
-        require_firmware_variant_bytes(FirmwareVariant::Gamma601Mining, GAMMA_CHIP_CHECK_ELF)
-            .expect_err("the mining variant must refuse the chip check marker");
+    let hash_check =
+        require_firmware_variant_bytes(FirmwareVariant::Gamma601HashCheck, GAMMA_CHIP_CHECK_ELF)
+            .expect_err("the hash check variant must refuse the chip check marker");
 
     // Assert
     assert!(own.is_ok(), "{own:?}");
-    assert!(mining
+    assert!(hash_check
         .to_string()
         .contains("reason=test_firmware_marker_missing"));
 }
@@ -434,11 +409,11 @@ fn the_601_overheat_variant_installs_only_on_the_gamma_601_and_only_when_named()
     .expect_err("the 205 must refuse the 601 overheat variant");
     let unnamed = admit_firmware_variant(FirmwareVariant::Gamma601OverheatTripTest, None)
         .expect_err("the 601 overheat variant needs its allowance");
-    let mining_allowance = admit_firmware_variant(
+    let other_allowance = admit_firmware_variant(
         FirmwareVariant::Gamma601OverheatTripTest,
-        Some(FirmwareVariant::Gamma601Mining),
+        Some(FirmwareVariant::Gamma601HashCheck),
     )
-    .expect_err("the mining allowance must not admit the 601 overheat variant");
+    .expect_err("another 601 variant's allowance must not admit the 601 overheat variant");
 
     // Assert
     assert!(gamma.is_ok(), "{gamma:?}");
@@ -448,7 +423,7 @@ fn the_601_overheat_variant_installs_only_on_the_gamma_601_and_only_when_named()
     assert!(unnamed
         .to_string()
         .contains("reason=test_firmware_requires_allowance"));
-    assert!(mining_allowance
+    assert!(other_allowance
         .to_string()
         .contains("reason=test_firmware_variant_mismatch"));
 }
@@ -460,11 +435,11 @@ fn the_601_overheat_bytes_admit_only_their_own_variant() {
         FirmwareVariant::Gamma601OverheatTripTest,
         GAMMA_OVERHEAT_TRIP_TEST_ELF,
     );
-    let mining = require_firmware_variant_bytes(
-        FirmwareVariant::Gamma601Mining,
+    let chip_check = require_firmware_variant_bytes(
+        FirmwareVariant::Gamma601ChipCheck,
         GAMMA_OVERHEAT_TRIP_TEST_ELF,
     )
-    .expect_err("the mining variant must refuse the 601 overheat marker");
+    .expect_err("the chip check variant must refuse the 601 overheat marker");
     let overheat_205 = require_firmware_variant_bytes(
         FirmwareVariant::OverheatTripTest,
         GAMMA_OVERHEAT_TRIP_TEST_ELF,
@@ -473,7 +448,7 @@ fn the_601_overheat_bytes_admit_only_their_own_variant() {
 
     // Assert
     assert!(own.is_ok(), "{own:?}");
-    assert!(mining
+    assert!(chip_check
         .to_string()
         .contains("reason=test_firmware_marker_missing"));
     assert!(overheat_205
@@ -482,9 +457,9 @@ fn the_601_overheat_bytes_admit_only_their_own_variant() {
 }
 
 #[test]
-fn a_601_overheat_application_that_also_carries_the_mining_marker_is_refused() {
+fn a_601_overheat_application_that_also_carries_another_marker_is_refused() {
     // Arrange
-    let both = b"synthetic elf firmware_board=601 firmware_variant=gamma601-overheat-trip-test firmware_variant=gamma601-mining";
+    let both = b"synthetic elf firmware_board=601 firmware_variant=gamma601-overheat-trip-test firmware_variant=gamma601-hash-check";
 
     // Act
     let error = require_firmware_variant_bytes(FirmwareVariant::Gamma601OverheatTripTest, both)

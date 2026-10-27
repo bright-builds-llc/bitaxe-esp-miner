@@ -3,10 +3,9 @@ import type { SelfTestCampaignBoard } from "./self-test-campaign-profile.js";
 
 const monitorSeconds = 360;
 
-/** The board a command names, and the test-firmware admission its package needs. */
+/** The board a command names. */
 export type FlashTarget = {
   readonly board: SelfTestCampaignBoard;
-  readonly testFirmwareArgs: readonly string[];
 };
 
 type FlashInputs = {
@@ -30,7 +29,6 @@ export function selfTestFlashMonitorSpec(
     "--board", String(target.board),
     "--port", port,
     "--manifest", manifest,
-    ...target.testFirmwareArgs,
     // Seeding NVS is a factory install; the flash tool refuses Wi-Fi without it.
     "--factory-reset",
     "--wifi-credentials", wifiCredentials,
@@ -55,7 +53,6 @@ export function selfTestFlashMonitorDryRunSpec(
     "--port", port,
     "--dry-run",
     "--manifest", manifest,
-    ...target.testFirmwareArgs,
     // Seeding NVS is a factory install; the flash tool refuses Wi-Fi without it.
     "--factory-reset",
     "--wifi-credentials", wifiCredentials,
@@ -73,7 +70,6 @@ export function ordinaryFlashMonitorSpec(
     "--board", String(target.board),
     "--port", inputs.port,
     "--manifest", inputs.manifest,
-    ...target.testFirmwareArgs,
     // Seeding NVS is a factory install; the flash tool refuses Wi-Fi without it.
     "--factory-reset",
     "--wifi-credentials", inputs.wifiCredentials,

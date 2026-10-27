@@ -15,10 +15,6 @@ board-gamma-601 = []
 # in reset. Built only through the `--//firmware/bitaxe:firmware_variant=gamma601-vout-check`
 # 601 package, never released.
 gamma601-vout-check = ["board-gamma-601"]
-# Test-only (ADR-0041): the 601 firmware that may power the BM1370 and admit mining dispatch,
-# for the phase F3 hardware contracts. Built only through the
-# `--//firmware/bitaxe:firmware_variant=gamma601-mining` 601 package, never released.
-gamma601-mining = ["board-gamma-601"]
 # Test-only (ADR-0041): the 601 safe boot plus one bounded chip detection, the BM1370 powered
 # and released from reset only for the count, for the phase F3.1 contract. Built only through
 # the `--//firmware/bitaxe:firmware_variant=gamma601-chip-check` 601 package, never released.
@@ -28,10 +24,10 @@ gamma601-chip-check = ["board-gamma-601"]
 # Built only through the `--//firmware/bitaxe:firmware_variant=gamma601-hash-check` 601
 # package, never released.
 gamma601-hash-check = ["board-gamma-601"]
-# Test-only (ADR-0041 item 12, ADR-0040): the 601 mining build with the local overheat trip
-# lowered to 55 C, for the 601 overheat check. Built only through the
+# Test-only (ADR-0041 items 12 and 15, ADR-0040): the production 601 build with the local overheat
+# trip lowered to 55 C, for the 601 overheat check. Built only through the
 # `--//firmware/bitaxe:firmware_variant=gamma601-overheat-trip-test` 601 package, never released.
-gamma601-overheat-trip-test = ["gamma601-mining", "overheat-trip-test"]
+gamma601-overheat-trip-test = ["board-gamma-601", "overheat-trip-test"]
 
 [dependencies]
 anyhow.workspace = true

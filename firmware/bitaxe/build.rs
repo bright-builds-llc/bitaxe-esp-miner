@@ -32,6 +32,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=BITAXE_WORK_RESULT_INVESTIGATION");
     println!("cargo:rerun-if-env-changed=BITAXE_CHIP_DETECT_INVESTIGATION");
     println!("cargo:rerun-if-env-changed=BITAXE_OTA_ROLLBACK_PROBE");
+    emit_gamma601_dispatch_cfg();
     let provenance = required_build_provenance();
     let identity = provenance.build_identity();
     // ADR-0040: the lowered overheat trip is for hardware checks only, never a release.
@@ -45,12 +46,6 @@ fn main() {
         && identity.maybe_release_tag().is_some()
     {
         panic!("the gamma601-vout-check firmware variant must never carry a release tag");
-    }
-    // ADR-0041: the 601 mining variant is for the phase F3 hardware contracts, never a release.
-    if env::var_os("CARGO_FEATURE_GAMMA601_MINING").is_some()
-        && identity.maybe_release_tag().is_some()
-    {
-        panic!("the gamma601-mining firmware variant must never carry a release tag");
     }
     // ADR-0041: the 601 chip check is for the phase F3.1 contract, never a release.
     if env::var_os("CARGO_FEATURE_GAMMA601_CHIP_CHECK").is_some()
@@ -205,4 +200,21 @@ fn is_valid_build_timestamp_utc(timestamp: &str) -> bool {
         && timestamp[17..19]
             .parse::<u8>()
             .is_ok_and(|second| second <= 59)
+}
+
+/// `gamma601_dispatch`: the 601 builds that may power the BM1370 for mining and the self-test
+/// (ADR-0041 item 15). Every 601 build is one but the bounded vout, chip and hash checks, which own
+/// the regulator on the safe-boot thread and keep the mining power path compiled out.
+fn emit_gamma601_dispatch_cfg() {
+    println!("cargo:rustc-check-cfg=cfg(gamma601_dispatch)");
+    let check_variant = [
+        "CARGO_FEATURE_GAMMA601_VOUT_CHECK",
+        "CARGO_FEATURE_GAMMA601_CHIP_CHECK",
+        "CARGO_FEATURE_GAMMA601_HASH_CHECK",
+    ]
+    .into_iter()
+    .any(|feature| env::var_os(feature).is_some());
+    if env::var_os("CARGO_FEATURE_BOARD_GAMMA_601").is_some() && !check_variant {
+        println!("cargo:rustc-cfg=gamma601_dispatch");
+    }
 }
