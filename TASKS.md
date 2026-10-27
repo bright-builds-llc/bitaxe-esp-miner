@@ -1776,6 +1776,9 @@ passed by path only and never read, printed or summarized.
      --capture-timeout-seconds 360` to confirm production.
 - **Allowed effects:** the factory installs with the owner's Wi-Fi
   credentials and the tuple; the settings backup and restore over HTTP;
+  before the start, one HTTP settings write clearing the fallback pool
+  (`fallbackStratumURL` empty, the fallback off; owner decision
+  2026-10-26), which the campaign's exact restore requires;
   the regulator on at 1150 mV for at most 240 s per phase under the local
   generation; 525 MHz; fan 10 to 100 %; diagnostic work only; the
   campaign's recovery install; the production reinstall.
