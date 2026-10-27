@@ -92,6 +92,10 @@ export function restartCool(limits) {
  * - Gamma 601 lease check 001 is lease check 001 on the 601 (ADR-0041 phase F3.4) at 400 MHz /
  *   1150 mV, under the 601's limits. Its enable line also
  *   enables the Gate soak that interrupts it (`fixed-usb-soak/contract.mjs`).
+ * - Gamma 601 boot resume check 001 is boot resume check 001 on the promoted production 601
+ *   (ADR-0041 phase F4.5) at 525 MHz / 1150 mV, under the 601's limits.
+ * - Gamma 601 production smoke soak 001 is `gamma601-default-001`'s rule on the promoted production
+ *   601 (phase F4.5): 10 continuous minutes at 525 MHz / 1150 mV.
  */
 export const SOAKS = Object.freeze({
   "001": Object.freeze({ id: "001", activeMs: 30 * 60_000, requireHashrate: false, maybeMaximumOutageMs: null,
@@ -174,6 +178,15 @@ export const SOAKS = Object.freeze({
     profile: Object.freeze({ frequencyMhz: 400, coreVoltageMv: 1150 }), activeMs: 5 * 60_000, afterActiveMs: 5 * 60_000,
     requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 90 * 60_000, restoreBoundMs: 180_000,
     enableLine: "Gamma 601 lease interrupt check hardware: enabled." }),
+  "gamma601-boot-resume-001": Object.freeze({ id: "gamma601-boot-resume-001", kind: "boot-resume", task: "task-gamma-601-bring-up",
+    requireStoredBoard: "601", limits: GAMMA601_LIMITS, profile: Object.freeze({ frequencyMhz: 525, coreVoltageMv: 1150 }),
+    activeMs: 5 * 60_000, requireHashrate: true, maybeMaximumOutageMs: 60_000, maybeDeadlineMs: 15 * 60_000,
+    enableLine: "Gamma 601 boot resume check hardware: enabled." }),
+  "gamma601-production-001": Object.freeze({ id: "gamma601-production-001", task: "task-gamma-601-bring-up",
+    activeMs: 10 * 60_000, requireHashrate: true, maybeMaximumOutageMs: null,
+    maybeDeadlineMs: null, requireStoredBoard: "601", limits: GAMMA601_LIMITS,
+    profile: Object.freeze({ frequencyMhz: 525, coreVoltageMv: 1150 }),
+    enableLine: "Gamma 601 production smoke soak hardware: enabled." }),
 });
 export const SAMPLE_INTERVAL_MS = 2000;
 /** A longer gap between successive samples breaks continuity. */

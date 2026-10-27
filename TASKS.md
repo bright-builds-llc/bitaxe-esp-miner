@@ -757,8 +757,21 @@ action.
         unrelated `//tools/device-session:tests` failure under the gate's
         load passed 3 of 3 runs alone. The 601's production self-test needs
         its own immutable plan in F4.5 (the campaign still pins F4.3's);
+        superseded in F4.5: F4.3's plan already names the production repeat;
     - [ ] F4.5: promotion hardware: boot resume, the production self-test,
       a production smoke soak;
+      - [x] software: the boot-resume check takes the soak's board, profile
+        and limits (the 205's `boot-resume-001` unchanged); soaks
+        `gamma601-boot-resume-001` and `gamma601-production-001` at
+        525/1150 under the 601's limits; tests. The production self-test
+        runs under F4.3's immutable plan, whose objective already names the
+        promoted production build's repeat, so it needs no new plan;
+      - [ ] production installed state-preserving and confirmed;
+      - [ ] boot resume (`gamma601-boot-resume-001`);
+      - [ ] the production self-test (SELF-001 on the production 601);
+      - [ ] the production smoke soak (`gamma601-production-001`);
+      - [ ] the device ends on production, paused, mining on boot off
+        unless the owner asks otherwise;
     - [ ] F4.6: parity proposals; the 205's regression and self-test at
       the final commit.
 
@@ -1899,6 +1912,101 @@ F4.3 attempts:
   `identity=match`, the Worker baseline confirmed at `22ee4801`, no panic).
   Evidence: `docs/parity/evidence/20261027-gamma601-self-test.md`, checked
   independently against the private captures.
+
+Phase F4.5 promotion hardware contract (attempt ordinals 001 onward per
+step; the self-test continues F4.3's ordinals from 007):
+
+Gamma 601 boot resume check hardware: enabled.
+Gamma 601 production smoke soak hardware: enabled.
+
+The owner asked on 2026-10-27 to go ahead with F4.5, whose approved plan
+runs F4.3's self-test lifecycle on the production build; that request
+covers applying `wifi-credentials.json` for the self-test's factory
+installs (the Wi-Fi rule above). The file is passed by path only and never
+read, printed or summarized.
+
+- **Objective:** the promoted production 601 at the clean, pushed HEAD,
+  with no test build:
+  1. installed state-preserving and confirmed (safe-boot records,
+     `identity=match`, the Worker baseline);
+  2. boot resume through the soak `gamma601-boot-resume-001`: mining on
+     boot saved on with 525/1150 and the pool, one restart that resumes
+     mining with no command (5 minutes within 15, at least one accepted
+     share), then mining on boot saved off, paused, one restart that stays
+     paused for 2 minutes;
+  3. SELF-001's lifecycle per the immutable plan
+     `docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md`
+     (one exact-package two-phase BOOT-button campaign under a mode-0700
+     root), the production repeat its objective names;
+  4. 10 continuous minutes at 525/1150 through the soak
+     `gamma601-production-001`;
+  5. the device left on production, paused, mining on boot off unless the
+     owner asks otherwise.
+- **Precondition:** only the 601 attached, registered as board 601; the
+  tree clean and pushed; the dedicated Gate tab passing the detached
+  visibility check for each endpoint handoff; the owner at the board for
+  the self-test's one BOOT press.
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/gamma-601-promotion/`, `R` =
+  `scratch/self001-gamma601/attempt-NNN` (absent before the start) and
+  `umask 077`:**
+  1. `just detect-ultra205`; `just package --board 601`; `just
+     flash-monitor --board 601 --port <port> --capture-timeout-seconds
+     360`, state-preserving;
+  2. `just otawww-endpoint preflight|serve|finish --private-root
+     P/endpoint-NNN`, with Connect in the dedicated Gate tab; `just
+     local-mining-soak preflight --soak gamma601-boot-resume-001
+     --private-root P/boot-resume-NNN --endpoint-root P/endpoint-NNN
+     --package-manifest <manifest> --pool-credentials
+     pool-credentials.json`, `pause`, then `run` under `caffeinate`;
+  3. F4.3's commands 2 to 5 with the production package (`just package
+     --board 601`) in place of the test build;
+  4. a new endpoint handoff, then the soak `gamma601-production-001` as in
+     step 2 with `P/production-NNN`;
+  5. each step's preflight requires the package at the current HEAD, so
+     when a commit (an attempt record) moved HEAD since the last install,
+     the step starts with `just package --board 601` and a state-preserving
+     `just flash-monitor --board 601 --port <port>
+     --capture-timeout-seconds 360` at the new HEAD; after each step, and
+     after any stop, `just monitor --board 601 --port <port>
+     --capture-timeout-seconds 360` confirms production.
+- **Allowed effects:** the installs and their resets; the endpoint
+  handoffs; start-on-boot saved on then off, the pool and 525/1150 saved
+  over HTTP; the boot-resume check's two restarts; the soaks' local mining
+  within their bounds (the boot-resume check: from the restart until 15
+  minutes after its boot's first sample, plus the stop allowance; the smoke
+  soak: 10 continuous minutes within its 20-minute run deadline) and their
+  pauses; the self-test's effects as F4.3 allows them (its factory
+  installs with the owner's Wi-Fi credentials and the tuple, the settings
+  backup and restore, the fallback pool cleared if it reads set, the
+  regulator on at 1150 mV for at most 240 s per phase, 525 MHz, fan 10 to
+  100 %, diagnostic work only, its recovery install). After a stop, as
+  capture for its analysis (ADR-0030): `just local-mining-soak
+  stopped-proof`, then one core-dump read with `just hardware-operator`'s
+  recovery helper.
+- **Prohibited effects:** any test build; any other frequency or voltage;
+  a Worker Start or lease; a factory reset outside the self-test; network
+  discovery beyond the handoffs; direct UART or pins; a retry without a
+  recorded, verified change. Pool values never leave `P`, `R` or the local
+  credential file.
+- **Stops:** the soaks' live stops (22 W, chip 75 C, regulator 90 C, input
+  outside 4.5 to 5.5 V, fan, stale readings, a reset outside a requested
+  restart, a fault), the boot-resume check's own (a restart unobserved in
+  180 s, another reset category, a skipped boot ordinal, mining after mining
+  on boot was turned off), the self-test plan's stops, and the firmware's
+  own. Any stop: pause, mining on boot off, production confirmed before
+  analysing (progress-gated policy).
+- **Evidence and privacy:** captures and journals stay in `P` and `R`
+  (mode 0600 under 0700); committed evidence is a redacted summary per step,
+  checked independently, with `just verify-redaction`; the self-test's
+  validated projection holds digests, constants and booleans only; no pool
+  or Wi-Fi values.
+- **Recovery:** `just local-mining-soak pause --private-root <root>` (it
+  turns mining on boot off if it reads on); the self-test campaign's own
+  recovery; then production confirmed. If the board does not stop, remove
+  all power (barrel and USB).
+
+F4.5 attempts:
 
 ## Future
 

@@ -87,7 +87,8 @@ test("a journal without a baseline yields none", () => {
 
 test("the 601 soaks run on the production firmware since the promotion", () => {
   // Arrange
-  const soaks = ["gamma601-first-001", "gamma601-default-001", "gamma601-soak-001", "gamma601-lease-001"].map((id) => SOAKS[id]);
+  const soaks = ["gamma601-first-001", "gamma601-default-001", "gamma601-soak-001", "gamma601-lease-001",
+    "gamma601-boot-resume-001", "gamma601-production-001"].map((id) => SOAKS[id]);
   // Act / Assert
   for (const soak of soaks) {
     assert.doesNotThrow(() => requireFirmwareVariant({ firmware_variant: "production" }, soak), soak.id);

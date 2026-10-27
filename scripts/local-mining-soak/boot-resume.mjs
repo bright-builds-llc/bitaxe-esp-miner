@@ -5,8 +5,8 @@
 // device. Each boot's limits count from the first sample of that boot the check sees. Each restart is requested once; an ambiguous response is resolved by observing the new
 // boot, never by a second request.
 import { requireCondition } from "../fixed-usb-qualification/contract.mjs";
-import { finalFailures, hardwareStopped, hashing, increases, limitMetrics, liveStop, mining, miningLog, sampleFromInfo,
-  SAMPLE_INTERVAL_MS, statusOnlySamples, STOP_ALLOWANCE_MS, wifiMetrics } from "./judge.mjs";
+import { finalFailures, hardwareStoppedUnder, hashingUnder, increases, limitMetrics, limitsOf, liveStop, mining, miningLog,
+  sampleFromInfo, SAMPLE_INTERVAL_MS, statusOnlySamples, STOP_ALLOWANCE_MS, wifiMetrics } from "./judge.mjs";
 import { admitBaseline, localPhases, pauseAndConfirm, sampleLoop, UNREACHABLE_STOP_MS } from "./run.mjs";
 import { breakWatcher } from "./break-log.mjs";
 
@@ -19,14 +19,16 @@ const RESTART_CATEGORY = "software_cpu";
 
 /**
  * Runs the check; `expected` names the installed firmware and the handed-off boot. It returns the
- * verdict; the device ends paused with mining on boot off on every path it can still reach.
+ * verdict; the device ends paused with mining on boot off on every path it can still reach. The
+ * soak's board, profile and limits apply throughout: a powered-down 601 reads about 5.0 W.
  */
 export async function runBootResume({ client, expected, settings, now, sleep, record, isInterrupted = () => false, soak,
   keepLogs = async () => {} }) {
   let journalFailed = false;
   const note = async (event) => { try { await record(event); } catch { journalFailed = true; } };
-  const baseline = await admitBaseline({ client, expected, settings, now, note });
-  const context = { client, expected, now, sleep, note, isInterrupted };
+  const limits = limitsOf(soak);
+  const baseline = await admitBaseline({ client, expected, settings, now, note, soak });
+  const context = { client, expected, now, sleep, note, isInterrupted, limits };
   const marks = {}, miningSamples = [], holdSamples = [];
   let maybeStop = null, maybeFinal;
   const watcher = typeof client.logs === "function" ? breakWatcher({ readLogs: () => client.logs(), keepLogs, note }) : null;
@@ -44,7 +46,7 @@ export async function runBootResume({ client, expected, settings, now, sleep, re
       await setMineOnBoot(client, false);
       marks.disabled = true;
       await note({ event: "mine_on_boot_disabled", atMs: now() });
-      marks.pausedFinal = await pauseAndConfirm({ client, now, sleep, note });
+      marks.pausedFinal = await pauseAndConfirm({ client, now, sleep, note, limits });
       requireCondition(marks.pausedFinal !== undefined && marks.pausedFinal.bootSession === boot.bootSession, "boot_resume_not_stopped");
       marks.heldBoot = await restartOnce({ ...context, previous: boot, bootOrdinal: expected.bootOrdinal + 2 });
       maybeFinal = await holdPaused({ ...context, boot: marks.heldBoot.sample, samples: holdSamples });
@@ -56,11 +58,11 @@ export async function runBootResume({ client, expected, settings, now, sleep, re
     await watcher?.stopped(now());
     await note({ event: "live_stop", code: maybeStop });
     if (marks.enableRequested) {
-      const recovered = await pauseThenRestore({ client, now, sleep, note });
+      const recovered = await pauseThenRestore({ client, now, sleep, note, limits });
       marks.restored = recovered.mineOnBootOff;
       maybeFinal = recovered.maybeFinal;
     } else {
-      maybeFinal = await pauseAndConfirm({ client, now, sleep, note });
+      maybeFinal = await pauseAndConfirm({ client, now, sleep, note, limits });
     }
   }
   const verdict = judgeBootResume({ baseline, marks, miningSamples, holdSamples, maybeFinal, soak,
@@ -146,7 +148,7 @@ async function restartOnce({ client, expected, now, sleep, note, isInterrupted, 
  * mining, with mining on boot off. Returns the final sample once the last two show the ASIC powered
  * down, else undefined.
  */
-async function holdPaused({ client, now, sleep, note, isInterrupted, boot, samples }) {
+async function holdPaused({ client, now, sleep, note, isInterrupted, limits, boot, samples }) {
   let lastReachedAt = now();
   // The hold is judged from the boot's first sample, so it ends on a sample at least that late.
   while (samples.length === 0 || samples.at(-1).atMs - boot.atMs < HOLD_MS) {
@@ -161,11 +163,12 @@ async function holdPaused({ client, now, sleep, note, isInterrupted, boot, sampl
     const sample = sampleFromInfo(info, lastReachedAt);
     samples.push(sample);
     await note({ event: "hold_sample", sample });
-    const maybeStop = liveStop(sample, boot, samples.at(-2) ?? null);
+    const maybeStop = liveStop(sample, boot, samples.at(-2) ?? null, limits);
     requireCondition(maybeStop === null, maybeStop);
     requireCondition(heldPaused(sample), "boot_resume_mined_after_disable");
   }
   const [maybePrevious, maybeLast] = samples.slice(-2);
+  const hardwareStopped = hardwareStoppedUnder(limits);
   const stopped = maybePrevious !== undefined && hardwareStopped(maybePrevious) && hardwareStopped(maybeLast);
   await note(stopped ? { event: "final", sample: maybeLast } : { event: "final_missing" });
   return stopped ? maybeLast : undefined;
@@ -175,6 +178,7 @@ const heldPaused = (sample) => sample.miningPaused && !mining(sample) && !sample
 
 /** The check's verdict over its marks, the mining boot's samples, the held boot's samples and the final sample. */
 export function judgeBootResume({ baseline, marks, miningSamples, holdSamples, maybeFinal, maybeStop, soak }) {
+  const limits = limitsOf(soak);
   const failures = [];
   const fail = (code) => { if (!failures.includes(code)) failures.push(code); };
   if (maybeStop) fail(maybeStop);
@@ -184,25 +188,25 @@ export function judgeBootResume({ baseline, marks, miningSamples, holdSamples, m
   // Mining on boot: the boot itself unpaused, then the soak's mining with no resume command.
   if (maybeMiningBoot !== null && maybeMiningBoot.miningPaused) fail("boot_resume_started_paused");
   miningSamples.forEach((sample, index) => {
-    const stop = liveStop(sample, maybeMiningBoot, miningSamples[index - 1] ?? null); if (stop) fail(stop);
+    const stop = liveStop(sample, maybeMiningBoot, miningSamples[index - 1] ?? null, limits); if (stop) fail(stop);
   });
-  const log = miningLog(miningSamples);
+  const log = miningLog(miningSamples, limits);
   if (log.activeMs < soak.activeMs) fail("soak_active_time_short");
   if (log.outagesMs.some((outageMs) => outageMs > soak.maybeMaximumOutageMs)) fail("soak_outage_unrecovered");
-  const active = miningSamples.filter(hashing);
+  const active = miningSamples.filter(hashingUnder(limits));
   if (!active.some((sample) => sample.hashRate !== null && sample.hashRate > 0)) fail("soak_no_hashrate");
   const accepted = increases(miningSamples, "sharesAccepted");
   if (accepted < 1) fail("soak_no_accepted_share");
   // Off again: the next boot stays paused.
   if (maybeHeldBoot !== null && !heldPaused(maybeHeldBoot)) fail("boot_resume_mined_after_disable");
   holdSamples.forEach((sample, index) => {
-    const stop = liveStop(sample, maybeHeldBoot, holdSamples[index - 1] ?? null); if (stop) fail(stop);
+    const stop = liveStop(sample, maybeHeldBoot, holdSamples[index - 1] ?? null, limits); if (stop) fail(stop);
     if (!heldPaused(sample)) fail("boot_resume_mined_after_disable");
   });
   const holdMs = holdSamples.length < 1 || maybeHeldBoot === null ? 0 : holdSamples.at(-1).atMs - maybeHeldBoot.atMs;
   if (maybeHeldBoot !== null && holdMs < HOLD_MS) fail("boot_resume_hold_short");
   // The final state belongs to the last boot the run saw; any later boot is a reset.
-  finalFailures(maybeHeldBoot ?? maybeMiningBoot ?? baseline, maybeFinal).forEach(fail);
+  finalFailures(maybeHeldBoot ?? maybeMiningBoot ?? baseline, maybeFinal, limits).forEach(fail);
   if (marks.enableRequested && marks.restored === false) fail("boot_resume_preference_not_restored");
   const firstMining = active[0] ?? null;
   return {
@@ -226,7 +230,7 @@ export function judgeBootResume({ baseline, marks, miningSamples, holdSamples, m
       hold_samples: holdSamples.length,
       ...wifiMetrics([...miningSamples, ...holdSamples]),
       active_samples: active.length,
-      status_only_samples: statusOnlySamples(miningSamples),
+      status_only_samples: statusOnlySamples(miningSamples, limits),
       samples: miningSamples.length,
       // The maxima cover every sample the live limits judged.
       ...limitMetrics(miningSamples.filter(mining)),

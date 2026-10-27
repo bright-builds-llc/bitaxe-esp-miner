@@ -80,6 +80,14 @@ handover loop and the lease check belong to `task-handover-panic-diagnosis`.
   overheat check hardware: enabled.` It runs only on the test-only
   `gamma601-overheat-trip-test` firmware. See [Gamma 601 overheat
   check](#gamma-601-overheat-check).
+- `gamma601-boot-resume-001` is the boot-resume check on the promoted
+  production 601, owned by `task-gamma-601-bring-up`. Its enable line is
+  `Gamma 601 boot resume check hardware: enabled.` It saves 525 MHz /
+  1150 mV with the pool and judges under the 601's limits.
+- `gamma601-production-001` is the promoted production 601's smoke soak,
+  owned by `task-gamma-601-bring-up`: 10 continuous minutes at 525 MHz /
+  1150 mV. Its enable line is `Gamma 601 production smoke soak hardware:
+  enabled.`
 
 There is no Gate lease. The device mines the pool saved in its NVS once the
 operator resumes it, and stops when paused. The soak:
@@ -207,7 +215,9 @@ every soak 002 criterion holds over the whole run.
 `--soak boot-resume-001` checks `startMiningOnBoot` across two software
 restarts, journaling each step:
 
-1. It admits the paused baseline and saves the pool, as every soak does.
+1. It admits the paused baseline and saves the pool, and the soak's
+   profile if it has one, as every soak does. The soak's limits judge
+   every step (the 601's idle power is about 5.0 W).
 2. It turns mining on boot on and reads it back (`mine_on_boot_enabled`).
 3. It requests one restart. Within 180 s a new boot session must report
    reset category `software_cpu`, the same firmware and the next boot

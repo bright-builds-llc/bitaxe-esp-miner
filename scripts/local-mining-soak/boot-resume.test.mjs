@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SOAKS } from "./judge.mjs";
+import { IDLE_POWER_W, SOAKS } from "./judge.mjs";
 import { HOLD_MS, judgeBootResume, pauseThenRestore, runBootResume } from "./boot-resume.mjs";
 
 const SOAK = SOAKS["boot-resume-001"];
@@ -12,10 +12,11 @@ const SETTINGS = { stratumURL: "pool.invalid", stratumPort: 3333, stratumUser: "
  * preference (unless `honorPreference(boot)` says otherwise) and mines `startAfterMs` later.
  */
 function fakeDevice({ downMs = 20_000, startAfterMs = 30_000, restartCategory = "software_cpu", rebootOnRestart = true,
-  restartThrows = false, honorPreference = () => true, ordinalStep = 1, stall = () => false } = {}) {
+  restartThrows = false, honorPreference = () => true, ordinalStep = 1, stall = () => false, idlePowerW = 1, miningPowerW = 12,
+  board = {} } = {}) {
   const clock = { now: 0 };
   const state = { paused: true, mineOnBoot: false, boot: 0, bootOrdinal: EXPECTED.bootOrdinal, reset: "power_on",
-    runningSince: null, downUntil: null, pool: {}, calls: [] };
+    runningSince: null, downUntil: null, pool: {}, profile: {}, calls: [] };
   const boot = () => {
     state.boot += 1; state.bootOrdinal += ordinalStep; state.reset = restartCategory; state.downUntil = null;
     const mines = state.mineOnBoot && honorPreference(state.boot);
@@ -33,7 +34,8 @@ function fakeDevice({ downMs = 20_000, startAfterMs = 30_000, restartCategory = 
       bootSession: `session-${state.boot}`, resetReasonCategory: state.reset, uptimeSeconds: 40,
       miningPaused: state.paused, miningActivity: active ? "active" : "paused", startMiningOnBoot: state.mineOnBoot,
       hashRate: active ? 500 : 0, sharesAccepted: Math.floor(minedMs / 60_000), sharesRejected: 0,
-      temp: 55, vrTemp: 50, voltage: 5100, power: active && !stall(clock.now) ? 12 : 1, fanrpm: 4000, overheat_mode: 0, ...state.pool,
+      temp: 55, vrTemp: 50, voltage: 5100, power: active && !stall(clock.now) ? miningPowerW : idlePowerW, fanrpm: 4000,
+      overheat_mode: 0, ...state.pool, ...state.profile, ...board,
       powerStatus: { state: "fresh" }, voltageStatus: { state: "fresh" }, chipTempStatus: { state: "fresh" }, fanRpmStatus: { state: "fresh" },
     };
   };
@@ -42,6 +44,11 @@ function fakeDevice({ downMs = 20_000, startAfterMs = 30_000, restartCategory = 
     async patch(settings) {
       if (state.downUntil !== null && clock.now < state.downUntil) throw new Error("restarting");
       if ("startMiningOnBoot" in settings) { state.calls.push(`mine_on_boot_${settings.startMiningOnBoot}`); state.mineOnBoot = settings.startMiningOnBoot; return; }
+      if ("frequency" in settings) {
+        state.calls.push("patch_profile");
+        state.profile = { frequency: settings.frequency, coreVoltage: settings.coreVoltage };
+        return;
+      }
       state.calls.push("patch_pool");
       state.pool = { stratumURL: settings.stratumURL, stratumPort: settings.stratumPort, stratumUser: settings.stratumUser };
     },
@@ -60,9 +67,9 @@ function fakeDevice({ downMs = 20_000, startAfterMs = 30_000, restartCategory = 
   return { client, clock, state };
 }
 
-async function run(device, isInterrupted = () => false) {
+async function run(device, isInterrupted = () => false, soak = SOAK) {
   const events = [];
-  const verdict = await runBootResume({ client: device.client, expected: EXPECTED, settings: SETTINGS, soak: SOAK, isInterrupted,
+  const verdict = await runBootResume({ client: device.client, expected: EXPECTED, settings: SETTINGS, soak, isInterrupted,
     now: () => device.clock.now, sleep: async (ms) => { device.clock.now += ms; }, record: async (event) => { events.push(event); } });
   return { verdict, events };
 }
@@ -300,4 +307,58 @@ test("a status-only stall on the mining boot is an outage, not mining time", asy
   assert.deepEqual(verdict.failures, []);
   assert.equal(verdict.metrics.outage_count, 1);
   assert.ok(verdict.metrics.status_only_samples > 0);
+});
+
+const GAMMA601_SOAK = SOAKS["gamma601-boot-resume-001"];
+/** The promoted 601: idle reads its 5 W offset plus a little, mining about 19 W, board 601 matched. */
+const gamma601Device = (board = { storedBoard: "601", boardIdentity: "match" }) =>
+  fakeDevice({ idlePowerW: IDLE_POWER_W + 0.4, miningPowerW: 19, board });
+
+test("the 601's check passes at its own idle power", async () => {
+  // Arrange
+  const device = gamma601Device();
+  // Act
+  const { verdict } = await run(device, () => false, GAMMA601_SOAK);
+  // Assert
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(device.state.paused, true);
+  assert.equal(device.state.mineOnBoot, false);
+});
+
+test("the 601's check saves its profile before mining on boot is turned on", async () => {
+  // Arrange
+  const device = gamma601Device();
+  // Act
+  await run(device, () => false, GAMMA601_SOAK);
+  // Assert
+  assert.deepEqual(device.state.calls.slice(0, 3), ["patch_pool", "patch_profile", "mine_on_boot_true"]);
+  assert.deepEqual(device.state.profile, { frequency: 525, coreVoltage: 1150 });
+});
+
+test("the 601's check refuses another board before any write", async () => {
+  // Arrange
+  const device = gamma601Device({ storedBoard: "205", boardIdentity: "match" });
+  // Act / Assert
+  await assert.rejects(run(device, () => false, GAMMA601_SOAK), { code: "soak_board_identity" });
+  assert.deepEqual(device.state.calls, []);
+});
+
+test("the 205's limits would refuse the 601's idle power as not stopped", async () => {
+  // Arrange
+  const device = gamma601Device();
+  // Act / Assert
+  await assert.rejects(run(device), { code: "soak_baseline_not_stopped" });
+});
+
+test("the 601's recovery confirms the stop at its own idle power", async () => {
+  // Arrange
+  const device = gamma601Device();
+  device.state.mineOnBoot = true;
+  const context = { client: device.client, now: () => device.clock.now, sleep: async (ms) => { device.clock.now += ms; }, note: async () => {},
+    limits: GAMMA601_SOAK.limits };
+  // Act
+  const { mineOnBootOff, maybeFinal } = await pauseThenRestore(context);
+  // Assert
+  assert.equal(mineOnBootOff, true);
+  assert.notEqual(maybeFinal, undefined);
 });
