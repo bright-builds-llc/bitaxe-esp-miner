@@ -766,8 +766,10 @@ action.
         525/1150 under the 601's limits; tests. The production self-test
         runs under F4.3's immutable plan, whose objective already names the
         promoted production build's repeat, so it needs no new plan;
-      - [ ] production installed state-preserving and confirmed;
-      - [ ] boot resume (`gamma601-boot-resume-001`);
+      - [x] production installed state-preserving and confirmed;
+      - [x] boot resume (`gamma601-boot-resume-001`): passed on attempt
+        002, after attempt 001's fix of the Worker's settings fingerprint
+        (`33fea4d9`);
       - [ ] the production self-test (SELF-001 on the production 601);
       - [ ] the production smoke soak (`gamma601-production-001`);
       - [ ] the device ends on production, paused, mining on boot off
@@ -2012,8 +2014,10 @@ F4.5 attempts:
   records, `identity=match`, the Worker baseline confirmed, no panic). The
   boot-resume check's endpoint handoff then failed twice, at the Gate's
   `baseline` step with `command_rejected` (Hello, discovery and possession
-  had passed; the tab stayed visible and focused). The page was released to
-  `about:blank` and the server stopped with three attempts unused. Cause,
+  had passed; the tab stayed visible and focused). A `finish` refused while
+  the server was live (`endpoint_owner_live`); the page was then sent to
+  `about:blank` and the server stopped (`server_released`), with three
+  attempts unused. Cause,
   diagnosed from the code path (the Gate records no rejection message at
   `baseline`): F4.3's settings restore saved `display`, which the schema
   stores as text, and the Worker's public-settings fingerprint accepted text
@@ -2025,6 +2029,15 @@ F4.5 attempts:
   protections. Fix: the fingerprint's text keys include `display`, with a
   regression tying them to the schema's text types. Outcome:
   `continue_after_verified_fix`.
+- **Attempt 002** (`33fea4d9`, root `scratch/gamma-601-promotion/run-002`):
+  boot resume passed; outcome `complete` for that step. Production
+  installed and confirmed; the handoff admitted on its first Connect; the
+  restart with start-on-boot on mined with no command (12.8 s restart,
+  mining 10.4 s after the boot, 302 s, 28 shares, peaks 20.5 W, chip
+  70.6 C, regulator 74.8 C); the restart with it off held paused for 122 s
+  at 5.0 W. Production confirmed afterwards (`identity=match`,
+  `boot_ordinal=8`, reset `software_cpu`, no panic, no dump). Evidence:
+  `docs/parity/evidence/20261027-gamma601-boot-resume-check.md`.
 
 ## Future
 
