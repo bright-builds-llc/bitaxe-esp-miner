@@ -788,7 +788,8 @@ action.
         import graph: every test is reached except the three `core-dump`
         tests, which the explicit local `core_dump_test_local` target runs
         by design, since they need the managed ESP-IDF environment;
-      - [ ] the production self-test (SELF-001 on the production 601);
+      - [x] the production self-test (SELF-001 on the production 601):
+        complete on attempt 009 (`bb9f2ae7`);
       - [ ] the production smoke soak (`gamma601-production-001`);
       - [ ] the device ends on production, paused, mining on boot off
         unless the owner asks otherwise;
@@ -2089,6 +2090,21 @@ F4.5 attempts:
     fixtures fixed and the plans as test data.
   - Outcome: `continue_after_verified_fix`. The next attempt makes a
     repeated restore failure discriminating.
+- **Self-test attempt 009** (`bb9f2ae7`): complete; the production self-test
+  passed and the projection was published
+  (`docs/parity/evidence/self001-gamma601/attempt-009/`).
+  - The planned failure reached `cancel_ready` with `safe_state:true`, and
+    the owner's BOOT press cancelled it.
+  - The pass measured 1028.4 GH/s, with domains 260.3, 271.8, 272.1 and
+    266.3 GH/s (28, 28, 28 and 19 samples, none rejected), at 18.8 W and
+    1145 mV, chip at most 65.62 C, regulator at most 54.75 C, no fault.
+  - The receipt, the automatic restart and the settings restore followed.
+    The restore succeeded, so 008's failure did not recur and stays
+    unexplained; no diagnostic was written.
+  - Production was confirmed afterwards: 57 safe-boot records,
+    `identity=match`, the Worker baseline at `bb9f2ae7`, `boot_ordinal=17`
+    with reset `software_cpu`, no panic.
+  - Evidence: `docs/parity/evidence/20261028-gamma601-production-self-test.md`.
 
 ## Future
 
