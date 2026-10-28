@@ -770,6 +770,24 @@ action.
       - [x] boot resume (`gamma601-boot-resume-001`): passed on attempt
         002, after attempt 001's fix of the Worker's settings fingerprint
         (`33fea4d9`);
+      - [x] the automation tests that no Bazel target ran (found at
+        self-test attempt 008, done at the owner's request 2026-10-27):
+        `all.test.ts` imported 79 of 95 `src/*.test.ts` files. The three
+        self-test campaign files were wired in with `577d04ed`; the other
+        four orphans
+        (`api-command-effects-recovery`, `asic-reset-evidence`,
+        `command-failure-diagnostic`, `hashrate-monitor-panic-diagnostic`)
+        are now wired in too. The `asic-reset-evidence` fixture had lost the
+        indentation its fragment needs, which is test rot, not a tool fault.
+        The guard `test-reachability.test.ts`, its own js_test target,
+        fails when any `src/**/*.test.ts` file is unreachable from a js_test
+        entry point (a js_binary does not count). The one exception is
+        named: `stratum-v2-campaign-launcher.test.ts`, a `bazel run`
+        launcher check by design, which must stay a js_binary entry point.
+        The guard was proven red by removing one import. `scripts/` was checked by
+        import graph: every test is reached except the three `core-dump`
+        tests, which the explicit local `core_dump_test_local` target runs
+        by design, since they need the managed ESP-IDF environment;
       - [ ] the production self-test (SELF-001 on the production 601);
       - [ ] the production smoke soak (`gamma601-production-001`);
       - [ ] the device ends on production, paused, mining on boot off

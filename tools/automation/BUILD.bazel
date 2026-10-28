@@ -574,6 +574,18 @@ js_test(
     entry_point = "test-dist/all.test.js",
 )
 
+# Fails when a `src/*.test.ts` file runs under no js_test entry point; its own target, so dropping
+# an aggregator import cannot silently disable it.
+js_test(
+    name = "test_reachability_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_sources",
+        ":automation_tests_ts",
+    ],
+    entry_point = "test-dist/test-reachability.test.js",
+)
+
 js_binary(
     name = "stratum_v2_campaign_launcher_test",
     chdir = "../../../..",

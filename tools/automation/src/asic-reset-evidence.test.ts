@@ -24,11 +24,11 @@ const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", 
 
 const sources = new Map<string, string>([
   ["command.rs", `
-pub const RESET_PULSE: Self = Self::ResetPulse {
-    low_ms: 100,
-    high_ms: 100,
-};
-pub const HOLD_RESET_LOW: Self = Self::HoldResetLow;
+    pub const RESET_PULSE: Self = Self::ResetPulse {
+        low_ms: 100,
+        high_ms: 100,
+    };
+    pub const HOLD_RESET_LOW: Self = Self::HoldResetLow;
 `],
   ["init_plan.rs", `
 actions.insert(1, Bm1366AdapterAction::reset_pulse());

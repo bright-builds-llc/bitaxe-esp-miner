@@ -80,3 +80,7 @@ import "./fixture-process.test.js";
 import "./self-test-campaign.test.js";
 import "./self-test-campaign-profile.test.js";
 import "./self-test-campaign-restoration.test.js";
+import "./api-command-effects-recovery.test.js";
+import "./asic-reset-evidence.test.js";
+import "./command-failure-diagnostic.test.js";
+import "./hashrate-monitor-panic-diagnostic.test.js";
