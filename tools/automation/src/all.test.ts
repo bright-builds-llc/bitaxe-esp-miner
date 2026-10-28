@@ -77,3 +77,6 @@ import "./workflow.test.js";
 import "./version-evidence.test.js";
 import "./validator-boundary.test.js";
 import "./fixture-process.test.js";
+import "./self-test-campaign.test.js";
+import "./self-test-campaign-profile.test.js";
+import "./self-test-campaign-restoration.test.js";

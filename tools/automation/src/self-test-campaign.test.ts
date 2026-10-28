@@ -79,7 +79,7 @@ async function fixture() {
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   const detector = path.join(wrapper, "detector.stdout");
-  await writeFile(detector, "espflash_version: 4.3.0\nport: /dev/private\nusb_session: ready\n", { mode: 0o600 });
+  await writeFile(detector, "espflash_version: 4.3.0\nport: /dev/cu.usbmodem-test\nusb_session: ready\n", { mode: 0o600 });
   await chmod(detector, 0o600);
   return { root, manifest, wifi, pool, detector };
 }
@@ -107,7 +107,7 @@ test("start and resume preserve the protected two-phase contract", async () => {
   const processPort = createFakeProcessPort(async spec => {
     if (spec.program === "git") {
       if (spec.args.includes("status")) return ok();
-      if (spec.args.includes("reference/esp-miner")) return ok(`${referenceCommit}\n`);
+      if (spec.args.some(arg => arg.endsWith("reference/esp-miner"))) return ok(`${referenceCommit}\n`);
       return ok(`${sourceCommit}\n`);
     }
     if (spec.program === "validator") return ok();
@@ -225,7 +225,7 @@ test("real failure phase restores ordinary runtime and preserves prepared state"
   const processPort = createFakeProcessPort(async spec => {
     if (spec.program === "git") {
       if (spec.args.includes("status")) return ok();
-      if (spec.args.includes("reference/esp-miner")) return ok(`${referenceCommit}\n`);
+      if (spec.args.some(arg => arg.endsWith("reference/esp-miner"))) return ok(`${referenceCommit}\n`);
       return ok(`${sourceCommit}\n`);
     }
     if (spec.args[0] === "monitor") return ok("device_url=http://device.invalid\n");
@@ -303,7 +303,7 @@ test("missing cancellation receipt restores settings before blocking resume", as
   const processPort = createFakeProcessPort(async spec => {
     if (spec.program === "git") {
       if (spec.args.includes("status")) return ok();
-      if (spec.args.includes("reference/esp-miner")) return ok(`${referenceCommit}\n`);
+      if (spec.args.some(arg => arg.endsWith("reference/esp-miner"))) return ok(`${referenceCommit}\n`);
       return ok(`${sourceCommit}\n`);
     }
     if (spec.args[0] === "monitor") {
@@ -372,6 +372,73 @@ test("missing cancellation receipt restores settings before blocking resume", as
     assert.equal(recovery.exact_package_attempted, true);
     assert.equal(recovery.settings_restored, true);
     await assert.rejects(readFile(path.join(value.root, projectionRelative), "utf8"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("a failed recovery restore records its value-free step", async () => {
+  // Arrange
+  const value = await fixture();
+  const processPort = createFakeProcessPort(async spec => {
+    if (spec.program === "git") {
+      if (spec.args.includes("status")) return ok();
+      if (spec.args.some(arg => arg.endsWith("reference/esp-miner"))) return ok(`${referenceCommit}\n`);
+      return ok(`${sourceCommit}\n`);
+    }
+    if (spec.args[0] === "monitor") return ok("device_url=http://device.invalid\n");
+    if (spec.args[0] === "flash-monitor" && spec.args.includes("--dry-run")) return ok();
+    if (spec.args[0] === "flash-monitor" && spec.args.includes("--self-test-intent")) return failed();
+    if (spec.args[0] === "flash-monitor") {
+      const evidenceRoot = String(spec.args[spec.args.indexOf("--evidence-dir") + 1]);
+      await mkdir(evidenceRoot, { recursive: true, mode: 0o700 });
+      await chmod(evidenceRoot, 0o700);
+      await writeFile(
+        path.join(evidenceRoot, "flash-monitor.classifier-input.log"),
+        "device_url=http://device.invalid\n",
+        { mode: 0o600 },
+      );
+      return ok();
+    }
+    return ok();
+  });
+  const settings = {
+    bootSession: "1".repeat(32), startMiningOnBoot: false, hostname: "bitaxe",
+    frequency: 485, coreVoltage: 1200, manualFanSpeed: 100,
+    ssid: "private", stratumURL: "private.invalid", stratumPort: 3333,
+    stratumUser: "private", useFallbackStratum: false, fallbackStratumURL: "",
+  };
+  const theme = { colorScheme: "dark" };
+  // After the restore's write, the device reads back another frequency.
+  let written = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+    if (init?.method === "PATCH" || init?.method === "POST") {
+      written = true;
+      return new Response("", { status: 200 });
+    }
+    if (url.pathname === "/api/theme") return Response.json(theme);
+    return Response.json(written ? { ...settings, frequency: 400 } : settings);
+  };
+
+  try {
+    // Act
+    await assert.rejects(selfTestCampaignFromInvocation(
+      value.root, invocation(value, "start"), processPort, "flash", "validator",
+    ));
+
+    // Assert
+    const document = await readFile(
+      path.join(value.root, rootRelative, "restoration-recovery.private.json"),
+      "utf8",
+    );
+    assert.deepEqual(JSON.parse(document), {
+      schema_version: "bitaxe-self-test-restoration-diagnostic-v1",
+      step: "mismatch",
+      keys: ["frequency"],
+    });
+    assert.equal(/private|485|400/u.test(document), false);
   } finally {
     globalThis.fetch = originalFetch;
   }

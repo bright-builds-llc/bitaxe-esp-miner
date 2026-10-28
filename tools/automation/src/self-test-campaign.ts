@@ -19,7 +19,7 @@ import {
   selfTestCampaignProfile,
   admitsCampaignPackage,
 } from "./self-test-campaign-profile.js";
-import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
+import { restorationDiagnostic, restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import {
   failure,
   type JsonObject,
@@ -166,7 +166,8 @@ async function recoverOrdinaryRuntime(
       path.join(recoveryRoot, "flash-monitor.classifier-input.log"),
       "utf8",
     );
-    await restoreSettings(singleOrigin(recoveryLog), backup, wifiPath, poolPath);
+    await restoreSettings(singleOrigin(recoveryLog), backup, wifiPath, poolPath,
+      path.join(privateRoot, "restoration-recovery.private.json"));
     restored = true;
     return true;
   } catch {
@@ -374,16 +375,27 @@ async function startCampaign(
   };
 }
 
+/** Restores the backup; a failure records its value-free step at `diagnosticPath` first. */
 async function restoreSettings(
   origin: URL,
   backup: JsonObject,
   wifiPath: string,
   poolPath: string,
+  diagnosticPath: string,
 ): Promise<void> {
   try {
     await restoreSelfTestSettings(origin, backup, wifiPath, poolPath);
-  } catch {
-    throw failure("hardware_blocked", "settings restoration failed", "restoration");
+  } catch (error) {
+    // The typed failure stands when its diagnostic cannot be written, and says so.
+    const written = await privateJson(diagnosticPath, {
+      schema_version: "bitaxe-self-test-restoration-diagnostic-v1",
+      ...restorationDiagnostic(error),
+    }).then(() => true, () => false);
+    throw failure(
+      "hardware_blocked",
+      written ? "settings restoration failed" : "settings restoration failed; its diagnostic was not written",
+      "restoration",
+    );
   }
 }
 
@@ -469,7 +481,8 @@ async function resumeCampaign(
   } catch (error) {
     let restored = false;
     try {
-      await restoreSettings(singleOrigin(cancellationLog), backup, wifiPath, poolPath);
+      await restoreSettings(singleOrigin(cancellationLog), backup, wifiPath, poolPath,
+        path.join(privateRoot, "restoration-cancellation.private.json"));
       restored = true;
     } catch {
       restored = false;
@@ -523,7 +536,8 @@ async function resumeCampaign(
   }
   const origin = singleOrigin(passLog);
   try {
-    await restoreSettings(origin, backup, wifiPath, poolPath);
+    await restoreSettings(origin, backup, wifiPath, poolPath,
+      path.join(privateRoot, "restoration-pass.private.json"));
   } catch (error) {
     await recoverOrdinaryRuntime(
       target,

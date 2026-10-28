@@ -149,6 +149,16 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+# The SELF-001 campaign plans the self-test campaign's tests bind.
+js_library(
+    name = "self001_campaign_plans",
+    srcs = [
+        "docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md",
+        "docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 js_library(
     name = "str005_inactive_restoration_inputs",
     srcs = [

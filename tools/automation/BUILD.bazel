@@ -531,6 +531,7 @@ js_test(
         "//:screen_flow_evidence_inputs",
         "//:str005_restore_and_verify_inputs",
         "//:str005_inactive_restoration_inputs",
+        "//:self001_campaign_plans",
         "//crates/bitaxe-api:adc_observation_sources",
         "//crates/bitaxe-api:emc2101_thermal_sources",
         "//crates/bitaxe-api:hashrate_monitor_sources",

@@ -2038,6 +2038,39 @@ F4.5 attempts:
   at 5.0 W. Production confirmed afterwards (`identity=match`,
   `boot_ordinal=8`, reset `software_cpu`, no panic, no dump). Evidence:
   `docs/parity/evidence/20261027-gamma601-boot-resume-check.md`.
+- **Self-test attempt 007** (`b99abe63`, F4.3's ordinals): blocked at
+  `failure_admission`, before any install. The operator passed a copy of
+  the package manifest without its image files, so the flash tool's dry
+  run could not read the ELF. The campaign had only read the settings
+  backup over HTTP. Remediation: pass the package's own manifest in
+  `bazel-bin` (the dry run then admitted it). Outcome:
+  `continue_after_manual_remediation`.
+- **Self-test attempt 008** (`b99abe63`): the self-test passed on the
+  production 601, but the campaign blocked at `restoration`.
+  - The planned failure reached `cancel_ready` with `safe_state:true`, and
+    the owner's BOOT press cancelled it.
+  - The pass phase measured 1022.2 GH/s, with domains 263.7, 271.0, 274.5
+    and 257.3 GH/s (28, 27, 28 and 23 samples, none rejected), at 18.9 W
+    and 1145 mV, chip at most 65.5 C. Then came the pass receipt, the
+    safe stop and the automatic restart.
+  - The settings restore after the pass then failed. The pass capture ended
+    at about 261 s of the new boot's uptime, so the device had been up at
+    least that long: not a reboot race. The restore's error was
+    swallowed into one category, so the captures cannot tell which step
+    failed.
+  - The campaign's recovery reinstalled the exact package and restored the
+    settings with the same function. Production was confirmed: 56
+    safe-boot records, `identity=match`, the Worker baseline at
+    `b99abe63`, no panic. The projection was not published.
+  - Fix: a failed restore now records its step as a closed category in a
+    private file, with key and check names, routes, HTTP statuses and
+    which input or body was invalid, never values; its closed detail type
+    keeps it so.
+  - The self-test campaign's own tests had never run under Bazel: the
+    aggregator did not import them. They are now wired in, with their stale
+    fixtures fixed and the plans as test data.
+  - Outcome: `continue_after_verified_fix`. The next attempt makes a
+    repeated restore failure discriminating.
 
 ## Future
 
