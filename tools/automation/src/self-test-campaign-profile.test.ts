@@ -16,6 +16,40 @@ test("the 205's campaign keeps its attempt-005 contract with or without --board"
   assert.deepEqual(profiles, [ULTRA205_SELF_TEST_PROFILE, ULTRA205_SELF_TEST_PROFILE]);
 });
 
+test("a later 205 attempt keeps the 205's contract under the rerun plan", () => {
+  // Act
+  const profile = selfTestCampaignProfile("205", "scratch/self001-full-lifecycle/attempt-006");
+  // Assert
+  assert.deepEqual(
+    [profile?.board, profile?.attemptOrdinal, profile?.frequencyMhz, profile?.coreVoltageMv],
+    [205, 6, 485, 1_200],
+  );
+  assert.equal(
+    profile?.projection,
+    "docs/parity/evidence/self001-full-lifecycle/attempt-006/self-test-projection.json",
+  );
+  assert.equal(
+    profile?.plan,
+    "docs/parity/work-plans/20261029T050000Z-SELF-001-ULTRA205-RERUN/PLAN.md",
+  );
+  assert.equal(profile?.activeTask, "task-gamma-601-bring-up");
+});
+
+test("a 205 root before the verified attempt or of another shape is refused", () => {
+  // Act
+  const profiles = ["000", "001", "004", "0006"].map(ordinal =>
+    selfTestCampaignProfile("205", `scratch/self001-full-lifecycle/attempt-${ordinal}`));
+  // Assert
+  assert.deepEqual(profiles, [null, null, null, null]);
+});
+
+test("a later attempt root without --board is the 205's", () => {
+  // Act
+  const profile = selfTestCampaignProfile(undefined, "scratch/self001-full-lifecycle/attempt-006");
+  // Assert
+  assert.deepEqual([profile?.board, profile?.attemptOrdinal], [205, 6]);
+});
+
 test("a 601 campaign takes its attempt from its own root", () => {
   // Act
   const profile = selfTestCampaignProfile("601", "scratch/self001-gamma601/attempt-002");

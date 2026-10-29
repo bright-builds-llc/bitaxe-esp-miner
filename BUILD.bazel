@@ -155,6 +155,7 @@ js_library(
     srcs = [
         "docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md",
         "docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md",
+        "docs/parity/work-plans/20261029T050000Z-SELF-001-ULTRA205-RERUN/PLAN.md",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )

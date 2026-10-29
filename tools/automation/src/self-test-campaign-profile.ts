@@ -1,5 +1,6 @@
 // The board a SELF-001 campaign runs on (ADR-0041 item 14): the Ultra 205's verified attempt-005
-// contract, kept exactly, or a Gamma 601 attempt under its own root, plan and catalog default.
+// contract, kept exactly, a later 205 attempt under the rerun plan, or a Gamma 601 attempt under its
+// own root, plan and catalog default.
 
 export type SelfTestCampaignBoard = 205 | 601;
 
@@ -17,6 +18,7 @@ export type SelfTestCampaignProfile = {
 };
 
 const ultra205Plan = "docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md";
+const ultra205RerunPlan = "docs/parity/work-plans/20261029T050000Z-SELF-001-ULTRA205-RERUN/PLAN.md";
 const gamma601Plan = "docs/parity/work-plans/20261026T000000Z-SELF-001-GAMMA601/PLAN.md";
 
 export const ULTRA205_SELF_TEST_PROFILE: SelfTestCampaignProfile = Object.freeze({
@@ -32,7 +34,29 @@ export const ULTRA205_SELF_TEST_PROFILE: SelfTestCampaignProfile = Object.freeze
   coreVoltageMv: 1_200,
 });
 
+const ultra205Root = /^scratch\/self001-full-lifecycle\/attempt-(\d{3})$/u;
 const gamma601Root = /^scratch\/self001-gamma601\/attempt-(\d{3})$/u;
+
+/** The ordinal a root names under `pattern`, or 0 when it names none. */
+function rootOrdinal(pattern: RegExp, relativeRoot: string): number {
+  const match = pattern.exec(relativeRoot);
+  return match?.[1] === undefined ? 0 : Number(match[1]);
+}
+
+/** A 205 attempt after the verified one: the same contract under the rerun plan (F4.6). */
+function ultra205RerunProfile(ordinal: number, relativeRoot: string): SelfTestCampaignProfile {
+  const attempt = `attempt-${String(ordinal).padStart(3, "0")}`;
+  return Object.freeze({
+    ...ULTRA205_SELF_TEST_PROFILE,
+    attemptOrdinal: ordinal,
+    root: relativeRoot,
+    projection: `docs/parity/evidence/self001-full-lifecycle/${attempt}/self-test-projection.json`,
+    plan: ultra205RerunPlan,
+    planSha256: "f1ed7dc3ffc400b1d73387a3532c933420907f2aa1000b840e5bceab5c51c31d",
+    activeTask: "task-gamma-601-bring-up",
+    taskTerms: Object.freeze([ultra205RerunPlan, "two-phase", "BOOT-button", "mode-0700"]),
+  });
+}
 
 /**
  * The profile for `maybeBoard` (the 205 when absent) whose private root is `relativeRoot`, or
@@ -43,11 +67,14 @@ export function selfTestCampaignProfile(
   relativeRoot: string,
 ): SelfTestCampaignProfile | null {
   if (maybeBoard === undefined || maybeBoard === "205") {
-    return relativeRoot === ULTRA205_SELF_TEST_PROFILE.root ? ULTRA205_SELF_TEST_PROFILE : null;
+    if (relativeRoot === ULTRA205_SELF_TEST_PROFILE.root) return ULTRA205_SELF_TEST_PROFILE;
+    const ordinal = rootOrdinal(ultra205Root, relativeRoot);
+    return ordinal > ULTRA205_SELF_TEST_PROFILE.attemptOrdinal
+      ? ultra205RerunProfile(ordinal, relativeRoot)
+      : null;
   }
   if (maybeBoard !== "601") return null;
-  const match = gamma601Root.exec(relativeRoot);
-  const ordinal = match?.[1] === undefined ? 0 : Number(match[1]);
+  const ordinal = rootOrdinal(gamma601Root, relativeRoot);
   if (ordinal < 1) return null;
   const attempt = `attempt-${String(ordinal).padStart(3, "0")}`;
   return Object.freeze({

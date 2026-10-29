@@ -815,10 +815,13 @@ action.
         below: the review found the 205's attempt-005 numbers predate the
         shared self-test changes (`cd9aee8e`, `22ee4801`), so one
         verified-revision authority records both boards at the final commit;
-      - [ ] the 205's regression (`regression-001`), with only the 205
-        attached;
+      - [x] the 205's regression (`regression-001`), with only the 205
+        attached: passed on attempt 001 (`c217f6b2`,
+        `docs/parity/evidence/20261028-ultra205-f46-regression.md`);
       - [ ] the 205's self-test at the final F4 commit (attempt 006, new
-        plan);
+        plan): software done (the campaign, the flash intent and the
+        evidence validator admit a 205 attempt after 005 under the rerun
+        plan; attempt 005's pins unchanged); hardware next;
       - [ ] the 205's production reinstall, confirmed.
 
 Each phase ends with the full gate, an independent review, commit and
@@ -2244,7 +2247,7 @@ F4.5 attempts:
 
 Phase F4.6 205 regression contract (attempt ordinals 001 onward):
 
-Ultra 205 board seam regression check hardware: enabled.
+Closed after attempt 001 passed (2026-10-28); no enable line remains.
 
 - **Objective:** `--soak regression-001` on production Ultra 205 firmware
   at the clean, pushed HEAD after phases F3 and F4, installed
@@ -2299,6 +2302,76 @@ Ultra 205 board seam regression check hardware: enabled.
   (archived `task-preparation-rollback-cooling-watchdog`). Recovery is
   `just local-mining-soak pause --private-root P/attempt-NNN`. Retries
   follow the progress-gated attempt policy. The 205 stays on production.
+
+Attempt 001 (2026-10-28, `c217f6b2`): passed; outcome `complete`.
+- The install read `built=205 stored=205 identity=match`; the handoff
+  recorded the endpoint on its first Connect; the soak's `pause` found the
+  device paused, mining on boot off, the ASIC stopped.
+- 180.8 s of hashing, 14 shares accepted and 0 rejected, no outages; peaks
+  527 GH/s, 13.31 W, chip 64 C.
+- The stop moved only from `stopping` to `paused`, with the hashrate
+  zeroed. The pause was resent at 30.4 s, and the stop confirmed at 43.6 s,
+  when the cooling proof read 45 C.
+- The watchdog was fresh in every sample, and the board report matched.
+- An independent check against the private captures agrees, after one
+  correction (the idle-power time).
+- Summary: `docs/parity/evidence/20261028-ultra205-f46-regression.md`.
+
+Phase F4.6 205 self-test contract (attempt ordinals 006 onward):
+
+The owner asked on 2026-10-28 for `wifi-credentials.json` to be applied
+for this campaign's factory installs (the Wi-Fi rule above); the file is
+passed by path only and never read, printed or summarized.
+
+Ultra 205 self-test rerun hardware: enabled.
+
+- **Objective:** SELF-001's lifecycle on the 205 at the final F4 commit, per
+  the immutable plan
+  `docs/parity/work-plans/20261029T050000Z-SELF-001-ULTRA205-RERUN/PLAN.md`:
+  one exact-package two-phase BOOT-button campaign under a mode-0700 root,
+  on attempt 005's unchanged contract (`ultra205_full_v1`, 485 MHz /
+  1200 mV). The planned failure reaches `cancel_ready` with
+  `safe_state:true`; the owner's BOOT press cancels it; the pass phase
+  passes, restarts automatically, and the settings are restored.
+- **Precondition:** only the 205 attached, registered as board 205; the
+  tree clean and pushed; the owner's request to apply
+  `wifi-credentials.json` for this campaign's factory installs (passed by
+  path only, never read, printed or summarized); the owner available at
+  the board for one BOOT press.
+- **Commands, with `R` = `scratch/self001-full-lifecycle/attempt-NNN` and
+  `W` = `scratch/self001-full-lifecycle/wrapper-NNN` (both absent before
+  the start) and `umask 077`:**
+  1. `mkdir -m 700 W`; `just detect-ultra205 > W/detector.stdout`;
+     `just package`;
+  2. `just self-test-campaign start --board 205 --private-root R
+     --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+     --wifi-credentials wifi-credentials.json --pool-credentials
+     pool-credentials.json --detector-output W/detector.stdout --plan
+     <plan> --projection
+     docs/parity/evidence/self001-full-lifecycle/attempt-NNN/self-test-projection.json`;
+  3. at `cancel_ready`, the owner holds BOOT for two seconds;
+  4. `just self-test-campaign resume` with the same options;
+  5. `just flash --board 205 --port <port>`, state-preserving, and `just
+     monitor --board 205 --port <port> --capture-timeout-seconds 360` to
+     confirm production.
+- **Allowed effects:** the factory installs with the owner's Wi-Fi
+  credentials and the tuple; the settings backup and restore over HTTP;
+  485 MHz / 1200 mV; fan 10 to 100 %; diagnostic work only; the campaign's
+  recovery install; the production reinstall.
+- **Prohibited effects:** pool work, a Worker Start or lease, any other
+  profile or test build, writing a 601 package, direct UART or pins, any
+  settings write the campaign does not make, a retry without a recorded,
+  verified change.
+- **Stops:** the plan's (any unplanned failure; a limit of attempt 005's
+  contract crossed; a reset or panic in a phase window; a missing
+  checkpoint or receipt). Any stop: production reinstalled before
+  analysing.
+- **Evidence and privacy:** captures stay in `R` and `W` (mode 0600 under
+  0700); the validated projection holds digests, constants and booleans
+  only; attempt 005's committed projection is untouched; committed
+  evidence is checked independently, with `just verify-redaction`.
+- **Recovery:** the campaign's own recovery install and settings restore,
+  then the production reinstall.
 
 ## Future
 

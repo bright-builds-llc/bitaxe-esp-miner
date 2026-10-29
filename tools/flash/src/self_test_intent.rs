@@ -14,6 +14,13 @@ pub(crate) const SELF_TEST_PLAN_SHA256: &str =
     "0c9a03ec490967fc95989d88b91848c7d4ed740a76825822a8107d94e8fd7f84";
 const SELF_TEST_INTENT_SCHEMA: &str = "bitaxe-self-test-intent-v1";
 const SELF_TEST_ATTEMPT_ORDINAL: u16 = 5;
+/// The 205's later attempts rerun the same contract under their own plan (F4.6), one root per
+/// ordinal after the verified attempt 005.
+pub(crate) const ULTRA205_SELF_TEST_ROOT_PREFIX: &str = "scratch/self001-full-lifecycle/attempt-";
+pub(crate) const ULTRA205_RERUN_PLAN_RELATIVE_PATH: &str =
+    "docs/parity/work-plans/20261029T050000Z-SELF-001-ULTRA205-RERUN/PLAN.md";
+pub(crate) const ULTRA205_RERUN_PLAN_SHA256: &str =
+    "f1ed7dc3ffc400b1d73387a3532c933420907f2aa1000b840e5bceab5c51c31d";
 /// The 601's attempts live under this prefix, one root per ordinal (ADR-0041 item 14).
 pub(crate) const GAMMA601_SELF_TEST_ROOT_PREFIX: &str = "scratch/self001-gamma601/attempt-";
 pub(crate) const GAMMA601_SELF_TEST_PLAN_RELATIVE_PATH: &str =
@@ -28,12 +35,19 @@ struct BoardSelfTest {
     plan_sha256: &'static str,
 }
 
-const fn board_self_test(board: BoardId) -> BoardSelfTest {
+/// The board's binding for `attempt_ordinal`: the 205's attempt 005 keeps its verified plan, and
+/// its later attempts bind the rerun plan.
+const fn board_self_test(board: BoardId, attempt_ordinal: u16) -> BoardSelfTest {
     match board {
-        BoardId::Ultra205 => BoardSelfTest {
+        BoardId::Ultra205 if attempt_ordinal == SELF_TEST_ATTEMPT_ORDINAL => BoardSelfTest {
             kind: "ultra205_full_v1",
             plan_path: SELF_TEST_PLAN_RELATIVE_PATH,
             plan_sha256: SELF_TEST_PLAN_SHA256,
+        },
+        BoardId::Ultra205 => BoardSelfTest {
+            kind: "ultra205_full_v1",
+            plan_path: ULTRA205_RERUN_PLAN_RELATIVE_PATH,
+            plan_sha256: ULTRA205_RERUN_PLAN_SHA256,
         },
         BoardId::Gamma601 => BoardSelfTest {
             kind: "gamma601_full_v1",
@@ -43,14 +57,21 @@ const fn board_self_test(board: BoardId) -> BoardSelfTest {
     }
 }
 
-/// The case an intent at `intent_input` runs: the 205's two attempt-005 paths, or the 601's two
-/// paths under its attempt's own root.
+/// The case an intent at `intent_input` runs: the 205's two attempt-005 paths, the two paths under
+/// a later 205 attempt's root, or the 601's two paths under its attempt's own root.
 fn intent_case(board: BoardId, intent_input: &str, attempt_ordinal: u16) -> Result<&'static str> {
     let (failure, pass) = match board {
         BoardId::Ultra205 if attempt_ordinal == SELF_TEST_ATTEMPT_ORDINAL => (
             SELF_TEST_FAILURE_INTENT_RELATIVE_PATH.to_owned(),
             SELF_TEST_PASS_INTENT_RELATIVE_PATH.to_owned(),
         ),
+        BoardId::Ultra205 if (SELF_TEST_ATTEMPT_ORDINAL + 1..=999).contains(&attempt_ordinal) => {
+            let root = format!("{ULTRA205_SELF_TEST_ROOT_PREFIX}{attempt_ordinal:03}");
+            (
+                format!("{root}/failure-intent.private.json"),
+                format!("{root}/pass-intent.private.json"),
+            )
+        }
         BoardId::Gamma601 if (1..=999).contains(&attempt_ordinal) => {
             let root = format!("{GAMMA601_SELF_TEST_ROOT_PREFIX}{attempt_ordinal:03}");
             (
@@ -90,13 +111,10 @@ pub(crate) fn admit_self_test_intent(
     board: BoardId,
     environment: &impl FlashEnvironment,
 ) -> Result<SelfTestNvsSeed> {
-    let board_self_test = board_self_test(board);
     let path_shaped = match board {
-        BoardId::Ultra205 => [
-            SELF_TEST_FAILURE_INTENT_RELATIVE_PATH,
-            SELF_TEST_PASS_INTENT_RELATIVE_PATH,
-        ]
-        .contains(&intent_input.as_str()),
+        BoardId::Ultra205 => intent_input
+            .as_str()
+            .starts_with(ULTRA205_SELF_TEST_ROOT_PREFIX),
         BoardId::Gamma601 => intent_input
             .as_str()
             .starts_with(GAMMA601_SELF_TEST_ROOT_PREFIX),
@@ -113,6 +131,9 @@ pub(crate) fn admit_self_test_intent(
         .map_err(|_| anyhow::anyhow!("self_test_intent=blocked reason=unreadable"))?;
     let intent: SelfTestIntent = serde_json::from_str(&intent_document)
         .map_err(|_| anyhow::anyhow!("self_test_intent=blocked reason=malformed"))?;
+    // The path and ordinal decide the plan, so a mismatch refuses before any other read.
+    let expected_case = intent_case(board, intent_input.as_str(), intent.attempt_ordinal)?;
+    let board_self_test = board_self_test(board, intent.attempt_ordinal);
     let manifest_path = environment.workspace_path(manifest_input);
     let manifest_document = environment
         .read_to_string(&manifest_path)
@@ -128,7 +149,6 @@ pub(crate) fn admit_self_test_intent(
     validate_commit_hex("reference_commit", &intent.reference_commit)?;
     validate_lower_hex("app_elf_sha256", &intent.app_elf_sha256, true)?;
     validate_lower_hex("plan_sha256", &intent.plan_sha256, true)?;
-    let expected_case = intent_case(board, intent_input.as_str(), intent.attempt_ordinal)?;
     if intent.schema_version != SELF_TEST_INTENT_SCHEMA
         || intent.board.to_string() != board.registered().label()
         || intent.source_commit != manifest.source_commit
@@ -290,9 +310,71 @@ mod tests {
     }
 
     #[test]
+    fn a_later_205_intent_runs_only_under_its_own_attempt_root() {
+        // Act
+        let cases = [
+            intent_case(
+                BoardId::Ultra205,
+                "scratch/self001-full-lifecycle/attempt-006/failure-intent.private.json",
+                6,
+            )
+            .ok(),
+            intent_case(
+                BoardId::Ultra205,
+                "scratch/self001-full-lifecycle/attempt-006/pass-intent.private.json",
+                6,
+            )
+            .ok(),
+            intent_case(
+                BoardId::Ultra205,
+                "scratch/self001-full-lifecycle/attempt-006/pass-intent.private.json",
+                7,
+            )
+            .ok(),
+            intent_case(
+                BoardId::Ultra205,
+                "scratch/self001-full-lifecycle/attempt-004/pass-intent.private.json",
+                4,
+            )
+            .ok(),
+        ];
+        // Assert
+        assert_eq!(cases, [Some("planned_failure"), Some("pass"), None, None]);
+    }
+
+    #[test]
+    fn the_205_rerun_plan_is_bound_by_its_digest() {
+        // Arrange
+        let plan = include_str!(
+            "../../../docs/parity/work-plans/20261029T050000Z-SELF-001-ULTRA205-RERUN/PLAN.md"
+        );
+        // Act
+        let plan_sha256 = sha256_bytes(plan.as_bytes());
+        // Assert
+        assert_eq!(plan_sha256, ULTRA205_RERUN_PLAN_SHA256);
+        assert!(plan.contains("- Parity row: `SELF-001`"));
+        assert!(plan.contains("- Active task: `task-gamma-601-bring-up`"));
+    }
+
+    #[test]
+    fn a_later_205_attempt_binds_the_rerun_plan() {
+        // Act
+        let bindings = [5, 6].map(|ordinal| board_self_test(BoardId::Ultra205, ordinal).plan_path);
+        // Assert
+        assert_eq!(
+            bindings,
+            [
+                SELF_TEST_PLAN_RELATIVE_PATH,
+                ULTRA205_RERUN_PLAN_RELATIVE_PATH
+            ]
+        );
+    }
+
+    #[test]
     fn each_board_seeds_its_own_kind() {
         // Act
-        let kinds = [BoardId::Ultra205, BoardId::Gamma601].map(|board| board_self_test(board).kind);
+        let kinds =
+            [BoardId::Ultra205, BoardId::Gamma601].map(|board| board_self_test(board, 6).kind);
         // Assert
         assert_eq!(kinds, ["ultra205_full_v1", "gamma601_full_v1"]);
     }

@@ -7,6 +7,9 @@ pub const SELF_TEST_EVIDENCE_SCHEMA: &str = "bitaxe-self-test-evidence-v1";
 /// The immutable plans each board's evidence binds.
 const ULTRA205_SELF_TEST_PLAN_SHA256: &str =
     "0c9a03ec490967fc95989d88b91848c7d4ed740a76825822a8107d94e8fd7f84";
+/// The 205's later attempts rerun the same contract under their own plan (F4.6).
+const ULTRA205_RERUN_PLAN_SHA256: &str =
+    "f1ed7dc3ffc400b1d73387a3532c933420907f2aa1000b840e5bceab5c51c31d";
 const GAMMA601_SELF_TEST_PLAN_SHA256: &str =
     "584b784b96b06867d7854b485cd0d4c5f829ce3711345f23d132fd90a307e098";
 
@@ -78,15 +81,17 @@ pub struct SelfTestEvidence {
 }
 
 impl SelfTestEvidence {
-    /// The board's attempt and catalog default: the 205's attempt 005 at 485 MHz / 1200 mV, or a
-    /// 601 attempt at 525 MHz / 1150 mV (ADR-0041 item 14).
+    /// The board's attempt and catalog default: the 205's attempt 005, or a later attempt under the
+    /// rerun plan, at 485 MHz / 1200 mV, or a 601 attempt at 525 MHz / 1150 mV (ADR-0041 item 14).
     fn board_profile_valid(&self) -> bool {
         match self.board {
             205 => {
-                self.attempt_ordinal == 5
-                    && self.pass.frequency_mhz == 485
-                    && self.pass.core_voltage_mv == 1_200
-                    && self.plan_sha256 == ULTRA205_SELF_TEST_PLAN_SHA256
+                let plan_matches = match self.attempt_ordinal {
+                    5 => self.plan_sha256 == ULTRA205_SELF_TEST_PLAN_SHA256,
+                    6..=999 => self.plan_sha256 == ULTRA205_RERUN_PLAN_SHA256,
+                    _ => false,
+                };
+                plan_matches && self.pass.frequency_mhz == 485 && self.pass.core_voltage_mv == 1_200
             }
             601 => {
                 (1..=999).contains(&self.attempt_ordinal)
@@ -250,6 +255,49 @@ mod tests {
         let validated = gamma.validate();
         // Assert
         assert_eq!(validated, Ok(()));
+    }
+
+    fn ultra_205_attempt(attempt_ordinal: u16, plan_sha256: &str) -> SelfTestEvidence {
+        let mut attempt = evidence();
+        attempt.attempt_ordinal = attempt_ordinal;
+        attempt.plan_sha256 = plan_sha256.to_owned();
+        attempt
+    }
+
+    #[test]
+    fn a_later_205_attempt_on_the_rerun_plan_passes() {
+        // Arrange
+        let rerun = ultra_205_attempt(6, ULTRA205_RERUN_PLAN_SHA256);
+        // Act
+        let validated = rerun.validate();
+        // Assert
+        assert_eq!(validated, Ok(()));
+    }
+
+    #[test]
+    fn a_205_attempt_on_the_other_attempts_plan_fails() {
+        // Arrange
+        let attempts = [
+            ultra_205_attempt(6, ULTRA205_SELF_TEST_PLAN_SHA256),
+            ultra_205_attempt(5, ULTRA205_RERUN_PLAN_SHA256),
+        ];
+        // Act
+        let validations = attempts.map(|attempt| attempt.validate());
+        // Assert
+        assert!(validations.iter().all(Result::is_err));
+    }
+
+    #[test]
+    fn a_205_attempt_outside_its_ordinals_fails() {
+        // Arrange
+        let attempts = [
+            ultra_205_attempt(4, ULTRA205_RERUN_PLAN_SHA256),
+            ultra_205_attempt(1_000, ULTRA205_RERUN_PLAN_SHA256),
+        ];
+        // Act
+        let validations = attempts.map(|attempt| attempt.validate());
+        // Assert
+        assert!(validations.iter().all(Result::is_err));
     }
 
     #[test]
