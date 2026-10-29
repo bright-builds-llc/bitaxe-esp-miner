@@ -2356,6 +2356,9 @@ Ultra 205 self-test rerun hardware: enabled.
      confirm production.
 - **Allowed effects:** the factory installs with the owner's Wi-Fi
   credentials and the tuple; the settings backup and restore over HTTP;
+  before the start, one HTTP settings write clearing the fallback pool
+  (`fallbackStratumURL` empty, the fallback off; owner decision
+  2026-10-29), which the campaign's exact restore requires;
   485 MHz / 1200 mV; fan 10 to 100 %; diagnostic work only; the campaign's
   recovery install; the production reinstall.
 - **Prohibited effects:** pool work, a Worker Start or lease, any other
@@ -2372,6 +2375,13 @@ Ultra 205 self-test rerun hardware: enabled.
   evidence is checked independently, with `just verify-redaction`.
 - **Recovery:** the campaign's own recovery install and settings restore,
   then the production reinstall.
+
+Attempt 006 (2026-10-29, `29142412`): refused at the settings backup,
+before any write; outcome `continue_after_manual_remediation`. The 205's
+fallback pool, seeded by an earlier factory install, cannot be restored
+from the inputs; every other compared setting matched. Owner decision: the
+fallback cleared over HTTP, as on the 601's attempt 002. The 205 stayed on
+production `c217f6b2`, paused.
 
 ## Future
 
