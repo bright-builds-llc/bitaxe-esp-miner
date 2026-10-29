@@ -2105,6 +2105,41 @@ F4.5 attempts:
     `identity=match`, the Worker baseline at `bb9f2ae7`, `boot_ordinal=17`
     with reset `software_cpu`, no panic.
   - Evidence: `docs/parity/evidence/20261028-gamma601-production-self-test.md`.
+- **Attempt 003** (`cfac7234`, root `scratch/gamma-601-promotion/run-003`):
+  the smoke soak `gamma601-production-001` stopped on the firmware's own
+  75 C overheat trip; outcome `stop_hardware_blocker`, pending the owner's
+  cooling remediation.
+  - Production at `cfac7234` was installed and confirmed. The handoff was
+    admitted on its first Connect, after the dedicated tab passed the
+    detached visibility check. Preflight passed and `pause` confirmed the
+    paused, stopped baseline.
+  - A first `run` invocation refused with `soak_option`, before any device
+    access: the operator passed preflight's options, and `run` takes only
+    the private root and the pool credentials. That was corrected on the
+    next invocation.
+  - The run mined 171 s at 525/1150 (82 active samples, 23 shares
+    accepted, none rejected). The chip climbed to 74.875 C and the
+    regulator to 76.25 C, at 21.2 W, with the fan at its top from 30 s
+    on. The firmware ended the run (`ending=Some(Overheat)`, hold
+    `local_overheat`), and power read 5.0 W at the next 2 s sample. The
+    soak then paused the device: `soak_overheat`,
+    `soak_active_time_short`. It ended paused at 5.0 W with start-on-boot
+    off.
+  - Production was confirmed afterwards: 57 safe-boot records,
+    `identity=match`, the Worker baseline at `cfac7234`, the same boot
+    (`boot_ordinal=18`), no panic.
+  - Cause: the setup ran hotter than in the earlier passing runs at the
+    same profile, not a firmware change.
+    - The idle regulator read 33.8 C, against 31.8 C in F4.1 and 31.3 C in
+      attempt 002.
+    - Under load the chip ran 5 to 6 C hotter at the same times: 71.1 C
+      at 60 s and 74.9 C at 170 s, against 64.6 and 68.4 C in F4.1. The
+      power draw rose with it.
+    - An unchanged retry would trip again. The owner chose to improve the
+      cooling, then retry once (`continue_after_manual_remediation`).
+    - The proof of the boundary change is the retry's baseline idle
+      regulator temperature and its chip trajectory against this
+      attempt's.
 
 ## Future
 
