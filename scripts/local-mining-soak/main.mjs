@@ -1,7 +1,8 @@
 // `just local-mining-soak preflight|run|pause`: the local mining soaks, the lease interruption
 // check and the boot-resume check (ADR-0038), each gated by an exact line in the active task. `pause`
 // is the recovery action for a run that died: it pauses the device, turns mining on boot off if it
-// reads on, and confirms the ASIC powered down. The
+// reads on, confirms the ASIC powered down, and after an overheat restores the settings the run's
+// journaled baseline recorded. The
 // station endpoint comes from a completed `just otawww-endpoint` handoff in the same session; the
 // pool from the ignored pool-credentials file, used at run time only. A lease check watches the
 // `just ultra205-soak --interrupt-local-mining` private root for its result.
@@ -19,7 +20,7 @@ import { poolSettings } from "./pool.mjs";
 import { runSoak } from "./run.mjs";
 import { pauseThenRestore, runBootResume } from "./boot-resume.mjs";
 import { restoreAndStop, runOverheat, settingsOf } from "./overheat.mjs";
-import { limitsOf, SOAKS } from "./judge.mjs";
+import { limitsOf, sampleFromInfo, SOAKS } from "./judge.mjs";
 
 export const SOAK_TASK = "task-local-mining-evidence-soaks";
 /** The task that owns a soak: its own `task`, or the evidence soaks' task. */
@@ -32,8 +33,11 @@ const ENDPOINT_MAXIMUM_AGE_MS = 30 * 60_000;
 const ACTIONS = { preflight: ["--private-root", "--endpoint-root", "--package-manifest", "--pool-credentials", "--soak"],
   run: ["--private-root", "--pool-credentials"], pause: ["--private-root"],
   "stopped-proof": ["--private-root", "--endpoint-root", "--installed-manifest", "--detector"] };
-/** Options an action accepts but does not require: a lease check names the Gate soak's private root. */
-const OPTIONAL = { preflight: ["--lease-root"], run: [], pause: [], "stopped-proof": [] };
+/**
+ * Options an action accepts but does not require: a lease check names the Gate soak's private root, and
+ * the recovery a sealed earlier root whose journal it restores from.
+ */
+const OPTIONAL = { preflight: ["--lease-root"], run: [], pause: ["--restore-journal"], "stopped-proof": [] };
 
 function argumentsFor(argv) {
   const [action, ...rest] = argv; requireCondition(Object.hasOwn(ACTIONS, action), "soak_action");
@@ -148,20 +152,71 @@ async function run(firmwareRoot, root, options) {
  * The run's journaled baseline sample, or null when it never admitted one: such a run changed no
  * setting, because the baseline is journaled before any write.
  */
-export async function maybeJournaledBaseline(root) {
-  let text;
-  try { text = await readFile(resolve(root, "journal.ndjson"), "utf8"); } catch { return null; }
-  return baselineOfJournal(text);
+async function maybeJournalText(root) {
+  try { return await readFile(resolve(root, "journal.ndjson"), "utf8"); } catch { return null; }
 }
 
-/** The baseline sample of journal text; a torn last line, from a run that died mid-append, is skipped. */
+/** The events of journal text; a torn last line, from a run that died mid-append, is skipped. */
+function journalEvents(text) {
+  return text.split("\n").filter(Boolean).flatMap((line) => {
+    try { return [JSON.parse(line)]; } catch { return []; }
+  });
+}
+
+/** The baseline sample of journal text, or null. */
 export function baselineOfJournal(text) {
-  for (const line of text.split("\n").filter(Boolean)) {
-    let event;
-    try { event = JSON.parse(line); } catch { continue; }
-    if (event.event === "baseline") return event.sample;
+  return journalEvents(text).find((event) => event.event === "baseline")?.sample ?? null;
+}
+
+/**
+ * The journaled baseline whose settings `pause` restores, or null. An overheat check restores its
+ * own. Any other run restores only after the firmware's overheat trip stopped it (`soak_overheat`),
+ * which leaves the lowered pair, the fan at 100% and `overheat_mode` saved, and only from a baseline
+ * that was itself clear of that latch.
+ */
+export function restoreBaselineOfJournal(soak, text, deviceLatched = false) {
+  const maybeBaseline = baselineOfJournal(text);
+  if (maybeBaseline === null || soak?.kind === "overheat") return maybeBaseline;
+  // A run that died mid-trip journaled no stop, but the device still shows the latch.
+  const tripped = deviceLatched || journalEvents(text).some((event) => event.event === "live_stop" && event.code === "soak_overheat");
+  return tripped && !maybeBaseline.overheatMode ? maybeBaseline : null;
+}
+
+/**
+ * The recovery's device work: pause, turn mining on boot off, confirm the ASIC powered down, then
+ * restore the baseline `restoreBaselineOfJournal` names, only on the soak's own board. Returns the
+ * outcome, with `restore_failure` when the restore was refused after the pause; `pause` records it
+ * and refuses one that left anything unconfirmed.
+ */
+export async function recover({ client, now, sleep, note, soak, maybeJournalText }) {
+  const events = [];
+  const recovery = { client, now, sleep, limits: limitsOf(soak),
+    note: async (event) => { events.push(event.event); await note(event); } };
+  let { mineOnBootOff, maybeFinal } = await pauseThenRestore(recovery);
+  let maybeBaseline = null;
+  try {
+    if (maybeJournalText !== null) {
+      const info = await client.info();
+      maybeBaseline = restoreBaselineOfJournal(soak, maybeJournalText, sampleFromInfo(info, now()).overheatMode);
+      // Settings go only to the board the soak ran on; the endpoint's address alone does not prove it.
+      if (maybeBaseline !== null && soak?.requireStoredBoard) {
+        requireCondition(info.storedBoard === soak.requireStoredBoard && info.boardIdentity === "match", "soak_board_identity");
+      }
+    }
+  } catch (error) {
+    // The pause already landed: the outcome must still record it, with the typed refusal.
+    return { schema: "local-mining-soak-recovery-v1", mine_on_boot_off: mineOnBootOff, paused: events.includes("paused"),
+      asic_stopped: maybeFinal !== undefined, restore_failure: typeof error?.code === "string" ? error.code : "soak_restore_unreadable" };
   }
-  return null;
+  const restoring = maybeBaseline !== null;
+  let settled = true, markerCleared = true;
+  if (restoring) {
+    ({ settled, maybeFinal, markerCleared } = await restoreAndStop({ ...recovery, original: settingsOf(maybeBaseline),
+      clearStop: soak?.kind === "overheat" }));
+  }
+  return { schema: "local-mining-soak-recovery-v1", mine_on_boot_off: mineOnBootOff, paused: events.includes("paused"),
+    asic_stopped: maybeFinal !== undefined,
+    ...(restoring ? { recovery_settled: settled, settings_restored: events.includes("settings_restored"), stop_cleared: markerCleared } : {}) };
 }
 
 /** Raw text in a new mode-0600 file; it never overwrites. */
@@ -216,27 +271,26 @@ async function writeStoppedProof(firmwareRoot, root, options) {
  * Recovery: pause the device a run left mining, turn mining on boot off only if it reads on (the
  * boot-resume check may have left it on), and confirm the ASIC powered down.
  */
-async function pause(root) {
+async function pause(firmwareRoot, root, options) {
   await privateRoot(root);
   const context = (await proof(root, "context.json")).value; requireCondition(context.schema === CONTEXT_SCHEMA, "soak_context");
   const endpoint = (await proof(context.endpoint_root, "endpoint.private.json")).value;
-  const events = [];
-  // The soak's own idle power shows its ASIC powered down.
-  const recovery = { client: deviceClient(endpoint), now: Date.now, sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
-    note: async (event) => { events.push(event.event); }, limits: limitsOf(SOAKS[context.soak]) };
-  let { mineOnBootOff, maybeFinal } = await pauseThenRestore(recovery);
-  // An overheat check that died may have left its raised pair, the fan at 100% or a device pause:
-  // restore the settings its journaled baseline recorded.
-  const maybeBaseline = SOAKS[context.soak]?.kind === "overheat" ? await maybeJournaledBaseline(root) : null;
-  const overheat = maybeBaseline !== null;
-  let settled = true;
-  if (overheat) ({ settled, maybeFinal } = await restoreAndStop({ ...recovery, original: settingsOf(maybeBaseline) }));
-  const outcome = { schema: "local-mining-soak-recovery-v1", mine_on_boot_off: mineOnBootOff, paused: events.includes("paused"),
-    asic_stopped: maybeFinal !== undefined,
-    ...(overheat ? { recovery_settled: settled, settings_restored: events.includes("settings_restored") } : {}) };
+  // An earlier attempt's root is sealed (the attempt policy): with `--restore-journal` its journal
+  // names the baseline to restore, and it is only read, never written.
+  let journalRoot = root;
+  if (options["--restore-journal"] !== undefined) {
+    journalRoot = await privateRoot(resolve(firmwareRoot, options["--restore-journal"]));
+    const sourceContext = (await proof(journalRoot, "context.json")).value;
+    requireCondition(journalRoot !== resolve(root) && sourceContext.schema === CONTEXT_SCHEMA && sourceContext.soak === context.soak,
+      "soak_restore_journal");
+  }
+  const outcome = await recover({ client: deviceClient(endpoint), now: Date.now,
+    sleep: (ms) => new Promise((done) => setTimeout(done, ms)), note: async () => {}, soak: SOAKS[context.soak],
+    maybeJournalText: await maybeJournalText(journalRoot) });
   await writeNew(resolve(root, `recovery-${Date.now()}.json`), outcome);
+  requireCondition(outcome.restore_failure === undefined, outcome.restore_failure);
   requireCondition(outcome.mine_on_boot_off && outcome.asic_stopped && outcome.recovery_settled !== false &&
-    outcome.settings_restored !== false, "soak_recovery_unconfirmed");
+    outcome.settings_restored !== false && outcome.stop_cleared !== false, "soak_recovery_unconfirmed");
   return outcome;
 }
 
@@ -246,7 +300,7 @@ export async function main(argv) {
   const root = resolve(firmwareRoot, options["--private-root"]);
   if (action === "preflight") return preflight(firmwareRoot, root, options);
   if (action === "stopped-proof") return writeStoppedProof(firmwareRoot, root, options);
-  return action === "run" ? run(firmwareRoot, root, options) : pause(root);
+  return action === "run" ? run(firmwareRoot, root, options) : pause(firmwareRoot, root, options);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main(process.argv.slice(2)).then((value) => {

@@ -171,6 +171,14 @@ test("a baseline whose idle power is not measured refuses before any write", asy
   assert.deepEqual(device.state.calls, []);
 });
 
+test("a baseline still latched in overheat mode refuses before any write", async () => {
+  // Arrange
+  const device = fakeDevice({ fields: { overheat_mode: 1 } });
+  // Act / Assert
+  await assert.rejects(run(device), { code: "soak_baseline_overheat" });
+  assert.deepEqual(device.state.calls, []);
+});
+
 test("an interruption before the resume never starts mining", async () => {
   // Arrange
   const device = fakeDevice();

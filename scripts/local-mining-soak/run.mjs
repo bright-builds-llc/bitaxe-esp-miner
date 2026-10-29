@@ -74,7 +74,8 @@ export async function runSoak({ client, expected, settings, now, sleep, record, 
 /**
  * Admits the run's paused baseline and saves the owner's pool, then the soak's `profile` if it has
  * one; refuses before any write unless the device runs the expected firmware on the handed-off boot,
- * paused, with the ASIC shown powered down, and before the resume unless each setting reads back.
+ * paused, with the ASIC shown powered down and no `overheat_mode` left from an earlier trip
+ * (`soak_baseline_overheat`), and before the resume unless each setting reads back.
  * With `requireProfile`, the overheat check's pinned baseline pair, it also refuses before any write
  * unless the baseline reads that frequency and core voltage (`overheat_baseline_profile`).
  */
@@ -97,6 +98,11 @@ export async function admitBaseline({ client, expected, settings, now, note, soa
     "soak_baseline_not_paused");
   // The stopped proof must be reachable before anything starts, or no run could end judged.
   requireCondition(hardwareStoppedUnder(limitsOf(soak))(baseline), "soak_baseline_not_stopped");
+  // An earlier trip's `overheat_mode` stays saved until the firmware's next run has prepared or a
+  // settings write clears it (the recovery `pause` does, from the tripped run's baseline). Over it,
+  // the firmware's recovery may still be cooling and would save its lowered pair over a soak's
+  // profile, and the run would stop on its first sample as a live overheat.
+  requireCondition(!baseline.overheatMode, "soak_baseline_overheat");
   requireCondition(requireProfile === null || (baseline.frequencyMhz === requireProfile.frequencyMhz &&
     baseline.coreVoltageMv === requireProfile.coreVoltageMv), "overheat_baseline_profile");
   await note({ event: "baseline", sample: baseline });

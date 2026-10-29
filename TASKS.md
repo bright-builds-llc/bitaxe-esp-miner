@@ -2004,7 +2004,12 @@ read, printed or summarized.
   100 %, diagnostic work only, its recovery install). After a stop, as
   capture for its analysis (ADR-0030): `just local-mining-soak
   stopped-proof`, then one core-dump read with `just hardware-operator`'s
-  recovery helper.
+  recovery helper. After the firmware's overheat trip stops a soak: the
+  recovery `pause`, which restores the tripped run's journaled baseline
+  pair and fan and clears `overheat_mode` once the recovery has settled,
+  on the 601's own board identity only, and never resumes a soak's device
+  pause. For an earlier, sealed attempt it runs on the new attempt's root
+  with `--restore-journal <earlier root>`, which only reads that root.
 - **Prohibited effects:** any test build; any other frequency or voltage;
   a Worker Start or lease; a factory reset outside the self-test; network
   discovery beyond the handoffs; direct UART or pins; a retry without a
@@ -2140,6 +2145,51 @@ F4.5 attempts:
     - The proof of the boundary change is the retry's baseline idle
       regulator temperature and its chip trajectory against this
       attempt's.
+- **Attempt 004** (`2b8769a7`, root `scratch/gamma-601-promotion/run-004`):
+  the smoke soak stopped on its first sample, on attempt 003's latched
+  overheat mode rather than a new trip. Outcome:
+  `continue_after_verified_fix`.
+  - Production at `2b8769a7` was installed state-preserving and confirmed
+    (57 safe-boot records, `identity=match`, the Worker baseline,
+    `boot_ordinal=19`, no panic). The handoff was admitted on its first
+    Connect. Preflight passed and `pause` confirmed the stopped baseline.
+    The owner had cooled the room. The idle regulator read 30.25 C,
+    against 33.75 C in attempt 003, but the latch held the paused fan at
+    100 % rather than 30 %, so that reading is not the boundary-change
+    proof; the next attempt's latch-clear baseline is.
+  - The baseline read `overheat_mode` set, 425 MHz / 1050 mV and the fan
+    manual at 100 %. That is the firmware's upstream-style recovery after
+    003's trip: the latch stays saved until the next run has prepared or
+    a settings write clears it.
+  - The soak saved 525/1150 over the recovery pair and resumed. The device
+    began preparing (5.7 W, the ASIC not yet initialized). The soak's live
+    stop reads any `overheat_mode` as a trip, so it stopped on that first
+    sample (`soak_overheat`) and paused. The latch then cleared as the
+    preparation finished.
+  - The device ended paused, start-on-boot off, at 525/1150, with
+    `overheat_mode` clear and the fan still manual at 100 %. No hashing,
+    no share, no limit reached.
+  - Fix, with regression tests:
+    - every run's baseline refuses a latched `overheat_mode` before any
+      write (`soak_baseline_overheat`). A stale latch no longer reads as a
+      live trip, and a soak's profile is no longer saved while the
+      firmware's recovery may still overwrite it;
+    - the recovery `pause` now also restores, for a run the firmware's trip
+      stopped from a latch-clear baseline (a `soak_overheat` stop, or a run
+      that died while the device still shows the latch), that baseline's
+      pair and fan and clears `overheat_mode`, after the recovery settles,
+      as it already did for the overheat check. Without it, a trip would
+      leave every later run refused. It restores only on the soak's own
+      board, never resumes a soak's device pause (only the overheat
+      check's contract allows that run), and with `--restore-journal`
+      reads a sealed earlier root without writing to it.
+    - Residual: the board identity is checked once, before the recovery
+      settles (at least 150 s), not again at the write; the contract's
+      one-board precondition covers that window.
+  - Before attempt 005's soak, on its own root after preflight: `pause
+    --restore-journal` attempt 003's soak root restores 003's baseline
+    (525/1150, the fan automatic). The next run then starts with the fan
+    automatic, as in F4.1 and attempt 002.
 
 ## Future
 

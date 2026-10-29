@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { baselineOfJournal, readLeaseResult, requireFirmwareVariant, requireSoakBoard, requireSoakTask, SOAK_TASK, soakTask, soakTaskLine } from "./main.mjs";
+import { baselineOfJournal, readLeaseResult, recover, restoreBaselineOfJournal, requireFirmwareVariant, requireSoakBoard, requireSoakTask, SOAK_TASK, soakTask, soakTaskLine } from "./main.mjs";
 import { SOAKS } from "./judge.mjs";
 
 const tasks = (section, line = soakTaskLine("001")) => `## ${section}\n\n### ${SOAK_TASK} | 2026-10-16 | Soak\n\n${line}\n\n## Other\n`;
@@ -83,6 +83,126 @@ test("a torn last journal line still yields the baseline", () => {
 test("a journal without a baseline yields none", () => {
   // Act / Assert
   assert.equal(baselineOfJournal(`${JSON.stringify({ event: "pool_saved" })}\n`), null);
+});
+
+const journalOf = (...events) => `${events.map((event) => JSON.stringify(event)).join("\n")}\n`;
+const CLEAR_BASELINE = { event: "baseline", sample: { frequencyMhz: 525, overheatMode: false, autoFanSpeed: true } };
+const OVERHEAT_STOP = { event: "live_stop", code: "soak_overheat" };
+
+test("pause restores a soak's clear baseline after the firmware's overheat trip stopped it", () => {
+  // Arrange
+  const text = journalOf(CLEAR_BASELINE, { event: "resumed" }, OVERHEAT_STOP);
+  // Act
+  const maybeBaseline = restoreBaselineOfJournal(SOAKS["gamma601-production-001"], text);
+  // Assert
+  assert.deepEqual(maybeBaseline, CLEAR_BASELINE.sample);
+});
+
+test("pause restores nothing for a soak that another stop ended", () => {
+  // Arrange
+  const text = journalOf(CLEAR_BASELINE, { event: "live_stop", code: "soak_power" });
+  // Act / Assert
+  assert.equal(restoreBaselineOfJournal(SOAKS["gamma601-production-001"], text), null);
+});
+
+test("pause never restores a baseline that was itself latched in overheat mode", () => {
+  // Arrange
+  const latched = { event: "baseline", sample: { frequencyMhz: 425, overheatMode: true, autoFanSpeed: false } };
+  const text = journalOf(latched, OVERHEAT_STOP);
+  // Act / Assert
+  assert.equal(restoreBaselineOfJournal(SOAKS["gamma601-production-001"], text), null);
+});
+
+test("pause restores an overheat check's baseline whatever stopped it", () => {
+  // Arrange
+  const text = journalOf(CLEAR_BASELINE);
+  // Act / Assert
+  assert.deepEqual(restoreBaselineOfJournal(SOAKS["overheat-001"], text), CLEAR_BASELINE.sample);
+});
+
+test("pause restores a soak that died before journaling the trip the device still shows", () => {
+  // Arrange
+  const text = journalOf(CLEAR_BASELINE, { event: "resumed" });
+  // Act
+  const maybeBaseline = restoreBaselineOfJournal(SOAKS["gamma601-production-001"], text, true);
+  // Assert
+  assert.deepEqual(maybeBaseline, CLEAR_BASELINE.sample);
+});
+
+const PRODUCTION_601 = SOAKS["gamma601-production-001"];
+/** A journaled 601 baseline: 525/1150, the fan automatic, the latch clear. */
+const BASELINE_601 = { event: "baseline", sample: { frequencyMhz: 525, coreVoltageMv: 1150, autoFanSpeed: true, manualFanSpeed: 100,
+  overheatMode: false } };
+
+/**
+ * A paused 601 an overheat trip left latched: 425/1050, the fan manual at 100%, `overheat_mode` set,
+ * and with `selfPaused` the device's own overheat pause. It saves every patched setting.
+ */
+function trippedDevice({ board = { storedBoard: "601", boardIdentity: "match" }, selfPaused = false } = {}) {
+  const clock = { now: 0 };
+  const state = { paused: true, frequency: 425, coreVoltage: 1050, autofanspeed: 0, manualFanSpeed: 100, overheat_mode: 1,
+    pauseReason: selfPaused ? "overheat" : null, calls: [] };
+  const client = {
+    async info() {
+      return { ...board, miningPaused: state.paused, miningActivity: state.paused ? "paused" : "safe_blocked", startMiningOnBoot: false,
+        power: 5, vrTemp: 40, frequency: state.frequency, coreVoltage: state.coreVoltage, autofanspeed: state.autofanspeed,
+        manualFanSpeed: state.manualFanSpeed, overheat_mode: state.overheat_mode, pauseReason: state.pauseReason,
+        powerStatus: { state: "fresh" }, vrTempStatus: { state: "fresh" },
+        chipTempStatus: { state: "unavailable", reason: { kind: "unavailable", code: "asic_unpowered" } } };
+    },
+    async logs() { return "boot\nlocal_mining=overheat stays_stopped=false\nlocal_mining=overheat_recovered\n"; },
+    async patch(settings) { state.calls.push("patch"); Object.assign(state, settings); },
+    async command(name) {
+      state.calls.push(name); state.paused = name === "pause";
+      if (name === "resume") state.pauseReason = null;
+    },
+  };
+  return { client, clock, state };
+}
+
+const recoverOn = (device, text) => recover({ client: device.client, now: () => device.clock.now,
+  sleep: async (ms) => { device.clock.now += ms; }, note: async () => {}, soak: PRODUCTION_601, maybeJournalText: text });
+
+test("the recovery restores a tripped soak's baseline settings and clears the latch", async () => {
+  // Arrange
+  const device = trippedDevice();
+  // Act
+  const outcome = await recoverOn(device, journalOf(BASELINE_601, OVERHEAT_STOP));
+  // Assert
+  assert.deepEqual([outcome.recovery_settled, outcome.settings_restored, outcome.stop_cleared], [true, true, true]);
+  assert.deepEqual([device.state.frequency, device.state.coreVoltage, device.state.autofanspeed, device.state.overheat_mode],
+    [525, 1150, 1, 0]);
+});
+
+test("the recovery restores no settings on another board, and records the refusal", async () => {
+  // Arrange
+  const device = trippedDevice({ board: { storedBoard: "205", boardIdentity: "match" } });
+  // Act
+  const outcome = await recoverOn(device, journalOf(BASELINE_601, OVERHEAT_STOP));
+  // Assert
+  assert.deepEqual([outcome.restore_failure, outcome.paused], ["soak_board_identity", true]);
+  assert.ok(!device.state.calls.includes("patch"));
+});
+
+test("the overheat check's recovery still resumes once to clear the device's own pause", async () => {
+  // Arrange
+  const device = trippedDevice({ selfPaused: true });
+  // Act
+  await recover({ client: device.client, now: () => device.clock.now, sleep: async (ms) => { device.clock.now += ms; },
+    note: async () => {}, soak: SOAKS["gamma601-overheat-001"], maybeJournalText: journalOf(BASELINE_601) });
+  // Assert
+  assert.ok(device.state.calls.includes("resume"));
+  assert.equal(device.state.paused, true);
+});
+
+test("the recovery leaves a soak's self-paused overheat stop to the operator, never resuming", async () => {
+  // Arrange
+  const device = trippedDevice({ selfPaused: true });
+  // Act
+  const outcome = await recoverOn(device, journalOf(BASELINE_601, OVERHEAT_STOP));
+  // Assert
+  assert.equal(outcome.stop_cleared, false);
+  assert.ok(!device.state.calls.includes("resume"));
 });
 
 test("the 601 soaks run on the production firmware since the promotion", () => {

@@ -202,7 +202,6 @@ export async function runOverheat({ client, expected, settings, now, sleep, reco
   const limits = limitsOf(soak);
   // The cleanup's clearing resume runs at the restored baseline pair, so a soak may pin that pair.
   const baseline = await admitBaseline({ client, expected, settings, now, note, soak, requireProfile: soak.baselineProfile ?? null });
-  requireCondition(!baseline.overheatMode, "overheat_baseline_in_overheat");
   const original = settingsOf(baseline);
   const marks = {}, samples = [];
   let maybeStop = null, captures = 0;
@@ -304,15 +303,21 @@ async function restoreHeld({ client, original, now, sleep }) {
  * by one resume and a second pause, and reads the result back. Returns whether the recovery settled
  * and the final powered-down sample, or undefined. Never throws. An unsettled recovery is left
  * paused and unrestored, for the operator. `limits` are the soak's: its idle power and cool rule.
+ * Without `clearStop` a device pause is left to the operator (`markerCleared` false): the clearing
+ * resume starts a run, which only the overheat check's contract allows.
  */
-export async function restoreAndStop({ client, original, now, sleep, note, limits = LIMITS }) {
+export async function restoreAndStop({ client, original, now, sleep, note, limits = LIMITS, clearStop = true }) {
   let maybeFinal = await pauseAndConfirm({ client, now, sleep, note, limits });
   const settled = await awaitRecoverySettled({ client, now, sleep, note, limits });
   if (!settled) return { settled, maybeFinal, markerCleared: true };
   let resumeSent = false, markerCleared = true, restoreFailed = false;
   try {
     await client.patch({ ...original, overheat_mode: 0 });
-    if (sampleFromInfo(await client.info(), now()).pauseReason === "overheat") {
+    const selfPaused = sampleFromInfo(await client.info(), now()).pauseReason === "overheat";
+    if (selfPaused && !clearStop) {
+      markerCleared = false;
+      await note({ event: "stop_left_for_operator", atMs: now() });
+    } else if (selfPaused) {
       // Only an operator resume ends an overheat stop and clears its marker; it starts a short run.
       resumeSent = true;
       await client.command("resume");

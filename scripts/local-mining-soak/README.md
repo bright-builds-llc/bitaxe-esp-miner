@@ -95,7 +95,8 @@ operator resumes it, and stops when paused. The soak:
 1. reads the station endpoint from a completed `just otawww-endpoint` handoff
    in the same session (at most 30 minutes old);
 2. confirms the installed firmware, the handed-off boot and the paused
-   baseline (`miningPaused`, `startMiningOnBoot` false, no `pauseReason`);
+   baseline (`miningPaused`, `startMiningOnBoot` false, no `pauseReason`,
+   no `overheat_mode` left from an earlier trip: `soak_baseline_overheat`);
 3. saves the owner's pool from the ignored `pool-credentials.json` as the
    primary pool (owner decision 2026-10-17: keep it);
 4. resumes, samples `/api/system/info` every 2 s, and stops at the soak's
@@ -112,8 +113,24 @@ core-dump partition, so read it first under `task-handover-panic-diagnosis`.
 `just local-mining-soak pause --private-root P/attempt-NNN` is the recovery
 action for a run that died. It pauses the device, turns mining on boot off
 if it reads on, and confirms the ASIC powered down. For the overheat
-check it also waits for the recovery to settle and restores the settings
-that the journaled baseline recorded. Before the resume, the soak requires that same proof on the
+check, and for any run the firmware's overheat trip stopped from a
+baseline clear of `overheat_mode` (a `soak_overheat` stop, or a run that
+died while the device still shows the latch), it also waits for the
+recovery to settle and restores the settings that the journaled baseline
+recorded: the pair, the fan, and `overheat_mode` cleared.
+- It restores only on the soak's own board (`soak_board_identity`).
+- Only the overheat check resumes to clear the device's own overheat
+  pause, and its recovery now also refuses when that clear is not
+  confirmed in the retained log. Any other run leaves that pause to the
+  operator and refuses (`soak_recovery_unconfirmed`).
+- A restore refused after the pause, such as another board, is still
+  recorded with its code before the recovery refuses.
+- `--restore-journal P/attempt-MMM` restores from an earlier, sealed
+  attempt of the same soak, read only, while the new attempt's root holds
+  the endpoint and the outcome.
+
+A run refuses a baseline still latched in `overheat_mode`, so after a trip
+run this recovery before the next run. Before the resume, the soak requires that same proof on the
 paused baseline, and each limit judges only a fresh reading.
 
 **Mining** in every soak means hashing: the status reads `active`, not
