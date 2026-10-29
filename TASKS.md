@@ -2323,8 +2323,6 @@ The owner asked on 2026-10-28 for `wifi-credentials.json` to be applied
 for this campaign's factory installs (the Wi-Fi rule above); the file is
 passed by path only and never read, printed or summarized.
 
-Ultra 205 self-test rerun hardware: enabled.
-
 - **Objective:** SELF-001's lifecycle on the 205 at the final F4 commit, per
   the immutable plan
   `docs/parity/work-plans/20261029T050000Z-SELF-001-ULTRA205-RERUN/PLAN.md`:
@@ -2382,6 +2380,20 @@ fallback pool, seeded by an earlier factory install, cannot be restored
 from the inputs; every other compared setting matched. Owner decision: the
 fallback cleared over HTTP, as on the 601's attempt 002. The 205 stayed on
 production `c217f6b2`, paused.
+
+Attempt 007 (2026-10-29, `b5940eba`): passed; outcome `complete`.
+- Before it, one HTTP settings write cleared the fallback pool; the
+  read-back matched every compared input.
+- The planned failure held `cancel_ready` with `safe_state:true`; the
+  owner's BOOT press cancelled it, with the receipt and restart.
+- The pass: 387.3 GH/s against at least 368.6, domains 104.1 to 116.3
+  GH/s, 12.47 W, 1198 mV, 5.282 V, chip at most 60 C, fan 2390 rpm; the
+  pass receipt and the automatic restart; the settings restored and the
+  projection published.
+- Production `b5940eba` reinstalled state-preserving and confirmed (56
+  identity matches, no panic), with `just flash-monitor`, which runs step
+  5's flash and monitor in one command. The enable line is removed.
+- Summary: `docs/parity/evidence/20261029-ultra205-f46-self-test.md`.
 
 ## Future
 

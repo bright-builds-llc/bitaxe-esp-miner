@@ -1,0 +1,36 @@
+{
+  "schema_version": "parity-verified-revision-authority-v1",
+  "authority_id": "2026-10-29-self-test-both-boards",
+  "authorized_by": "owner",
+  "authorized_on": "2026-10-26",
+  "rationale": "The self-test's full lifecycle at the final Gamma 601 bring-up code on both boards: the Ultra 205's rerun (attempt 007) and the promoted production Gamma 601 (attempt 009). The owner's approved F4 plan (delightful-foraging-quill, owner decisions 2026-10-26) names this revision in F4.6: verified-revision authorities only where the hardware evidence meets the checklist rule. It appends one passage to SELF-001, with the status, the evidence tokens, the owned target and the original notes unchanged (a passage-only revision).",
+  "evidence": [
+    {
+      "path": "docs/parity/evidence/20261029-ultra205-f46-self-test.md",
+      "sha256": "91c92a10dc14dcd5652088c76b108170186b138813d8e1748e8e5f83417d3602"
+    },
+    {
+      "path": "docs/parity/evidence/self001-full-lifecycle/attempt-007/self-test-projection.json",
+      "sha256": "3721be45168a8a9e6d4f382b64a604cdad353b4e5cacfa9bf241d4671fed2bc6"
+    },
+    {
+      "path": "docs/parity/evidence/20261028-gamma601-production-self-test.md",
+      "sha256": "a437df3dd11a73c65a0e03ed17b7c371d9d48595bed0727a6030e95997971339"
+    },
+    {
+      "path": "docs/parity/evidence/self001-gamma601/attempt-009/self-test-projection.json",
+      "sha256": "3f96bfcf54e925edda1bec55d51cecf97739bb15ada52b0e0bbb212588a15917"
+    },
+    {
+      "path": "docs/parity/evidence/20261027-gamma601-self-test.md",
+      "sha256": "77dee72e102e8b8125eef9744c8bdf704faf460152222fa6efdc8aea0b64e706"
+    }
+  ],
+  "rows": [
+    {
+      "row_id": "SELF-001",
+      "added_evidence": [],
+      "after_notes_sha256": "5135a9b926112945ad9f6ca6183b1d9de15293ec61dc57e93f80742117be91fd"
+    }
+  ]
+}
