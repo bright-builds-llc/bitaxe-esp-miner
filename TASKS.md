@@ -758,7 +758,7 @@ action.
         load passed 3 of 3 runs alone. The 601's production self-test needs
         its own immutable plan in F4.5 (the campaign still pins F4.3's);
         superseded in F4.5: F4.3's plan already names the production repeat;
-    - [ ] F4.5: promotion hardware: boot resume, the production self-test,
+    - [x] F4.5: promotion hardware: boot resume, the production self-test,
       a production smoke soak;
       - [x] software: the boot-resume check takes the soak's board, profile
         and limits (the 205's `boot-resume-001` unchanged); soaks
@@ -790,9 +790,12 @@ action.
         by design, since they need the managed ESP-IDF environment;
       - [x] the production self-test (SELF-001 on the production 601):
         complete on attempt 009 (`bb9f2ae7`);
-      - [ ] the production smoke soak (`gamma601-production-001`);
-      - [ ] the device ends on production, paused, mining on boot off
-        unless the owner asks otherwise;
+      - [x] the production smoke soak (`gamma601-production-001`): passed
+        on attempt 005 (`69dafb3d`), after attempt 003's 75 C trip in a
+        warmer room and attempt 004's latch fix;
+      - [x] the device ends on production, paused, mining on boot off, the
+        fan automatic (`69dafb3d`: the soak's final sample, and a capture
+        confirming production on the same boot);
     - [ ] F4.6: parity proposals; the 205's regression and self-test at
       the final commit.
 
@@ -1937,8 +1940,8 @@ F4.3 attempts:
 Phase F4.5 promotion hardware contract (attempt ordinals 001 onward per
 step; the self-test continues F4.3's ordinals from 007):
 
-Gamma 601 boot resume check hardware: enabled.
-Gamma 601 production smoke soak hardware: enabled.
+Closed after the smoke soak passed on attempt 005 (2026-10-28); no enable
+line remains.
 
 The owner asked on 2026-10-27 to go ahead with F4.5, whose approved plan
 runs F4.3's self-test lifecycle on the production build; that request
@@ -2124,8 +2127,8 @@ F4.5 attempts:
     next invocation.
   - The run mined 171 s at 525/1150 (82 active samples, 23 shares
     accepted, none rejected). The chip climbed to 74.875 C and the
-    regulator to 76.25 C, at 21.2 W, with the fan at its top from 30 s
-    on. The firmware ended the run (`ending=Some(Overheat)`, hold
+    regulator to 76.25 C, at 21.2 W, with the fan near its top from
+    about 20 s of mining on (8000 rpm at 21 s). The firmware ended the run (`ending=Some(Overheat)`, hold
     `local_overheat`), and power read 5.0 W at the next 2 s sample. The
     soak then paused the device: `soak_overheat`,
     `soak_active_time_short`. It ended paused at 5.0 W with start-on-boot
@@ -2137,8 +2140,9 @@ F4.5 attempts:
     same profile, not a firmware change.
     - The idle regulator read 33.8 C, against 31.8 C in F4.1 and 31.3 C in
       attempt 002.
-    - Under load the chip ran 5 to 6 C hotter at the same times: 71.1 C
-      at 60 s and 74.9 C at 170 s, against 64.6 and 68.4 C in F4.1. The
+    - Under load the chip ran 4.4 to 7.3 C hotter at the same times of
+      mining, 6.5 C at both 60 s (71.1 C) and 170 s (74.9 C), against
+      64.6 and 68.4 C in F4.1. The
       power draw rose with it.
     - An unchanged retry would trip again. The owner chose to improve the
       cooling, then retry once (`continue_after_manual_remediation`).
@@ -2190,6 +2194,31 @@ F4.5 attempts:
     --restore-journal` attempt 003's soak root restores 003's baseline
     (525/1150, the fan automatic). The next run then starts with the fan
     automatic, as in F4.1 and attempt 002.
+  - No receive-only capture followed this stop. The soak's final sample
+    read the device paused on the install's boot, and attempt 005's
+    install and its capture followed.
+- **Attempt 005** (`69dafb3d`, root `scratch/gamma-601-promotion/run-005`):
+  the smoke soak passed; outcome `complete`.
+  - Production at `69dafb3d` was installed state-preserving and confirmed
+    (56 safe-boot records, `identity=match`, the Worker baseline,
+    `boot_ordinal=20`, no panic). The handoff was admitted on its first
+    Connect, and preflight passed.
+  - `pause --restore-journal` on attempt 003's soak root restored 003's
+    baseline on 005's own root: `recovery_settled`, `settings_restored`,
+    `stop_cleared`; 525/1150, the fan automatic, the latch clear. 003's
+    root was not written.
+  - Boundary change: the latch-clear baseline's idle regulator read
+    30.75 C, against 33.75 C in attempt 003. The chip read 62.6 C at
+    60 s and 66.4 C at 170 s, against 71.1 and 74.9 C.
+  - The run mined 600.5 s continuous (285 active samples), 39 shares
+    accepted and none rejected. Hashrate mean 1063 GH/s; peaks 20.2 W,
+    chip 68.1 C, regulator 74.5 C; input 5086 to 5156 mV; no outage.
+  - The pause was sent again at 31.7 s and the stop confirmed at 31.9 s,
+    at 5.0 W, within 0.2 s of the boot-resume check's timing.
+  - Production confirmed afterwards: 57 safe-boot records,
+    `identity=match`, the Worker baseline at `69dafb3d`, the same boot
+    (`boot_ordinal=20`), no panic.
+  - Evidence: `docs/parity/evidence/20261028-gamma601-production-smoke-soak.md`.
 
 ## Future
 
