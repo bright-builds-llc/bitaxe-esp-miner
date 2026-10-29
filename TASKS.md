@@ -798,7 +798,8 @@ action.
         confirming production on the same boot);
     - [ ] F4.6: parity proposals; the 205's regression and self-test at
       the final commit.
-      - [ ] parity proposals (metadata only, from committed 601 evidence):
+      - [x] parity proposals (metadata only, from committed 601 evidence;
+        `469a23e8`):
         - CFG-002 `implemented` (`unit,golden,hardware-smoke`). Verifying
           it would need a hardware readback of every seeded default, which
           the 601 build does not attest;
@@ -2240,6 +2241,64 @@ F4.5 attempts:
     `identity=match`, the Worker baseline at `69dafb3d`, the same boot
     (`boot_ordinal=20`), no panic.
   - Evidence: `docs/parity/evidence/20261028-gamma601-production-smoke-soak.md`.
+
+Phase F4.6 205 regression contract (attempt ordinals 001 onward):
+
+Ultra 205 board seam regression check hardware: enabled.
+
+- **Objective:** `--soak regression-001` on production Ultra 205 firmware
+  at the clean, pushed HEAD after phases F3 and F4, installed
+  state-preserving. It runs `watchdog-001`'s checks:
+  - 3 minutes of hashing with a nonzero hashrate and an accepted share;
+  - a pause whose status moves only from `active` to `stopping` to
+    `paused`;
+  - a zeroed hashrate while stopping;
+  - a fresh task watchdog in every sample;
+  - before any write, a baseline reporting `storedBoard` `205` with
+    `boardIdentity` `match`, and `overheat_mode` clear.
+  On the 205's real paths this checks the F3 and F4 shared-code changes:
+  - the promotion's dispatch and power-path build gates (`gamma601_dispatch`
+    off on the 205), with mines-on-boot following the saved preference;
+  - the board-aware self-test contract, compiled with the 205's verified
+    constants;
+  - the overheat cooling and recovery core, the shared fan authority and
+    the board-aware safety limits;
+  - the soak harness's baseline refusal and recovery restore.
+- **Precondition:** only the 205 attached (barrel power and its direct
+  USB-C cable), registered as board 205; the tree clean and pushed.
+- **Commands, with `P` a new mode-0700 parent under
+  `scratch/local-mining-soak/` and `umask 077`:**
+  1. `just detect-ultra205`;
+  2. `just flash-monitor --board 205 --port <port>
+     --capture-timeout-seconds 360`, state-preserving;
+  3. `just otawww-endpoint preflight|serve|finish --private-root
+     P/endpoint`, with a Connect in the dedicated Gate tab;
+  4. `just local-mining-soak preflight --soak regression-001 --private-root
+     P/attempt-NNN --endpoint-root P/endpoint --package-manifest
+     bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+     --pool-credentials pool-credentials.json`;
+  5. `just local-mining-soak pause --private-root P/attempt-NNN`;
+  6. `just local-mining-soak run --private-root P/attempt-NNN
+     --pool-credentials pool-credentials.json`, detached under
+     `caffeinate`, as the soak README describes.
+- **Allowed effects:**
+  - the install, with its resets;
+  - the Gate Connect for the handoff;
+  - the soak's own effects: saving the owner's pool, up to 15 minutes of
+    local mining at the default pair, one pause resent idempotently, and
+    the recovery pause.
+- **Prohibited effects:**
+  - a factory reset;
+  - writing a 601 package;
+  - a Gate Connect during the run;
+  - any other hardware command;
+  - network discovery;
+  - direct UART or pins;
+  - printing or copying the pool credentials.
+- **Evidence, recovery, retries and accepted outcomes:** as `watchdog-001`
+  (archived `task-preparation-rollback-cooling-watchdog`). Recovery is
+  `just local-mining-soak pause --private-root P/attempt-NNN`. Retries
+  follow the progress-gated attempt policy. The 205 stays on production.
 
 ## Future
 
