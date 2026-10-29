@@ -340,7 +340,7 @@ action.
     - fractional target frequencies (upstream stores a float), if the 601
       needs them.
     Each needs a chip-generic seam or a BM1370 twin.
-- [ ] **F. BM1370 on hardware, then mining.** Chip detection, mining-ready
+- [x] **F. BM1370 on hardware, then mining.** Chip detection, mining-ready
       init, board-specific live limits, a short local run, stops,
       self-test and soaks; the parity rows with their evidence. Plan
       `gamma-601-phase-f` (owner approved 2026-10-23), in four gated
@@ -638,8 +638,8 @@ action.
       partial frame after the count, where upstream stops counting;
   - F3 must show the 601's 22 W power stop against real mining power at
     its catalog settings before relying on it above the default.
-  - [ ] F2: the firmware seams; the 601 is still refused mining.
-  - [ ] F3: hardware on the 601, each step under its own contract.
+  - [x] F2: the firmware seams; the 601 is still refused mining.
+  - [x] F3: hardware on the 601, each step under its own contract.
     - [x] F3.1 software: the test-only `gamma601-chip-check` variant
       (ADR-0041 item 8) and its check (`gamma601/chip_check.rs`, record in
       `bitaxe_safety::gamma601_chip_check`), wired like the mining
@@ -668,9 +668,10 @@ action.
     - [x] 601 Worker hardware: passed on attempt 001, the Worker started
       with the baseline confirmed and the board held safe
       (`docs/parity/evidence/20261025-gamma601-worker-boot.md`);
-    - [ ] 205 regression at the 601 Worker commit (`2bf484b8`) and the F3.3
+    - [x] 205 regression at the 601 Worker commit (`2bf484b8`) and the F3.3
       chip-temperature rule, at the next session with the 205 attached,
-      before anything else on the 205;
+      before anything else on the 205: covered by F4.6's `regression-001`
+      at `c217f6b2`, which contains both;
     - [x] F3.3 software (ADR-0041 item 11): the 601's chip temperature by
       stage, the board-aware verdict, cooling sample, stop proof, overheat
       recovery and run admission, the 20 s init-window fault, the board's
@@ -702,7 +703,7 @@ action.
       production reinstalled. Its fixes: the Gate tab's detached
       visibility check, the 601's soak prerequisite (ADR-0041 item 13,
       `2d4158fa`) and the held break log (`9323ff2d`).
-  - [ ] F4: default profile, soak, self-test and promotion (plan
+  - [x] F4: default profile, soak, self-test and promotion (plan
     `delightful-foraging-quill`, owner decisions 2026-10-26: port the 601
     self-test before promotion, a 4 h soak at 525/1150, the panic residual
     accepted as upstream, live changes deferred).
@@ -796,7 +797,7 @@ action.
       - [x] the device ends on production, paused, mining on boot off, the
         fan automatic (`69dafb3d`: the soak's final sample, and a capture
         confirming production on the same boot);
-    - [ ] F4.6: parity proposals; the 205's regression and self-test at
+    - [x] F4.6: parity proposals; the 205's regression and self-test at
       the final commit.
       - [x] parity proposals (metadata only, from committed 601 evidence;
         `469a23e8`):
@@ -811,18 +812,30 @@ action.
         - the plans and results are under
           `docs/parity/work-plans/20261029T04060*Z-*`; independent claim
           review; `just parity`, `just verify-redaction`, progress synced;
-      - [ ] SELF-001's passage for the 601, after the 205's self-test rerun
+      - [x] SELF-001's passage for the 601, after the 205's self-test rerun
         below: the review found the 205's attempt-005 numbers predate the
         shared self-test changes (`cd9aee8e`, `22ee4801`), so one
-        verified-revision authority records both boards at the final commit;
+        verified-revision authority records both boards at the final commit
+        (`96584b92`, `docs/parity/verified-revisions/2026-10-29-self-test-both-boards.json`);
       - [x] the 205's regression (`regression-001`), with only the 205
         attached: passed on attempt 001 (`c217f6b2`,
         `docs/parity/evidence/20261028-ultra205-f46-regression.md`);
-      - [ ] the 205's self-test at the final F4 commit (attempt 006, new
-        plan): software done (the campaign, the flash intent and the
-        evidence validator admit a 205 attempt after 005 under the rerun
-        plan; attempt 005's pins unchanged); hardware next;
-      - [ ] the 205's production reinstall, confirmed.
+      - [x] the 205's self-test at the final F4 commit (new plan): software
+        (the campaign, the flash intent and the evidence validator admit a
+        205 attempt after 005 under the rerun plan; attempt 005's pins
+        unchanged); hardware passed on attempt 007 (`b5940eba`,
+        `docs/parity/evidence/20261029-ultra205-f46-self-test.md`) after
+        attempt 006's fallback-pool refusal;
+      - [x] the 205's production reinstall, confirmed (`b5940eba`).
+
+F4 review: production 601 builds mine at 525/1150 on boot by the saved
+preference, every promotion surface has 601 hardware evidence, and the 205
+passed its regression and self-test at the final shared code. Residual
+risks: live voltage and frequency changes stay deferred (ADR-0041 item
+15); the panic-reboot window is accepted as upstream has it (item 7); the
+205 keeps no fallback pool after its self-test; low domain sample counts
+on one domain per board are recorded, not investigated; a 601 release is a
+later decision.
 
 Each phase ends with the full gate, an independent review, commit and
 push. Each hardware step needs its own contract and enable line below.
