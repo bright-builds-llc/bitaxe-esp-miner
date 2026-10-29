@@ -798,6 +798,27 @@ action.
         confirming production on the same boot);
     - [ ] F4.6: parity proposals; the 205's regression and self-test at
       the final commit.
+      - [ ] parity proposals (metadata only, from committed 601 evidence):
+        - CFG-002 `implemented` (`unit,golden,hardware-smoke`). Verifying
+          it would need a hardware readback of every seeded default, which
+          the 601 build does not attest;
+        - ASIC-008 `verified`
+          (`unit,golden,hardware-smoke,hardware-regression,soak`);
+        - PWR-004 `verified`
+          (`unit,golden,hardware-smoke,hardware-regression,soak`), with live
+          voltage changes deferred (ADR-0041 item 15);
+        - the plans and results are under
+          `docs/parity/work-plans/20261029T04060*Z-*`; independent claim
+          review; `just parity`, `just verify-redaction`, progress synced;
+      - [ ] SELF-001's passage for the 601, after the 205's self-test rerun
+        below: the review found the 205's attempt-005 numbers predate the
+        shared self-test changes (`cd9aee8e`, `22ee4801`), so one
+        verified-revision authority records both boards at the final commit;
+      - [ ] the 205's regression (`regression-001`), with only the 205
+        attached;
+      - [ ] the 205's self-test at the final F4 commit (attempt 006, new
+        plan);
+      - [ ] the 205's production reinstall, confirmed.
 
 Each phase ends with the full gate, an independent review, commit and
 push. Each hardware step needs its own contract and enable line below.

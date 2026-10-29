@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261029T040640Z-PWR-004",
+  "predecessor_sha256": "d4987cda6dcb50a40eb21ab2a4a4ec512a5df6590c00b0c6040e4216051cd311",
+  "result_sha256": "10a24b1a71b997d24835157b64bc185149c59265e2e775d2d9a2d421bd56d861",
+  "row_id": "PWR-004",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261029T040602Z-PWR-004/PLAN.md",
+  "plan_sha256": "db34ec79922eb52c0003f538e6427132dac0c5a530dc710f88a4cc1031de0507",
+  "result_path": "docs/parity/work-plans/20261029T040602Z-PWR-004/RESULT.md",
+  "result_document_sha256": "46f63e70c15f247744ff54e0f1c9e5bfd3836af91912811c468351f6e0ad7cd8",
+  "before_rust_owned_target": "`firmware/bitaxe`",
+  "after_rust_owned_target": "`crates/bitaxe-safety/src/tps546.rs`, `crates/bitaxe-safety/fixtures/gamma-601-tps546-config.csv`, `crates/bitaxe-safety/src/tps546/config.rs`, `crates/bitaxe-safety/src/tps546/enable.rs`, `firmware/bitaxe/src/safety_adapter/i2c_bus/tps546.rs`, `firmware/bitaxe/src/safety_adapter/gamma601.rs`, `firmware/bitaxe/src/gamma601/regulator.rs`, `firmware/bitaxe/src/gamma601/actuation.rs`",
+  "before_status": "in-progress",
+  "after_status": "verified",
+  "before_evidence": "pending",
+  "after_evidence": "unit,golden,hardware-smoke,hardware-regression,soak",
+  "before_notes": "Activated by the owner-approved Gamma 601 F4 plan (delightful-foraging-quill, F4.6) under the linked parity plan to propose this row's status from committed Gamma 601 evidence; no device effect is authorized.",
+  "after_notes": "On the Gamma 601, the TPS546 output is commanded and confirmed off through the safe boot. A bounded test-build check wrote its 32-register configuration with every readback matching, held 1144 to 1146 mV at a 1.15 V target for 60 s with no faults, and confirmed the output off again; see docs/parity/evidence/20261023-gamma601-vout-check.md. Its VIN, IOUT and regulator temperature then fed the safety limits through local mining, the 4-hour soak, the self-test and the production smoke soak (regulator peak 80.0 C, in the 4-hour soak), and a test build's overheat restart ran at 1050 mV. The promoted production build runs the same configuration and enable path. Two deliberate deviations bound the voltage: VOUT_COMMAND is written at the target and VOUT_MAX is 1.25 V, under a 1.20 V target cap. See docs/parity/work-plans/20261029T040602Z-PWR-004/RESULT.md. Live voltage changes are deferred on the 601 (ADR-0041 item 15). A regulator overheat ends the run stopped rather than recovering as upstream does (ADR-0041 item 11). The 105 C regulator throttle, injected faults, the output state from power-on until the safe boot's off write and after a panic, analog accuracy, other voltages and other TPS546 boards remain non-claims."
+}

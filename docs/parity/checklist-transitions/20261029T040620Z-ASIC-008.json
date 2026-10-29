@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261029T040620Z-ASIC-008",
+  "predecessor_sha256": "348da4ce0e3263f382fdf53acb70e7cc981ec11d25f639a62022af8812b39261",
+  "result_sha256": "1e8a978c7fce863b95507a0f586e5194b443f098f75067ef9178a25bbe1dfd50",
+  "row_id": "ASIC-008",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261029T040601Z-ASIC-008/PLAN.md",
+  "plan_sha256": "1c4610b044f83ecf92d810c2e0f62bdffed87fda3101a5867d72bc60ba0b0f3e",
+  "result_path": "docs/parity/work-plans/20261029T040601Z-ASIC-008/RESULT.md",
+  "result_document_sha256": "2a8728d1d34bc0129b9659abb11d3093003b0d55d425f4bfc90ab2976d083c37",
+  "before_rust_owned_target": "`crates/bitaxe-asic`",
+  "after_rust_owned_target": "`crates/bitaxe-asic`, `firmware/bitaxe/src/asic_adapter/board_601.rs`, `firmware/bitaxe/src/asic_adapter/production/board_601.rs`, `firmware/bitaxe/src/asic_adapter/production/bm1370_init.rs`, `firmware/bitaxe/src/mining_actuation_adapter/gamma601.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden",
+  "after_evidence": "unit,golden,hardware-smoke,hardware-regression,soak",
+  "before_notes": "Pure BM1370 protocol core now covers framing/CRC, the init plan split at chip detection, the BM1370 PLL range, the bidirectional ramp, the errata nonce space, 82-byte work and 88-byte job frames, 24-step job ids, strict result/register/chip-id decoding, and pinned-reference golden fixtures; see docs/parity/evidence/asic008-bm1370-core/summary.md and docs/parity/work-plans/20261023T180521Z-ASIC-008/WORKLOG.md. Firmware dispatch, UART/device effects, chip counting, and Gamma 601 hardware verification remain unavailable and unclaimed.",
+  "after_notes": "The pure BM1370 core (docs/parity/evidence/asic008-bm1370-core/summary.md) drives the Gamma 601 firmware through its 601 ASIC and mining adapters. On the 601's one BM1370, a bounded check counted one chip, and a known-job hash check returned 8 verified nonces and no invalid ones at 300 MHz. Local mining accepted shares with none rejected at 400 MHz and at upstream's 525 MHz / 1150 mV default, for 10 minutes each, and for 4 hours of mining (440 shares, mean 1068 GH/s, one Wi-Fi outage recovered) on test builds. The promoted production build then resumed mining on boot, passed the self-test at 1028.4 GH/s across four domains, and ran a 10-minute smoke soak (39 shares, mean 1063 GH/s). See docs/parity/work-plans/20261029T040601Z-ASIC-008/RESULT.md. Live frequency changes, mining from a power-on boot, multi-hour runs of the production build, the thermal margin in a warmer room (the 75 C trip ended one production run at this profile), other BM1370 boards and chip counts, and release readiness remain non-claims."
+}

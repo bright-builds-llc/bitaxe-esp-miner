@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261029T040610Z-CFG-002",
+  "predecessor_sha256": "3e0e5897f6bbe40dc26449de783911399ce6ea1a8da21f44c118604f1f0ff855",
+  "result_sha256": "348da4ce0e3263f382fdf53acb70e7cc981ec11d25f639a62022af8812b39261",
+  "row_id": "CFG-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261029T040600Z-CFG-002/PLAN.md",
+  "plan_sha256": "393f3db7d6f6bcf4f539d296223c52411189a744a9b376870e33bc046596e8b5",
+  "result_path": "docs/parity/work-plans/20261029T040600Z-CFG-002/RESULT.md",
+  "result_document_sha256": "aacb720c3ee91177e4fd3c2de2284da603037362e44750a5a27f04e4d46b1a86",
+  "before_rust_owned_target": "`crates/bitaxe-config`",
+  "after_rust_owned_target": "`crates/bitaxe-config/src/defaults/seed.rs`, `crates/bitaxe-config/fixtures/gamma-601-defaults.csv`, `crates/bitaxe-config/fixtures/board-profile-defaults.json`, `tools/flash/src/wifi.rs`",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,golden,hardware-smoke",
+  "before_notes": "Activated by the owner-approved Gamma 601 F4 plan (delightful-foraging-quill, F4.6) under the linked parity plan to propose this row's status from committed Gamma 601 evidence; no device effect is authorized.",
+  "after_notes": "The Gamma 601 seed (`board_default_seed_values(\"601\")`) matches the pinned `config-601.cvs` in unit and golden tests: 525 MHz, 1150 mV, BM1370, the gamma device model and the 601's fan and self-test defaults. A factory install of the 601 package wrote the seed, and the board read its stored identity back from it (`built=601 stored=601 identity=match`); see docs/parity/evidence/20261022-gamma601-wifi-provisioning.md and docs/parity/work-plans/20261029T040600Z-CFG-002/RESULT.md. Verification needs a hardware readback of every seeded default, which the 601 build does not attest; the profiles the 601 mined with were saved by the harnesses, not read from the seed. Two differences from upstream remain: the factory install also saves mineonboot off, a key upstream lacks (ADR-0041 item 11), and the seed's selftest=1 does not start the self-test on first boot, which upstream does. Other Gamma boards remain non-claims."
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261029T040630Z-PWR-004",
+  "predecessor_sha256": "1e8a978c7fce863b95507a0f586e5194b443f098f75067ef9178a25bbe1dfd50",
+  "result_sha256": "d4987cda6dcb50a40eb21ab2a4a4ec512a5df6590c00b0c6040e4216051cd311",
+  "row_id": "PWR-004",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261029T040602Z-PWR-004/PLAN.md",
+  "plan_sha256": "db34ec79922eb52c0003f538e6427132dac0c5a530dc710f88a4cc1031de0507",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`firmware/bitaxe`",
+  "after_rust_owned_target": "`firmware/bitaxe`",
+  "before_status": "deferred",
+  "after_status": "in-progress",
+  "before_evidence": "deferred",
+  "after_evidence": "pending",
+  "before_notes": "Relevant to deferred Gamma 601 and related boards.",
+  "after_notes": "Activated by the owner-approved Gamma 601 F4 plan (delightful-foraging-quill, F4.6) under the linked parity plan to propose this row's status from committed Gamma 601 evidence; no device effect is authorized."
+}

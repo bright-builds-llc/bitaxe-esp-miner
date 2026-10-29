@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20261029T040600Z-CFG-002",
+  "predecessor_sha256": "82d1be13e76511094b4916ec0b0d4467cf78008dda52af666499863f3a502969",
+  "result_sha256": "3e0e5897f6bbe40dc26449de783911399ce6ea1a8da21f44c118604f1f0ff855",
+  "row_id": "CFG-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20261029T040600Z-CFG-002/PLAN.md",
+  "plan_sha256": "393f3db7d6f6bcf4f539d296223c52411189a744a9b376870e33bc046596e8b5",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-config`",
+  "after_rust_owned_target": "`crates/bitaxe-config`",
+  "before_status": "deferred",
+  "after_status": "in-progress",
+  "before_evidence": "deferred",
+  "after_evidence": "pending",
+  "before_notes": "Gamma 601/BM1370 remains in project scope but is deferred after the Ultra 205 path; [Phase 2 evidence](evidence/phase-02-ultra-205-config-nvs-model.md) does not verify Gamma 601 or BM1370 behavior.",
+  "after_notes": "Activated by the owner-approved Gamma 601 F4 plan (delightful-foraging-quill, F4.6) under the linked parity plan to propose this row's status from committed Gamma 601 evidence; no device effect is authorized."
+}
