@@ -269,17 +269,23 @@ action.
         `OPERATION` on;
       - nor over hours of mining, since each boot after a mined one reads
         `pre_id_cml=0x00`.
-    - The 601 has no runtime screen, so the startup render is the only
-      transfer class unique to that window. It is the suspect.
-    - Upstream would not show the bit: its display init comes before
-      `TPS546_init`, which ends with `CLEAR_FAULTS`. Ours puts the off
-      writes first, so the bit stays latched until mining starts.
+    - The 601 has no runtime screen, so the startup render looked like the
+      only transfer class unique to that window. Attempt 001 below read
+      the bit clear after the render's step; the captures do not show the
+      render's transfers ran.
+    - Upstream's order is display init, then `TPS546_init`, which ends with
+      `CLEAR_FAULTS`. Ours keeps the bit latched until mining starts.
     - Owner decision 2026-10-29: add the reads and run them on the 601.
       The safe-boot record (schema v4) carries `STATUS_CML` right before
       and right after the startup render (`pre_render_cml`,
       `post_render_cml`), reads only, after the off writes. They answer
       the question on a boot that begins clear, after the owner's power
       cycle (contract below).
+    - Result, 2026-10-30: `pre_render_cml=0x00`, `post_render_cml=0x00`,
+      then `cml=0x02`. The bit is set after that read, by the early sweeps
+      or by something beside them. Which, and when, is still open. Whether
+      the screen was drawn on that boot is not shown.
+      Summary: `docs/parity/evidence/20261030-gamma601-cml-render.md`.
 - [x] **D. TPS546.** Plan `gamma-601-phase-d` (owner approved 2026-10-23).
   - [x] D1: the pure configuration core (`bitaxe-safety`):
     - the LINEAR11 and ULINEAR16 encoders;
@@ -2435,7 +2441,7 @@ Attempt 007 (2026-10-29, `b5940eba`): passed; outcome `complete`.
 
 TPS546 CML render-bracket contract (attempt ordinals 001 onward):
 
-Gamma 601 CML render check hardware: enabled.
+Closed after attempt 001 (2026-10-30); no enable line remains.
 
 - **Objective:** answer the `CML` follow-up above. On a 601 boot that
   begins with `STATUS_CML` clear, the schema v4 safe-boot record's
@@ -2483,6 +2489,20 @@ Gamma 601 CML render check hardware: enabled.
   record values above, and passes `just verify-redaction`.
 - **Recovery:** production at HEAD is the installed firmware; on any stop,
   reinstall it state-preserving (step 2) and confirm the safe boot.
+
+Attempt 001 (2026-10-30, `56bcc2ea`): outcome `complete`.
+- The install's boot began latched (`0x82` in every CML field), so it does
+  not bear on the question.
+- The boot after the owner's power cycle (reset `power_on`) read
+  `pre_id_cml`, `start_cml`, `pre_render_cml` and `post_render_cml` all
+  `0x00`, then `cml=0x02`. The bit was clear after the render's step; the
+  captures do not show that the render's transfers ran.
+- The contract's result line names the first sweep for this outcome. The
+  records show less: the bit is set after the render read and before the
+  captured sweep.
+- Safe-boot readings held: reset held, off confirmed, fan 30 %, identity
+  match, one boot, no panic. The 601 stays on production `56bcc2ea`.
+- Summary: `docs/parity/evidence/20261030-gamma601-cml-render.md`.
 
 ## Future
 
