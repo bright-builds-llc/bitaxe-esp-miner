@@ -242,6 +242,8 @@ action.
     key-presence report from the NVS read (names only, no values) would
     show which stored keys differ from ours.
   - [ ] Follow-up: find where the TPS546 `CML` status bit comes from.
+    **Deferred by the owner, 2026-10-30.** Do not select this automatically;
+    it resumes when the owner asks. See "To resume" at the end of this item.
     Narrowed 2026-10-22, follow-up attempt 001:
     - after a cold power-on, `STATUS_CML = 0x82` is already set by the
       first status read, which follows only the identity reads;
@@ -270,9 +272,9 @@ action.
       - nor over hours of mining, since each boot after a mined one reads
         `pre_id_cml=0x00`.
     - The 601 has no runtime screen, so the startup render looked like the
-      only transfer class unique to that window. Attempt 001 below read
-      the bit clear after the render's step; the captures do not show the
-      render's transfers ran.
+      only transfer class unique to that window. Attempt 001 below refuted
+      that: the bit read clear after the render, and the owner saw the
+      screen's text on that boot.
     - Upstream's order is display init, then `TPS546_init`, which ends with
       `CLEAR_FAULTS`. Ours keeps the bit latched until mining starts.
     - Owner decision 2026-10-29: add the reads and run them on the 601.
@@ -282,10 +284,27 @@ action.
       the question on a boot that begins clear, after the owner's power
       cycle (contract below).
     - Result, 2026-10-30: `pre_render_cml=0x00`, `post_render_cml=0x00`,
-      then `cml=0x02`. The bit is set after that read, by the early sweeps
-      or by something beside them. Which, and when, is still open. Whether
-      the screen was drawn on that boot is not shown.
+      then `cml=0x02`. The owner saw the screen's text on that boot, so the
+      screen is ruled out. The bit is set after that read, by the early
+      sweeps or by something beside them. Which, and when, is still open.
       Summary: `docs/parity/evidence/20261030-gamma601-cml-render.md`.
+    - To resume:
+      - **What is known:** a boot that begins clear has bit 1 set by about
+        5.6 s. It is not set by the identity read, the start reads, the off
+        writes or the screen. The same sweep transfers leave it clear after
+        a `CLEAR_FAULTS`, so something present only early in a boot is the
+        likelier cause. No harm is known: mining's start clears it, and the
+        regulator's baseline accepts it.
+      - **Next step:** record in the safe-boot record the uptime of the last
+        sweep that read the bit clear and of the first that read it set, and
+        compare them with the boot's other timestamps. This is a production
+        firmware change, one more commit past the F4 evidence.
+      - **Untested idea:** a flash operation elsewhere in startup delaying
+        the I2C interrupt, holding the clock low long enough for the
+        controller to report a bus timeout.
+      - **To run it:** a new contract, modelled on the render-bracket
+        contract below; only the 601 attached; one owner power cycle, so the
+        boot begins clear.
 - [x] **D. TPS546.** Plan `gamma-601-phase-d` (owner approved 2026-10-23).
   - [x] D1: the pure configuration core (`bitaxe-safety`):
     - the LINEAR11 and ULINEAR16 encoders;
@@ -2495,8 +2514,9 @@ Attempt 001 (2026-10-30, `56bcc2ea`): outcome `complete`.
   not bear on the question.
 - The boot after the owner's power cycle (reset `power_on`) read
   `pre_id_cml`, `start_cml`, `pre_render_cml` and `post_render_cml` all
-  `0x00`, then `cml=0x02`. The bit was clear after the render's step; the
-  captures do not show that the render's transfers ran.
+  `0x00`, then `cml=0x02`. The captures do not show the render's transfers;
+  the owner reports the screen showed text after that power cycle. So the
+  screen does not set the bit.
 - The contract's result line names the first sweep for this outcome. The
   records show less: the bit is set after the render read and before the
   captured sweep.

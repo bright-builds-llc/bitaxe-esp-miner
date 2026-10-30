@@ -5,8 +5,8 @@ The follow-up in `task-gamma-601-bring-up` asks where the TPS546's latched
 existing captures placed it between the boot's start read and the steady
 records, and the startup screen was the suspect. This run read `STATUS_CML`
 right before and right after the screen, on a boot that began clear. The
-bit was still clear after the screen's step. The captures do not show that
-the screen's transfers ran.
+bit was still clear after the screen, which the owner saw show its text on
+that boot. The screen does not set the bit.
 
 - **Commands** (the render-bracket contract in `TASKS.md`):
   1. `just detect-ultra205`;
@@ -56,8 +56,8 @@ the install and 3583 to 3602 rpm after the power cycle.
 ## What this changes
 
 Comparing boots had pointed at the screen, as the only kind of transfer
-unique to the window. If the screen's transfers ran on this boot, that is
-refuted, and the bit does not follow from any kind of transfer seen so far:
+unique to the window. That is refuted, and the bit does not follow from any
+kind of transfer seen so far:
 - what remains in the window is the early sweeps, whose transfers repeat
   about every 500 ms, and the safe boot's conditional off re-assert;
 - the same transfers leave the bit clear after a `CLEAR_FAULTS`, in direct
@@ -72,9 +72,10 @@ indirectly. This is a direction for the next step, not a finding.
 ## Not shown here
 
 - Which transfer or moment sets bit 1.
-- That the startup screen was drawn. Its success goes only to the general
-  log, which the receive-only console does not carry, and a configuration
-  error skips its transfers.
+- The screen's transfers, in the captures. Their success goes only to the
+  general log, which the receive-only console does not carry. The owner's
+  report is the evidence that the screen was drawn: it showed text after the
+  power cycle.
 - Bit 7 (`0x80`): the `0x82` on the install's boot was latched before that
   boot's first read, probably by an earlier boot's too-early read (phase
   D4), perhaps at the board swap. No capture covers it.
