@@ -4,7 +4,7 @@
 //! - `reference/esp-miner/main/http_server/http_server.c`
 //! - `reference/esp-miner/main/http_server/websocket.c`
 
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 use crate::settings::SettingsPatchPublicError;
 
@@ -169,8 +169,8 @@ pub struct PublicHttpResponse {
 pub struct RouteAccessInput {
     /// Upstream AP-mode bypass for captive/local setup.
     pub ap_mode_enabled: bool,
-    /// Client peer IPv4 address, or `0.0.0.0` when the firmware platform cannot expose it.
-    pub request_ip: Ipv4Addr,
+    /// Client peer IPv4 address, or `None` when it cannot be read or the peer is not IPv4.
+    pub maybe_request_ip: Option<Ipv4Addr>,
     /// Origin header state.
     pub origin: OriginGate,
 }
@@ -184,31 +184,6 @@ pub enum OriginGate {
     Parsed(Ipv4Addr),
     /// The Origin header was present but could not be accepted.
     Invalid,
-}
-
-/// Result of normalizing the raw ESP-IDF peer IPv4 value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PeerIpv4Normalization {
-    /// The raw value decoded as a network-order address.
-    NetworkOrder(Ipv4Addr),
-    /// The network-order candidate was public while the host-order candidate
-    /// was RFC1918, so the private host-order candidate was selected.
-    HostOrderFallback {
-        /// Selected RFC1918 peer address.
-        address: Ipv4Addr,
-        /// Rejected public network-order candidate retained for diagnostics.
-        network_order_address: Ipv4Addr,
-    },
-}
-
-impl PeerIpv4Normalization {
-    /// Returns the normalized peer IPv4 address.
-    #[must_use]
-    pub const fn address(self) -> Ipv4Addr {
-        match self {
-            Self::NetworkOrder(address) | Self::HostOrderFallback { address, .. } => address,
-        }
-    }
 }
 
 /// HTTP access decision.
@@ -368,27 +343,14 @@ pub fn origin_gate_from_header(origin: &str) -> OriginGate {
     OriginGate::Parsed(origin_ip)
 }
 
-/// Normalizes an ESP-IDF `sockaddr_in.sin_addr.s_addr` value.
+/// Returns the IPv4 address of a peer read from the HTTP server's IPv6 socket.
 ///
-/// ESP-IDF supplies network-order bytes, but supported bindings have exposed
-/// both network- and host-order integer interpretations. Prefer the
-/// network-order candidate unless only the host-order candidate is RFC1918.
+/// The server listens on a dual-stack socket, so lwIP reports IPv4 clients in
+/// IPv4-mapped form. Anything else is a real IPv6 peer, which has no IPv4
+/// address and therefore fails the private-network gate.
 #[must_use]
-pub fn normalize_peer_ipv4(raw_addr: u32) -> PeerIpv4Normalization {
-    let network_order_address = Ipv4Addr::from(u32::from_be(raw_addr));
-    if is_rfc1918_ipv4(network_order_address) {
-        return PeerIpv4Normalization::NetworkOrder(network_order_address);
-    }
-
-    let host_order_address = Ipv4Addr::from(raw_addr);
-    if is_rfc1918_ipv4(host_order_address) {
-        return PeerIpv4Normalization::HostOrderFallback {
-            address: host_order_address,
-            network_order_address,
-        };
-    }
-
-    PeerIpv4Normalization::NetworkOrder(network_order_address)
+pub fn maybe_mapped_peer_ipv4(peer_octets: [u8; 16]) -> Option<Ipv4Addr> {
+    Ipv6Addr::from(peer_octets).to_ipv4_mapped()
 }
 
 fn is_access_allowed(input: RouteAccessInput) -> bool {
@@ -396,17 +358,11 @@ fn is_access_allowed(input: RouteAccessInput) -> bool {
         return true;
     }
 
-    // ESP-IDF HTTPD can report 0.0.0.0 for the peer after accepting a STA socket.
-    // Keep upstream-like local curl behavior while still rejecting hostile origins.
-    if input.request_ip.is_unspecified() {
-        return is_origin_allowed(input.origin);
-    }
-
-    if !is_rfc1918_ipv4(input.request_ip) {
+    let Some(request_ip) = input.maybe_request_ip else {
         return false;
-    }
+    };
 
-    is_origin_allowed(input.origin)
+    is_rfc1918_ipv4(request_ip) && is_origin_allowed(input.origin)
 }
 
 fn is_origin_allowed(origin: OriginGate) -> bool {

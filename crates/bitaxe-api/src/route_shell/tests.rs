@@ -1,18 +1,20 @@
 use std::net::Ipv4Addr;
 
 use super::{
-    is_rfc1918_ipv4, maybe_origin_ip_from_header, normalize_peer_ipv4, origin_gate_from_header,
-    phase05_routes, phase07_route_report, phase07_routes, plan_http_access,
-    plan_settings_patch_body_size, plan_websocket_upgrade, unknown_api_route_response,
-    HttpAccessDecision, OriginGate, PeerIpv4Normalization, RouteAccessInput, RouteKind,
-    RouteMethod, SettingsPatchBodyDecision, WebSocketRouteKind, WebSocketUpgradeDecision,
-    MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
+    is_rfc1918_ipv4, maybe_origin_ip_from_header, origin_gate_from_header, phase05_routes,
+    phase07_route_report, phase07_routes, plan_http_access, plan_settings_patch_body_size,
+    plan_websocket_upgrade, unknown_api_route_response, HttpAccessDecision, OriginGate,
+    RouteAccessInput, RouteKind, RouteMethod, SettingsPatchBodyDecision, WebSocketRouteKind,
+    WebSocketUpgradeDecision, MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY,
+    UNKNOWN_API_ROUTE_BODY,
 };
+
+mod peer_address;
 
 fn denied_public_client_input() -> RouteAccessInput {
     RouteAccessInput {
         ap_mode_enabled: false,
-        request_ip: Ipv4Addr::new(8, 8, 8, 8),
+        maybe_request_ip: Some(Ipv4Addr::new(8, 8, 8, 8)),
         origin: OriginGate::Parsed(Ipv4Addr::new(203, 0, 113, 10)),
     }
 }
@@ -20,74 +22,9 @@ fn denied_public_client_input() -> RouteAccessInput {
 fn private_client_input(origin: OriginGate) -> RouteAccessInput {
     RouteAccessInput {
         ap_mode_enabled: false,
-        request_ip: Ipv4Addr::new(192, 168, 1, 25),
+        maybe_request_ip: Some(Ipv4Addr::new(192, 168, 1, 25)),
         origin,
     }
-}
-
-fn network_order_raw(address: Ipv4Addr) -> u32 {
-    u32::from(address).to_be()
-}
-
-#[test]
-fn peer_ipv4_normalization_decodes_network_order_private_address() {
-    // Arrange
-    let address = Ipv4Addr::new(192, 168, 1, 25);
-
-    // Act
-    let normalized = normalize_peer_ipv4(network_order_raw(address));
-
-    // Assert
-    assert_eq!(normalized, PeerIpv4Normalization::NetworkOrder(address));
-    assert_eq!(normalized.address(), address);
-}
-
-#[test]
-fn peer_ipv4_normalization_falls_back_to_host_order_private_address() {
-    // Arrange
-    let address = Ipv4Addr::new(192, 168, 1, 25);
-    let raw_addr = u32::from(address);
-    let network_order_address = Ipv4Addr::from(u32::from_be(raw_addr));
-
-    // Act
-    let normalized = normalize_peer_ipv4(raw_addr);
-
-    // Assert
-    assert_eq!(
-        normalized,
-        PeerIpv4Normalization::HostOrderFallback {
-            address,
-            network_order_address,
-        }
-    );
-    assert_eq!(normalized.address(), address);
-}
-
-#[test]
-fn peer_ipv4_normalization_preserves_unspecified_address() {
-    // Arrange
-    let raw_addr = network_order_raw(Ipv4Addr::UNSPECIFIED);
-
-    // Act
-    let normalized = normalize_peer_ipv4(raw_addr);
-
-    // Assert
-    assert_eq!(
-        normalized,
-        PeerIpv4Normalization::NetworkOrder(Ipv4Addr::UNSPECIFIED)
-    );
-}
-
-#[test]
-fn peer_ipv4_normalization_preserves_network_order_public_address() {
-    // Arrange
-    let address = Ipv4Addr::new(8, 8, 8, 8);
-
-    // Act
-    let normalized = normalize_peer_ipv4(network_order_raw(address));
-
-    // Assert
-    assert_eq!(normalized, PeerIpv4Normalization::NetworkOrder(address));
 }
 
 #[test]
@@ -317,7 +254,7 @@ fn private_origin_and_request_ip_are_allowed_for_http_and_websocket() {
     // Arrange
     let input = RouteAccessInput {
         ap_mode_enabled: false,
-        request_ip: Ipv4Addr::new(192, 168, 1, 25),
+        maybe_request_ip: Some(Ipv4Addr::new(192, 168, 1, 25)),
         origin: OriginGate::Parsed(Ipv4Addr::new(192, 168, 1, 2)),
     };
 
@@ -351,66 +288,6 @@ fn missing_origin_from_private_client_is_allowed_for_http_and_websocket() {
         WebSocketUpgradeDecision::Accept(super::WebSocketClientRegistrationPlan {
             route: WebSocketRouteKind::LiveTelemetry
         })
-    ));
-}
-
-#[test]
-fn unspecified_peer_ip_from_firmware_allows_missing_origin_for_http_and_websocket() {
-    // Arrange
-    let input = RouteAccessInput {
-        ap_mode_enabled: false,
-        request_ip: Ipv4Addr::UNSPECIFIED,
-        origin: OriginGate::Missing,
-    };
-
-    // Act
-    let http_decision = plan_http_access(input);
-    let ws_decision = plan_websocket_upgrade(input, WebSocketRouteKind::Logs);
-
-    // Assert
-    assert_eq!(http_decision, HttpAccessDecision::Allow);
-    assert_eq!(
-        ws_decision,
-        WebSocketUpgradeDecision::Accept(super::WebSocketClientRegistrationPlan {
-            route: WebSocketRouteKind::Logs,
-        })
-    );
-}
-
-#[test]
-fn unspecified_peer_ip_from_firmware_still_applies_origin_gate() {
-    // Arrange
-    let private_origin_input = RouteAccessInput {
-        ap_mode_enabled: false,
-        request_ip: Ipv4Addr::UNSPECIFIED,
-        origin: OriginGate::Parsed(Ipv4Addr::new(192, 168, 86, 1)),
-    };
-    let public_origin_input = RouteAccessInput {
-        ap_mode_enabled: false,
-        request_ip: Ipv4Addr::UNSPECIFIED,
-        origin: OriginGate::Parsed(Ipv4Addr::new(203, 0, 113, 10)),
-    };
-    let invalid_origin_input = RouteAccessInput {
-        ap_mode_enabled: false,
-        request_ip: Ipv4Addr::UNSPECIFIED,
-        origin: OriginGate::Invalid,
-    };
-
-    // Act
-    let private_origin_decision = plan_http_access(private_origin_input);
-    let public_origin_decision = plan_http_access(public_origin_input);
-    let invalid_origin_decision =
-        plan_websocket_upgrade(invalid_origin_input, WebSocketRouteKind::LiveTelemetry);
-
-    // Assert
-    assert_eq!(private_origin_decision, HttpAccessDecision::Allow);
-    assert!(matches!(
-        public_origin_decision,
-        HttpAccessDecision::Deny(_)
-    ));
-    assert!(matches!(
-        invalid_origin_decision,
-        WebSocketUpgradeDecision::Reject(_)
     ));
 }
 

@@ -2590,8 +2590,6 @@ every row named exists, the reference is clean at `c1915b0`, and the Bright
 Builds, `just parity`, `just verify-reference` and `just verify-redaction` checks
 pass. Task verification: pending. Completion review: pending.
 
-## Future
-
 ### task-http-access-gate-peer-address | 2026-10-30 | Make the HTTP access gate check the real peer address
 
 Origin: upstream pin review, 2026-10-30
@@ -2607,21 +2605,78 @@ missing Origin is allowed. A public peer that can reach the device can use
 settings and OTA. Upstream denies it.
 
 - [ ] Confirm it on a device with a read-only log of the peer address, under its
-      own contract.
-- [ ] Read the peer as `sockaddr_in6`, use the IPv4 address only when it is
-      IPv4-mapped, and decide how to treat real IPv6 peers. Upstream takes the
-      last four bytes of any IPv6 address.
-- [ ] Fail closed when the peer cannot be read, as upstream does, and remove the
-      zero-address allowance. Check first that nothing still depends on it, such
-      as the local `curl` path its comment names.
-- [ ] Replace the tests that pin the allowance with tests of the parsed socket
+      own contract (below).
+- [x] Read the peer as `sockaddr_in6` and use the IPv4 address only when it is
+      IPv4-mapped. Real IPv6 peers are denied: they have no IPv4 address to
+      classify. Upstream instead classifies the last four bytes of any IPv6
+      address, which rarely look private, so ours differs only for those few.
+- [x] Fail closed when the peer cannot be read, and remove the zero-address
+      allowance. Nothing else depended on it: no script, tool or doc calls the
+      device from a path that relied on it. The peer is now an `Option`, so
+      "unreadable" is no longer a sentinel address. The host-order fallback is
+      gone too, because with real addresses it would let the public 1.2.168.192
+      read as the private 192.168.2.1.
+- [x] Replace the tests that pin the allowance with tests of the parsed socket
       address: private, public, IPv4-mapped, real IPv6 and read failure, for HTTP
       and WebSocket, with and without an Origin.
 - [ ] Earn hardware evidence that a private peer still works on both boards. No
       public exposure of the device is authorized by this task.
-- [ ] Add a checklist row for the gate. No row names it today.
+- [ ] Name the gate in checklist row API-004, with its evidence, once both boards
+      have it. This replaces the planned new row: the transition ledger has no way
+      to add one, and API-004 already owns `http_server.c`. API-004 is `verified`
+      today without any claim about the gate, and that stays true until then.
 
-Verification: pending. Completion review: pending.
+#### Hardware contract: access gate peer address
+
+Enabled 2026-10-30. Attempts stay open until both boards have evidence.
+
+- **Objective:** see the peer the gate reads on the installed firmware, then show
+  on the fixed firmware that a private peer is served and that the gate reads its
+  real private address.
+- **Precondition:** only the board under test attached, the tree clean and pushed.
+  The detector cannot tell the boards apart, so the installed board is read from
+  the capture, and flash admission checks the registered MAC before any write.
+- **Commands, in order, each attempt, with `umask 077` and evidence under
+  `scratch/access-gate/attempt-NNN/` (mode 0700, absent before the start; logs
+  mode 0600):**
+  1. `just detect-ultra205`: exactly one device.
+  2. Installed firmware, once per board, only if it predates the fix:
+     `just monitor --board <board> --port <port> --capture-timeout-seconds 360`
+     into `before.log`, a receive-only capture, and while it runs
+     `just access-gate-check --monitor-log <before.log> --expect-peer zero`.
+     If no runtime origin appears, this step records `not_observed` and the
+     attempt continues: the bug stays read from source, not seen on a device.
+  3. `just flash-monitor --board <board> --port <port>
+     --capture-timeout-seconds 360` into `after.log`: production at HEAD,
+     installed state-preserving, and while it runs
+     `just access-gate-check --monitor-log <after.log> --expect-peer private`.
+- **Allowed effects:** the detector; one receive-only capture; one
+  state-preserving install with its resets; three `GET /api/system/info` requests
+  per check, sent only to the origin in that same capture and only if it is a
+  private IPv4 address; the installed firmware's own effects, with mining on boot
+  as saved.
+- **Prohibited effects:** a factory install, any NVS or settings write, any other
+  HTTP route or method, network discovery, a test variant, exposing the device to
+  a public network, and direct UART or pins.
+- **Pass:** step 3 prints `passed: true`: no Origin 200, private Origin 200,
+  public Origin 401, and the denied line reads a private peer.
+- **Not claimed:** a public peer being denied on hardware, which only the unit
+  tests show; a real IPv6 peer; the WebSocket routes on hardware, which read the
+  same `access_input_from_raw`.
+- **Evidence and privacy:** the captures stay private, with their addresses. Only
+  the check's JSON, the board, the commits and the commands are committed.
+- **Stop:** the device is absent or ambiguous; flash admission refuses the board;
+  no runtime origin in step 3's capture (no station address means no check); or
+  the same failure recurs after its fix (`stop_repeated_boundary`). Retries follow
+  `docs/hardware/hardware-attempt-policy.md`, each with a fresh ordinal.
+- **Recovery:** the board is left on production, so there is nothing to restore.
+  A failed install follows the flash tool's own recovery.
+
+Verification: `just test`, 368 tests pass with the fix and the check command, and
+clippy, standards, both board packages and redaction are clean. Hardware: pending.
+Completion review: pending.
+
+## Future
 
 ### task-firmware-image-headroom | 2026-10-30 | Make room in the 4 MiB app slot
 

@@ -162,7 +162,7 @@ mod tests {
             route,
             access: crate::RouteAccessInput {
                 ap_mode_enabled: false,
-                request_ip: Ipv4Addr::new(192, 168, 1, 25),
+                maybe_request_ip: Some(Ipv4Addr::new(192, 168, 1, 25)),
                 origin: OriginGate::Parsed(Ipv4Addr::new(192, 168, 1, 2)),
             },
         }
@@ -173,7 +173,7 @@ mod tests {
             route,
             access: crate::RouteAccessInput {
                 ap_mode_enabled: true,
-                request_ip: Ipv4Addr::new(192, 168, 4, 2),
+                maybe_request_ip: Some(Ipv4Addr::new(192, 168, 4, 2)),
                 origin: OriginGate::Missing,
             },
         }
@@ -186,7 +186,7 @@ mod tests {
             route: UpdateRouteKind::FirmwareOta,
             access: crate::RouteAccessInput {
                 ap_mode_enabled: false,
-                request_ip: Ipv4Addr::new(8, 8, 8, 8),
+                maybe_request_ip: Some(Ipv4Addr::new(8, 8, 8, 8)),
                 origin: OriginGate::Parsed(Ipv4Addr::new(203, 0, 113, 10)),
             },
         };
@@ -290,7 +290,7 @@ mod tests {
             route: UpdateRouteKind::AxeOsStaticOtaWww,
             access: crate::RouteAccessInput {
                 ap_mode_enabled: false,
-                request_ip: Ipv4Addr::new(8, 8, 8, 8),
+                maybe_request_ip: Some(Ipv4Addr::new(8, 8, 8, 8)),
                 origin: OriginGate::Parsed(Ipv4Addr::new(203, 0, 113, 10)),
             },
         };

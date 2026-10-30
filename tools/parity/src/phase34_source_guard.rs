@@ -141,17 +141,11 @@ fn phase34_identity_runtime_source_guard() {
 #[test]
 fn http_access_policy_stays_in_pure_route_shell() {
     // Arrange
-    let required_policy_markers = [
-        "pub fn normalize_peer_ipv4",
-        "enum PeerIpv4Normalization",
-        "fn is_rfc1918_ipv4",
-        "PeerIpv4Normalization::HostOrderFallback",
-    ];
+    let required_policy_markers = ["pub fn maybe_mapped_peer_ipv4", "fn is_rfc1918_ipv4"];
     let required_adapter_markers = [
         "sys::lwip_getpeername",
-        "normalize_peer_ipv4(raw_addr)",
-        "PeerIpv4Normalization::HostOrderFallback",
-        "axeos_access_gate_peer_ip_byte_order=host_order",
+        "sys::sockaddr_in6",
+        "maybe_mapped_peer_ipv4(addr.sin6_addr.un.u8_addr)",
     ];
 
     // Act / Assert

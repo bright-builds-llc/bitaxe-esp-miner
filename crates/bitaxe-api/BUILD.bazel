@@ -168,6 +168,7 @@ rust_library(
         "src/phase33_evidence/terminal.rs",
         "src/route_shell.rs",
         "src/route_shell/tests.rs",
+        "src/route_shell/tests/peer_address.rs",
         "src/runtime_boot_attestation.rs",
         "src/runtime_boot_attestation/accumulator.rs",
         "src/runtime_boot_attestation/tests.rs",

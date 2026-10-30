@@ -336,9 +336,9 @@ pub(super) fn websocket_route_path(route: WebSocketRouteKind) -> &'static str {
 
 pub(super) fn log_access_denied(kind: &str, path: &str, input: RouteAccessInput) {
     log::warn!(
-        "axeos_access_gate=denied kind={kind} path={path} ap_mode_enabled={} request_ip={} origin={:?}",
+        "axeos_access_gate=denied kind={kind} path={path} ap_mode_enabled={} request_ip={:?} origin={:?}",
         input.ap_mode_enabled,
-        input.request_ip,
+        input.maybe_request_ip,
         input.origin
     );
 }

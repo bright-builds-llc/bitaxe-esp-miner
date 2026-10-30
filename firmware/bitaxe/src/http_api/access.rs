@@ -23,11 +23,9 @@ pub(super) fn access_input<'request, 'connection>(
 }
 
 pub(super) fn access_input_from_raw(request: *mut sys::httpd_req_t) -> RouteAccessInput {
-    let request_ip = maybe_peer_ipv4(request).unwrap_or(Ipv4Addr::UNSPECIFIED);
-
     RouteAccessInput {
         ap_mode_enabled: ap_mode_enabled(),
-        request_ip,
+        maybe_request_ip: maybe_peer_ipv4(request),
         origin: origin_gate_from_raw(request),
     }
 }
@@ -50,12 +48,10 @@ pub(super) fn maybe_peer_ipv4(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr
             return None;
         }
 
-        let mut addr = sys::sockaddr_in {
-            sin_len: core::mem::size_of::<sys::sockaddr_in>() as _,
-            sin_family: sys::AF_INET as _,
-            ..Default::default()
-        };
-        let mut addr_len = core::mem::size_of::<sys::sockaddr_in>() as sys::socklen_t;
+        // httpd listens on an IPv6 socket, so lwIP writes a `sockaddr_in6` for
+        // every peer; a smaller buffer would hold `sin6_flowinfo`, not the address.
+        let mut addr = sys::sockaddr_in6::default();
+        let mut addr_len = core::mem::size_of::<sys::sockaddr_in6>() as sys::socklen_t;
 
         if sys::lwip_getpeername(
             sockfd,
@@ -67,19 +63,17 @@ pub(super) fn maybe_peer_ipv4(request: *mut sys::httpd_req_t) -> Option<Ipv4Addr
             return None;
         }
 
-        let raw_addr = addr.sin_addr.s_addr;
-        let normalization = normalize_peer_ipv4(raw_addr);
-        if let PeerIpv4Normalization::HostOrderFallback {
-            address,
-            network_order_address,
-        } = normalization
-        {
-            log::warn!(
-                "axeos_access_gate_peer_ip_byte_order=host_order raw=0x{raw_addr:08x} network_order_ip={network_order_address} host_order_ip={address}"
-            );
+        if u32::from(addr.sin6_family) != sys::AF_INET6 {
+            log::warn!("axeos_access_gate_peer_ip=unavailable reason=unexpected_family");
+            return None;
         }
 
-        Some(normalization.address())
+        let maybe_ipv4 = maybe_mapped_peer_ipv4(addr.sin6_addr.un.u8_addr);
+        if maybe_ipv4.is_none() {
+            log::warn!("axeos_access_gate_peer_ip=unavailable reason=not_ipv4_mapped");
+        }
+
+        maybe_ipv4
     }
 }
 

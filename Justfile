@@ -34,6 +34,10 @@ str005-panic-recovery action *args:
 str005-lineage *args:
     bazel run //scripts:str005_lineage -- {{ args }}
 
+# Three read-only requests to the device named by a live capture. It adds no authority: device traffic needs the active task contract.
+access-gate-check *args:
+    bazel run //scripts:access_gate_check -- {{ args }}
+
 # Judge receive-only `internal_heap_sample` captures against minimum free bytes and largest free block.
 internal-heap-series *args:
     bazel run //scripts:internal_heap_series -- {{ args }}

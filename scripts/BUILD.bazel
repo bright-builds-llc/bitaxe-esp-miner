@@ -1990,6 +1990,24 @@ js_test(
 )
 
 js_library(
+    name = "access_gate_check_sources",
+    srcs = glob(["access-gate-check/*.mjs"]),
+)
+
+js_binary(
+    name = "access_gate_check",
+    chdir = "..",
+    data = [":access_gate_check_sources"],
+    entry_point = "access-gate-check/main.mjs",
+)
+
+js_test(
+    name = "access_gate_check_test",
+    data = [":access_gate_check_sources"],
+    entry_point = "access-gate-check/check.test.mjs",
+)
+
+js_library(
     name = "otawww_endpoint_sources",
     srcs = glob(["otawww-endpoint/*.mjs"]),
     deps = [":str005_panic_probe_sources"],
