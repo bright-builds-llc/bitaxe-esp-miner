@@ -2524,7 +2524,168 @@ Attempt 001 (2026-10-30, `56bcc2ea`): outcome `complete`.
   match, one boot, no panic. The 601 stays on production `56bcc2ea`.
 - Summary: `docs/parity/evidence/20261030-gamma601-cml-render.md`.
 
+### task-parity-upstream-pin-refresh | 2026-10-30 | Review upstream changes since the pin, then move the pin
+
+Origin: parity review, 2026-10-30. `reference/esp-miner` is pinned to
+`c1915b0a` (2026-06-19, `v2.14.0-11-gc1915b0`), and every checklist claim is
+against that commit. On 2026-10-30, upstream `master` was 112 commits ahead.
+The latest stable release, `v2.15.4`, was 59 ahead, with 8 commits that are
+not on `master`. At least 40 files outside the evidence folders, mostly
+fixtures and tests, record the pin as their source.
+
+Run the review ahead of the Stratum TLS, web UI and other-boards tasks, because
+its results can change their scope. Reread those tasks afterwards.
+
+Review, with the pin unchanged and no hardware:
+- [x] Confirm the target. Default to the latest stable release at review time
+      (`v2.15.4` today) rather than `master`, because owners run releases.
+- [x] Classify every commit from the pin to the target as device-visible
+      behaviour, internal only, UI only or out of scope, and map it to
+      checklist rows. Commit the result under `docs/parity/`.
+      Done 2026-10-30:
+      `docs/parity/upstream-reviews/c1915b0a-to-v2.15.4.md`. Of 59 commits, 22
+      are device-visible and 16 of those are gaps. 36 rows need a recheck.
+      Nothing was built or run, and no finding was observed on a device.
+      Several commits this task first listed from `master` are not in the
+      target, including #1790, #1897, #1955, #1999, #1900 and #1948.
+- [x] Add a task, or a checklist row, for each behaviour change or new feature
+      that is in scope. Done 2026-10-30: `task-http-access-gate-peer-address`,
+      `task-upstream-v2154-api-and-stratum`, `task-upstream-v2154-pool-model`,
+      `task-upstream-v2154-asic-power-sequencing`,
+      `task-upstream-v2154-network` and `task-upstream-v2154-unified-firmware`.
+      `task-parity-stratum-tls` gained the TLS findings.
+
+The review's conclusion is to close the gaps first and move the pin last, so
+this task stays active with those tasks ahead of its pin move.
+
+Owner decisions:
+- [x] ESP-IDF 6. Decided 2026-10-30: upgrade, as upstream did
+      (`task-esp-idf-6-upgrade`).
+- [x] BLE. Decided 2026-10-30: in scope, with more security than upstream's
+      (`task-secured-ble-provisioning`).
+- [x] New hardware. Decided 2026-10-30: documented and deferred
+      (`docs/hardware/deferred-upstream-boards.md`).
+- [x] Unified firmware. Decided 2026-10-30: embed our own UI variants
+      (`task-upstream-v2154-unified-firmware`).
+
+Move the pin, after the tasks above:
+- [ ] Reconfirm the target, since a newer release may exist by then, and review
+      any new commits the same way.
+- [ ] Move the submodule to the target. It stays read-only (ADR-0005), and
+      `just verify-reference` must pass.
+- [ ] Rows whose upstream behaviour changed lose `verified` until they have new
+      evidence. Hardware-backed rows re-earn it under their own contracts.
+- [ ] Update fixture and test provenance only where the upstream source was
+      rechecked at the target, and never by a blanket replacement of the pin.
+- [ ] Leave existing evidence documents untouched, and record what each
+      carried-over row was checked against.
+
+Keep it current:
+- [ ] Record the refresh rule in `docs/parity/`. Default: review the changes at
+      each upstream stable release. Check that the release gate reports the
+      pin it was checked against.
+
+Verification of the review stage, 2026-10-30: all 59 commits are classified,
+every row named exists, the reference is clean at `c1915b0`, and the Bright
+Builds, `just parity`, `just verify-reference` and `just verify-redaction` checks
+pass. Task verification: pending. Completion review: pending.
+
 ## Future
+
+### task-http-access-gate-peer-address | 2026-10-30 | Make the HTTP access gate check the real peer address
+
+Origin: upstream pin review, 2026-10-30
+(`docs/parity/upstream-reviews/c1915b0a-to-v2.15.4.md`). This is a bug at the
+current pin, and it does not depend on moving the pin. It is read from source,
+not yet observed on a device.
+
+`maybe_peer_ipv4` (`firmware/bitaxe/src/http_api/access.rs`) passes a
+`sockaddr_in` to `lwip_getpeername`, but the server socket is `PF_INET6`, so the
+peer always reads as the unspecified address. `is_access_allowed`
+(`crates/bitaxe-api/src/route_shell.rs`) then checks only the Origin, and a
+missing Origin is allowed. A public peer that can reach the device can use
+settings and OTA. Upstream denies it.
+
+- [ ] Confirm it on a device with a read-only log of the peer address, under its
+      own contract.
+- [ ] Read the peer as `sockaddr_in6`, use the IPv4 address only when it is
+      IPv4-mapped, and decide how to treat real IPv6 peers. Upstream takes the
+      last four bytes of any IPv6 address.
+- [ ] Fail closed when the peer cannot be read, as upstream does, and remove the
+      zero-address allowance. Check first that nothing still depends on it, such
+      as the local `curl` path its comment names.
+- [ ] Replace the tests that pin the allowance with tests of the parsed socket
+      address: private, public, IPv4-mapped, real IPv6 and read failure, for HTTP
+      and WebSocket, with and without an Origin.
+- [ ] Earn hardware evidence that a private peer still works on both boards. No
+      public exposure of the device is authorized by this task.
+- [ ] Add a checklist row for the gate. No row names it today.
+
+Verification: pending. Completion review: pending.
+
+### task-firmware-image-headroom | 2026-10-30 | Make room in the 4 MiB app slot
+
+Origin: upstream pin review, 2026-10-30. This comes before ESP-IDF 6, BLE, TLS,
+mDNS and any embedded UI, because they all need more room than we have. Images
+built on 2026-10-29 leave 3,056 bytes free on the 205 and 44,800 bytes on the 601.
+
+The partition table stays as it is: upstream has the same slots, the flash tools
+and restore paths hard-code them, and an ordinary update cannot safely change it.
+
+- [ ] Add a size report by crate and component from the linker map, and a gate
+      with a stated margin for each board and variant. A test variant's size
+      counts too, because it installs into the same slots.
+- [ ] Try the cheap levers and measure each one. ESP-IDF's C code builds with
+      `CONFIG_COMPILER_OPTIMIZATION_PERF=y` while our Rust uses `opt-level = "z"`.
+      Then check log levels, unused ESP-IDF features, and code that only a test
+      or diagnostic path needs.
+- [ ] Check that a size change does not slow anything timing-sensitive, including
+      the ASIC and USB paths, and recheck heap and stack budgets.
+- [ ] Estimate what ESP-IDF 6, NimBLE, TLS and mDNS each add, and record the budget
+      for each. Report to the owner if they cannot all fit.
+- [ ] Install and run each board's production package, with a working update and
+      safe stop, under a task contract before relying on the result.
+
+Verification: pending. Completion review: pending.
+
+### task-esp-idf-6-upgrade | 2026-10-30 | Upgrade to ESP-IDF 6
+
+Owner decision, 2026-10-30: upgrade as upstream did. This replaces the v5.5.4
+baseline and the "What Not To Use" entry for ESP-IDF 6, which said Rust crates did
+not yet support it. On 2026-10-30 they do, at least at a basic level:
+`esp-idf-sys` 0.38.1 ("Basic compatibility for ESP-IDF release 6.0"),
+`esp-idf-hal` 0.47.0 and `esp-idf-svc` 0.53.0. We are on 0.37.2, 0.46.2 and 0.52.1.
+
+Upstream uses 6.0.2. ESP-IDF has 6.0.3 and 6.1 too. Default to the latest 6.0.x,
+the series upstream runs, pinned to an exact tag. Do this before the hardware
+evidence for the v2.15.4 ports, so that evidence is earned only once. It depends
+on `task-firmware-image-headroom`.
+
+- [ ] Record the decision in an ADR, and update the stack notes in `AGENTS.md`.
+- [ ] Build on a branch: the crates, `esp_idf_version` in
+      `firmware/bitaxe/Cargo.toml`, `ESP_IDF_VERSION` in `.cargo/config.toml`, the
+      `espup` toolchain, and `sdkconfig.defaults`. Recheck the `esp-idf-sys` git
+      patch in `Cargo.toml` (`aa973c43`), since it pins a commit from before 0.38.
+- [ ] Work through the known changes: picolibc, drivers moved to managed
+      components, and the upstream migration guides. Keep managed components
+      pinned, and keep raw `sys` calls compiling for the right reasons rather than
+      by casting.
+- [ ] Recheck what we built on ESP-IDF internals: the fixed USB Serial/JTAG
+      transport (ADR-0021, ADR-0023), `bitaxe_fault_provenance`, core dumps
+      (ADR-0030), HTTP and WebSocket handshakes, atomics (ADR-0039), Wi-Fi types,
+      and the crypto used for Stratum v2.
+- [ ] Measure the image, heap and stack against their budgets on both boards.
+- [ ] Prove the update path. An ordinary update leaves the bootloader and partition
+      table in place, so test a 6.x app on the existing v5.5.4 bootloader, saved
+      NVS, rollback to the old image, and a factory install. Find out what upstream
+      did about this first.
+- [ ] Requalify on hardware under contracts, for each board: boot, Wi-Fi, HTTP,
+      Stratum, ASIC, power and thermal behaviour, self-test, update, recovery and a
+      mining soak. Update REL-002 and SYS-004, and record what each other row was
+      rechecked against. Existing evidence stays untouched.
+- [ ] Follow the release notes for any fix a later 6.0.x needs before release.
+
+Verification: pending. Completion review: pending.
 
 ### task-parity-cfg002-gamma601-default-readback | 2026-10-30 | Close CFG-002 with a hardware readback of the 601's seeded defaults
 
@@ -2558,66 +2719,6 @@ pool outage, an overheat trip and a fault share the same paths.
       passage-only revision), together with the stopping, polled-cooling and
       preparation-watchdog summaries.
 
-### task-parity-upstream-pin-refresh | 2026-10-30 | Review upstream changes since the pin, then move the pin
-
-Origin: parity review, 2026-10-30. `reference/esp-miner` is pinned to
-`c1915b0a` (2026-06-19, `v2.14.0-11-gc1915b0`), and every checklist claim is
-against that commit. On 2026-10-30, upstream `master` was 112 commits ahead.
-The latest stable release, `v2.15.4`, was 59 ahead, with 8 commits that are
-not on `master`. At least 40 files outside the evidence folders, mostly
-fixtures and tests, record the pin as their source.
-
-Run the review ahead of the Stratum TLS, web UI and other-boards tasks, because
-its results can change their scope. Reread those tasks afterwards.
-
-Start with these commits on `master`. Only their titles have been read, and
-which of them `v2.15.4` contains is unchecked:
-- toolchain: ESP-IDF 6.0.2 (#1829);
-- safety and power: overheat throttle clamp (#1790), TPS546 config in NVS
-  (#1838), self-test frequency fallback (#1805);
-- defaults: `useFallbackStratum` default (#1823);
-- mining and pools: instant pool switching (#1897), dynamic ASIC difficulty
-  (#1955), payout verification (#1999), duplicate job IDs (#1731), SV2 fixes;
-- new features: BLE (#1827), mDNS (#1240), SNTP (#1900), safe boot into the
-  embedded front end (#1839);
-- new hardware: BM1372/BM1373 (#1890), Naja Duo and Gamma Hex (#1916), unified
-  firmware (#1763);
-- security: BAP credentials in logs (#1948), use-after-free (#1797).
-
-Review, with the pin unchanged and no hardware:
-- [ ] Confirm the target. Default to the latest stable release at review time
-      (`v2.15.4` today) rather than `master`, because owners run releases.
-- [ ] Classify every commit from the pin to the target as device-visible
-      behaviour, internal only, UI only or out of scope, and map it to
-      checklist rows. Commit the result under `docs/parity/`.
-- [ ] Add a task, or a checklist row, for each behaviour change or new feature
-      that is in scope.
-
-Owner decisions (these items are blocked until decided, and the rest of the
-task can proceed):
-- [ ] ESP-IDF 6. Recheck `esp-idf-svc`, `esp-idf-hal` and `esp-idf-sys` support
-      first. Upgrading is its own task. Staying on v5.5.4 needs a recorded
-      deviation.
-- [ ] Whether BLE and the new hardware are in scope. Hand the boards to
-      `task-parity-other-boards-scope`.
-
-Move the pin:
-- [ ] Move the submodule to the target. It stays read-only (ADR-0005), and
-      `just verify-reference` must pass.
-- [ ] Rows whose upstream behaviour changed lose `verified` until they have new
-      evidence. Hardware-backed rows re-earn it under their own contracts.
-- [ ] Update fixture and test provenance only where the upstream source was
-      rechecked at the target, and never by a blanket replacement of the pin.
-- [ ] Leave existing evidence documents untouched, and record what each
-      carried-over row was checked against.
-
-Keep it current:
-- [ ] Record the refresh rule in `docs/parity/`. Default: review the changes at
-      each upstream stable release. Check that the release gate reports the
-      pin it was checked against.
-
-Verification: pending. Completion review: pending.
-
 ### task-parity-stratum-tls | 2026-10-30 | Connect to pools over Stratum TLS
 
 Origin: parity review, 2026-10-30. Upstream's `STRATUM_V1_transport_init`
@@ -2634,6 +2735,12 @@ row owns it.
 
 - [ ] Check what a device with only a TLS pool reports today, and give it a
       clear reason until TLS ships.
+- [ ] Stop a TLS primary diverting to a plain fallback. Read from source, not
+      run: `read_pool_configuration` treats a TLS pool as not configured, and
+      `maybe_preferred` then picks the fallback, where upstream connects to the
+      primary (`docs/parity/upstream-reviews/c1915b0a-to-v2.15.4.md`).
+- [ ] Use a trust store free of the eMudhra roots. `v2.15.4` replaces ESP-IDF's
+      bundle for this (`d212a0f`), and our `sdkconfig` still selects ESP-IDF's.
 - [ ] Record the design in an ADR: the ESP-IDF transport, the certificate
       bundle, custom certificate limits, memory, and handshake and stop
       deadlines. Check how upstream treats TLS on Stratum v2.
@@ -2671,6 +2778,181 @@ the stop paths; this task owns the rest. Split it into one contract per run.
 
 Fault injection, pins and electrical stress keep their separate gates. This
 block authorizes none of them.
+
+Verification: pending. Completion review: pending.
+
+### task-upstream-v2154-api-and-stratum | 2026-10-30 | Port the smaller API and Stratum changes from v2.15.4
+
+Origin: `task-parity-upstream-pin-refresh`. Details are in
+`docs/parity/upstream-reviews/c1915b0a-to-v2.15.4.md`. Each change cites its
+upstream commit, and rows move only when the pin does.
+
+- [ ] Ignore duplicate job IDs on Stratum v1 and v2, cleared on `clean_jobs` and
+      on reconnect, without counting them as work received. Reset extranonce2 on
+      `mining.set_extranonce` (`7832d01`). Today a resent job rebuilds work, and
+      a second SV2 job ends the session in a safe stop.
+- [ ] Raise the SV2 frame limit to 8 KiB and recheck internal heap (`e9903b7`).
+- [ ] Keep fractional SV2 difficulty and use minimum extranonce size 2 (`b4ce5fe`,
+      `6babc67`). Neither has an effect on the linked SV2 path today. A 2-byte
+      counter wraps at 65536, so check that first.
+- [ ] Add `workReceived` and `sharesPending` (`3876e59`, `13c5b9e`).
+- [ ] Add `totalUptimeSeconds`, `totalHashes` and `totalLog2Work`, with retained
+      and hourly persisted state (`98ed491`). Check the NVS wear.
+- [ ] Move the theme to `primaryColor` and NVS `themecolor`, with the migration,
+      in both UI variants (`a47c20a`).
+- [ ] Add NVS `selftest_fan` (`d1be617`). Decide on the 14 flash-only `tps546_*`
+      overrides (`d3dbcc5`): upstream's `VOUT_MAX` override could raise a limit
+      we bound deliberately, so honouring them needs a safety review.
+
+Verification: pending. Completion review: pending.
+
+### task-upstream-v2154-pool-model | 2026-10-30 | Move to upstream's multi-pool model
+
+Origin: `task-parity-upstream-pin-refresh`. `fe58ce0`, `c32b52d` and `9f966f5`
+replace the flat primary and fallback settings with 8 JSON pool slots. This is
+the largest gap, and it touches most configuration and API rows.
+
+- [ ] Record the design in an ADR, including how fixtures and evidence follow.
+- [ ] Add `pool_1` to `pool_8`, `prim_idx` and `sec_idx`, with a migration that
+      preserves saved settings on an ordinary update. Upstream's is one-way and
+      leaves the legacy keys in place. Decide how rollback behaves.
+- [ ] Move every reader to the new model: settings, the Stratum session, BAP, the
+      screen, the flash tool's Wi-Fi and campaign paths, and the automation
+      inventories.
+- [ ] Add `pools[]`, the indices, the masked password rule, PATCH semantics, and
+      PUT and DELETE on `/api/system/pools/*`, with upstream's validation. Check
+      what upstream does with a legacy PATCH field, which appears to be ignored.
+- [ ] Add `stratumV2RequireAuth`. Ours always requires a key, and upstream's off
+      state allows an unverified connection, so decide the default deliberately.
+- [ ] Update both UI variants, including the clear fallback action.
+- [ ] Test migration with real NVS images, then earn hardware evidence of an
+      ordinary update keeping a working pool on both boards. Pool details stay
+      out of evidence. Coordinate with `task-parity-stratum-tls`.
+
+Verification: pending. Completion review: pending.
+
+### task-upstream-v2154-asic-power-sequencing | 2026-10-30 | Port the ASIC and power sequence changes
+
+Origin: `task-parity-upstream-pin-refresh`. `cc667af` changes the sequences below
+for the 205 and 601. ASIC-008's mining, self-test and soak evidence rests on the
+old `BM1370_init`, so this needs fresh hardware evidence. What the new register
+values do electrically is not established.
+
+- [ ] Port the `BM1370_init` writes and delays, and refresh the BM1370 fixtures.
+- [ ] Read hashrate registers per chip on both ASICs, and check that one-chip
+      replies stay the same.
+- [ ] Decide on 690 MHz for the 601. It raises the accepted range and the
+      shutdown budget, so it needs its own safety review and evidence.
+- [ ] Hold ASIC reset early on the 205, as the 601 and upstream do. The late hold
+      exists at the pin too. Establish what the undriven line does first.
+- [ ] Review enable-before-DS4432U on the 205. PWR-002 verified our current
+      order, so a change there needs its own hardware contract.
+- [ ] Review the TPS546 start-up grace, the `set_vout` ratio rewrite and the
+      self-test teardown wait against our deliberate differences, and record each
+      as ported or as a deviation.
+- [ ] Update the screen's hashrate format (`Gh/s` without decimals).
+- [ ] Earn evidence under per-board contracts: detection, self-test, mining and
+      safe stop. Voltage and fan limits stay as they are unless a contract says
+      otherwise.
+
+Verification: pending. Completion review: pending.
+
+### task-upstream-v2154-network | 2026-10-30 | Add mDNS and align the network settings
+
+Origin: `task-parity-upstream-pin-refresh`. `3a37d2b` adds mDNS, and `78a03e3`
+adds HTTP keep-alive. The Wi-Fi and socket differences below exist at the pin
+too.
+
+- [ ] Add mDNS: `<hostname>.local`, the `_http._tcp` service with its `_axeos`
+      subtype and TXT records, and hostname conflict handling. Check that the
+      component builds on v5.5.4 and what it costs in memory.
+- [ ] Add `fullHostname`, `mdnsHostname` and the PATCH redirect body.
+- [ ] Decide on upstream's wider Origin rule, which also allows `.local` and bare
+      hostnames without checking the peer. Do this after
+      `task-http-access-gate-peer-address`, and do not copy it unreviewed.
+- [ ] Set `btm_enabled` and `rm_enabled` on the station, as upstream does.
+- [ ] Review 20 open sockets and keep-alive against our 7. `esp-idf-svc` 0.52.1
+      has no keep-alive field, so it may need the raw server configuration.
+      Check the memory cost.
+- [ ] Earn hardware evidence on the owner's network. General network discovery
+      stays prohibited for agents, so this needs its own contract.
+
+Verification: pending. Completion review: pending.
+
+### task-secured-ble-provisioning | 2026-10-30 | Add BLE setup, with more security than upstream
+
+Owner decision, 2026-10-30: support BLE setup if it has security upstream lacks.
+Upstream (`d1a9d3e`, `main/setup_ble.c`) starts advertising 5 s after boot in AP
+mode, stops when Wi-Fi connects, and accepts Wi-Fi and pool credentials with no
+encryption or authentication flags on any characteristic. Anyone in radio range
+can configure an unprovisioned device and point it at their own pool.
+
+This depends on `task-firmware-image-headroom` and `task-esp-idf-6-upgrade`.
+NimBLE's size has to fit the budget, and Bluetooth stays off until then.
+
+Default design, to be recorded in an ADR before implementation:
+- [ ] **Authenticated pairing only.** LE Secure Connections with a random 6-digit
+      passkey shown on the device's screen, so setup needs physical access. No
+      legacy pairing or Just Works. No screen, or a screen that failed to start,
+      means BLE stays off and the SoftAP path remains.
+- [ ] **Every characteristic requires it.** Reads and writes need an encrypted,
+      authenticated link. Drop unacknowledged writes.
+- [ ] **Credentials are write-only.** Passwords and the stored values are never
+      readable over BLE. Upstream's reads return blank passwords, while its Wi-Fi
+      and pool values stay readable.
+- [ ] **A short window.** Only in AP mode, for a bounded time, and it ends on Wi-Fi
+      connecting, on setup completing, or after a small number of failed pairings.
+      One connection at a time. Restarting the window needs a button press or
+      reboot. Shut the stack down fully afterwards to return its memory.
+- [ ] **No stored bonds.** Nothing a later attacker could reuse.
+- [ ] **The same checks as HTTP.** Values go through the shared settings validator.
+      Nothing applies until a complete `APPLY`.
+- [ ] **No secrets in logs.** The passkey and credentials never reach logs,
+      telemetry or evidence, and `just verify-redaction` covers the new labels.
+
+Then:
+- [ ] Keep upstream's service and characteristic UUIDs, so its clients still work
+      with the operating system's pairing prompt. Record any client that cannot.
+      Decide on a NimBLE binding: raw `esp-idf-sys`, or `esp32-nimble` after a
+      maintenance check.
+- [ ] Put the protocol and window rules in a pure crate with tests, including
+      refused unauthenticated access, wrong passkeys and window expiry.
+- [ ] Measure flash, heap and Wi-Fi coexistence with SoftAP on both boards.
+- [ ] Add a checklist row recording the deliberate difference from upstream, and
+      earn hardware evidence under a contract, using a real phone or computer.
+      Credentials stay out of evidence.
+
+Verification: pending. Completion review: pending.
+
+### task-upstream-v2154-unified-firmware | 2026-10-30 | Embed our web UI, as upstream's unified firmware does
+
+Owner decision, 2026-10-30: embed our own UI variants in the firmware. Angular
+AxeOS stays unbundled (ADR-0034). Origin: `task-parity-upstream-pin-refresh`.
+
+This depends on `task-firmware-image-headroom`, because the 205 cannot fit it
+today. On 2026-10-07 the variants were 14 and 17 KB gzipped, and 42 KB (`current`)
+and 18 KB (`solid`) as served. `POST /api/system/boot` lands only after
+`task-http-access-gate-peer-address`.
+
+`00eb2ef` and `1a11667` embed the web UI in the app, make `www.bin` optional
+through `useCustomWWW`, add `POST /api/system/boot` and `partitions[]`, and boot
+back to the embedded UI after a firmware change. ADR-0034 forbids bundling
+Angular AxeOS, but our own variants could be embedded.
+
+- [x] Owner decision: embed our variants. Decided 2026-10-30.
+- [ ] Record the design in an ADR that updates ADR-0034: embedded assets chosen by
+      `--web-ui`, gzipped, with the size budget and manifest digests covering them.
+- [ ] Serve the embedded UI by default, and mount SPIFFS only for a custom UI, with
+      the firmware fingerprint (`last_fw_fp`) returning a changed firmware to its
+      embedded UI.
+- [ ] Add `useCustomWWW`, the `axeOSVersion` semantics, JSON errors on `OTAWWW` and
+      the recovery page's button, or record why not.
+- [ ] Update packaging and `tools/flash`, which require a `www` image today, and
+      recheck the budget gate.
+- [ ] Add `POST /api/system/boot` and `partitions[]`, after checking how upstream
+      validates the partition label.
+- [ ] Keep the app and `www` version mismatch safe after a firmware-only update,
+      and recheck the OTA, recovery and package evidence this changes.
 
 Verification: pending. Completion review: pending.
 
@@ -2767,6 +3049,11 @@ GammaDuo (650), SupraHex (701, 702) and GammaTurbo (801).
 
 `task-parity-asic009-bm1368-core` and `task-parity-asic010-bm1397-core` stay
 active and hardware-blocked, and they are the only open rows for these boards.
+
+Owner decision, 2026-10-30: the two boards `v2.15.4` adds (Naja Duo 1201 and Gamma
+Hex 1300) are documented and deferred, in
+`docs/hardware/deferred-upstream-boards.md`. They are not part of the 23 above, and
+the decision does not settle those.
 
 - [ ] Get the owner's decision: which boards stay in parity, and which hardware
       is available.
