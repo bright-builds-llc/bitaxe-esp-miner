@@ -2558,6 +2558,66 @@ pool outage, an overheat trip and a fault share the same paths.
       passage-only revision), together with the stopping, polled-cooling and
       preparation-watchdog summaries.
 
+### task-parity-upstream-pin-refresh | 2026-10-30 | Review upstream changes since the pin, then move the pin
+
+Origin: parity review, 2026-10-30. `reference/esp-miner` is pinned to
+`c1915b0a` (2026-06-19, `v2.14.0-11-gc1915b0`), and every checklist claim is
+against that commit. On 2026-10-30, upstream `master` was 112 commits ahead.
+The latest stable release, `v2.15.4`, was 59 ahead, with 8 commits that are
+not on `master`. At least 40 files outside the evidence folders, mostly
+fixtures and tests, record the pin as their source.
+
+Run the review ahead of the Stratum TLS, web UI and other-boards tasks, because
+its results can change their scope. Reread those tasks afterwards.
+
+Start with these commits on `master`. Only their titles have been read, and
+which of them `v2.15.4` contains is unchecked:
+- toolchain: ESP-IDF 6.0.2 (#1829);
+- safety and power: overheat throttle clamp (#1790), TPS546 config in NVS
+  (#1838), self-test frequency fallback (#1805);
+- defaults: `useFallbackStratum` default (#1823);
+- mining and pools: instant pool switching (#1897), dynamic ASIC difficulty
+  (#1955), payout verification (#1999), duplicate job IDs (#1731), SV2 fixes;
+- new features: BLE (#1827), mDNS (#1240), SNTP (#1900), safe boot into the
+  embedded front end (#1839);
+- new hardware: BM1372/BM1373 (#1890), Naja Duo and Gamma Hex (#1916), unified
+  firmware (#1763);
+- security: BAP credentials in logs (#1948), use-after-free (#1797).
+
+Review, with the pin unchanged and no hardware:
+- [ ] Confirm the target. Default to the latest stable release at review time
+      (`v2.15.4` today) rather than `master`, because owners run releases.
+- [ ] Classify every commit from the pin to the target as device-visible
+      behaviour, internal only, UI only or out of scope, and map it to
+      checklist rows. Commit the result under `docs/parity/`.
+- [ ] Add a task, or a checklist row, for each behaviour change or new feature
+      that is in scope.
+
+Owner decisions (these items are blocked until decided, and the rest of the
+task can proceed):
+- [ ] ESP-IDF 6. Recheck `esp-idf-svc`, `esp-idf-hal` and `esp-idf-sys` support
+      first. Upgrading is its own task. Staying on v5.5.4 needs a recorded
+      deviation.
+- [ ] Whether BLE and the new hardware are in scope. Hand the boards to
+      `task-parity-other-boards-scope`.
+
+Move the pin:
+- [ ] Move the submodule to the target. It stays read-only (ADR-0005), and
+      `just verify-reference` must pass.
+- [ ] Rows whose upstream behaviour changed lose `verified` until they have new
+      evidence. Hardware-backed rows re-earn it under their own contracts.
+- [ ] Update fixture and test provenance only where the upstream source was
+      rechecked at the target, and never by a blanket replacement of the pin.
+- [ ] Leave existing evidence documents untouched, and record what each
+      carried-over row was checked against.
+
+Keep it current:
+- [ ] Record the refresh rule in `docs/parity/`. Default: review the changes at
+      each upstream stable release. Check that the release gate reports the
+      pin it was checked against.
+
+Verification: pending. Completion review: pending.
+
 ### task-parity-stratum-tls | 2026-10-30 | Connect to pools over Stratum TLS
 
 Origin: parity review, 2026-10-30. Upstream's `STRATUM_V1_transport_init`
