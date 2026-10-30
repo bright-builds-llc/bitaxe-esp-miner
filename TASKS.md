@@ -2623,7 +2623,8 @@ settings and OTA. Upstream denies it.
       address: private, public, IPv4-mapped, real IPv6 and read failure, for HTTP
       and WebSocket, with and without an Origin.
 - [ ] Earn hardware evidence that a private peer still works on both boards. No
-      public exposure of the device is authorized by this task.
+      public exposure of the device is authorized by this task. Gamma 601 done
+      (attempt 002); Ultra 205 pending, which needs the owner to swap the board.
 - [ ] Name the gate in checklist row API-004, with its evidence, once both boards
       have it. This replaces the planned new row: the transition ledger has no way
       to add one, and API-004 already owns `http_server.c`. API-004 is `verified`
@@ -2647,8 +2648,9 @@ Enabled 2026-10-30. Attempts stay open until both boards have evidence.
   1. `just detect-ultra205`: exactly one device.
   2. `just flash-monitor --board <board> --port <port>
      --capture-timeout-seconds 360` into `after.log`: production at HEAD,
-     installed state-preserving, and while it runs
-     `just access-gate-check --monitor-log <after.log>`.
+     installed state-preserving, and then
+     `just access-gate-check --monitor-log <after.log>` on the same boot.
+     `flash-monitor` writes its capture only when it ends, so the check follows it.
 - **Allowed effects:** the detector; one state-preserving install with its resets,
   and its capture; three `GET /api/system/info` requests
   per check, sent only to the origin in that same capture and only if it is a
@@ -2679,10 +2681,19 @@ Attempts:
   Origin 200, private Origin 200, public Origin 401, as the old gate also answers.
   No denied line in the capture, which is how the filter above was found. The
   board was not written to.
+- 002, Gamma 601, 2026-10-30, production at `6269d90c`, installed state-preserving
+  (`usb_board_identity built=601 stored=601 identity=match`, the capture's
+  `firmware_commit` matching). `just access-gate-check` on that boot printed
+  `{"passed":true,"no_origin_status":200,"private_origin_status":200,"public_origin_status":401}`.
+  Outcome: `complete` for this board. The board stays on this production build.
+
+Residual: `axeos_access_gate=denied` is still dropped by the USB diagnostics filter
+and is not in the retained log, so a denied request leaves no trace an owner can
+read. This change leaves that as it found it.
 
 Verification: `just test`, 368 tests pass with the fix and the check command, and
-clippy, standards, both board packages and redaction are clean. Hardware: pending.
-Completion review: pending.
+clippy, standards, both board packages and redaction are clean. Hardware: attempt
+002 on the 601; the 205 is pending. Completion review: pending.
 
 ## Future
 
