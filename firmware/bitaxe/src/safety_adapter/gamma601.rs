@@ -50,12 +50,15 @@ pub(crate) fn read_status(bus: &mut Tps546Bus<'_, '_, '_>) -> (Option<u16>, Opti
         .read(ReadCommand::StatusWord, &mut word)
         .ok()
         .map(|()| u16::from_le_bytes(word));
+    (maybe_status, read_cml(bus))
+}
+
+/// Reads `STATUS_CML` alone.
+pub(crate) fn read_cml(bus: &mut Tps546Bus<'_, '_, '_>) -> Option<u8> {
     let mut cml = [0_u8; 1];
-    let maybe_cml = bus
-        .read(ReadCommand::StatusCml, &mut cml)
+    bus.read(ReadCommand::StatusCml, &mut cml)
         .ok()
-        .map(|()| cml[0]);
-    (maybe_status, maybe_cml)
+        .map(|()| cml[0])
 }
 
 /// Sends the off writes, in upstream's order.

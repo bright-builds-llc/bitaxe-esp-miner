@@ -69,6 +69,20 @@ fn the_board_is_read_after_the_settings_and_before_the_hardware() {
 }
 
 #[test]
+fn the_601_controller_goes_off_before_the_startup_screen_and_its_reads() {
+    // Arrange
+    let body = body_of(GAMMA601_SOURCE, "pub(crate) fn initialize_hardware(");
+    let position = |needle: &str| body.find(needle).expect(needle);
+    // Act
+    let off = position("turn_off_at_startup(&mut bus)");
+    let pre_render = position("startup.maybe_pre_render_cml");
+    let render = position("render_startup_screen(&mut bus");
+    let post_render = position("startup.maybe_post_render_cml");
+    // Assert
+    assert!(off < pre_render && pre_render < render && render < post_render);
+}
+
+#[test]
 fn the_regulator_enable_carries_the_board_gate_s_literal() {
     // Act
     let body = body_of(TPS546_BUS_SOURCE, "pub(crate) fn operation_on(");

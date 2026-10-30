@@ -52,6 +52,10 @@ pub struct SafeBootReport {
     /// `STATUS_WORD` and `STATUS_CML` as first read at boot, before the off writes.
     pub maybe_start_status: Option<u16>,
     pub maybe_start_cml: Option<u8>,
+    /// `STATUS_CML` after the off writes and after the startup screen: they bracket the startup
+    /// screen's bus traffic.
+    pub maybe_pre_render_cml: Option<u8>,
+    pub maybe_post_render_cml: Option<u8>,
     pub maybe_vin_volts: Option<f64>,
     pub maybe_vout_volts: Option<f64>,
     pub maybe_iout_amps: Option<f64>,
@@ -76,6 +80,8 @@ impl SafeBootReport {
             maybe_pre_id_cml: None,
             maybe_start_status: None,
             maybe_start_cml: None,
+            maybe_pre_render_cml: None,
+            maybe_post_render_cml: None,
             maybe_vin_volts: None,
             maybe_vout_volts: None,
             maybe_iout_amps: None,
@@ -118,7 +124,7 @@ impl SafeBootReport {
     #[must_use]
     pub fn usb_marker(&self, wifi_status: &str) -> String {
         format!(
-            "usb_gamma601_safe_boot schema=v3 reset_held={} tps546={} off={} faults={} cml={} pre_id_status={} pre_id_cml={} start_status={} start_cml={} vin_mv={} vout_mv={} iout_ma={} vr_temp_c={} board_temp_c={} fan_duty_pct={} fan_rpm={} wifi={} redacted=true",
+            "usb_gamma601_safe_boot schema=v4 reset_held={} tps546={} off={} faults={} cml={} pre_id_status={} pre_id_cml={} start_status={} start_cml={} pre_render_cml={} post_render_cml={} vin_mv={} vout_mv={} iout_ma={} vr_temp_c={} board_temp_c={} fan_duty_pct={} fan_rpm={} wifi={} redacted=true",
             self.reset_held,
             self.controller.label(),
             self.maybe_off.map_or("unread", OffState::label),
@@ -128,6 +134,8 @@ impl SafeBootReport {
             hex(self.maybe_pre_id_cml.map(u32::from), 2),
             hex(self.maybe_start_status.map(u32::from), 4),
             hex(self.maybe_start_cml.map(u32::from), 2),
+            hex(self.maybe_pre_render_cml.map(u32::from), 2),
+            hex(self.maybe_post_render_cml.map(u32::from), 2),
             milli(self.maybe_vin_volts),
             milli(self.maybe_vout_volts),
             milli(self.maybe_iout_amps),

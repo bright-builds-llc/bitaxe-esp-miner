@@ -7,7 +7,7 @@ fn the_initial_record_reports_nothing_read() {
     // Assert
     assert_eq!(
         marker,
-        "usb_gamma601_safe_boot schema=v3 reset_held=true tps546=unread off=unread faults=unavailable cml=unavailable pre_id_status=unavailable pre_id_cml=unavailable start_status=unavailable start_cml=unavailable vin_mv=unavailable vout_mv=unavailable iout_ma=unavailable vr_temp_c=unavailable board_temp_c=unavailable fan_duty_pct=100 fan_rpm=unavailable wifi=disconnected redacted=true"
+        "usb_gamma601_safe_boot schema=v4 reset_held=true tps546=unread off=unread faults=unavailable cml=unavailable pre_id_status=unavailable pre_id_cml=unavailable start_status=unavailable start_cml=unavailable pre_render_cml=unavailable post_render_cml=unavailable vin_mv=unavailable vout_mv=unavailable iout_ma=unavailable vr_temp_c=unavailable board_temp_c=unavailable fan_duty_pct=100 fan_rpm=unavailable wifi=disconnected redacted=true"
     );
 }
 
@@ -23,6 +23,8 @@ fn a_confirmed_off_record_carries_its_readings() {
         maybe_pre_id_cml: Some(0x00),
         maybe_start_status: Some(0x0842),
         maybe_start_cml: Some(0x02),
+        maybe_pre_render_cml: Some(0x00),
+        maybe_post_render_cml: Some(0x02),
         maybe_vin_volts: Some(5.02),
         maybe_vout_volts: Some(0.0),
         maybe_iout_amps: Some(0.0),
@@ -38,7 +40,7 @@ fn a_confirmed_off_record_carries_its_readings() {
     assert!(report.off_confirmed());
     assert_eq!(
         marker,
-        "usb_gamma601_safe_boot schema=v3 reset_held=true tps546=d24a off=confirmed faults=0x0002 cml=0x80 pre_id_status=0x0840 pre_id_cml=0x00 start_status=0x0842 start_cml=0x02 vin_mv=5020 vout_mv=0 iout_ma=0 vr_temp_c=31 board_temp_c=29 fan_duty_pct=30 fan_rpm=2400 wifi=connected redacted=true"
+        "usb_gamma601_safe_boot schema=v4 reset_held=true tps546=d24a off=confirmed faults=0x0002 cml=0x80 pre_id_status=0x0840 pre_id_cml=0x00 start_status=0x0842 start_cml=0x02 pre_render_cml=0x00 post_render_cml=0x02 vin_mv=5020 vout_mv=0 iout_ma=0 vr_temp_c=31 board_temp_c=29 fan_duty_pct=30 fan_rpm=2400 wifi=connected redacted=true"
     );
 }
 

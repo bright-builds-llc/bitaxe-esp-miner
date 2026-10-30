@@ -124,7 +124,7 @@ not a guard anyone designed.
    valid even when a reading fails; rolling back could restore firmware
    that mines. The record also carries `STATUS_WORD` and `STATUS_CML` as
    read before the identity read, the boot's first transfers to the
-   controller.
+   controller, and `STATUS_CML` read before and after the startup screen.
 6. **The core voltage is first turned on by a test-only variant.**
    `gamma601-vout-check` (`just package-gamma601-vout-check`, Bazel flag
    `--//firmware/bitaxe:firmware_variant`) is the safe boot plus one

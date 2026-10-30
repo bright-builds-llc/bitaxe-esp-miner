@@ -187,8 +187,10 @@ pub(crate) fn initialize_hardware(
     match safety_adapter::BitaxeI2cBus::new(peripherals.i2c0, pins.gpio47, pins.gpio48) {
         Ok(mut bus) => {
             // The controller goes off before the display or anything else on the bus.
-            let startup = turn_off_at_startup(&mut bus);
+            let mut startup = turn_off_at_startup(&mut bus);
+            startup.maybe_pre_render_cml = startup_cml(&mut bus, startup.controller);
             render_startup_screen(&mut bus, &startup_debug_text);
+            startup.maybe_post_render_cml = startup_cml(&mut bus, startup.controller);
             start(bus.into_runtime(), reset_held, startup);
         }
         Err(error) => {
@@ -334,13 +336,16 @@ fn render_startup_screen(
     }
 }
 
-/// What the startup read of the controller found, before any write to it.
+/// What the startup reads of the controller found: its status before any write to it, and
+/// `STATUS_CML` around the startup screen, after the off writes.
 struct StartupController {
     controller: Controller,
     maybe_pre_id_status: Option<u16>,
     maybe_pre_id_cml: Option<u8>,
     maybe_status: Option<u16>,
     maybe_cml: Option<u8>,
+    maybe_pre_render_cml: Option<u8>,
+    maybe_post_render_cml: Option<u8>,
 }
 
 /// Records the controller's status before and after identifying it and, only when it is a
@@ -361,6 +366,8 @@ fn turn_off_at_startup(bus: &mut safety_adapter::BitaxeI2cBus<'static>) -> Start
         maybe_pre_id_cml,
         maybe_status: None,
         maybe_cml: None,
+        maybe_pre_render_cml: None,
+        maybe_post_render_cml: None,
     };
     if let Controller::Found(_) = controller {
         let mut status_budget = hardware::budget();
@@ -373,6 +380,18 @@ fn turn_off_at_startup(bus: &mut safety_adapter::BitaxeI2cBus<'static>) -> Start
         }
     }
     found
+}
+
+/// Reads `STATUS_CML` around the startup screen, only from an identified TPS546; a read only.
+fn startup_cml(
+    bus: &mut safety_adapter::BitaxeI2cBus<'static>,
+    controller: Controller,
+) -> Option<u8> {
+    if !matches!(controller, Controller::Found(_)) {
+        return None;
+    }
+    let mut budget = hardware::probe_budget();
+    hardware::read_cml(&mut bus.tps546(&mut budget))
 }
 
 /// Starts the safe-boot thread, which keeps the controller off and the fan running.
@@ -390,6 +409,8 @@ fn start(mut owner: RuntimeI2cOwner<'static>, reset_held: bool, startup: Startup
     report.maybe_pre_id_cml = startup.maybe_pre_id_cml;
     report.maybe_start_status = startup.maybe_status;
     report.maybe_start_cml = startup.maybe_cml;
+    report.maybe_pre_render_cml = startup.maybe_pre_render_cml;
+    report.maybe_post_render_cml = startup.maybe_post_render_cml;
     // This thread owns the bus, so it is the safety actuation owner (ADR-0041).
     let (registration, inbox) = safety_adapter::prepare_safety_actuation_owner();
     if let Err(error) = safety_adapter::publish_safety_actuation_owner(registration) {

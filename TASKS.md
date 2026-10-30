@@ -274,10 +274,12 @@ action.
     - Upstream would not show the bit: its display init comes before
       `TPS546_init`, which ends with `CLEAR_FAULTS`. Ours puts the off
       writes first, so the bit stays latched until mining starts.
-    - Next, when the 601 is attached: a `STATUS_CML` read right before and
-      right after the startup render, on a boot that begins clear. That
-      means after the owner's power cycle or after a mined boot. Not
-      started: it changes the production 601 after the final F4 commit.
+    - Owner decision 2026-10-29: add the reads and run them on the 601.
+      The safe-boot record (schema v4) carries `STATUS_CML` right before
+      and right after the startup render (`pre_render_cml`,
+      `post_render_cml`), reads only, after the off writes. They answer
+      the question on a boot that begins clear, after the owner's power
+      cycle (contract below).
 - [x] **D. TPS546.** Plan `gamma-601-phase-d` (owner approved 2026-10-23).
   - [x] D1: the pure configuration core (`bitaxe-safety`):
     - the LINEAR11 and ULINEAR16 encoders;
@@ -2430,6 +2432,57 @@ Attempt 007 (2026-10-29, `b5940eba`): passed; outcome `complete`.
   identity matches, no panic), with `just flash-monitor`, which runs step
   5's flash and monitor in one command. The enable line is removed.
 - Summary: `docs/parity/evidence/20261029-ultra205-f46-self-test.md`.
+
+TPS546 CML render-bracket contract (attempt ordinals 001 onward):
+
+Gamma 601 CML render check hardware: enabled.
+
+- **Objective:** answer the `CML` follow-up above. On a 601 boot that
+  begins with `STATUS_CML` clear, the schema v4 safe-boot record's
+  `pre_render_cml` and `post_render_cml` show whether the startup screen's
+  bus traffic sets bit 1 (`0x02`).
+- **Precondition:** only the 601 attached (the owner swaps boards; owner
+  request 2026-10-29), registered as board 601; the tree clean and pushed;
+  the owner present for one power cycle.
+- **Commands, in order, each attempt, with `umask 077` and evidence under
+  `scratch/gamma-601-cml-render/attempt-NNN/` (mode 0700, absent before the
+  start; logs mode 0600):**
+  1. `just detect-ultra205`: exactly one device;
+  2. `just flash-monitor --board 601 --port <port>
+     --capture-timeout-seconds 360`: production at HEAD, installed
+     state-preserving, with its capture;
+  3. the owner removes barrel power and USB, waits about 10 s, then
+     restores barrel power and then USB: a manual, non-invasive power
+     cycle;
+  4. the detector, then `just monitor --board 601 --port <port>
+     --capture-timeout-seconds 360`: a receive-only capture, with no reset
+     and no write.
+- **Allowed effects:** the detector checks; one state-preserving install
+  with its resets; the owner's power cycle; one receive-only capture; the
+  installed production firmware's own effects, with mining on boot as
+  saved (off).
+- **Prohibited effects:** a factory install, any NVS or settings write,
+  HTTP to the device or network discovery, a test variant, a 205 package,
+  mining, and direct UART or pins.
+- **Result, not a pass criterion:** step 4's records carry `start_cml`,
+  `pre_render_cml`, `post_render_cml` and `cml`, read as they are.
+  - `start_cml` and `pre_render_cml` clear and `post_render_cml=0x02`: the
+    startup screen sets the bit.
+  - `pre_render_cml=0x02`: the startup off writes set it.
+  - `post_render_cml` clear and steady `cml=0x02`: the first sweep sets it.
+  - `start_cml` not clear: the boot did not begin clear; record it, and a
+    retry needs another power cycle.
+  The C3 safety readings must still hold: reset held, off confirmed, fan
+  running, `built=601 stored=601 identity=match`.
+- **Stops:** any refusal by the detector or the flash tool (including a
+  board admission mismatch); off not confirmed, the reset not held, or a
+  panic or boot loop (the owner removes all power, barrel first, then
+  USB); a missing record in step 4's capture (an evidence failure).
+- **Evidence and privacy:** captures stay under the attempt root; the
+  committed summary names board 601, the commits, the commands and the
+  record values above, and passes `just verify-redaction`.
+- **Recovery:** production at HEAD is the installed firmware; on any stop,
+  reinstall it state-preserving (step 2) and confirm the safe boot.
 
 ## Future
 

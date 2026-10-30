@@ -39,6 +39,8 @@ pub(super) fn publish_window_report(report: &SafeBootReport) {
         maybe_pre_id_cml: report.maybe_pre_id_cml,
         maybe_start_status: report.maybe_start_status,
         maybe_start_cml: report.maybe_start_cml,
+        maybe_pre_render_cml: report.maybe_pre_render_cml,
+        maybe_post_render_cml: report.maybe_post_render_cml,
         ..SafeBootReport::initial(report.reset_held)
     });
 }
