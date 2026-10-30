@@ -255,6 +255,29 @@ action.
     and `STATUS_CML` as read at boot before the off writes
     (`start_status=`, `start_cml=`). After a power cycle these show
     whether the safe boot's own reads set the bit.
+    Bit 7 was answered in D4 (an early first read). Bit 1 (`0x02`, other
+    communication fault) was narrowed 2026-10-29 from the existing 601
+    captures, with no new hardware run:
+    - Every boot in them sets it in the same window: after the start read
+      (`start_cml=0x00` on each boot that began clear) and before the
+      first sweep (`cml=0x02`).
+    - That window holds the start read, the off writes, the startup
+      screen render (SSD1306 at `0x3c`) and the first sweep.
+    - After a `CLEAR_FAULTS` (the checks, the self-test, every mining
+      start) it never returns:
+      - neither with off writes, sweeps, configuration writes or
+        `OPERATION` on;
+      - nor over hours of mining, since each boot after a mined one reads
+        `pre_id_cml=0x00`.
+    - The 601 has no runtime screen, so the startup render is the only
+      transfer class unique to that window. It is the suspect.
+    - Upstream would not show the bit: its display init comes before
+      `TPS546_init`, which ends with `CLEAR_FAULTS`. Ours puts the off
+      writes first, so the bit stays latched until mining starts.
+    - Next, when the 601 is attached: a `STATUS_CML` read right before and
+      right after the startup render, on a boot that begins clear. That
+      means after the owner's power cycle or after a mined boot. Not
+      started: it changes the production 601 after the final F4 commit.
 - [x] **D. TPS546.** Plan `gamma-601-phase-d` (owner approved 2026-10-23).
   - [x] D1: the pure configuration core (`bitaxe-safety`):
     - the LINEAR11 and ULINEAR16 encoders;
