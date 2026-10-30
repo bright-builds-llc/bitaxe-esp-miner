@@ -2526,6 +2526,25 @@ Attempt 001 (2026-10-30, `56bcc2ea`): outcome `complete`.
 
 ## Future
 
+### task-parity-cfg002-gamma601-default-readback | 2026-10-30 | Close CFG-002 with a hardware readback of the 601's seeded defaults
+
+Origin: parity review, 2026-10-30. CFG-002 is `implemented`. The seed matches
+`config-601.cvs` in unit and golden tests, and the board read back its stored
+identity. The 601 build does not attest the other seeded defaults, so no
+hardware readback of them exists. CFG-001 is the 205's precedent.
+
+- [ ] Add a 601 attestation of every seeded default, without changing the
+      205's.
+- [ ] Settle the `selftest=1` difference. Upstream starts the self-test on
+      first boot and ours does not. Match it, or record the deviation in
+      ADR-0041.
+- [ ] Run one factory install and readback under its own contract, then
+      reinstall and confirm the 601's production package. Applying
+      `wifi-credentials.json` needs the owner's request (`AGENTS.md`).
+- [ ] Transition only CFG-002. Other Gamma boards stay non-claims.
+
+Verification: pending. Completion review: pending.
+
 ### task-stop-paths-hardware-evidence | 2026-10-21 | Hardware evidence for stops other than a pause
 
 The `stopping` status (`d95d7002`), the zeroed hashrate (`38b9e932`), the
@@ -2538,6 +2557,188 @@ pool outage, an overheat trip and a fault share the same paths.
 - [ ] Then cite the October firmware evidence in the parity checklist (a
       passage-only revision), together with the stopping, polled-cooling and
       preparation-watchdog summaries.
+
+### task-parity-stratum-tls | 2026-10-30 | Connect to pools over Stratum TLS
+
+Origin: parity review, 2026-10-30. Upstream's `STRATUM_V1_transport_init`
+(`components/stratum/stratum_api.c`) supports `BUNDLED_CRT` and `CUSTOM_CRT`
+through `esp_transport_ssl`. Our firmware stores and reports the TLS settings
+but has no TLS transport:
+- `read_pool_configuration`
+  (`firmware/bitaxe/src/settings_adapter/production.rs`) treats a Stratum v1
+  pool with TLS set as not configured;
+- the Stratum v2 path returns `sv2_tls_unsupported`.
+
+STR-001, STR-006, STR-08 and STR-09 list TLS as a non-claim, and no checklist
+row owns it.
+
+- [ ] Check what a device with only a TLS pool reports today, and give it a
+      clear reason until TLS ships.
+- [ ] Record the design in an ADR: the ESP-IDF transport, the certificate
+      bundle, custom certificate limits, memory, and handshake and stop
+      deadlines. Check how upstream treats TLS on Stratum v2.
+- [ ] Implement both modes for the primary and fallback pools, keeping the
+      production transport's bounds and safe stop.
+- [ ] Test through a real TLS boundary: a good handshake, a bad or expired
+      certificate, a missing custom certificate and a handshake timeout.
+- [ ] Add a checklist row, then earn hardware evidence of an accepted share
+      over TLS under its own contract. Pool details stay out of evidence.
+
+Verification: pending. Completion review: pending.
+
+### task-parity-hardware-non-claim-evidence | 2026-10-30 | Prove upstream behaviour the verified rows still list as non-claims
+
+Origin: parity review, 2026-10-30. The firmware has these paths, but their rows
+exclude them from the hardware claim. `task-stop-paths-hardware-evidence` owns
+the stop paths; this task owns the rest. Split it into one contract per run.
+
+- [ ] Fallback pool switching and reconnect on hardware (STR-001, STR-006,
+      STR-08).
+- [ ] Rejected shares on hardware, including mismatched and stale responses
+      (STR-006, STR-09).
+- [ ] On the Gamma 601: mining from a power-on boot, a multi-hour run of the
+      production build, and the thermal margin in a warmer room, since the
+      75 C trip ended one production run (ASIC-008).
+- [ ] BAP on hardware: the `ssid` and `password` settings, the `wifi` and
+      `shares` subscriptions, and the 300-second timeout (BAP-001, BAP-002).
+      Adapter wiring needs its own direct-UART authorization.
+- [ ] Physical display checks that need the owner's eyes: every page, dwell
+      and notification (UI-001, UI-002).
+- [ ] Power loss during OTA and OTAWWW (REL-002, REL-003, OTA-002), only under
+      a task-gated fault contract.
+- [ ] Narrow each row's non-claims through a passage-only revision. Pinned
+      evidence stays unedited.
+
+Fault injection, pins and electrical stress keep their separate gates. This
+block authorizes none of them.
+
+Verification: pending. Completion review: pending.
+
+### task-parity-web-ui-read-only-features | 2026-10-30 | Add the missing read-only AxeOS features to the web UI
+
+Origin: parity review, 2026-10-30. UI-004 proves the workflows the UI has. The
+[feature inventory](docs/web-ui/axeos-feature-inventory.md) lists these as
+absent or partial, and step 2 of its parity plan takes them first.
+
+- [ ] The live telemetry stream, with a bounded reconnect policy, in place of
+      the manual Refresh.
+- [ ] The dashboard history chart.
+- [ ] The read-only ASIC table.
+- [ ] The block-found banner and dismiss, and the share rejection help.
+- [ ] ANSI log colouring and the masking toggle for worker names and addresses.
+- [ ] Land each in `solid` first and port it to `current` only if `current`
+      stays the default. Keep the shared contract tests passing and fit
+      `firmware/bitaxe/web-ui-budget.json`. Raise a budget only through a
+      reviewed change with a new size-history row.
+- [ ] Update the inventory, and earn new UI evidence on hardware. `solid` needs
+      its own evidence, bound to a `web_ui_variant: solid` package.
+
+Verification: pending. Completion review: pending.
+
+### task-parity-web-ui-write-features | 2026-10-30 | Add the missing settings and actions to the web UI
+
+Origin: parity review, 2026-10-30, and step 3 of the inventory's parity plan.
+Each feature needs its firmware row verified and a UI workflow test.
+
+- [ ] The fallback pool form and the primary/fallback switch. These depend on
+      the fallback evidence in `task-parity-hardware-non-claim-evidence`.
+- [ ] The confirmed Identify button.
+- [ ] The Wi-Fi scan dialog, user-initiated on the device. Agent workflows keep
+      the rule against general network scanning.
+- [ ] Display settings, once UI-001 and UI-002 cover runtime changes.
+- [ ] The remaining primary pool fields: TLS and certificate (after
+      `task-parity-stratum-tls`), extranonce subscribe, suggested difficulty,
+      coinbase decoding and Stratum v2.
+- [ ] The AP-mode guard redirect for `/ap`.
+
+Verification: pending. Completion review: pending.
+
+### task-parity-web-ui-hardware-controls | 2026-10-30 | Decide when the UI may expose hardware controls
+
+Status: blocked on an owner decision. Do not select this automatically. The
+inventory requires an explicit task to authorize exposing these controls, and
+this block is not that authorization.
+
+Origin: parity review, 2026-10-30. Frequency, core voltage, fan, temperature
+target and overheat reset are excluded from the UI until their live safety
+evidence is complete, but nothing defines complete. The API still accepts these
+fields; only the UI's patch field list keeps them out. On the 601, new voltage
+and frequency settings apply at the next mining start (ADR-0041 item 15).
+
+- [ ] Define, per control and per board, the evidence that lifts the exclusion
+      (ASIC-007, PWR-003, PWR-004, THR-001 to THR-003 list the gaps).
+- [ ] Get the owner's decision, then split the implementation and its hardware
+      evidence into their own contracts.
+
+Verification: pending. Completion review: pending.
+
+### task-parity-checklist-coverage-and-stale-notes | 2026-10-30 | Close checklist coverage gaps and stale tracker notes
+
+Origin: parity review, 2026-10-30. The review matched reference file names
+against the checklist, which cannot prove coverage. Start with a proper
+surface-by-surface check.
+
+- [ ] Give `main/thermal/EMC2103.c`, `EMC2302.c` and `TMP1075.c` a row or an
+      explicit place under `task-parity-other-boards-scope`. The 205 and the
+      601 use the EMC2101.
+- [ ] Decide on upstream's `main/task_monitor.c`, which has no Rust port and
+      no row: port it, or record it as `deferred` with a reason.
+- [ ] Decide on the missing CORS preflight (OPTIONS `/api/*`), which only
+      Swarm needs among the inventory's features.
+- [ ] Correct the notes that predate the 601, through the checklist revision
+      path: WF-005 ("rejects deferred `board=601`"), ASIC-001 ("the only active
+      V1 dispatch path") and the Notes section's Ultra 205 rule.
+- [ ] Establish whether SYS-02, EVD-11, EVD-12 and EVD-14 under "Accepted Debt
+      and Constraints" still hold. They have no checklist rows. Correct the
+      section or give them rows.
+
+Verification: pending. Completion review: pending.
+
+### task-parity-other-boards-scope | 2026-10-30 | Decide and deliver parity for the other upstream boards
+
+Status: blocked on an owner decision and on hardware. Do not select this
+automatically before the scope decision.
+
+Origin: parity review, 2026-10-30. `device_config.h` lists 23 board versions and
+we build only the 205 and the 601. The project decisions keep the others in
+scope, unverified until each has evidence: Max (2.2, 102), Ultra (0.11, 201,
+202, 203, 204, 207), Hex (302, 303), Supra (400 to 403), Gamma (600, 602, 603),
+GammaDuo (650), SupraHex (701, 702) and GammaTurbo (801).
+
+`task-parity-asic009-bm1368-core` and `task-parity-asic010-bm1397-core` stay
+active and hardware-blocked, and they are the only open rows for these boards.
+
+- [ ] Get the owner's decision: which boards stay in parity, and which hardware
+      is available.
+- [ ] Move ASIC-009 and ASIC-010 to `deferred` with a reason and an owner if
+      their boards are out of scope.
+- [ ] For each board kept: add per-board rows, firmware dispatch, the board's
+      power and thermal adapters, and registered identity (ADR-0041), then earn
+      its own hardware evidence (ADR-0014). Multi-chip families also need
+      chip-count coverage.
+
+Verification: pending. Completion review: pending.
+
+### task-parity-release-readiness | 2026-10-30 | Define and reach release readiness
+
+Status: publishing is the owner's decision. This block authorizes no release.
+
+Origin: parity review, 2026-10-30. Many verified rows list release readiness as a
+non-claim, and no checklist row owns it. The release gate
+(`tools/parity/src/release_gate.rs`) accepts Ultra 205 packages only, and a 601
+release is undecided (`docs/release/gamma-601.md`). The latest tag is `v1.1`,
+from 2026-07-13.
+
+- [ ] Define what a release claims: its boards, its rows and its accepted
+      deviations from upstream. Add a checklist row for it.
+- [ ] Decide on the 601 in the release gate, keeping every test variant refused.
+- [ ] Review license and provenance for the distributed artifacts
+      (`docs/release/license-inventory.md`,
+      `docs/release/provenance-manifest.md`), including any GPL-marked ported
+      source.
+- [ ] Run the gate on an exact package. Publish only on the owner's approval.
+
+Verification: pending. Completion review: pending.
 
 ### task-owner-blocking-followups | 2026-10-21 | Remaining owner-thread stalls and progress cleanups
 
