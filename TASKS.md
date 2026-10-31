@@ -28,29 +28,6 @@ new work.
 
 ## Active
 
-### task-rust-pause-c-fork-handoff | 2026-10-30 | Record the pause and write the C fork handoff
-
-Origin: owner request, 2026-10-30. The owner is pausing the Rust firmware for a C fork of
-upstream, because of the validation burden and image size, and wants the reasons in the
-README and a committed handoff that bootstraps the fork.
-
-- [x] Check the reasons against measurements. The validation counts hold. So does the size gap,
-      but about 72% of it is one `secp256k1` table default, an estimate from the table formulas
-      that was never built. The documents say so.
-- [x] Inventory the Gate contract, the fixes and hardware lessons, and the portable assets.
-- [x] Write `docs/project/c-fork-handoff.md` and ADR-0042.
-- [x] Add the README banner, and stop automatic task selection in `AGENTS.md` and here.
-- [x] Keep security-sensitive upstream findings out of this public repository, because upstream's
-      `SECURITY.md` asks for private reports. The handoff names topics only, and the details stay
-      in ignored local notes.
-- [x] Run an independent accuracy and privacy check of the handoff. It found 19 problems, including
-      a wrong upstream stop order and overheat description, and a missing path. All are corrected.
-      It found no private values. The linker table's crate grouping is approximate, and says so.
-- [ ] The owner reviews the wording, since this is a public statement, and then it is pushed.
-
-No device effects. Verification: `just test`, standards, `just parity` and `just verify-redaction`.
-Completion review: pending the owner's review.
-
 ### task-parity-asic009-bm1368-core | 2026-08-20 | Implement the pure BM1368 protocol core
 
 - [x] Add typed BM1368 init, work, result, register, framing, and error
@@ -2640,6 +2617,34 @@ means the pin, `c1915b0a`.
 - [ ] Change them test-first, or record why a difference stays.
 - [ ] Earn hardware evidence on both boards under a task contract, extending
       `just access-gate-check` if it needs new requests.
+
+### task-secp256k1-lowmemory | 2026-10-30 | Save about 1 MB with the secp256k1 lowmemory feature
+
+Origin: the size breakdown for `docs/project/c-fork-handoff.md`. This repository is paused (ADR-0042),
+so this needs the owner's explicit request, and it comes before the other levers in
+`task-firmware-image-headroom`.
+
+`secp256k1-sys` 0.9.2 defaults to `ECMULT_WINDOW_SIZE=15` and `ECMULT_GEN_PREC_BITS=4`, which puts
+1,114,112 bytes of tables in the 205 image (`rustsecp256k1_v0_9_2_pre_g`, `pre_g_128` and
+`ecmult_gen_prec_table` in `bitaxe-firmware.map`). Upstream's
+`reference/esp-miner/components/libsecp256k1/CMakeLists.txt` uses 4 and 2, and the `lowmemory` feature
+selects the same. The estimated saving from the table formulas is 1,080,832 bytes, taking the 205 from
+2,640 bytes free to about 1.08 MB free. Nothing has built this yet.
+
+Our use reaches the crate through `noise_sv2`, for the Stratum V2 Noise handshake. No firmware crate
+depends on `secp256k1` directly, and the feature sits nowhere in the graph, so turning it on needs a direct
+dependency that Cargo's feature unification carries to `noise_sv2`'s copy. The root `Cargo.toml`'s workspace
+entry alone won't do it.
+
+- [ ] Enable `lowmemory` for the firmware builds, and repin so Cargo and Bazel's `crate_universe` agree.
+- [ ] Build production for the 205 and 601, and record the measured image sizes and table symbols against
+      the numbers above.
+- [ ] Measure the handshake on the device before and after. The smaller tables trade flash for CPU, and a
+      slower handshake could reach a Stratum V2 deadline or the owner thread's budgets. Recheck stack depth
+      on the Noise completion path, whose measured descent is 10.6 KB.
+- [ ] Prove the handshake and shares still work: the Stratum V2 host tests and Noise vectors, then a
+      hardware check against the local fixture on both boards, under a task contract (checklist row STR-005).
+- [ ] Update `docs/project/c-fork-handoff.md`'s size section with the measured result.
 
 ### task-firmware-image-headroom | 2026-10-30 | Make room in the 4 MiB app slot
 

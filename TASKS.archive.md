@@ -34891,3 +34891,38 @@ Residual risks:
 - The gate is looser than upstream on some Origin forms and on `/recovery`:
   `task-http-access-gate-upstream-differences`.
 - A denied request leaves no trace an owner can read.
+
+### task-rust-pause-c-fork-handoff | 2026-10-30 | Record the pause and write the C fork handoff
+
+Origin: owner request, 2026-10-30. The owner is pausing the Rust firmware for a C fork of
+upstream, because of the validation burden and image size, and wants the reasons in the
+README and a committed handoff that bootstraps the fork.
+
+- [x] Check the reasons against measurements. The validation counts hold. So does the size gap,
+      but about 72% of it is one `secp256k1` table default, an estimate from the table formulas
+      that was never built. The documents say so.
+- [x] Inventory the Gate contract, the fixes and hardware lessons, and the portable assets.
+- [x] Write `docs/project/c-fork-handoff.md` and ADR-0042.
+- [x] Add the README banner, and stop automatic task selection in `AGENTS.md` and here.
+- [x] Keep security-sensitive upstream findings out of this public repository, because upstream's
+      `SECURITY.md` asks for private reports. The handoff names topics only, and the details stay
+      in ignored local notes.
+- [x] Run an independent accuracy and privacy check of the handoff. It found 19 problems, including
+      a wrong upstream stop order and overheat description, and a missing path. All are corrected.
+      It found no private values. The linker table's crate grouping is approximate, and says so.
+- [x] The owner reviews the wording, since this is a public statement, and then it is pushed.
+      The owner approved pushing to `main` on 2026-10-30.
+
+No device effects. Verification: `just test`, standards, `just parity` and `just verify-redaction` pass.
+
+Completion review, 2026-10-30: the pause and its reasons are public, and the handoff is committed as the
+fork's bootstrap prompt. The owner kept the decision after reading the size finding, and asked for that
+change as its own task, `task-secp256k1-lowmemory`.
+
+Residual risks:
+
+- The fork doesn't exist yet, so nothing has run the bootstrap prompt.
+- The 72% size figure is still an unbuilt estimate.
+- The linker table's grouping by crate is approximate, as the handoff says.
+- The earlier upstream review already describes upstream's BLE writes publicly. Reporting that privately to
+  upstream is the owner's call.
