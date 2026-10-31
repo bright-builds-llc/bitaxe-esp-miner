@@ -2622,13 +2622,16 @@ settings and OTA. Upstream denies it.
 - [x] Replace the tests that pin the allowance with tests of the parsed socket
       address: private, public, IPv4-mapped, real IPv6 and read failure, for HTTP
       and WebSocket, with and without an Origin.
-- [ ] Earn hardware evidence that a private peer still works on both boards. No
-      public exposure of the device is authorized by this task. Gamma 601 done
-      (attempt 002); Ultra 205 pending, which needs the owner to swap the board.
+- [x] Earn hardware evidence that a private peer still works on both boards. No
+      public exposure of the device is authorized by this task. Gamma 601 attempt
+      002 and Ultra 205 attempt 003:
+      `docs/parity/evidence/20261030-access-gate-peer-address.md`.
 - [ ] Name the gate in checklist row API-004, with its evidence, once both boards
       have it. This replaces the planned new row: the transition ledger has no way
       to add one, and API-004 already owns `http_server.c`. API-004 is `verified`
-      today without any claim about the gate, and that stays true until then.
+      today without any claim about the gate, and that stays true until then. A
+      verified row's revision is the owner's to authorize, so this waits for the
+      owner's decision on the exact passage.
 
 #### Hardware contract: access gate peer address
 
@@ -2686,16 +2689,54 @@ Attempts:
   `firmware_commit` matching). `just access-gate-check` on that boot printed
   `{"passed":true,"no_origin_status":200,"private_origin_status":200,"public_origin_status":401}`.
   Outcome: `complete` for this board. The board stays on this production build.
+- 003, Ultra 205, 2026-10-30, production at `0c0698db`, installed state-preserving
+  (`usb_board_identity built=205 stored=205 identity=match`, the capture's
+  `firmware_commit` matching). `just access-gate-check` on that boot printed
+  `{"passed":true,"no_origin_status":200,"private_origin_status":200,"public_origin_status":401}`.
+  Outcome: `complete` for this board. The board stays on this production build.
+
+Independent review, 2026-10-30: found no defect in the `sockaddr_in6` read, and that
+every route upstream gates is gated here except `/recovery`. Its other findings:
+
+- The tests did not pin the original bug's path, a zero peer with no Origin. Added,
+  and it fails with the old allowance put back.
+- The evidence inference left out AP mode, and the non-claims left out settings and
+  OTA on hardware. Both corrected in the evidence document before it was committed.
+- The gate is looser than upstream on an Origin with a port, `https://` or no scheme,
+  and on `/recovery`. Both predate this task and are left to
+  `task-http-access-gate-upstream-differences`.
 
 Residual: `axeos_access_gate=denied` is still dropped by the USB diagnostics filter
 and is not in the retained log, so a denied request leaves no trace an owner can
 read. This change leaves that as it found it.
 
 Verification: `just test`, 368 tests pass with the fix and the check command, and
-clippy, standards, both board packages and redaction are clean. Hardware: attempt
-002 on the 601; the 205 is pending. Completion review: pending.
+clippy, standards, both board packages and redaction are clean. Hardware: attempts
+002 and 003. Completion review: pending the API-004 decision.
 
 ## Future
+
+### task-http-access-gate-upstream-differences | 2026-10-30 | Decide the access gate's other differences from upstream
+
+Origin: independent review of `task-http-access-gate-peer-address`. Upstream here
+means the pin, `c1915b0a`.
+
+- `maybe_origin_ip_from_header` (`crates/bitaxe-api/src/route_shell.rs`) accepts an
+  Origin with a port, with `https://`, or with no scheme, if its host is a private
+  IPv4 address. Upstream's `extract_origin_ip_addr` denies all three. So a page on
+  another private host's port, such as a NAS or router, can send a simple
+  cross-origin request that upstream refuses. A test pins the port case.
+- `handle_recovery` and the unavailable-filesystem fallback
+  (`firmware/bitaxe/src/static_files.rs`) are not gated. Upstream gates
+  `rest_recovery_handler`. The page is static HTML.
+
+- [ ] Decide each one against upstream `3a37d2b`, which loosens the Origin check
+      after the pin (`docs/parity/upstream-reviews/c1915b0a-to-v2.15.4.md`). Do not
+      copy that change unreviewed, and check that a same-origin request from the
+      device's own web UI, and the `solid` UI's development path, still work.
+- [ ] Change them test-first, or record why a difference stays.
+- [ ] Earn hardware evidence on both boards under a task contract, extending
+      `just access-gate-check` if it needs new requests.
 
 ### task-firmware-image-headroom | 2026-10-30 | Make room in the 4 MiB app slot
 

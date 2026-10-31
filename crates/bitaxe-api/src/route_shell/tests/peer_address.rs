@@ -194,6 +194,18 @@ fn zero_peer_address_is_denied_with_private_origin() {
 }
 
 #[test]
+fn zero_peer_address_is_denied_without_origin() {
+    // Arrange
+    let peer = Ipv4Addr::UNSPECIFIED.to_ipv6_mapped().octets();
+
+    // Act
+    let input = input_from_peer_octets(peer, OriginGate::Missing);
+
+    // Assert
+    assert_http_and_websocket_denied(input);
+}
+
+#[test]
 fn unreadable_peer_keeps_the_ap_mode_allowance() {
     // Arrange
     let input = RouteAccessInput {
