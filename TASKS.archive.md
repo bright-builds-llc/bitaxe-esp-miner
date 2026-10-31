@@ -34748,3 +34748,146 @@ Residual risks:
 - The workspace `cargo build --workspace` does not build on a macOS host
   (`esp-idf-sys` rejects `aarch64-apple-darwin`); load runs used the default
   members.
+
+### task-http-access-gate-peer-address | 2026-10-30 | Make the HTTP access gate check the real peer address
+
+Origin: upstream pin review, 2026-10-30
+(`docs/parity/upstream-reviews/c1915b0a-to-v2.15.4.md`). This is a bug at the
+current pin, and it does not depend on moving the pin. It is read from source,
+not yet observed on a device.
+
+`maybe_peer_ipv4` (`firmware/bitaxe/src/http_api/access.rs`) passes a
+`sockaddr_in` to `lwip_getpeername`, but the server socket is `PF_INET6`, so the
+peer always reads as the unspecified address. `is_access_allowed`
+(`crates/bitaxe-api/src/route_shell.rs`) then checks only the Origin, and a
+missing Origin is allowed. A public peer that can reach the device can use
+settings and OTA. Upstream denies it.
+
+- [x] Try to confirm it on a device with a read-only log of the peer address.
+      This can't be done: the USB diagnostics filter passes only an allowlist, so
+      `axeos_access_gate=denied` never leaves the device on any build (attempt
+      001). The zero peer stays read from source, and from the comment on the
+      removed allowance, not seen on a device.
+- [x] Read the peer as `sockaddr_in6` and use the IPv4 address only when it is
+      IPv4-mapped. Real IPv6 peers are denied: they have no IPv4 address to
+      classify. Upstream instead classifies the last four bytes of any IPv6
+      address, which rarely look private, so ours differs only for those few.
+- [x] Fail closed when the peer cannot be read, and remove the zero-address
+      allowance. Nothing else depended on it: no script, tool or doc calls the
+      device from a path that relied on it. The peer is now an `Option`, so
+      "unreadable" is no longer a sentinel address. The host-order fallback is
+      gone too, because with real addresses it would let the public 1.2.168.192
+      read as the private 192.168.2.1.
+- [x] Replace the tests that pin the allowance with tests of the parsed socket
+      address: private, public, IPv4-mapped, real IPv6 and read failure, for HTTP
+      and WebSocket, with and without an Origin.
+- [x] Earn hardware evidence that a private peer still works on both boards. No
+      public exposure of the device is authorized by this task. Gamma 601 attempt
+      002 and Ultra 205 attempt 003:
+      `docs/parity/evidence/20261030-access-gate-peer-address.md`.
+- [x] Name the gate in checklist row API-004, with its evidence, once both boards
+      have it. This replaces the planned new row: the transition ledger has no way
+      to add one, and API-004 already owns `http_server.c`. API-004 is `verified`
+      today without any claim about the gate, and that stays true until then. A
+      verified row's revision is the owner's to authorize. The owner read the exact
+      passage and authorized it on 2026-10-30:
+      `docs/parity/verified-revisions/2026-10-30-access-gate-peer-address.json`,
+      transition `20261031T001100Z-API-004`, progress synced.
+
+#### Hardware contract: access gate peer address
+
+Enabled 2026-10-30. Attempts stay open until both boards have evidence.
+
+- **Objective:** show on the fixed firmware that a private peer is served. The
+  fix denies a peer that is unreadable, zero or not IPv4-mapped, so a `200` with
+  no Origin can only mean the gate read a private IPv4-mapped peer. That is the
+  whole proof, and no log line is needed.
+- **Precondition:** only the board under test attached, the tree clean and pushed.
+  The detector cannot tell the boards apart, so flash admission checks the
+  registered MAC before any write, and the capture's `usb_board_identity` line
+  names the board.
+- **Commands, in order, each attempt, with `umask 077` and evidence under
+  `scratch/access-gate/attempt-NNN/` (mode 0700, absent before the start; logs
+  mode 0600):**
+  1. `just detect-ultra205`: exactly one device.
+  2. `just flash-monitor --board <board> --port <port>
+     --capture-timeout-seconds 360` into `after.log`: production at HEAD,
+     installed state-preserving, and then
+     `just access-gate-check --monitor-log <after.log>` on the same boot.
+     `flash-monitor` writes its capture only when it ends, so the check follows it.
+- **Allowed effects:** the detector; one state-preserving install with its resets,
+  and its capture; three `GET /api/system/info` requests
+  per check, sent only to the origin in that same capture and only if it is a
+  private IPv4 address; the installed firmware's own effects, with mining on boot
+  as saved.
+- **Prohibited effects:** a factory install, any NVS or settings write, any other
+  HTTP route or method, network discovery, a test variant, exposing the device to
+  a public network, and direct UART or pins.
+- **Pass:** step 2 prints `passed: true`: no Origin 200, private Origin 200,
+  public Origin 401.
+- **Not claimed:** a public peer being denied on hardware, which only the unit
+  tests show; a real IPv6 peer; the WebSocket routes on hardware, which read the
+  same `access_input_from_raw`.
+- **Evidence and privacy:** the captures stay private, with their addresses. Only
+  the check's JSON, the board, the commits and the commands are committed.
+- **Stop:** the device is absent or ambiguous; flash admission refuses the board;
+  no runtime origin in step 2's capture (no station address means no check); or
+  the same failure recurs after its fix (`stop_repeated_boundary`). Retries follow
+  `docs/hardware/hardware-attempt-policy.md`, each with a fresh ordinal.
+- **Recovery:** the board is left on production, so there is nothing to restore.
+  A failed install follows the flash tool's own recovery.
+
+Attempts:
+
+- 001, Gamma 601, 2026-10-30, on the installed firmware from before the fix,
+  under the first form of this contract: receive-only capture, then
+  `just access-gate-check`, which then also looked for the denied line. No
+  Origin 200, private Origin 200, public Origin 401, as the old gate also answers.
+  No denied line in the capture, which is how the filter above was found. The
+  board was not written to.
+- 002, Gamma 601, 2026-10-30, production at `6269d90c`, installed state-preserving
+  (`usb_board_identity built=601 stored=601 identity=match`, the capture's
+  `firmware_commit` matching). `just access-gate-check` on that boot printed
+  `{"passed":true,"no_origin_status":200,"private_origin_status":200,"public_origin_status":401}`.
+  Outcome: `complete` for this board. The board stays on this production build.
+- 003, Ultra 205, 2026-10-30, production at `0c0698db`, installed state-preserving
+  (`usb_board_identity built=205 stored=205 identity=match`, the capture's
+  `firmware_commit` matching). `just access-gate-check` on that boot printed
+  `{"passed":true,"no_origin_status":200,"private_origin_status":200,"public_origin_status":401}`.
+  Outcome: `complete` for this board. The board stays on this production build.
+
+Independent review, 2026-10-30: found no defect in the `sockaddr_in6` read, and that
+every route upstream gates is gated here except `/recovery`. Its other findings:
+
+- The tests did not pin the original bug's path, a zero peer with no Origin. Added,
+  and it fails with the old allowance put back.
+- The evidence inference left out AP mode, and the non-claims left out settings and
+  OTA on hardware. Both corrected in the evidence document before it was committed.
+- The gate is looser than upstream on an Origin with a port, `https://` or no scheme,
+  and on `/recovery`. Both predate this task and are left to
+  `task-http-access-gate-upstream-differences`.
+
+Residual: `axeos_access_gate=denied` is still dropped by the USB diagnostics filter
+and is not in the retained log, so a denied request leaves no trace an owner can
+read. This change leaves that as it found it.
+
+Verification: `just test`, 368 tests pass with the fix and the check command, and
+clippy, standards, both board packages and redaction are clean. Hardware: attempts
+002 and 003. After the review's added test and the API-004 revision: `just test`,
+`bitaxe-api` clippy, `just parity` and `just verify-redaction` pass, and the row
+stays `verified`.
+
+Completion review, 2026-10-30: the gate now reads the real peer on both boards, and
+fails closed when it can't. A public peer being denied is shown by unit tests only,
+and the bug itself was never seen on a device, because the old firmware answers these
+requests the same way and the denied line never leaves the device. Plan changes: the
+checklist row became an API-004 passage, because the ledger can't add a row, and the
+planned log of the peer address was dropped, because that line never leaves the device.
+
+Residual risks:
+
+- The hardware check can't catch this bug coming back, since it also passes on the
+  old firmware. Only the unit tests and the source guard can.
+- The gate is looser than upstream on some Origin forms and on `/recovery`:
+  `task-http-access-gate-upstream-differences`.
+- A denied request leaves no trace an owner can read.

@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-verified-revision-authority-v1",
+  "authority_id": "2026-10-30-access-gate-peer-address",
+  "authorized_by": "owner",
+  "authorized_on": "2026-10-30",
+  "rationale": "The access gate read the peer of its IPv6 server socket through a sockaddr_in, so it checked only the Origin. The fix ran on production Gamma 601 and Ultra 205, and a private peer was served on both. The owner read the exact passage on 2026-10-30, with its known differences from upstream, and authorized appending it to API-004, once, with the status, the evidence tokens, the owned target and the original notes unchanged (a passage-only revision).",
+  "evidence": [
+    {
+      "path": "docs/parity/evidence/20261030-access-gate-peer-address.md",
+      "sha256": "d7963368e1368a669236ef95e9300283eab6859cc356ecf45c7076e957516850"
+    }
+  ],
+  "rows": [
+    {
+      "row_id": "API-004",
+      "added_evidence": [],
+      "after_notes_sha256": "26b283633d81fb0820c5248e40ac7d88d60455c76986fbd8945a8125363f1e93"
+    }
+  ]
+}
