@@ -275,6 +275,13 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 
 ## Repo-Local Guidance
 
+### Development Paused
+
+- Owner decision, 2026-10-30 (ADR-0042): development here is paused for a C fork of upstream. Work
+  here only on the owner's explicit request. This overrides automatic selection and the standing
+  autonomous-task permission above and below. `TASKS.md` is a record, not a queue.
+- For the reasoning or anything about the fork, read `docs/project/c-fork-handoff.md`.
+
 ### Deterministic Active-Lesson Loading and Audits
 
 - Active lessons are the global input named by the loaded global instructions and the repository's lessons: an always-loaded core (`tasks/lessons.md` when the repository root contains `tasks/`, otherwise `.codex/tasks/lessons.md`) and area files under `.codex/tasks/lessons/` (owner decision 2026-10-21). Each area file starts with `# Lessons: <area>` and a `Scope:` line. Resolve paths canonically and de-duplicate them. Missing files count as zero bytes. Exclude every archive file and archive directory from startup loading.

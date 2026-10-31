@@ -1,5 +1,9 @@
 # Tasks
 
+**Paused 2026-10-30 (ADR-0042).** Development is to continue in a C fork of upstream, not yet
+created (`docs/project/c-fork-handoff.md`). The blocks below are a record, and none is selected
+automatically. Work here needs the owner's explicit request.
+
 This is the repository's sole active work tracker. Use one stable, timestamped
 task block per unit of work. Update only that block as work progresses, record
 the verification performed, and finish with a concise completion review.
@@ -23,6 +27,29 @@ Historical plans, milestones, debug sessions, and task records under
 new work.
 
 ## Active
+
+### task-rust-pause-c-fork-handoff | 2026-10-30 | Record the pause and write the C fork handoff
+
+Origin: owner request, 2026-10-30. The owner is pausing the Rust firmware for a C fork of
+upstream, because of the validation burden and image size, and wants the reasons in the
+README and a committed handoff that bootstraps the fork.
+
+- [x] Check the reasons against measurements. The validation counts hold. So does the size gap,
+      but about 72% of it is one `secp256k1` table default, an estimate from the table formulas
+      that was never built. The documents say so.
+- [x] Inventory the Gate contract, the fixes and hardware lessons, and the portable assets.
+- [x] Write `docs/project/c-fork-handoff.md` and ADR-0042.
+- [x] Add the README banner, and stop automatic task selection in `AGENTS.md` and here.
+- [x] Keep security-sensitive upstream findings out of this public repository, because upstream's
+      `SECURITY.md` asks for private reports. The handoff names topics only, and the details stay
+      in ignored local notes.
+- [x] Run an independent accuracy and privacy check of the handoff. It found 19 problems, including
+      a wrong upstream stop order and overheat description, and a missing path. All are corrected.
+      It found no private values. The linker table's crate grouping is approximate, and says so.
+- [ ] The owner reviews the wording, since this is a public statement, and then it is pushed.
+
+No device effects. Verification: `just test`, standards, `just parity` and `just verify-redaction`.
+Completion review: pending the owner's review.
 
 ### task-parity-asic009-bm1368-core | 2026-08-20 | Implement the pure BM1368 protocol core
 

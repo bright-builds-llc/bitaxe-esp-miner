@@ -12,6 +12,23 @@
 
 <!-- bright-builds-rules-readme-badges:end -->
 
+> [!IMPORTANT]
+> **Development here is paused as of 2026-10-30.** We're continuing in a new C fork of
+> [ESP-Miner](https://github.com/bitaxeorg/ESP-Miner), not yet created, and will bring our
+> extensions and our Bitcoin Work Gate interoperability there.
+>
+> - **Validation:** every supported board and ASIC needs its own evidence. Upstream supports 23
+>   board versions at our pin, and we have evidence on 2.
+> - **Keeping up:** each upstream release has to be re-implemented here. A fork gets most of it
+>   through a merge, should let us develop faster, and lets us send improvements upstream.
+> - **Image size:** our Ultra 205 image leaves 2,640 bytes free in its 4 MiB slot, while upstream's
+>   v2.15.4 image uses about 2.7 MB of the same slot. By our estimate most of that gap isn't Rust
+>   itself, and the [handoff](docs/project/c-fork-handoff.md#why-the-move) breaks it down.
+>
+> The code, parity checklist and hardware evidence stay here as a record. Read the
+> [handoff document](docs/project/c-fork-handoff.md) for the full reasoning and what moves where,
+> and [ADR-0042](docs/adr/0042-pause-rust-firmware-for-a-c-fork.md) for the decision.
+
 <!-- parity-progress:begin -->
 
 ## Parity progress
